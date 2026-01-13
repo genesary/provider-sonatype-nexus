@@ -1,0 +1,25 @@
+---
+# Secret containing Nexus credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nexus-credentials
+  namespace: crossplane-system
+type: Opaque
+stringData:
+  url: "http://nexus.example.com:8081"
+  username: "admin"
+  password: "admin123"
+---
+# ProviderConfig that references the credentials secret
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: ProviderConfig
+metadata:
+  name: nexus-provider-config
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      name: nexus-credentials
+      namespace: crossplane-system
+      key: ""  # Empty key means use all keys from secret

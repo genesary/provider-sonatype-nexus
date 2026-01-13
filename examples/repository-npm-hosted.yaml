@@ -1,0 +1,18 @@
+---
+# NPM hosted repository example
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: Repository
+metadata:
+  name: npm-hosted
+spec:
+  forProvider:
+    name: npm-hosted
+    format: npm
+    type: hosted
+    online: true
+    blobStoreName: default
+    strictContentTypeValidation: true
+    storage:
+      writePolicy: ALLOW
+  providerConfigRef:
+    name: nexus-provider-config

@@ -1,0 +1,23 @@
+---
+# Docker hosted repository example
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: Repository
+metadata:
+  name: docker-hosted
+spec:
+  forProvider:
+    name: docker-hosted
+    format: docker
+    type: hosted
+    online: true
+    blobStoreName: default
+    strictContentTypeValidation: true
+    docker:
+      httpPort: 8082
+      httpsPort: 8083
+      forceBasicAuth: true
+      v1Enabled: false
+    storage:
+      writePolicy: ALLOW
+  providerConfigRef:
+    name: nexus-provider-config

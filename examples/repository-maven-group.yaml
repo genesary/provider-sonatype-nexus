@@ -1,0 +1,21 @@
+---
+# Maven2 group repository example
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: Repository
+metadata:
+  name: maven-public
+spec:
+  forProvider:
+    name: maven-public
+    format: maven2
+    type: group
+    online: true
+    blobStoreName: default
+    strictContentTypeValidation: true
+    group:
+      memberNames:
+        - maven-releases
+        - maven-snapshots
+        - maven-central-proxy
+  providerConfigRef:
+    name: nexus-provider-config

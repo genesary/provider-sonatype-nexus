@@ -1,0 +1,22 @@
+---
+# Maven2 hosted repository example
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: Repository
+metadata:
+  name: maven-releases
+spec:
+  forProvider:
+    name: maven-releases
+    format: maven2
+    type: hosted
+    online: true
+    blobStoreName: default
+    strictContentTypeValidation: true
+    maven:
+      versionPolicy: RELEASE  # RELEASE, SNAPSHOT, or MIXED
+      layoutPolicy: STRICT    # STRICT or PERMISSIVE
+      contentDisposition: ATTACHMENT  # ATTACHMENT or INLINE
+    storage:
+      writePolicy: ALLOW_ONCE  # ALLOW, ALLOW_ONCE, or DENY
+  providerConfigRef:
+    name: nexus-provider-config
