@@ -1,0 +1,22 @@
+apiVersion: meta.pkg.crossplane.io/v1alpha1
+kind: Provider
+metadata:
+  name: provider-sonatype-nexus
+  annotations:
+    meta.crossplane.io/maintainer: AYDEV-FR <aymeric.deliencourt@aydev.fr>
+    meta.crossplane.io/source: github.com/AYDEV-FR/provider-sonatype-nexus
+    meta.crossplane.io/license: Apache-2.0
+    meta.crossplane.io/description: |
+      A Crossplane provider for managing Sonatype Nexus Repository Manager resources
+      including blob stores, repositories, users, and roles.
+    meta.crossplane.io/readme: |
+      This provider enables Crossplane to manage Sonatype Nexus Repository Manager resources.
+
+      Supported resources:
+      - BlobStore (File and S3 types)
+      - Repository (Maven, Docker, npm, Raw - hosted, proxy, group)
+      - User
+      - Role
+spec:
+  controller:
+    image: ghcr.io/aydev-fr/provider-sonatype-nexus:VERSION
