@@ -108,3 +108,47 @@ clean: ## Clean build artifacts
 clean-generated: ## Clean generated files
 	rm -f apis/v1alpha1/zz_generated.deepcopy.go
 	rm -rf $(CRD_DIR)/*
+
+##@ E2E Testing
+
+KIND_CLUSTER_NAME ?= nexus-e2e
+E2E_IMAGE_TAG ?= e2e
+
+.PHONY: e2e-setup
+e2e-setup: docker-build ## Setup e2e test environment (Kind + Nexus + Provider)
+	@echo "Creating Kind cluster..."
+	kind create cluster --config e2e/kind-config.yaml --wait 60s || true
+	@echo "Loading provider image into Kind..."
+	kind load docker-image $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) --name $(KIND_CLUSTER_NAME)
+	docker tag $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) provider-sonatype-nexus:$(E2E_IMAGE_TAG)
+	kind load docker-image provider-sonatype-nexus:$(E2E_IMAGE_TAG) --name $(KIND_CLUSTER_NAME)
+	@echo "Installing CRDs..."
+	kubectl apply -f $(CRD_DIR)/
+	@echo "Deploying Nexus..."
+	kubectl apply -f e2e/manifests/nexus.yaml
+	@echo "Deploying Provider..."
+	kubectl apply -f e2e/manifests/provider.yaml
+	@echo "Waiting for deployments..."
+	kubectl wait --for=condition=available deployment/nexus -n nexus --timeout=300s || echo "Nexus still starting..."
+	@echo "E2E environment setup complete!"
+	@echo "Nexus will be available at http://localhost:8081 (default: admin/admin123)"
+
+.PHONY: e2e-wait
+e2e-wait: ## Wait for all e2e components to be ready
+	chmod +x e2e/tests/*.sh e2e/run-e2e.sh
+	NEXUS_URL=http://localhost:8081 ./e2e/tests/00-wait-ready.sh
+
+.PHONY: e2e-run
+e2e-run: ## Run e2e tests
+	chmod +x e2e/tests/*.sh e2e/run-e2e.sh
+	NEXUS_URL=http://localhost:8081 ./e2e/run-e2e.sh run
+
+.PHONY: e2e-cleanup
+e2e-cleanup: ## Cleanup e2e test environment
+	kind delete cluster --name $(KIND_CLUSTER_NAME) || true
+
+.PHONY: e2e
+e2e: e2e-setup e2e-wait e2e-run ## Run full e2e test cycle (setup + tests + keeps cluster)
+
+.PHONY: e2e-full
+e2e-full: e2e e2e-cleanup ## Run full e2e test cycle with cleanup

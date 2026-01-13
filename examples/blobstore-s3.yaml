@@ -17,4 +17,4 @@ spec:
       type: spaceUsedQuota
       limit: 1073741824  # 1GB in bytes
   providerConfigRef:
-    name: nexus-provider-config
+    name: default

@@ -16,7 +16,7 @@ spec:
       - nx-repository-view-npm-*-browse
     roles: []  # Can include other roles to inherit from
   providerConfigRef:
-    name: nexus-provider-config
+    name: default
 ---
 # Nexus Admin Role example with nested roles
 apiVersion: nexus.crossplane.io/v1alpha1
@@ -34,4 +34,4 @@ spec:
     roles:
       - developer-role  # Inherits permissions from developer-role
   providerConfigRef:
-    name: nexus-provider-config
+    name: default

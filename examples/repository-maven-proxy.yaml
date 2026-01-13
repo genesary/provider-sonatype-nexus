@@ -10,8 +10,6 @@ spec:
     format: maven2
     type: proxy
     online: true
-    blobStoreName: default
-    strictContentTypeValidation: true
     maven:
       versionPolicy: RELEASE
       layoutPolicy: PERMISSIVE
@@ -26,5 +24,8 @@ spec:
     httpClient:
       blocked: false
       autoBlock: true
+    storage:
+      blobStoreName: default
+      strictContentTypeValidation: true
   providerConfigRef:
-    name: nexus-provider-config
+    name: default

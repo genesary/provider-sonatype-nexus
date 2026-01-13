@@ -10,12 +10,13 @@ spec:
     format: maven2
     type: group
     online: true
-    blobStoreName: default
-    strictContentTypeValidation: true
     group:
       memberNames:
         - maven-releases
         - maven-snapshots
         - maven-central-proxy
+    storage:
+      blobStoreName: default
+      strictContentTypeValidation: true
   providerConfigRef:
-    name: nexus-provider-config
+    name: default

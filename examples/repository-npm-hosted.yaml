@@ -10,9 +10,9 @@ spec:
     format: npm
     type: hosted
     online: true
-    blobStoreName: default
-    strictContentTypeValidation: true
     storage:
+      blobStoreName: default
+      strictContentTypeValidation: true
       writePolicy: ALLOW
   providerConfigRef:
-    name: nexus-provider-config
+    name: default
