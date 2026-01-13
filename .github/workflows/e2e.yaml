@@ -1,0 +1,64 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Setup Kind
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: nexus-e2e
+          config: e2e/kind-config.yaml
+          wait: 60s
+
+      - name: Build Provider Image
+        run: |
+          make docker-build
+          docker tag docker.io/crossplane/provider-sonatype-nexus:latest provider-sonatype-nexus:e2e
+
+      - name: Load Image into Kind
+        run: |
+          kind load docker-image docker.io/crossplane/provider-sonatype-nexus:latest --name nexus-e2e
+          kind load docker-image provider-sonatype-nexus:e2e --name nexus-e2e
+
+      - name: Install CRDs
+        run: kubectl apply -f package/crds/
+
+      - name: Deploy Nexus
+        run: |
+          kubectl apply -f e2e/manifests/nexus.yaml
+          kubectl wait --for=condition=available deployment/nexus -n nexus --timeout=300s
+
+      - name: Deploy Provider
+        run: kubectl apply -f e2e/manifests/provider.yaml
+
+      - name: Wait for Components
+        run: |
+          chmod +x e2e/tests/*.sh e2e/run-e2e.sh
+          NEXUS_URL=http://localhost:8081 ./e2e/tests/00-wait-ready.sh
+        timeout-minutes: 5
+
+      - name: Run E2E Tests
+        run: |
+          NEXUS_URL=http://localhost:8081 ./e2e/run-e2e.sh run
+
+      - name: Get Provider Logs on Failure
+        if: failure()
+        run: |
+          kubectl logs -n crossplane-system deployment/provider-sonatype-nexus --tail=100 || true
+          kubectl get events -A --sort-by='.lastTimestamp' | tail -50 || true

@@ -3,7 +3,7 @@ package repository
 import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 
-	"github.com/crossplane-contrib/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/AYDEV-FR/provider-sonatype-nexus/apis/v1alpha1"
 )
 
 // Maven repository generators

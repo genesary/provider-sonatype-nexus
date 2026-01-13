@@ -8,8 +8,8 @@ import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/crossplane-contrib/provider-sonatype-nexus/apis/v1alpha1"
-	"github.com/crossplane-contrib/provider-sonatype-nexus/test/mocks"
+	"github.com/AYDEV-FR/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/AYDEV-FR/provider-sonatype-nexus/test/mocks"
 )
 
 func TestRoleObserve(t *testing.T) {

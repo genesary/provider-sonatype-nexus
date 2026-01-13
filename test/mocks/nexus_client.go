@@ -8,7 +8,7 @@ import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 
-	"github.com/crossplane-contrib/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/clients/nexus"
 )
 
 var _ nexus.Client = &MockClient{}

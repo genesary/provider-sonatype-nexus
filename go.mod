@@ -1,4 +1,4 @@
-module github.com/crossplane-contrib/provider-sonatype-nexus
+module github.com/AYDEV-FR/provider-sonatype-nexus
 
 go 1.21
 
