@@ -4,9 +4,10 @@ apiVersion: nexus.crossplane.io/v1alpha1
 kind: Role
 metadata:
   name: developer-role
+  namespace: default
 spec:
   forProvider:
-    roleId: developer-role
+    id: developer-role
     name: Developer Role
     description: Role for developers with read access to Maven and NPM repositories
     privileges:
@@ -23,9 +24,10 @@ apiVersion: nexus.crossplane.io/v1alpha1
 kind: Role
 metadata:
   name: team-admin-role
+  namespace: default
 spec:
   forProvider:
-    roleId: team-admin-role
+    id: team-admin-role
     name: Team Admin Role
     description: Administrative role for team with full access to specific repositories
     privileges:

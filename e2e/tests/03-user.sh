@@ -27,6 +27,7 @@ apiVersion: nexus.crossplane.io/v1alpha1
 kind: User
 metadata:
   name: e2e-test-user
+  namespace: default
 spec:
   forProvider:
     userId: e2e-test-user
@@ -49,7 +50,7 @@ sleep 5
 
 # Wait for the resource to be synced
 for i in {1..30}; do
-    status=$(kubectl get user e2e-test-user -o jsonpath='{.status.conditions[?(@.type=="Synced")].status}' 2>/dev/null || echo "Unknown")
+    status=$(kubectl get user e2e-test-user -n default -o jsonpath='{.status.conditions[?(@.type=="Synced")].status}' 2>/dev/null || echo "Unknown")
     if [ "$status" = "True" ]; then
         echo "User is synced!"
         break
@@ -69,7 +70,7 @@ fi
 
 # Cleanup
 echo "Cleaning up User..."
-kubectl delete user e2e-test-user --wait=true --timeout=60s
+kubectl delete user e2e-test-user -n default --wait=true --timeout=60s
 kubectl delete secret e2e-test-user-password
 
 echo "--- User test completed ---"

@@ -15,6 +15,7 @@ apiVersion: nexus.crossplane.io/v1alpha1
 kind: Role
 metadata:
   name: e2e-test-role
+  namespace: default
 spec:
   forProvider:
     id: e2e-test-role
@@ -32,7 +33,7 @@ sleep 5
 
 # Wait for the resource to be synced
 for i in {1..30}; do
-    status=$(kubectl get role.nexus.crossplane.io e2e-test-role -o jsonpath='{.status.conditions[?(@.type=="Synced")].status}' 2>/dev/null || echo "Unknown")
+    status=$(kubectl get role.nexus.crossplane.io e2e-test-role -n default -o jsonpath='{.status.conditions[?(@.type=="Synced")].status}' 2>/dev/null || echo "Unknown")
     if [ "$status" = "True" ]; then
         echo "Role is synced!"
         break
@@ -52,6 +53,6 @@ fi
 
 # Cleanup
 echo "Cleaning up Role..."
-kubectl delete role.nexus.crossplane.io e2e-test-role --wait=true --timeout=60s
+kubectl delete role.nexus.crossplane.io e2e-test-role -n default --wait=true --timeout=60s
 
 echo "--- Role test completed ---"

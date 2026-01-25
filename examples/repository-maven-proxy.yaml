@@ -4,6 +4,7 @@ apiVersion: nexus.crossplane.io/v1alpha1
 kind: Repository
 metadata:
   name: maven-central-proxy
+  namespace: default
 spec:
   forProvider:
     name: maven-central-proxy

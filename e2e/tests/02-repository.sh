@@ -15,6 +15,7 @@ apiVersion: nexus.crossplane.io/v1alpha1
 kind: Repository
 metadata:
   name: e2e-test-maven-hosted
+  namespace: default
 spec:
   forProvider:
     name: e2e-test-maven-hosted
@@ -37,7 +38,7 @@ sleep 5
 
 # Wait for the resource to be synced
 for i in {1..30}; do
-    status=$(kubectl get repository e2e-test-maven-hosted -o jsonpath='{.status.conditions[?(@.type=="Synced")].status}' 2>/dev/null || echo "Unknown")
+    status=$(kubectl get repository e2e-test-maven-hosted -n default -o jsonpath='{.status.conditions[?(@.type=="Synced")].status}' 2>/dev/null || echo "Unknown")
     if [ "$status" = "True" ]; then
         echo "Repository is synced!"
         break
@@ -57,7 +58,7 @@ fi
 
 # Cleanup
 echo "Cleaning up Repository..."
-kubectl delete repository e2e-test-maven-hosted --wait=true --timeout=60s
+kubectl delete repository e2e-test-maven-hosted -n default --wait=true --timeout=60s
 
 echo "--- Maven Hosted Repository test completed ---"
 
@@ -69,6 +70,7 @@ apiVersion: nexus.crossplane.io/v1alpha1
 kind: Repository
 metadata:
   name: e2e-test-docker-hosted
+  namespace: default
 spec:
   forProvider:
     name: e2e-test-docker-hosted
@@ -91,7 +93,7 @@ echo "Waiting for Docker Repository to be ready..."
 sleep 5
 
 for i in {1..30}; do
-    status=$(kubectl get repository e2e-test-docker-hosted -o jsonpath='{.status.conditions[?(@.type=="Synced")].status}' 2>/dev/null || echo "Unknown")
+    status=$(kubectl get repository e2e-test-docker-hosted -n default -o jsonpath='{.status.conditions[?(@.type=="Synced")].status}' 2>/dev/null || echo "Unknown")
     if [ "$status" = "True" ]; then
         echo "Docker Repository is synced!"
         break
@@ -102,6 +104,6 @@ done
 
 # Cleanup
 echo "Cleaning up Docker Repository..."
-kubectl delete repository e2e-test-docker-hosted --wait=true --timeout=60s
+kubectl delete repository e2e-test-docker-hosted -n default --wait=true --timeout=60s
 
 echo "--- Docker Hosted Repository test completed ---"

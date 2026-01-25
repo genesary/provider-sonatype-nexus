@@ -4,6 +4,7 @@ apiVersion: nexus.crossplane.io/v1alpha1
 kind: BlobStore
 metadata:
   name: my-s3-blobstore
+  namespace: default
 spec:
   forProvider:
     name: my-s3-blobstore

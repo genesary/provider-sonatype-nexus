@@ -4,6 +4,7 @@ apiVersion: nexus.crossplane.io/v1alpha1
 kind: Repository
 metadata:
   name: npm-hosted
+  namespace: default
 spec:
   forProvider:
     name: npm-hosted

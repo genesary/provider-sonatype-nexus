@@ -15,6 +15,7 @@ apiVersion: nexus.crossplane.io/v1alpha1
 kind: BlobStore
 metadata:
   name: e2e-test-file-blobstore
+  namespace: default
 spec:
   forProvider:
     name: e2e-test-file
@@ -31,7 +32,7 @@ sleep 5
 
 # Wait for the resource to be synced
 for i in {1..30}; do
-    status=$(kubectl get blobstore e2e-test-file-blobstore -o jsonpath='{.status.conditions[?(@.type=="Synced")].status}' 2>/dev/null || echo "Unknown")
+    status=$(kubectl get blobstore e2e-test-file-blobstore -n default -o jsonpath='{.status.conditions[?(@.type=="Synced")].status}' 2>/dev/null || echo "Unknown")
     if [ "$status" = "True" ]; then
         echo "BlobStore is synced!"
         break
@@ -51,6 +52,6 @@ fi
 
 # Cleanup
 echo "Cleaning up BlobStore..."
-kubectl delete blobstore e2e-test-file-blobstore --wait=true --timeout=60s
+kubectl delete blobstore e2e-test-file-blobstore -n default --wait=true --timeout=60s
 
 echo "--- File BlobStore test completed ---"
