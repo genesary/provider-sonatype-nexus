@@ -1,0 +1,13 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: SecurityRealm
+metadata:
+  name: nexus-realms
+spec:
+  forProvider:
+    activeRealms:
+      - NexusAuthenticatingRealm
+      - NexusAuthorizingRealm
+      - DockerToken
+      - NpmToken
+  providerConfigRef:
+    name: nexus-provider-config

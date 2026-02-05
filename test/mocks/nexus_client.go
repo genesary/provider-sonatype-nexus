@@ -215,6 +215,175 @@ type MockRepositoryService struct {
 	CreateRawGroupFn func(ctx context.Context, repo repository.RawGroupRepository) error
 	UpdateRawGroupFn func(ctx context.Context, name string, repo repository.RawGroupRepository) error
 	DeleteRawGroupFn func(ctx context.Context, name string) error
+
+	// APT
+	GetAptHostedFn    func(ctx context.Context, name string) (*repository.AptHostedRepository, error)
+	CreateAptHostedFn func(ctx context.Context, repo repository.AptHostedRepository) error
+	UpdateAptHostedFn func(ctx context.Context, name string, repo repository.AptHostedRepository) error
+	DeleteAptHostedFn func(ctx context.Context, name string) error
+
+	GetAptProxyFn    func(ctx context.Context, name string) (*repository.AptProxyRepository, error)
+	CreateAptProxyFn func(ctx context.Context, repo repository.AptProxyRepository) error
+	UpdateAptProxyFn func(ctx context.Context, name string, repo repository.AptProxyRepository) error
+	DeleteAptProxyFn func(ctx context.Context, name string) error
+
+	// Bower
+	GetBowerHostedFn    func(ctx context.Context, name string) (*repository.BowerHostedRepository, error)
+	CreateBowerHostedFn func(ctx context.Context, repo repository.BowerHostedRepository) error
+	UpdateBowerHostedFn func(ctx context.Context, name string, repo repository.BowerHostedRepository) error
+	DeleteBowerHostedFn func(ctx context.Context, name string) error
+
+	GetBowerProxyFn    func(ctx context.Context, name string) (*repository.BowerProxyRepository, error)
+	CreateBowerProxyFn func(ctx context.Context, repo repository.BowerProxyRepository) error
+	UpdateBowerProxyFn func(ctx context.Context, name string, repo repository.BowerProxyRepository) error
+	DeleteBowerProxyFn func(ctx context.Context, name string) error
+
+	GetBowerGroupFn    func(ctx context.Context, name string) (*repository.BowerGroupRepository, error)
+	CreateBowerGroupFn func(ctx context.Context, repo repository.BowerGroupRepository) error
+	UpdateBowerGroupFn func(ctx context.Context, name string, repo repository.BowerGroupRepository) error
+	DeleteBowerGroupFn func(ctx context.Context, name string) error
+
+	// Cargo
+	GetCargoHostedFn    func(ctx context.Context, name string) (*repository.CargoHostedRepository, error)
+	CreateCargoHostedFn func(ctx context.Context, repo repository.CargoHostedRepository) error
+	UpdateCargoHostedFn func(ctx context.Context, name string, repo repository.CargoHostedRepository) error
+	DeleteCargoHostedFn func(ctx context.Context, name string) error
+
+	GetCargoProxyFn    func(ctx context.Context, name string) (*repository.CargoProxyRepository, error)
+	CreateCargoProxyFn func(ctx context.Context, repo repository.CargoProxyRepository) error
+	UpdateCargoProxyFn func(ctx context.Context, name string, repo repository.CargoProxyRepository) error
+	DeleteCargoProxyFn func(ctx context.Context, name string) error
+
+	GetCargoGroupFn    func(ctx context.Context, name string) (*repository.CargoGroupRepository, error)
+	CreateCargoGroupFn func(ctx context.Context, repo repository.CargoGroupRepository) error
+	UpdateCargoGroupFn func(ctx context.Context, name string, repo repository.CargoGroupRepository) error
+	DeleteCargoGroupFn func(ctx context.Context, name string) error
+
+	// Cocoapods
+	GetCocoapodsProxyFn    func(ctx context.Context, name string) (*repository.CocoapodsProxyRepository, error)
+	CreateCocoapodsProxyFn func(ctx context.Context, repo repository.CocoapodsProxyRepository) error
+	UpdateCocoapodsProxyFn func(ctx context.Context, name string, repo repository.CocoapodsProxyRepository) error
+	DeleteCocoapodsProxyFn func(ctx context.Context, name string) error
+
+	// Conan
+	GetConanProxyFn    func(ctx context.Context, name string) (*repository.ConanProxyRepository, error)
+	CreateConanProxyFn func(ctx context.Context, repo repository.ConanProxyRepository) error
+	UpdateConanProxyFn func(ctx context.Context, name string, repo repository.ConanProxyRepository) error
+	DeleteConanProxyFn func(ctx context.Context, name string) error
+
+	// Conda
+	GetCondaProxyFn    func(ctx context.Context, name string) (*repository.CondaProxyRepository, error)
+	CreateCondaProxyFn func(ctx context.Context, repo repository.CondaProxyRepository) error
+	UpdateCondaProxyFn func(ctx context.Context, name string, repo repository.CondaProxyRepository) error
+	DeleteCondaProxyFn func(ctx context.Context, name string) error
+
+	// GitLFS
+	GetGitLfsHostedFn    func(ctx context.Context, name string) (*repository.GitLfsHostedRepository, error)
+	CreateGitLfsHostedFn func(ctx context.Context, repo repository.GitLfsHostedRepository) error
+	UpdateGitLfsHostedFn func(ctx context.Context, name string, repo repository.GitLfsHostedRepository) error
+	DeleteGitLfsHostedFn func(ctx context.Context, name string) error
+
+	// Go
+	GetGoProxyFn    func(ctx context.Context, name string) (*repository.GoProxyRepository, error)
+	CreateGoProxyFn func(ctx context.Context, repo repository.GoProxyRepository) error
+	UpdateGoProxyFn func(ctx context.Context, name string, repo repository.GoProxyRepository) error
+	DeleteGoProxyFn func(ctx context.Context, name string) error
+
+	GetGoGroupFn    func(ctx context.Context, name string) (*repository.GoGroupRepository, error)
+	CreateGoGroupFn func(ctx context.Context, repo repository.GoGroupRepository) error
+	UpdateGoGroupFn func(ctx context.Context, name string, repo repository.GoGroupRepository) error
+	DeleteGoGroupFn func(ctx context.Context, name string) error
+
+	// Helm
+	GetHelmHostedFn    func(ctx context.Context, name string) (*repository.HelmHostedRepository, error)
+	CreateHelmHostedFn func(ctx context.Context, repo repository.HelmHostedRepository) error
+	UpdateHelmHostedFn func(ctx context.Context, name string, repo repository.HelmHostedRepository) error
+	DeleteHelmHostedFn func(ctx context.Context, name string) error
+
+	GetHelmProxyFn    func(ctx context.Context, name string) (*repository.HelmProxyRepository, error)
+	CreateHelmProxyFn func(ctx context.Context, repo repository.HelmProxyRepository) error
+	UpdateHelmProxyFn func(ctx context.Context, name string, repo repository.HelmProxyRepository) error
+	DeleteHelmProxyFn func(ctx context.Context, name string) error
+
+	// NuGet
+	GetNugetHostedFn    func(ctx context.Context, name string) (*repository.NugetHostedRepository, error)
+	CreateNugetHostedFn func(ctx context.Context, repo repository.NugetHostedRepository) error
+	UpdateNugetHostedFn func(ctx context.Context, name string, repo repository.NugetHostedRepository) error
+	DeleteNugetHostedFn func(ctx context.Context, name string) error
+
+	GetNugetProxyFn    func(ctx context.Context, name string) (*repository.NugetProxyRepository, error)
+	CreateNugetProxyFn func(ctx context.Context, repo repository.NugetProxyRepository) error
+	UpdateNugetProxyFn func(ctx context.Context, name string, repo repository.NugetProxyRepository) error
+	DeleteNugetProxyFn func(ctx context.Context, name string) error
+
+	GetNugetGroupFn    func(ctx context.Context, name string) (*repository.NugetGroupRepository, error)
+	CreateNugetGroupFn func(ctx context.Context, repo repository.NugetGroupRepository) error
+	UpdateNugetGroupFn func(ctx context.Context, name string, repo repository.NugetGroupRepository) error
+	DeleteNugetGroupFn func(ctx context.Context, name string) error
+
+	// PyPI
+	GetPypiHostedFn    func(ctx context.Context, name string) (*repository.PypiHostedRepository, error)
+	CreatePypiHostedFn func(ctx context.Context, repo repository.PypiHostedRepository) error
+	UpdatePypiHostedFn func(ctx context.Context, name string, repo repository.PypiHostedRepository) error
+	DeletePypiHostedFn func(ctx context.Context, name string) error
+
+	GetPypiProxyFn    func(ctx context.Context, name string) (*repository.PypiProxyRepository, error)
+	CreatePypiProxyFn func(ctx context.Context, repo repository.PypiProxyRepository) error
+	UpdatePypiProxyFn func(ctx context.Context, name string, repo repository.PypiProxyRepository) error
+	DeletePypiProxyFn func(ctx context.Context, name string) error
+
+	GetPypiGroupFn    func(ctx context.Context, name string) (*repository.PypiGroupRepository, error)
+	CreatePypiGroupFn func(ctx context.Context, repo repository.PypiGroupRepository) error
+	UpdatePypiGroupFn func(ctx context.Context, name string, repo repository.PypiGroupRepository) error
+	DeletePypiGroupFn func(ctx context.Context, name string) error
+
+	// R
+	GetRHostedFn    func(ctx context.Context, name string) (*repository.RHostedRepository, error)
+	CreateRHostedFn func(ctx context.Context, repo repository.RHostedRepository) error
+	UpdateRHostedFn func(ctx context.Context, name string, repo repository.RHostedRepository) error
+	DeleteRHostedFn func(ctx context.Context, name string) error
+
+	GetRProxyFn    func(ctx context.Context, name string) (*repository.RProxyRepository, error)
+	CreateRProxyFn func(ctx context.Context, repo repository.RProxyRepository) error
+	UpdateRProxyFn func(ctx context.Context, name string, repo repository.RProxyRepository) error
+	DeleteRProxyFn func(ctx context.Context, name string) error
+
+	GetRGroupFn    func(ctx context.Context, name string) (*repository.RGroupRepository, error)
+	CreateRGroupFn func(ctx context.Context, repo repository.RGroupRepository) error
+	UpdateRGroupFn func(ctx context.Context, name string, repo repository.RGroupRepository) error
+	DeleteRGroupFn func(ctx context.Context, name string) error
+
+	// RubyGems
+	GetRubygemsHostedFn    func(ctx context.Context, name string) (*repository.RubyGemsHostedRepository, error)
+	CreateRubygemsHostedFn func(ctx context.Context, repo repository.RubyGemsHostedRepository) error
+	UpdateRubygemsHostedFn func(ctx context.Context, name string, repo repository.RubyGemsHostedRepository) error
+	DeleteRubygemsHostedFn func(ctx context.Context, name string) error
+
+	GetRubygemsProxyFn    func(ctx context.Context, name string) (*repository.RubyGemsProxyRepository, error)
+	CreateRubygemsProxyFn func(ctx context.Context, repo repository.RubyGemsProxyRepository) error
+	UpdateRubygemsProxyFn func(ctx context.Context, name string, repo repository.RubyGemsProxyRepository) error
+	DeleteRubygemsProxyFn func(ctx context.Context, name string) error
+
+	GetRubygemsGroupFn    func(ctx context.Context, name string) (*repository.RubyGemsGroupRepository, error)
+	CreateRubygemsGroupFn func(ctx context.Context, repo repository.RubyGemsGroupRepository) error
+	UpdateRubygemsGroupFn func(ctx context.Context, name string, repo repository.RubyGemsGroupRepository) error
+	DeleteRubygemsGroupFn func(ctx context.Context, name string) error
+
+	// Yum
+	GetYumHostedFn    func(ctx context.Context, name string) (*repository.YumHostedRepository, error)
+	CreateYumHostedFn func(ctx context.Context, repo repository.YumHostedRepository) error
+	UpdateYumHostedFn func(ctx context.Context, name string, repo repository.YumHostedRepository) error
+	DeleteYumHostedFn func(ctx context.Context, name string) error
+
+	GetYumProxyFn    func(ctx context.Context, name string) (*repository.YumProxyRepository, error)
+	CreateYumProxyFn func(ctx context.Context, repo repository.YumProxyRepository) error
+	UpdateYumProxyFn func(ctx context.Context, name string, repo repository.YumProxyRepository) error
+	DeleteYumProxyFn func(ctx context.Context, name string) error
+
+	GetYumGroupFn    func(ctx context.Context, name string) (*repository.YumGroupRepository, error)
+	CreateYumGroupFn func(ctx context.Context, repo repository.YumGroupRepository) error
+	UpdateYumGroupFn func(ctx context.Context, name string, repo repository.YumGroupRepository) error
+	DeleteYumGroupFn func(ctx context.Context, name string) error
 }
 
 // Maven implementations
@@ -557,6 +726,888 @@ func (m *MockRepositoryService) DeleteRawGroup(ctx context.Context, name string)
 	return nil
 }
 
+// APT implementations
+func (m *MockRepositoryService) GetAptHosted(ctx context.Context, name string) (*repository.AptHostedRepository, error) {
+	if m.GetAptHostedFn != nil {
+		return m.GetAptHostedFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateAptHosted(ctx context.Context, repo repository.AptHostedRepository) error {
+	if m.CreateAptHostedFn != nil {
+		return m.CreateAptHostedFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateAptHosted(ctx context.Context, name string, repo repository.AptHostedRepository) error {
+	if m.UpdateAptHostedFn != nil {
+		return m.UpdateAptHostedFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteAptHosted(ctx context.Context, name string) error {
+	if m.DeleteAptHostedFn != nil {
+		return m.DeleteAptHostedFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetAptProxy(ctx context.Context, name string) (*repository.AptProxyRepository, error) {
+	if m.GetAptProxyFn != nil {
+		return m.GetAptProxyFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateAptProxy(ctx context.Context, repo repository.AptProxyRepository) error {
+	if m.CreateAptProxyFn != nil {
+		return m.CreateAptProxyFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateAptProxy(ctx context.Context, name string, repo repository.AptProxyRepository) error {
+	if m.UpdateAptProxyFn != nil {
+		return m.UpdateAptProxyFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteAptProxy(ctx context.Context, name string) error {
+	if m.DeleteAptProxyFn != nil {
+		return m.DeleteAptProxyFn(ctx, name)
+	}
+	return nil
+}
+
+// Bower implementations
+func (m *MockRepositoryService) GetBowerHosted(ctx context.Context, name string) (*repository.BowerHostedRepository, error) {
+	if m.GetBowerHostedFn != nil {
+		return m.GetBowerHostedFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateBowerHosted(ctx context.Context, repo repository.BowerHostedRepository) error {
+	if m.CreateBowerHostedFn != nil {
+		return m.CreateBowerHostedFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateBowerHosted(ctx context.Context, name string, repo repository.BowerHostedRepository) error {
+	if m.UpdateBowerHostedFn != nil {
+		return m.UpdateBowerHostedFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteBowerHosted(ctx context.Context, name string) error {
+	if m.DeleteBowerHostedFn != nil {
+		return m.DeleteBowerHostedFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetBowerProxy(ctx context.Context, name string) (*repository.BowerProxyRepository, error) {
+	if m.GetBowerProxyFn != nil {
+		return m.GetBowerProxyFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateBowerProxy(ctx context.Context, repo repository.BowerProxyRepository) error {
+	if m.CreateBowerProxyFn != nil {
+		return m.CreateBowerProxyFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateBowerProxy(ctx context.Context, name string, repo repository.BowerProxyRepository) error {
+	if m.UpdateBowerProxyFn != nil {
+		return m.UpdateBowerProxyFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteBowerProxy(ctx context.Context, name string) error {
+	if m.DeleteBowerProxyFn != nil {
+		return m.DeleteBowerProxyFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetBowerGroup(ctx context.Context, name string) (*repository.BowerGroupRepository, error) {
+	if m.GetBowerGroupFn != nil {
+		return m.GetBowerGroupFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateBowerGroup(ctx context.Context, repo repository.BowerGroupRepository) error {
+	if m.CreateBowerGroupFn != nil {
+		return m.CreateBowerGroupFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateBowerGroup(ctx context.Context, name string, repo repository.BowerGroupRepository) error {
+	if m.UpdateBowerGroupFn != nil {
+		return m.UpdateBowerGroupFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteBowerGroup(ctx context.Context, name string) error {
+	if m.DeleteBowerGroupFn != nil {
+		return m.DeleteBowerGroupFn(ctx, name)
+	}
+	return nil
+}
+
+// Cargo implementations
+func (m *MockRepositoryService) GetCargoHosted(ctx context.Context, name string) (*repository.CargoHostedRepository, error) {
+	if m.GetCargoHostedFn != nil {
+		return m.GetCargoHostedFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateCargoHosted(ctx context.Context, repo repository.CargoHostedRepository) error {
+	if m.CreateCargoHostedFn != nil {
+		return m.CreateCargoHostedFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateCargoHosted(ctx context.Context, name string, repo repository.CargoHostedRepository) error {
+	if m.UpdateCargoHostedFn != nil {
+		return m.UpdateCargoHostedFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteCargoHosted(ctx context.Context, name string) error {
+	if m.DeleteCargoHostedFn != nil {
+		return m.DeleteCargoHostedFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetCargoProxy(ctx context.Context, name string) (*repository.CargoProxyRepository, error) {
+	if m.GetCargoProxyFn != nil {
+		return m.GetCargoProxyFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateCargoProxy(ctx context.Context, repo repository.CargoProxyRepository) error {
+	if m.CreateCargoProxyFn != nil {
+		return m.CreateCargoProxyFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateCargoProxy(ctx context.Context, name string, repo repository.CargoProxyRepository) error {
+	if m.UpdateCargoProxyFn != nil {
+		return m.UpdateCargoProxyFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteCargoProxy(ctx context.Context, name string) error {
+	if m.DeleteCargoProxyFn != nil {
+		return m.DeleteCargoProxyFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetCargoGroup(ctx context.Context, name string) (*repository.CargoGroupRepository, error) {
+	if m.GetCargoGroupFn != nil {
+		return m.GetCargoGroupFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateCargoGroup(ctx context.Context, repo repository.CargoGroupRepository) error {
+	if m.CreateCargoGroupFn != nil {
+		return m.CreateCargoGroupFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateCargoGroup(ctx context.Context, name string, repo repository.CargoGroupRepository) error {
+	if m.UpdateCargoGroupFn != nil {
+		return m.UpdateCargoGroupFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteCargoGroup(ctx context.Context, name string) error {
+	if m.DeleteCargoGroupFn != nil {
+		return m.DeleteCargoGroupFn(ctx, name)
+	}
+	return nil
+}
+
+// Cocoapods implementations
+func (m *MockRepositoryService) GetCocoapodsProxy(ctx context.Context, name string) (*repository.CocoapodsProxyRepository, error) {
+	if m.GetCocoapodsProxyFn != nil {
+		return m.GetCocoapodsProxyFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateCocoapodsProxy(ctx context.Context, repo repository.CocoapodsProxyRepository) error {
+	if m.CreateCocoapodsProxyFn != nil {
+		return m.CreateCocoapodsProxyFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateCocoapodsProxy(ctx context.Context, name string, repo repository.CocoapodsProxyRepository) error {
+	if m.UpdateCocoapodsProxyFn != nil {
+		return m.UpdateCocoapodsProxyFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteCocoapodsProxy(ctx context.Context, name string) error {
+	if m.DeleteCocoapodsProxyFn != nil {
+		return m.DeleteCocoapodsProxyFn(ctx, name)
+	}
+	return nil
+}
+
+// Conan implementations
+func (m *MockRepositoryService) GetConanProxy(ctx context.Context, name string) (*repository.ConanProxyRepository, error) {
+	if m.GetConanProxyFn != nil {
+		return m.GetConanProxyFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateConanProxy(ctx context.Context, repo repository.ConanProxyRepository) error {
+	if m.CreateConanProxyFn != nil {
+		return m.CreateConanProxyFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateConanProxy(ctx context.Context, name string, repo repository.ConanProxyRepository) error {
+	if m.UpdateConanProxyFn != nil {
+		return m.UpdateConanProxyFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteConanProxy(ctx context.Context, name string) error {
+	if m.DeleteConanProxyFn != nil {
+		return m.DeleteConanProxyFn(ctx, name)
+	}
+	return nil
+}
+
+// Conda implementations
+func (m *MockRepositoryService) GetCondaProxy(ctx context.Context, name string) (*repository.CondaProxyRepository, error) {
+	if m.GetCondaProxyFn != nil {
+		return m.GetCondaProxyFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateCondaProxy(ctx context.Context, repo repository.CondaProxyRepository) error {
+	if m.CreateCondaProxyFn != nil {
+		return m.CreateCondaProxyFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateCondaProxy(ctx context.Context, name string, repo repository.CondaProxyRepository) error {
+	if m.UpdateCondaProxyFn != nil {
+		return m.UpdateCondaProxyFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteCondaProxy(ctx context.Context, name string) error {
+	if m.DeleteCondaProxyFn != nil {
+		return m.DeleteCondaProxyFn(ctx, name)
+	}
+	return nil
+}
+
+// GitLFS implementations
+func (m *MockRepositoryService) GetGitLfsHosted(ctx context.Context, name string) (*repository.GitLfsHostedRepository, error) {
+	if m.GetGitLfsHostedFn != nil {
+		return m.GetGitLfsHostedFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateGitLfsHosted(ctx context.Context, repo repository.GitLfsHostedRepository) error {
+	if m.CreateGitLfsHostedFn != nil {
+		return m.CreateGitLfsHostedFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateGitLfsHosted(ctx context.Context, name string, repo repository.GitLfsHostedRepository) error {
+	if m.UpdateGitLfsHostedFn != nil {
+		return m.UpdateGitLfsHostedFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteGitLfsHosted(ctx context.Context, name string) error {
+	if m.DeleteGitLfsHostedFn != nil {
+		return m.DeleteGitLfsHostedFn(ctx, name)
+	}
+	return nil
+}
+
+// Go implementations
+func (m *MockRepositoryService) GetGoProxy(ctx context.Context, name string) (*repository.GoProxyRepository, error) {
+	if m.GetGoProxyFn != nil {
+		return m.GetGoProxyFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateGoProxy(ctx context.Context, repo repository.GoProxyRepository) error {
+	if m.CreateGoProxyFn != nil {
+		return m.CreateGoProxyFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateGoProxy(ctx context.Context, name string, repo repository.GoProxyRepository) error {
+	if m.UpdateGoProxyFn != nil {
+		return m.UpdateGoProxyFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteGoProxy(ctx context.Context, name string) error {
+	if m.DeleteGoProxyFn != nil {
+		return m.DeleteGoProxyFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetGoGroup(ctx context.Context, name string) (*repository.GoGroupRepository, error) {
+	if m.GetGoGroupFn != nil {
+		return m.GetGoGroupFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateGoGroup(ctx context.Context, repo repository.GoGroupRepository) error {
+	if m.CreateGoGroupFn != nil {
+		return m.CreateGoGroupFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateGoGroup(ctx context.Context, name string, repo repository.GoGroupRepository) error {
+	if m.UpdateGoGroupFn != nil {
+		return m.UpdateGoGroupFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteGoGroup(ctx context.Context, name string) error {
+	if m.DeleteGoGroupFn != nil {
+		return m.DeleteGoGroupFn(ctx, name)
+	}
+	return nil
+}
+
+// Helm implementations
+func (m *MockRepositoryService) GetHelmHosted(ctx context.Context, name string) (*repository.HelmHostedRepository, error) {
+	if m.GetHelmHostedFn != nil {
+		return m.GetHelmHostedFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateHelmHosted(ctx context.Context, repo repository.HelmHostedRepository) error {
+	if m.CreateHelmHostedFn != nil {
+		return m.CreateHelmHostedFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateHelmHosted(ctx context.Context, name string, repo repository.HelmHostedRepository) error {
+	if m.UpdateHelmHostedFn != nil {
+		return m.UpdateHelmHostedFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteHelmHosted(ctx context.Context, name string) error {
+	if m.DeleteHelmHostedFn != nil {
+		return m.DeleteHelmHostedFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetHelmProxy(ctx context.Context, name string) (*repository.HelmProxyRepository, error) {
+	if m.GetHelmProxyFn != nil {
+		return m.GetHelmProxyFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateHelmProxy(ctx context.Context, repo repository.HelmProxyRepository) error {
+	if m.CreateHelmProxyFn != nil {
+		return m.CreateHelmProxyFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateHelmProxy(ctx context.Context, name string, repo repository.HelmProxyRepository) error {
+	if m.UpdateHelmProxyFn != nil {
+		return m.UpdateHelmProxyFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteHelmProxy(ctx context.Context, name string) error {
+	if m.DeleteHelmProxyFn != nil {
+		return m.DeleteHelmProxyFn(ctx, name)
+	}
+	return nil
+}
+
+// NuGet implementations
+func (m *MockRepositoryService) GetNugetHosted(ctx context.Context, name string) (*repository.NugetHostedRepository, error) {
+	if m.GetNugetHostedFn != nil {
+		return m.GetNugetHostedFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateNugetHosted(ctx context.Context, repo repository.NugetHostedRepository) error {
+	if m.CreateNugetHostedFn != nil {
+		return m.CreateNugetHostedFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateNugetHosted(ctx context.Context, name string, repo repository.NugetHostedRepository) error {
+	if m.UpdateNugetHostedFn != nil {
+		return m.UpdateNugetHostedFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteNugetHosted(ctx context.Context, name string) error {
+	if m.DeleteNugetHostedFn != nil {
+		return m.DeleteNugetHostedFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetNugetProxy(ctx context.Context, name string) (*repository.NugetProxyRepository, error) {
+	if m.GetNugetProxyFn != nil {
+		return m.GetNugetProxyFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateNugetProxy(ctx context.Context, repo repository.NugetProxyRepository) error {
+	if m.CreateNugetProxyFn != nil {
+		return m.CreateNugetProxyFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateNugetProxy(ctx context.Context, name string, repo repository.NugetProxyRepository) error {
+	if m.UpdateNugetProxyFn != nil {
+		return m.UpdateNugetProxyFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteNugetProxy(ctx context.Context, name string) error {
+	if m.DeleteNugetProxyFn != nil {
+		return m.DeleteNugetProxyFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetNugetGroup(ctx context.Context, name string) (*repository.NugetGroupRepository, error) {
+	if m.GetNugetGroupFn != nil {
+		return m.GetNugetGroupFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateNugetGroup(ctx context.Context, repo repository.NugetGroupRepository) error {
+	if m.CreateNugetGroupFn != nil {
+		return m.CreateNugetGroupFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateNugetGroup(ctx context.Context, name string, repo repository.NugetGroupRepository) error {
+	if m.UpdateNugetGroupFn != nil {
+		return m.UpdateNugetGroupFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteNugetGroup(ctx context.Context, name string) error {
+	if m.DeleteNugetGroupFn != nil {
+		return m.DeleteNugetGroupFn(ctx, name)
+	}
+	return nil
+}
+
+// PyPI implementations
+func (m *MockRepositoryService) GetPypiHosted(ctx context.Context, name string) (*repository.PypiHostedRepository, error) {
+	if m.GetPypiHostedFn != nil {
+		return m.GetPypiHostedFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreatePypiHosted(ctx context.Context, repo repository.PypiHostedRepository) error {
+	if m.CreatePypiHostedFn != nil {
+		return m.CreatePypiHostedFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdatePypiHosted(ctx context.Context, name string, repo repository.PypiHostedRepository) error {
+	if m.UpdatePypiHostedFn != nil {
+		return m.UpdatePypiHostedFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeletePypiHosted(ctx context.Context, name string) error {
+	if m.DeletePypiHostedFn != nil {
+		return m.DeletePypiHostedFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetPypiProxy(ctx context.Context, name string) (*repository.PypiProxyRepository, error) {
+	if m.GetPypiProxyFn != nil {
+		return m.GetPypiProxyFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreatePypiProxy(ctx context.Context, repo repository.PypiProxyRepository) error {
+	if m.CreatePypiProxyFn != nil {
+		return m.CreatePypiProxyFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdatePypiProxy(ctx context.Context, name string, repo repository.PypiProxyRepository) error {
+	if m.UpdatePypiProxyFn != nil {
+		return m.UpdatePypiProxyFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeletePypiProxy(ctx context.Context, name string) error {
+	if m.DeletePypiProxyFn != nil {
+		return m.DeletePypiProxyFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetPypiGroup(ctx context.Context, name string) (*repository.PypiGroupRepository, error) {
+	if m.GetPypiGroupFn != nil {
+		return m.GetPypiGroupFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreatePypiGroup(ctx context.Context, repo repository.PypiGroupRepository) error {
+	if m.CreatePypiGroupFn != nil {
+		return m.CreatePypiGroupFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdatePypiGroup(ctx context.Context, name string, repo repository.PypiGroupRepository) error {
+	if m.UpdatePypiGroupFn != nil {
+		return m.UpdatePypiGroupFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeletePypiGroup(ctx context.Context, name string) error {
+	if m.DeletePypiGroupFn != nil {
+		return m.DeletePypiGroupFn(ctx, name)
+	}
+	return nil
+}
+
+// R implementations
+func (m *MockRepositoryService) GetRHosted(ctx context.Context, name string) (*repository.RHostedRepository, error) {
+	if m.GetRHostedFn != nil {
+		return m.GetRHostedFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateRHosted(ctx context.Context, repo repository.RHostedRepository) error {
+	if m.CreateRHostedFn != nil {
+		return m.CreateRHostedFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateRHosted(ctx context.Context, name string, repo repository.RHostedRepository) error {
+	if m.UpdateRHostedFn != nil {
+		return m.UpdateRHostedFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteRHosted(ctx context.Context, name string) error {
+	if m.DeleteRHostedFn != nil {
+		return m.DeleteRHostedFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetRProxy(ctx context.Context, name string) (*repository.RProxyRepository, error) {
+	if m.GetRProxyFn != nil {
+		return m.GetRProxyFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateRProxy(ctx context.Context, repo repository.RProxyRepository) error {
+	if m.CreateRProxyFn != nil {
+		return m.CreateRProxyFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateRProxy(ctx context.Context, name string, repo repository.RProxyRepository) error {
+	if m.UpdateRProxyFn != nil {
+		return m.UpdateRProxyFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteRProxy(ctx context.Context, name string) error {
+	if m.DeleteRProxyFn != nil {
+		return m.DeleteRProxyFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetRGroup(ctx context.Context, name string) (*repository.RGroupRepository, error) {
+	if m.GetRGroupFn != nil {
+		return m.GetRGroupFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateRGroup(ctx context.Context, repo repository.RGroupRepository) error {
+	if m.CreateRGroupFn != nil {
+		return m.CreateRGroupFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateRGroup(ctx context.Context, name string, repo repository.RGroupRepository) error {
+	if m.UpdateRGroupFn != nil {
+		return m.UpdateRGroupFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteRGroup(ctx context.Context, name string) error {
+	if m.DeleteRGroupFn != nil {
+		return m.DeleteRGroupFn(ctx, name)
+	}
+	return nil
+}
+
+// RubyGems implementations
+func (m *MockRepositoryService) GetRubygemsHosted(ctx context.Context, name string) (*repository.RubyGemsHostedRepository, error) {
+	if m.GetRubygemsHostedFn != nil {
+		return m.GetRubygemsHostedFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateRubygemsHosted(ctx context.Context, repo repository.RubyGemsHostedRepository) error {
+	if m.CreateRubygemsHostedFn != nil {
+		return m.CreateRubygemsHostedFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateRubygemsHosted(ctx context.Context, name string, repo repository.RubyGemsHostedRepository) error {
+	if m.UpdateRubygemsHostedFn != nil {
+		return m.UpdateRubygemsHostedFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteRubygemsHosted(ctx context.Context, name string) error {
+	if m.DeleteRubygemsHostedFn != nil {
+		return m.DeleteRubygemsHostedFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetRubygemsProxy(ctx context.Context, name string) (*repository.RubyGemsProxyRepository, error) {
+	if m.GetRubygemsProxyFn != nil {
+		return m.GetRubygemsProxyFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateRubygemsProxy(ctx context.Context, repo repository.RubyGemsProxyRepository) error {
+	if m.CreateRubygemsProxyFn != nil {
+		return m.CreateRubygemsProxyFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateRubygemsProxy(ctx context.Context, name string, repo repository.RubyGemsProxyRepository) error {
+	if m.UpdateRubygemsProxyFn != nil {
+		return m.UpdateRubygemsProxyFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteRubygemsProxy(ctx context.Context, name string) error {
+	if m.DeleteRubygemsProxyFn != nil {
+		return m.DeleteRubygemsProxyFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetRubygemsGroup(ctx context.Context, name string) (*repository.RubyGemsGroupRepository, error) {
+	if m.GetRubygemsGroupFn != nil {
+		return m.GetRubygemsGroupFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateRubygemsGroup(ctx context.Context, repo repository.RubyGemsGroupRepository) error {
+	if m.CreateRubygemsGroupFn != nil {
+		return m.CreateRubygemsGroupFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateRubygemsGroup(ctx context.Context, name string, repo repository.RubyGemsGroupRepository) error {
+	if m.UpdateRubygemsGroupFn != nil {
+		return m.UpdateRubygemsGroupFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteRubygemsGroup(ctx context.Context, name string) error {
+	if m.DeleteRubygemsGroupFn != nil {
+		return m.DeleteRubygemsGroupFn(ctx, name)
+	}
+	return nil
+}
+
+// Yum implementations
+func (m *MockRepositoryService) GetYumHosted(ctx context.Context, name string) (*repository.YumHostedRepository, error) {
+	if m.GetYumHostedFn != nil {
+		return m.GetYumHostedFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateYumHosted(ctx context.Context, repo repository.YumHostedRepository) error {
+	if m.CreateYumHostedFn != nil {
+		return m.CreateYumHostedFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateYumHosted(ctx context.Context, name string, repo repository.YumHostedRepository) error {
+	if m.UpdateYumHostedFn != nil {
+		return m.UpdateYumHostedFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteYumHosted(ctx context.Context, name string) error {
+	if m.DeleteYumHostedFn != nil {
+		return m.DeleteYumHostedFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetYumProxy(ctx context.Context, name string) (*repository.YumProxyRepository, error) {
+	if m.GetYumProxyFn != nil {
+		return m.GetYumProxyFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateYumProxy(ctx context.Context, repo repository.YumProxyRepository) error {
+	if m.CreateYumProxyFn != nil {
+		return m.CreateYumProxyFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateYumProxy(ctx context.Context, name string, repo repository.YumProxyRepository) error {
+	if m.UpdateYumProxyFn != nil {
+		return m.UpdateYumProxyFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteYumProxy(ctx context.Context, name string) error {
+	if m.DeleteYumProxyFn != nil {
+		return m.DeleteYumProxyFn(ctx, name)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) GetYumGroup(ctx context.Context, name string) (*repository.YumGroupRepository, error) {
+	if m.GetYumGroupFn != nil {
+		return m.GetYumGroupFn(ctx, name)
+	}
+	return nil, nil
+}
+
+func (m *MockRepositoryService) CreateYumGroup(ctx context.Context, repo repository.YumGroupRepository) error {
+	if m.CreateYumGroupFn != nil {
+		return m.CreateYumGroupFn(ctx, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) UpdateYumGroup(ctx context.Context, name string, repo repository.YumGroupRepository) error {
+	if m.UpdateYumGroupFn != nil {
+		return m.UpdateYumGroupFn(ctx, name, repo)
+	}
+	return nil
+}
+
+func (m *MockRepositoryService) DeleteYumGroup(ctx context.Context, name string) error {
+	if m.DeleteYumGroupFn != nil {
+		return m.DeleteYumGroupFn(ctx, name)
+	}
+	return nil
+}
+
 // MockSecurityService is a mock implementation of nexus.SecurityService.
 type MockSecurityService struct {
 	GetUserFn        func(ctx context.Context, id string) (*security.User, error)
@@ -678,5 +1729,159 @@ func (m *MockSecurityService) DeleteRole(ctx context.Context, id string) error {
 	if m.DeleteRoleFn != nil {
 		return m.DeleteRoleFn(ctx, id)
 	}
+	return nil
+}
+
+// Realm methods - stub implementations
+
+func (m *MockSecurityService) ListAvailableRealms(ctx context.Context) ([]security.Realm, error) {
+	return nil, nil
+}
+
+func (m *MockSecurityService) ListActiveRealms(ctx context.Context) ([]string, error) {
+	return nil, nil
+}
+
+func (m *MockSecurityService) ActivateRealms(ctx context.Context, ids []string) error {
+	return nil
+}
+
+// Content Selector methods - stub implementations
+
+func (m *MockSecurityService) GetContentSelector(ctx context.Context, name string) (*security.ContentSelector, error) {
+	return nil, nil
+}
+
+func (m *MockSecurityService) ListContentSelectors(ctx context.Context) ([]security.ContentSelector, error) {
+	return nil, nil
+}
+
+func (m *MockSecurityService) CreateContentSelector(ctx context.Context, cs security.ContentSelector) error {
+	return nil
+}
+
+func (m *MockSecurityService) UpdateContentSelector(ctx context.Context, name string, cs security.ContentSelector) error {
+	return nil
+}
+
+func (m *MockSecurityService) DeleteContentSelector(ctx context.Context, name string) error {
+	return nil
+}
+
+// Privilege methods - stub implementations
+
+func (m *MockSecurityService) GetPrivilege(ctx context.Context, name string) (*security.Privilege, error) {
+	return nil, nil
+}
+
+func (m *MockSecurityService) ListPrivileges(ctx context.Context) ([]security.Privilege, error) {
+	return nil, nil
+}
+
+func (m *MockSecurityService) DeletePrivilege(ctx context.Context, name string) error {
+	return nil
+}
+
+func (m *MockSecurityService) CreatePrivilegeApplication(ctx context.Context, p security.PrivilegeApplication) error {
+	return nil
+}
+
+func (m *MockSecurityService) UpdatePrivilegeApplication(ctx context.Context, name string, p security.PrivilegeApplication) error {
+	return nil
+}
+
+func (m *MockSecurityService) CreatePrivilegeRepositoryView(ctx context.Context, p security.PrivilegeRepositoryView) error {
+	return nil
+}
+
+func (m *MockSecurityService) UpdatePrivilegeRepositoryView(ctx context.Context, name string, p security.PrivilegeRepositoryView) error {
+	return nil
+}
+
+func (m *MockSecurityService) CreatePrivilegeRepositoryAdmin(ctx context.Context, p security.PrivilegeRepositoryAdmin) error {
+	return nil
+}
+
+func (m *MockSecurityService) UpdatePrivilegeRepositoryAdmin(ctx context.Context, name string, p security.PrivilegeRepositoryAdmin) error {
+	return nil
+}
+
+func (m *MockSecurityService) CreatePrivilegeRepositoryContentSelector(ctx context.Context, p security.PrivilegeRepositoryContentSelector) error {
+	return nil
+}
+
+func (m *MockSecurityService) UpdatePrivilegeRepositoryContentSelector(ctx context.Context, name string, p security.PrivilegeRepositoryContentSelector) error {
+	return nil
+}
+
+func (m *MockSecurityService) CreatePrivilegeScript(ctx context.Context, p security.PrivilegeScript) error {
+	return nil
+}
+
+func (m *MockSecurityService) UpdatePrivilegeScript(ctx context.Context, name string, p security.PrivilegeScript) error {
+	return nil
+}
+
+func (m *MockSecurityService) CreatePrivilegeWildcard(ctx context.Context, p security.PrivilegeWildcard) error {
+	return nil
+}
+
+func (m *MockSecurityService) UpdatePrivilegeWildcard(ctx context.Context, name string, p security.PrivilegeWildcard) error {
+	return nil
+}
+
+// Anonymous access methods - stub implementations
+
+func (m *MockSecurityService) GetAnonymousAccess(ctx context.Context) (*security.AnonymousAccessSettings, error) {
+	return nil, nil
+}
+
+func (m *MockSecurityService) UpdateAnonymousAccess(ctx context.Context, settings security.AnonymousAccessSettings) error {
+	return nil
+}
+
+// SAML methods - stub implementations
+
+func (m *MockSecurityService) GetSAML(ctx context.Context) (*security.SAML, error) {
+	return nil, nil
+}
+
+func (m *MockSecurityService) ApplySAML(ctx context.Context, saml security.SAML) error {
+	return nil
+}
+
+func (m *MockSecurityService) DeleteSAML(ctx context.Context) error {
+	return nil
+}
+
+// LDAP methods - stub implementations
+
+func (m *MockSecurityService) GetLDAP(ctx context.Context, name string) (*security.LDAP, error) {
+	return nil, nil
+}
+
+func (m *MockSecurityService) ListLDAP(ctx context.Context) ([]security.LDAP, error) {
+	return nil, nil
+}
+
+func (m *MockSecurityService) CreateLDAP(ctx context.Context, ldap security.LDAP) error {
+	return nil
+}
+
+func (m *MockSecurityService) UpdateLDAP(ctx context.Context, name string, ldap security.LDAP) error {
+	return nil
+}
+
+func (m *MockSecurityService) DeleteLDAP(ctx context.Context, name string) error {
+	return nil
+}
+
+// User Token methods - stub implementations
+
+func (m *MockSecurityService) GetUserTokenConfiguration(ctx context.Context) (*security.UserTokenConfiguration, error) {
+	return nil, nil
+}
+
+func (m *MockSecurityService) UpdateUserTokenConfiguration(ctx context.Context, config security.UserTokenConfiguration) error {
 	return nil
 }

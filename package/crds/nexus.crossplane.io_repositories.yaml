@@ -83,6 +83,35 @@ spec:
                         description: Flat determines if the repository uses flat format.
                         type: boolean
                     type: object
+                  aptSigning:
+                    description: AptSigning configuration for APT hosted repositories.
+                    properties:
+                      keypair:
+                        description: Keypair is the PGP signing key pair (armored
+                          private key).
+                        type: string
+                      passphrase:
+                        description: Passphrase to access PGP signing key.
+                        type: string
+                    required:
+                    - keypair
+                    type: object
+                  bower:
+                    description: Bower specific configuration.
+                    properties:
+                      rewritePackageUrls:
+                        description: RewritePackageUrls forces Bower to retrieve packages
+                          through this proxy.
+                        type: boolean
+                    type: object
+                  cargo:
+                    description: Cargo specific configuration.
+                    properties:
+                      requireAuthentication:
+                        description: RequireAuthentication indicates if this repository
+                          requires authentication.
+                        type: boolean
+                    type: object
                   cleanup:
                     description: Cleanup configuration.
                     properties:
@@ -114,6 +143,33 @@ spec:
                           API.
                         type: boolean
                     type: object
+                  dockerProxy:
+                    description: DockerProxy specific configuration for Docker proxy
+                      repositories.
+                    properties:
+                      cacheForeignLayers:
+                        description: CacheForeignLayers allows downloading and caching
+                          foreign layers.
+                        type: boolean
+                      foreignLayerUrlWhitelist:
+                        description: ForeignLayerUrlWhitelist is a list of regex patterns
+                          for allowed foreign layer URLs.
+                        items:
+                          type: string
+                        type: array
+                      indexType:
+                        description: IndexType is the type of Docker index (HUB, REGISTRY,
+                          CUSTOM).
+                        enum:
+                        - HUB
+                        - REGISTRY
+                        - CUSTOM
+                        type: string
+                      indexUrl:
+                        description: IndexURL is the URL of the Docker index to use
+                          (for CUSTOM type).
+                        type: string
+                    type: object
                   format:
                     description: Format of the repository (maven2, npm, docker, raw,
                       etc.).
@@ -132,7 +188,11 @@ spec:
                     - r
                     - conan
                     - conda
+                    - cocoapods
+                    - bower
                     - gitlfs
+                    - p2
+                    - cargo
                     type: string
                   group:
                     description: Group configuration for group repositories.
@@ -270,6 +330,25 @@ spec:
                         description: RemoveQuarantined removes quarantined components.
                         type: boolean
                     type: object
+                  nugetProxy:
+                    description: NugetProxy specific configuration for NuGet proxy
+                      repositories.
+                    properties:
+                      nugetVersion:
+                        default: V3
+                        description: NugetVersion is the NuGet protocol version (V2
+                          or V3).
+                        enum:
+                        - V2
+                        - V3
+                        type: string
+                      queryCacheItemMaxAge:
+                        default: 3600
+                        description: QueryCacheItemMaxAge is how long to cache query
+                          results in seconds.
+                        format: int32
+                        type: integer
+                    type: object
                   online:
                     default: true
                     description: Online determines if the repository is online.
@@ -295,6 +374,10 @@ spec:
                     required:
                     - remoteUrl
                     type: object
+                  routingRule:
+                    description: RoutingRule is the name of the routing rule for proxy
+                      repositories.
+                    type: string
                   storage:
                     description: Storage configuration.
                     properties:
@@ -339,6 +422,17 @@ spec:
                         maximum: 5
                         minimum: 0
                         type: integer
+                    type: object
+                  yumSigning:
+                    description: YumSigning configuration for Yum repositories.
+                    properties:
+                      keypair:
+                        description: Keypair is the PGP signing key pair (armored
+                          private key).
+                        type: string
+                      passphrase:
+                        description: Passphrase to access PGP signing key.
+                        type: string
                     type: object
                 required:
                 - format

@@ -1,17 +1,5 @@
-// Package repository contains the controller for Repository resources.
-// This controller manages Sonatype Nexus repositories of various formats.
-//
-// Architecture:
-//   - repository.go: Main controller logic (this file)
-//   - handler.go: FormatHandler interface and registry
-//   - formats/: Format-specific handlers (maven, docker, npm, etc.)
-//   - shared.go: Shared configuration generators (kept for compatibility, will be removed)
-//
-// To add a new repository format:
-//  1. Create a new handler in formats/<format>.go
-//  2. Implement the FormatHandler interface
-//  3. Register the handler in formats/register.go
-package repository
+// Package contentselector contains the controller for ContentSelector resources.
+package contentselector
 
 import (
 	"context"
@@ -23,6 +11,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -32,22 +21,23 @@ import (
 )
 
 const (
-	errNotRepository    = "managed resource is not a Repository custom resource"
-	errTrackPCUsage     = "cannot track ProviderConfig usage"
-	errGetPC            = "cannot get ProviderConfig"
-	errGetCreds         = "cannot get credentials"
-	errNewClient        = "cannot create new Nexus client"
-	errCreateRepository = "cannot create repository in Nexus"
-	errUpdateRepository = "cannot update repository in Nexus"
-	errDeleteRepository = "cannot delete repository from Nexus"
+	errNotContentSelector    = "managed resource is not a ContentSelector custom resource"
+	errTrackPCUsage          = "cannot track ProviderConfig usage"
+	errGetPC                 = "cannot get ProviderConfig"
+	errGetCreds              = "cannot get credentials"
+	errNewClient             = "cannot create new Nexus client"
+	errGetContentSelector    = "cannot get content selector from Nexus"
+	errCreateContentSelector = "cannot create content selector in Nexus"
+	errUpdateContentSelector = "cannot update content selector in Nexus"
+	errDeleteContentSelector = "cannot delete content selector from Nexus"
 )
 
-// Setup adds a controller that reconciles Repository managed resources.
+// Setup adds a controller that reconciles ContentSelector managed resources.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
-	name := managed.ControllerName(v1alpha1.RepositoryGroupKind)
+	name := managed.ControllerName(v1alpha1.ContentSelectorGroupKind)
 
 	r := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1alpha1.RepositoryGroupVersionKind),
+		resource.ManagedKind(v1alpha1.ContentSelectorGroupVersionKind),
 		managed.WithExternalConnecter(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{}),
@@ -61,7 +51,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		Named(name).
 		WithOptions(o.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
-		For(&v1alpha1.Repository{}).
+		For(&v1alpha1.ContentSelector{}).
 		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
 }
 
@@ -73,9 +63,9 @@ type connector struct {
 
 // Connect produces an ExternalClient for the given managed resource.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	cr, ok := mg.(*v1alpha1.Repository)
+	cr, ok := mg.(*v1alpha1.ContentSelector)
 	if !ok {
-		return nil, errors.New(errNotRepository)
+		return nil, errors.New(errNotContentSelector)
 	}
 
 	if err := c.usage.Track(ctx, mg); err != nil {
@@ -107,9 +97,9 @@ type external struct {
 
 // Observe the external resource.
 func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := mg.(*v1alpha1.Repository)
+	cr, ok := mg.(*v1alpha1.ContentSelector)
 	if !ok {
-		return managed.ExternalObservation{}, errors.New(errNotRepository)
+		return managed.ExternalObservation{}, errors.New(errNotContentSelector)
 	}
 
 	name := meta.GetExternalName(cr)
@@ -117,20 +107,21 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		name = cr.Spec.ForProvider.Name
 	}
 
-	format := cr.Spec.ForProvider.Format
-	repoType := cr.Spec.ForProvider.Type
-
-	handler := GetHandler(format)
-	if handler == nil {
-		return managed.ExternalObservation{}, errors.Errorf("unsupported format: %s", format)
+	cs, err := e.client.Security().GetContentSelector(ctx, name)
+	if err != nil {
+		if isNotFound(err) {
+			return managed.ExternalObservation{ResourceExists: false}, nil
+		}
+		return managed.ExternalObservation{}, errors.Wrap(err, errGetContentSelector)
 	}
 
-	exists, upToDate := handler.Observe(ctx, e.client, name, repoType, cr)
-	if !exists {
+	if cs == nil {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
 	cr.SetConditions(v1alpha1.Available())
+
+	upToDate := isContentSelectorUpToDate(cr, cs)
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
@@ -140,21 +131,14 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 
 // Create the external resource.
 func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1alpha1.Repository)
+	cr, ok := mg.(*v1alpha1.ContentSelector)
 	if !ok {
-		return managed.ExternalCreation{}, errors.New(errNotRepository)
+		return managed.ExternalCreation{}, errors.New(errNotContentSelector)
 	}
 
-	format := cr.Spec.ForProvider.Format
-	repoType := cr.Spec.ForProvider.Type
-
-	handler := GetHandler(format)
-	if handler == nil {
-		return managed.ExternalCreation{}, errors.Errorf("unsupported format: %s", format)
-	}
-
-	if err := handler.Create(ctx, e.client, cr, repoType); err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, errCreateRepository)
+	cs := generateContentSelector(cr)
+	if err := e.client.Security().CreateContentSelector(ctx, cs); err != nil {
+		return managed.ExternalCreation{}, errors.Wrap(err, errCreateContentSelector)
 	}
 
 	meta.SetExternalName(cr, cr.Spec.ForProvider.Name)
@@ -163,9 +147,9 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 
 // Update the external resource.
 func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1alpha1.Repository)
+	cr, ok := mg.(*v1alpha1.ContentSelector)
 	if !ok {
-		return managed.ExternalUpdate{}, errors.New(errNotRepository)
+		return managed.ExternalUpdate{}, errors.New(errNotContentSelector)
 	}
 
 	name := meta.GetExternalName(cr)
@@ -173,16 +157,9 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		name = cr.Spec.ForProvider.Name
 	}
 
-	format := cr.Spec.ForProvider.Format
-	repoType := cr.Spec.ForProvider.Type
-
-	handler := GetHandler(format)
-	if handler == nil {
-		return managed.ExternalUpdate{}, errors.Errorf("unsupported format: %s", format)
-	}
-
-	if err := handler.Update(ctx, e.client, name, cr, repoType); err != nil {
-		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateRepository)
+	cs := generateContentSelector(cr)
+	if err := e.client.Security().UpdateContentSelector(ctx, name, cs); err != nil {
+		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateContentSelector)
 	}
 
 	return managed.ExternalUpdate{}, nil
@@ -190,9 +167,9 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 // Delete the external resource.
 func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
-	cr, ok := mg.(*v1alpha1.Repository)
+	cr, ok := mg.(*v1alpha1.ContentSelector)
 	if !ok {
-		return errors.New(errNotRepository)
+		return errors.New(errNotContentSelector)
 	}
 
 	name := meta.GetExternalName(cr)
@@ -200,19 +177,39 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 		name = cr.Spec.ForProvider.Name
 	}
 
-	format := cr.Spec.ForProvider.Format
-	repoType := cr.Spec.ForProvider.Type
-
-	handler := GetHandler(format)
-	if handler == nil {
-		return errors.Errorf("unsupported format: %s", format)
-	}
-
-	if err := handler.Delete(ctx, e.client, name, repoType); err != nil && !isNotFound(err) {
-		return errors.Wrap(err, errDeleteRepository)
+	if err := e.client.Security().DeleteContentSelector(ctx, name); err != nil {
+		if isNotFound(err) {
+			return nil
+		}
+		return errors.Wrap(err, errDeleteContentSelector)
 	}
 
 	return nil
+}
+
+// generateContentSelector generates a ContentSelector from the CR spec.
+func generateContentSelector(cr *v1alpha1.ContentSelector) security.ContentSelector {
+	cs := security.ContentSelector{
+		Name:       cr.Spec.ForProvider.Name,
+		Expression: cr.Spec.ForProvider.Expression,
+	}
+
+	if cr.Spec.ForProvider.Description != nil {
+		cs.Description = *cr.Spec.ForProvider.Description
+	}
+
+	return cs
+}
+
+// isContentSelectorUpToDate checks if a ContentSelector is up to date.
+func isContentSelectorUpToDate(cr *v1alpha1.ContentSelector, cs *security.ContentSelector) bool {
+	if cr.Spec.ForProvider.Expression != cs.Expression {
+		return false
+	}
+	if cr.Spec.ForProvider.Description != nil && *cr.Spec.ForProvider.Description != cs.Description {
+		return false
+	}
+	return true
 }
 
 // isNotFound checks if an error indicates a resource was not found.
@@ -220,8 +217,7 @@ func isNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "404") ||
-		strings.Contains(msg, "not found") ||
-		strings.Contains(msg, "does not exist")
+	return strings.Contains(err.Error(), "404") ||
+		strings.Contains(err.Error(), "not found") ||
+		strings.Contains(strings.ToLower(err.Error()), "does not exist")
 }

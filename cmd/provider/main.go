@@ -9,16 +9,12 @@ import (
 	"github.com/crossplane/crossplane-runtime/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
-	"github.com/pkg/errors"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/AYDEV-FR/provider-sonatype-nexus/apis"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/blobstore"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/repository"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/role"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/user"
+	nexuscontroller "github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller"
 )
 
 func main() {
@@ -62,7 +58,7 @@ func main() {
 		Features:                &feature.Flags{},
 	}
 
-	if err := setupControllers(mgr, o); err != nil {
+	if err := nexuscontroller.Setup(mgr, o); err != nil {
 		log.Info("Cannot setup controllers", "error", err)
 		os.Exit(1)
 	}
@@ -72,26 +68,6 @@ func main() {
 		log.Info("Cannot start controller manager", "error", err)
 		os.Exit(1)
 	}
-}
-
-func setupControllers(mgr ctrl.Manager, o controller.Options) error {
-	if err := blobstore.Setup(mgr, o); err != nil {
-		return errors.Wrap(err, "cannot setup BlobStore controller")
-	}
-
-	if err := repository.Setup(mgr, o); err != nil {
-		return errors.Wrap(err, "cannot setup Repository controller")
-	}
-
-	if err := user.Setup(mgr, o); err != nil {
-		return errors.Wrap(err, "cannot setup User controller")
-	}
-
-	if err := role.Setup(mgr, o); err != nil {
-		return errors.Wrap(err, "cannot setup Role controller")
-	}
-
-	return nil
 }
 
 func getEnvBool(key string, defaultVal bool) bool {
@@ -113,21 +89,13 @@ func getEnvDuration(key string, defaultVal time.Duration) time.Duration {
 func getEnvInt(key string, defaultVal int) int {
 	if val := os.Getenv(key); val != "" {
 		var i int
-		if _, err := parseIntFromString(val, &i); err == nil {
-			return i
+		for _, c := range val {
+			if c < '0' || c > '9' {
+				return defaultVal
+			}
+			i = i*10 + int(c-'0')
 		}
+		return i
 	}
 	return defaultVal
-}
-
-func parseIntFromString(s string, i *int) (int, error) {
-	n := 0
-	for _, c := range s {
-		if c < '0' || c > '9' {
-			return 0, errors.New("invalid integer")
-		}
-		n = n*10 + int(c-'0')
-	}
-	*i = n
-	return n, nil
 }

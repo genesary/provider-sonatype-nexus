@@ -16,12 +16,12 @@ func TestObserve(t *testing.T) {
 	testPath := "/data/blobs/test"
 
 	tests := []struct {
-		name           string
-		cr             *v1alpha1.BlobStore
-		mockSetup      func(*mocks.MockClient)
-		wantExists     bool
-		wantUpToDate   bool
-		wantErr        bool
+		name         string
+		cr           *v1alpha1.BlobStore
+		mockSetup    func(*mocks.MockClient)
+		wantExists   bool
+		wantUpToDate bool
+		wantErr      bool
 	}{
 		{
 			name: "FileNotFound",

@@ -1,0 +1,17 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: Privilege
+metadata:
+  name: maven-releases-read
+  namespace: default
+spec:
+  forProvider:
+    name: maven-releases-read
+    description: "Read access to maven-releases repository"
+    type: repository-view
+    format: maven2
+    repository: maven-releases
+    actions:
+      - READ
+      - BROWSE
+  providerConfigRef:
+    name: nexus-provider-config

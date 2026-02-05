@@ -12,7 +12,7 @@ type RepositoryParameters struct {
 	Name string `json:"name"`
 
 	// Format of the repository (maven2, npm, docker, raw, etc.).
-	// +kubebuilder:validation:Enum=maven2;npm;docker;raw;nuget;pypi;rubygems;yum;apt;helm;go;r;conan;conda;gitlfs
+	// +kubebuilder:validation:Enum=maven2;npm;docker;raw;nuget;pypi;rubygems;yum;apt;helm;go;r;conan;conda;cocoapods;bower;gitlfs;p2;cargo
 	// +kubebuilder:validation:Required
 	Format string `json:"format"`
 
@@ -42,6 +42,10 @@ type RepositoryParameters struct {
 	// +optional
 	Docker *DockerConfig `json:"docker,omitempty"`
 
+	// DockerProxy specific configuration for Docker proxy repositories.
+	// +optional
+	DockerProxy *DockerProxyConfig `json:"dockerProxy,omitempty"`
+
 	// Proxy configuration for proxy repositories.
 	// +optional
 	Proxy *ProxyConfig `json:"proxy,omitempty"`
@@ -66,9 +70,33 @@ type RepositoryParameters struct {
 	// +optional
 	Apt *AptConfig `json:"apt,omitempty"`
 
+	// AptSigning configuration for APT hosted repositories.
+	// +optional
+	AptSigning *AptSigningConfig `json:"aptSigning,omitempty"`
+
 	// Yum specific configuration.
 	// +optional
 	Yum *YumConfig `json:"yum,omitempty"`
+
+	// YumSigning configuration for Yum repositories.
+	// +optional
+	YumSigning *YumSigningConfig `json:"yumSigning,omitempty"`
+
+	// NugetProxy specific configuration for NuGet proxy repositories.
+	// +optional
+	NugetProxy *NugetProxyConfig `json:"nugetProxy,omitempty"`
+
+	// Bower specific configuration.
+	// +optional
+	Bower *BowerConfig `json:"bower,omitempty"`
+
+	// Cargo specific configuration.
+	// +optional
+	Cargo *CargoConfig `json:"cargo,omitempty"`
+
+	// RoutingRule is the name of the routing rule for proxy repositories.
+	// +optional
+	RoutingRule *string `json:"routingRule,omitempty"`
 }
 
 // RepositoryStorage defines storage configuration for a repository.
@@ -282,6 +310,76 @@ type YumConfig struct {
 	// +kubebuilder:validation:Enum=STRICT;PERMISSIVE
 	// +optional
 	DeployPolicy *string `json:"deployPolicy,omitempty"`
+}
+
+// YumSigningConfig defines Yum signing configuration.
+type YumSigningConfig struct {
+	// Keypair is the PGP signing key pair (armored private key).
+	// +optional
+	Keypair *string `json:"keypair,omitempty"`
+
+	// Passphrase to access PGP signing key.
+	// +optional
+	Passphrase *string `json:"passphrase,omitempty"`
+}
+
+// AptSigningConfig defines APT signing configuration for hosted repositories.
+type AptSigningConfig struct {
+	// Keypair is the PGP signing key pair (armored private key).
+	// +kubebuilder:validation:Required
+	Keypair string `json:"keypair"`
+
+	// Passphrase to access PGP signing key.
+	// +optional
+	Passphrase *string `json:"passphrase,omitempty"`
+}
+
+// DockerProxyConfig defines Docker proxy specific configuration.
+type DockerProxyConfig struct {
+	// IndexType is the type of Docker index (HUB, REGISTRY, CUSTOM).
+	// +kubebuilder:validation:Enum=HUB;REGISTRY;CUSTOM
+	// +optional
+	IndexType *string `json:"indexType,omitempty"`
+
+	// IndexURL is the URL of the Docker index to use (for CUSTOM type).
+	// +optional
+	IndexURL *string `json:"indexUrl,omitempty"`
+
+	// CacheForeignLayers allows downloading and caching foreign layers.
+	// +optional
+	CacheForeignLayers *bool `json:"cacheForeignLayers,omitempty"`
+
+	// ForeignLayerUrlWhitelist is a list of regex patterns for allowed foreign layer URLs.
+	// +optional
+	ForeignLayerUrlWhitelist []string `json:"foreignLayerUrlWhitelist,omitempty"`
+}
+
+// NugetProxyConfig defines NuGet proxy specific configuration.
+type NugetProxyConfig struct {
+	// QueryCacheItemMaxAge is how long to cache query results in seconds.
+	// +kubebuilder:default=3600
+	// +optional
+	QueryCacheItemMaxAge *int32 `json:"queryCacheItemMaxAge,omitempty"`
+
+	// NugetVersion is the NuGet protocol version (V2 or V3).
+	// +kubebuilder:validation:Enum=V2;V3
+	// +kubebuilder:default=V3
+	// +optional
+	NugetVersion *string `json:"nugetVersion,omitempty"`
+}
+
+// BowerConfig defines Bower specific configuration.
+type BowerConfig struct {
+	// RewritePackageUrls forces Bower to retrieve packages through this proxy.
+	// +optional
+	RewritePackageUrls *bool `json:"rewritePackageUrls,omitempty"`
+}
+
+// CargoConfig defines Cargo specific configuration.
+type CargoConfig struct {
+	// RequireAuthentication indicates if this repository requires authentication.
+	// +optional
+	RequireAuthentication *bool `json:"requireAuthentication,omitempty"`
 }
 
 // RepositoryObservation represents the observed state of a Repository.

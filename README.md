@@ -12,9 +12,39 @@ This provider enables you to manage Nexus Repository Manager resources using Kub
 |----------|-------------|
 | `ProviderConfig` | Configuration for connecting to Nexus |
 | `BlobStore` | File or S3-based blob storage |
-| `Repository` | Maven, NPM, Docker, and Raw repositories (hosted, proxy, group) |
+| `Repository` | Repositories for various formats (hosted, proxy, group) |
 | `User` | Nexus user accounts |
 | `Role` | Security roles with privileges |
+| `Privilege` | Security privileges (application, repository-view, wildcard) |
+| `ContentSelector` | Content selectors for fine-grained access control |
+| `SecurityRealm` | Security realm configuration |
+| `AnonymousAccess` | Anonymous access settings |
+| `LDAP` | LDAP server configuration |
+| `SAML` | SAML identity provider configuration |
+| `UserTokenConfiguration` | User token settings |
+
+### Supported Repository Formats
+
+The provider supports the following repository formats:
+
+- **Maven2** (hosted, proxy, group)
+- **npm** (hosted, proxy, group)
+- **Docker** (hosted, proxy, group)
+- **Raw** (hosted, proxy, group)
+- **NuGet** (hosted, proxy, group)
+- **PyPI** (hosted, proxy, group)
+- **RubyGems** (hosted, proxy, group)
+- **Yum** (hosted, proxy, group)
+- **APT** (hosted, proxy)
+- **Helm** (hosted, proxy)
+- **Go** (proxy, group)
+- **R** (hosted, proxy, group)
+- **Conan** (proxy)
+- **Conda** (proxy)
+- **Cocoapods** (proxy)
+- **Bower** (hosted, proxy, group)
+- **Git LFS** (hosted)
+- **Cargo** (hosted, proxy, group)
 
 ## Installation
 
@@ -96,26 +126,6 @@ spec:
     name: nexus-provider-config
 ```
 
-#### S3-based BlobStore
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: BlobStore
-metadata:
-  name: my-s3-blobstore
-spec:
-  forProvider:
-    name: my-s3-blobstore
-    type: S3
-    s3Config:
-      bucket: my-nexus-bucket
-      region: us-east-1
-      prefix: nexus-blobs
-      expirationDays: 30
-  providerConfigRef:
-    name: nexus-provider-config
-```
-
 ### Repository
 
 #### Maven Hosted Repository
@@ -131,32 +141,11 @@ spec:
     format: maven2
     type: hosted
     online: true
-    blobStoreName: default
+    storage:
+      blobStoreName: default
     maven:
       versionPolicy: RELEASE
       layoutPolicy: STRICT
-  providerConfigRef:
-    name: nexus-provider-config
-```
-
-#### Maven Proxy Repository
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
-metadata:
-  name: maven-central-proxy
-spec:
-  forProvider:
-    name: maven-central-proxy
-    format: maven2
-    type: proxy
-    online: true
-    blobStoreName: default
-    proxy:
-      remoteUrl: https://repo1.maven.org/maven2/
-      contentMaxAge: 1440
-      metadataMaxAge: 1440
   providerConfigRef:
     name: nexus-provider-config
 ```
@@ -176,7 +165,6 @@ spec:
     online: true
     docker:
       httpPort: 8082
-      httpsPort: 8083
       forceBasicAuth: true
   providerConfigRef:
     name: nexus-provider-config
@@ -226,6 +214,61 @@ spec:
     name: nexus-provider-config
 ```
 
+### Privilege
+
+```yaml
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: Privilege
+metadata:
+  name: custom-repo-view
+spec:
+  forProvider:
+    name: custom-repo-view
+    type: repository-view
+    description: Custom repository view privilege
+    repositoryView:
+      format: maven2
+      repository: maven-releases
+      actions:
+        - browse
+        - read
+  providerConfigRef:
+    name: nexus-provider-config
+```
+
+### Content Selector
+
+```yaml
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: ContentSelector
+metadata:
+  name: release-selector
+spec:
+  forProvider:
+    name: release-selector
+    description: Select only release artifacts
+    expression: format == "maven2" and path =^ "/com/example/"
+  providerConfigRef:
+    name: nexus-provider-config
+```
+
+### Security Realm
+
+```yaml
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: SecurityRealm
+metadata:
+  name: nexus-realms
+spec:
+  forProvider:
+    realms:
+      - NexusAuthenticatingRealm
+      - NexusAuthorizingRealm
+      - DockerToken
+  providerConfigRef:
+    name: nexus-provider-config
+```
+
 ## Development
 
 ### Prerequisites
@@ -233,7 +276,7 @@ spec:
 - Go 1.21+
 - Docker
 - kubectl
-- A Kubernetes cluster (minikube, kind, etc.)
+- Kind (for e2e tests)
 
 ### Building
 
@@ -244,42 +287,59 @@ make generate
 # Build the provider binary
 make build
 
-# Run tests
+# Run unit tests
 make test
 
 # Build Docker image
-make docker-build IMG=provider-sonatype-nexus:dev
+make docker-build
+```
 
-# Push Docker image
-make docker-push IMG=provider-sonatype-nexus:dev
+### Running E2E Tests
+
+```bash
+# Run full e2e test cycle (setup + tests)
+make e2e
+
+# Or with cleanup
+make e2e-full
 ```
 
 ### Project Structure
 
 ```
 .
-├── apis/
-│   └── v1alpha1/           # CRD type definitions
-│       ├── blobstore_types.go
-│       ├── repository_types.go
-│       ├── user_types.go
-│       ├── role_types.go
-│       ├── providerconfig_types.go
-│       ├── managed.go      # Managed interface implementations
-│       └── conditions.go   # Condition helpers
-├── cmd/
-│   └── provider/
-│       └── main.go         # Provider entry point
+├── apis/v1alpha1/              # CRD type definitions
+│   ├── blobstore_types.go
+│   ├── repository_types.go
+│   ├── user_types.go
+│   ├── role_types.go
+│   ├── privilege_types.go
+│   ├── contentselector_types.go
+│   ├── securityrealm_types.go
+│   ├── anonymousaccess_types.go
+│   ├── ldap_types.go
+│   ├── saml_types.go
+│   ├── usertokenconfiguration_types.go
+│   └── providerconfig_types.go
+├── cmd/provider/               # Provider entry point
 ├── internal/
-│   ├── clients/
-│   │   └── nexus/          # Nexus client wrapper
-│   └── controller/
-│       └── blobstore/      # BlobStore controller
-├── test/
-│   └── mocks/              # Mock implementations for testing
-├── examples/               # Example YAML manifests
-├── package/
-│   └── crds/               # Generated CRDs
+│   ├── clients/nexus/          # Nexus client wrapper
+│   └── controller/             # Resource controllers
+│       ├── blobstore/
+│       ├── repository/
+│       ├── user/
+│       ├── role/
+│       ├── privilege/
+│       ├── contentselector/
+│       ├── securityrealm/
+│       ├── anonymousaccess/
+│       ├── ldap/
+│       ├── saml/
+│       └── usertokenconfiguration/
+├── e2e/                        # E2E test infrastructure
+├── examples/                   # Example YAML manifests
+├── package/crds/               # Generated CRDs
+├── test/mocks/                 # Mock implementations
 ├── Dockerfile
 ├── Makefile
 └── go.mod

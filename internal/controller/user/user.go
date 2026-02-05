@@ -23,16 +23,16 @@ import (
 )
 
 const (
-	errNotUser       = "managed resource is not a User custom resource"
-	errTrackPCUsage  = "cannot track ProviderConfig usage"
-	errGetPC         = "cannot get ProviderConfig"
-	errGetCreds      = "cannot get credentials"
-	errNewClient     = "cannot create new Nexus client"
-	errGetUser       = "cannot get user from Nexus"
-	errCreateUser    = "cannot create user in Nexus"
-	errUpdateUser    = "cannot update user in Nexus"
-	errDeleteUser    = "cannot delete user from Nexus"
-	errGetPassword   = "cannot get password from secret"
+	errNotUser        = "managed resource is not a User custom resource"
+	errTrackPCUsage   = "cannot track ProviderConfig usage"
+	errGetPC          = "cannot get ProviderConfig"
+	errGetCreds       = "cannot get credentials"
+	errNewClient      = "cannot create new Nexus client"
+	errGetUser        = "cannot get user from Nexus"
+	errCreateUser     = "cannot create user in Nexus"
+	errUpdateUser     = "cannot update user in Nexus"
+	errDeleteUser     = "cannot delete user from Nexus"
+	errGetPassword    = "cannot get password from secret"
 	errChangePassword = "cannot change user password"
 )
 

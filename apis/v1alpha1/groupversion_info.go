@@ -59,3 +59,59 @@ var (
 	RoleKindAPIVersion   = RoleKind + "." + SchemeGroupVersion.String()
 	RoleGroupVersionKind = SchemeGroupVersion.WithKind(RoleKind)
 )
+
+// SecurityRealm type metadata.
+var (
+	SecurityRealmKind             = reflect.TypeOf(SecurityRealm{}).Name()
+	SecurityRealmGroupKind        = schema.GroupKind{Group: Group, Kind: SecurityRealmKind}.String()
+	SecurityRealmKindAPIVersion   = SecurityRealmKind + "." + SchemeGroupVersion.String()
+	SecurityRealmGroupVersionKind = SchemeGroupVersion.WithKind(SecurityRealmKind)
+)
+
+// ContentSelector type metadata.
+var (
+	ContentSelectorKind             = reflect.TypeOf(ContentSelector{}).Name()
+	ContentSelectorGroupKind        = schema.GroupKind{Group: Group, Kind: ContentSelectorKind}.String()
+	ContentSelectorKindAPIVersion   = ContentSelectorKind + "." + SchemeGroupVersion.String()
+	ContentSelectorGroupVersionKind = SchemeGroupVersion.WithKind(ContentSelectorKind)
+)
+
+// Privilege type metadata.
+var (
+	PrivilegeKind             = reflect.TypeOf(Privilege{}).Name()
+	PrivilegeGroupKind        = schema.GroupKind{Group: Group, Kind: PrivilegeKind}.String()
+	PrivilegeKindAPIVersion   = PrivilegeKind + "." + SchemeGroupVersion.String()
+	PrivilegeGroupVersionKind = SchemeGroupVersion.WithKind(PrivilegeKind)
+)
+
+// AnonymousAccess type metadata.
+var (
+	AnonymousAccessKind             = reflect.TypeOf(AnonymousAccess{}).Name()
+	AnonymousAccessGroupKind        = schema.GroupKind{Group: Group, Kind: AnonymousAccessKind}.String()
+	AnonymousAccessKindAPIVersion   = AnonymousAccessKind + "." + SchemeGroupVersion.String()
+	AnonymousAccessGroupVersionKind = SchemeGroupVersion.WithKind(AnonymousAccessKind)
+)
+
+// SAML type metadata.
+var (
+	SAMLKind             = reflect.TypeOf(SAML{}).Name()
+	SAMLGroupKind        = schema.GroupKind{Group: Group, Kind: SAMLKind}.String()
+	SAMLKindAPIVersion   = SAMLKind + "." + SchemeGroupVersion.String()
+	SAMLGroupVersionKind = SchemeGroupVersion.WithKind(SAMLKind)
+)
+
+// LDAP type metadata.
+var (
+	LDAPKind             = reflect.TypeOf(LDAP{}).Name()
+	LDAPGroupKind        = schema.GroupKind{Group: Group, Kind: LDAPKind}.String()
+	LDAPKindAPIVersion   = LDAPKind + "." + SchemeGroupVersion.String()
+	LDAPGroupVersionKind = SchemeGroupVersion.WithKind(LDAPKind)
+)
+
+// UserTokenConfiguration type metadata.
+var (
+	UserTokenConfigurationKind             = reflect.TypeOf(UserTokenConfiguration{}).Name()
+	UserTokenConfigurationGroupKind        = schema.GroupKind{Group: Group, Kind: UserTokenConfigurationKind}.String()
+	UserTokenConfigurationKindAPIVersion   = UserTokenConfigurationKind + "." + SchemeGroupVersion.String()
+	UserTokenConfigurationGroupVersionKind = SchemeGroupVersion.WithKind(UserTokenConfigurationKind)
+)
