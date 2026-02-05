@@ -8,7 +8,7 @@ IMAGE_NAME ?= crossplane/$(PROJECT_NAME)
 IMAGE_TAG ?= latest
 
 # Go settings
-GO_VERSION := 1.21
+GO_VERSION := 1.22
 GOPATH ?= $(shell go env GOPATH)
 GOBIN ?= $(GOPATH)/bin
 

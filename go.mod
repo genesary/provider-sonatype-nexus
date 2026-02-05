@@ -1,6 +1,6 @@
 module github.com/AYDEV-FR/provider-sonatype-nexus
 
-go 1.21
+go 1.22
 
 require (
 	github.com/crossplane/crossplane-runtime v1.16.0
