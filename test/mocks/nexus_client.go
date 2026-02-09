@@ -1610,16 +1610,57 @@ func (m *MockRepositoryService) DeleteYumGroup(ctx context.Context, name string)
 
 // MockSecurityService is a mock implementation of nexus.SecurityService.
 type MockSecurityService struct {
+	// User methods
 	GetUserFn        func(ctx context.Context, id string) (*security.User, error)
 	CreateUserFn     func(ctx context.Context, user security.User) error
 	UpdateUserFn     func(ctx context.Context, id string, user security.User) error
 	DeleteUserFn     func(ctx context.Context, id string) error
 	ChangePasswordFn func(ctx context.Context, id string, password string) error
 
+	// Role methods
 	GetRoleFn    func(ctx context.Context, id string) (*security.Role, error)
 	CreateRoleFn func(ctx context.Context, role security.Role) error
 	UpdateRoleFn func(ctx context.Context, id string, role security.Role) error
 	DeleteRoleFn func(ctx context.Context, id string) error
+
+	// Content Selector methods
+	GetContentSelectorFn    func(ctx context.Context, name string) (*security.ContentSelector, error)
+	CreateContentSelectorFn func(ctx context.Context, cs security.ContentSelector) error
+	UpdateContentSelectorFn func(ctx context.Context, name string, cs security.ContentSelector) error
+	DeleteContentSelectorFn func(ctx context.Context, name string) error
+
+	// Privilege methods
+	GetPrivilegeFn                      func(ctx context.Context, name string) (*security.Privilege, error)
+	DeletePrivilegeFn                   func(ctx context.Context, name string) error
+	CreatePrivilegeApplicationFn        func(ctx context.Context, p security.PrivilegeApplication) error
+	UpdatePrivilegeApplicationFn        func(ctx context.Context, name string, p security.PrivilegeApplication) error
+	CreatePrivilegeRepositoryViewFn     func(ctx context.Context, p security.PrivilegeRepositoryView) error
+	UpdatePrivilegeRepositoryViewFn     func(ctx context.Context, name string, p security.PrivilegeRepositoryView) error
+	CreatePrivilegeWildcardFn           func(ctx context.Context, p security.PrivilegeWildcard) error
+	UpdatePrivilegeWildcardFn           func(ctx context.Context, name string, p security.PrivilegeWildcard) error
+
+	// Realm methods
+	ListActiveRealmsFn  func(ctx context.Context) ([]string, error)
+	ActivateRealmsFn    func(ctx context.Context, ids []string) error
+
+	// Anonymous Access methods
+	GetAnonymousAccessFn    func(ctx context.Context) (*security.AnonymousAccessSettings, error)
+	UpdateAnonymousAccessFn func(ctx context.Context, settings security.AnonymousAccessSettings) error
+
+	// User Token methods
+	GetUserTokenConfigFn    func(ctx context.Context) (*security.UserTokenConfiguration, error)
+	UpdateUserTokenConfigFn func(ctx context.Context, config security.UserTokenConfiguration) error
+
+	// LDAP methods
+	GetLDAPFn    func(ctx context.Context, name string) (*security.LDAP, error)
+	CreateLDAPFn func(ctx context.Context, ldap security.LDAP) error
+	UpdateLDAPFn func(ctx context.Context, name string, ldap security.LDAP) error
+	DeleteLDAPFn func(ctx context.Context, name string) error
+
+	// SAML methods
+	GetSAMLFn    func(ctx context.Context) (*security.SAML, error)
+	UpdateSAMLFn func(ctx context.Context, saml security.SAML) error
+	DeleteSAMLFn func(ctx context.Context) error
 
 	// Call tracking
 	GetUserCalls        []string
@@ -1732,23 +1773,32 @@ func (m *MockSecurityService) DeleteRole(ctx context.Context, id string) error {
 	return nil
 }
 
-// Realm methods - stub implementations
+// Realm methods
 
 func (m *MockSecurityService) ListAvailableRealms(ctx context.Context) ([]security.Realm, error) {
 	return nil, nil
 }
 
 func (m *MockSecurityService) ListActiveRealms(ctx context.Context) ([]string, error) {
+	if m.ListActiveRealmsFn != nil {
+		return m.ListActiveRealmsFn(ctx)
+	}
 	return nil, nil
 }
 
 func (m *MockSecurityService) ActivateRealms(ctx context.Context, ids []string) error {
+	if m.ActivateRealmsFn != nil {
+		return m.ActivateRealmsFn(ctx, ids)
+	}
 	return nil
 }
 
-// Content Selector methods - stub implementations
+// Content Selector methods
 
 func (m *MockSecurityService) GetContentSelector(ctx context.Context, name string) (*security.ContentSelector, error) {
+	if m.GetContentSelectorFn != nil {
+		return m.GetContentSelectorFn(ctx, name)
+	}
 	return nil, nil
 }
 
@@ -1757,20 +1807,32 @@ func (m *MockSecurityService) ListContentSelectors(ctx context.Context) ([]secur
 }
 
 func (m *MockSecurityService) CreateContentSelector(ctx context.Context, cs security.ContentSelector) error {
+	if m.CreateContentSelectorFn != nil {
+		return m.CreateContentSelectorFn(ctx, cs)
+	}
 	return nil
 }
 
 func (m *MockSecurityService) UpdateContentSelector(ctx context.Context, name string, cs security.ContentSelector) error {
+	if m.UpdateContentSelectorFn != nil {
+		return m.UpdateContentSelectorFn(ctx, name, cs)
+	}
 	return nil
 }
 
 func (m *MockSecurityService) DeleteContentSelector(ctx context.Context, name string) error {
+	if m.DeleteContentSelectorFn != nil {
+		return m.DeleteContentSelectorFn(ctx, name)
+	}
 	return nil
 }
 
-// Privilege methods - stub implementations
+// Privilege methods
 
 func (m *MockSecurityService) GetPrivilege(ctx context.Context, name string) (*security.Privilege, error) {
+	if m.GetPrivilegeFn != nil {
+		return m.GetPrivilegeFn(ctx, name)
+	}
 	return nil, nil
 }
 
@@ -1779,22 +1841,37 @@ func (m *MockSecurityService) ListPrivileges(ctx context.Context) ([]security.Pr
 }
 
 func (m *MockSecurityService) DeletePrivilege(ctx context.Context, name string) error {
+	if m.DeletePrivilegeFn != nil {
+		return m.DeletePrivilegeFn(ctx, name)
+	}
 	return nil
 }
 
 func (m *MockSecurityService) CreatePrivilegeApplication(ctx context.Context, p security.PrivilegeApplication) error {
+	if m.CreatePrivilegeApplicationFn != nil {
+		return m.CreatePrivilegeApplicationFn(ctx, p)
+	}
 	return nil
 }
 
 func (m *MockSecurityService) UpdatePrivilegeApplication(ctx context.Context, name string, p security.PrivilegeApplication) error {
+	if m.UpdatePrivilegeApplicationFn != nil {
+		return m.UpdatePrivilegeApplicationFn(ctx, name, p)
+	}
 	return nil
 }
 
 func (m *MockSecurityService) CreatePrivilegeRepositoryView(ctx context.Context, p security.PrivilegeRepositoryView) error {
+	if m.CreatePrivilegeRepositoryViewFn != nil {
+		return m.CreatePrivilegeRepositoryViewFn(ctx, p)
+	}
 	return nil
 }
 
 func (m *MockSecurityService) UpdatePrivilegeRepositoryView(ctx context.Context, name string, p security.PrivilegeRepositoryView) error {
+	if m.UpdatePrivilegeRepositoryViewFn != nil {
+		return m.UpdatePrivilegeRepositoryViewFn(ctx, name, p)
+	}
 	return nil
 }
 
@@ -1823,40 +1900,64 @@ func (m *MockSecurityService) UpdatePrivilegeScript(ctx context.Context, name st
 }
 
 func (m *MockSecurityService) CreatePrivilegeWildcard(ctx context.Context, p security.PrivilegeWildcard) error {
+	if m.CreatePrivilegeWildcardFn != nil {
+		return m.CreatePrivilegeWildcardFn(ctx, p)
+	}
 	return nil
 }
 
 func (m *MockSecurityService) UpdatePrivilegeWildcard(ctx context.Context, name string, p security.PrivilegeWildcard) error {
+	if m.UpdatePrivilegeWildcardFn != nil {
+		return m.UpdatePrivilegeWildcardFn(ctx, name, p)
+	}
 	return nil
 }
 
-// Anonymous access methods - stub implementations
+// Anonymous access methods
 
 func (m *MockSecurityService) GetAnonymousAccess(ctx context.Context) (*security.AnonymousAccessSettings, error) {
+	if m.GetAnonymousAccessFn != nil {
+		return m.GetAnonymousAccessFn(ctx)
+	}
 	return nil, nil
 }
 
 func (m *MockSecurityService) UpdateAnonymousAccess(ctx context.Context, settings security.AnonymousAccessSettings) error {
+	if m.UpdateAnonymousAccessFn != nil {
+		return m.UpdateAnonymousAccessFn(ctx, settings)
+	}
 	return nil
 }
 
-// SAML methods - stub implementations
+// SAML methods
 
 func (m *MockSecurityService) GetSAML(ctx context.Context) (*security.SAML, error) {
+	if m.GetSAMLFn != nil {
+		return m.GetSAMLFn(ctx)
+	}
 	return nil, nil
 }
 
 func (m *MockSecurityService) ApplySAML(ctx context.Context, saml security.SAML) error {
+	if m.UpdateSAMLFn != nil {
+		return m.UpdateSAMLFn(ctx, saml)
+	}
 	return nil
 }
 
 func (m *MockSecurityService) DeleteSAML(ctx context.Context) error {
+	if m.DeleteSAMLFn != nil {
+		return m.DeleteSAMLFn(ctx)
+	}
 	return nil
 }
 
-// LDAP methods - stub implementations
+// LDAP methods
 
 func (m *MockSecurityService) GetLDAP(ctx context.Context, name string) (*security.LDAP, error) {
+	if m.GetLDAPFn != nil {
+		return m.GetLDAPFn(ctx, name)
+	}
 	return nil, nil
 }
 
@@ -1865,23 +1966,38 @@ func (m *MockSecurityService) ListLDAP(ctx context.Context) ([]security.LDAP, er
 }
 
 func (m *MockSecurityService) CreateLDAP(ctx context.Context, ldap security.LDAP) error {
+	if m.CreateLDAPFn != nil {
+		return m.CreateLDAPFn(ctx, ldap)
+	}
 	return nil
 }
 
 func (m *MockSecurityService) UpdateLDAP(ctx context.Context, name string, ldap security.LDAP) error {
+	if m.UpdateLDAPFn != nil {
+		return m.UpdateLDAPFn(ctx, name, ldap)
+	}
 	return nil
 }
 
 func (m *MockSecurityService) DeleteLDAP(ctx context.Context, name string) error {
+	if m.DeleteLDAPFn != nil {
+		return m.DeleteLDAPFn(ctx, name)
+	}
 	return nil
 }
 
-// User Token methods - stub implementations
+// User Token methods
 
 func (m *MockSecurityService) GetUserTokenConfiguration(ctx context.Context) (*security.UserTokenConfiguration, error) {
+	if m.GetUserTokenConfigFn != nil {
+		return m.GetUserTokenConfigFn(ctx)
+	}
 	return nil, nil
 }
 
 func (m *MockSecurityService) UpdateUserTokenConfiguration(ctx context.Context, config security.UserTokenConfiguration) error {
+	if m.UpdateUserTokenConfigFn != nil {
+		return m.UpdateUserTokenConfigFn(ctx, config)
+	}
 	return nil
 }
