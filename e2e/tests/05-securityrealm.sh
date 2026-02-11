@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MANIFEST_DIR="${SCRIPT_DIR}/../manifests"
+
 NEXUS_URL="${NEXUS_URL:-http://localhost:8081}"
 NEXUS_USER="${NEXUS_USER:-admin}"
 NEXUS_PASS="${NEXUS_PASS:-admin123}"
@@ -10,21 +13,7 @@ echo "=== Testing SecurityRealm Resources ==="
 # Test SecurityRealm configuration
 echo "--- Testing SecurityRealm Configuration ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: SecurityRealm
-metadata:
-  name: e2e-test-realms
-  namespace: default
-spec:
-  forProvider:
-    activeRealms:
-      - NexusAuthenticatingRealm
-      - NexusAuthorizingRealm
-      - DockerToken
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/securityrealm.yaml"
 
 echo "Waiting for SecurityRealm to be ready..."
 sleep 5

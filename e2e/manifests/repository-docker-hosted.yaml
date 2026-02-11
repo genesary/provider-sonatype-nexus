@@ -1,0 +1,21 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: Repository
+metadata:
+  name: e2e-test-docker-hosted
+  namespace: default
+spec:
+  forProvider:
+    name: e2e-test-docker-hosted
+    format: docker
+    type: hosted
+    online: true
+    docker:
+      v1Enabled: false
+      forceBasicAuth: true
+      httpPort: 5000
+    storage:
+      blobStoreName: default
+      strictContentTypeValidation: true
+      writePolicy: ALLOW
+  providerConfigRef:
+    name: default

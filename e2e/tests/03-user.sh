@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MANIFEST_DIR="${SCRIPT_DIR}/../manifests"
+
 NEXUS_URL="${NEXUS_URL:-http://localhost:8081}"
 NEXUS_USER="${NEXUS_USER:-admin}"
 NEXUS_PASS="${NEXUS_PASS:-admin123}"
@@ -8,42 +11,12 @@ NEXUS_PASS="${NEXUS_PASS:-admin123}"
 echo "=== Testing User Resources ==="
 
 # First create a secret for the user password
-cat <<EOF | kubectl apply -f -
-apiVersion: v1
-kind: Secret
-metadata:
-  name: e2e-test-user-password
-  namespace: default
-type: Opaque
-stringData:
-  password: "TestPassword123!"
-EOF
+kubectl apply -f "${MANIFEST_DIR}/user-password-secret.yaml"
 
 # Test User creation
 echo "--- Testing User Creation ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: User
-metadata:
-  name: e2e-test-user
-  namespace: default
-spec:
-  forProvider:
-    userId: e2e-test-user
-    firstName: E2E
-    lastName: TestUser
-    emailAddress: e2e-test@example.com
-    status: active
-    roles:
-      - nx-anonymous
-    passwordSecretRef:
-      name: e2e-test-user-password
-      namespace: default
-      key: password
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/user.yaml"
 
 echo "Waiting for User to be ready..."
 sleep 5

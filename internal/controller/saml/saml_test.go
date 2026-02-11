@@ -27,8 +27,8 @@ func TestObserve(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "saml"},
 				Spec: v1alpha1.SAMLSpec{
 					ForProvider: v1alpha1.SAMLParameters{
-						IdpMetadata:    "metadata-xml",
-						EntityId:       "nexus-entity",
+						IdpMetadata:       "metadata-xml",
+						EntityId:          "nexus-entity",
 						UsernameAttribute: "username",
 					},
 				},
@@ -123,8 +123,8 @@ func TestCreate(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "saml"},
 				Spec: v1alpha1.SAMLSpec{
 					ForProvider: v1alpha1.SAMLParameters{
-						IdpMetadata:    "metadata-xml",
-						EntityId:       "nexus-entity",
+						IdpMetadata: "metadata-xml",
+						EntityId:    "nexus-entity",
 					},
 				},
 			},

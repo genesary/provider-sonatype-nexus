@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MANIFEST_DIR="${SCRIPT_DIR}/../manifests"
+
 NEXUS_URL="${NEXUS_URL:-http://localhost:8081}"
 NEXUS_USER="${NEXUS_USER:-admin}"
 NEXUS_PASS="${NEXUS_PASS:-admin123}"
@@ -10,25 +13,7 @@ echo "=== Testing Helm Repository Resources ==="
 # Test Helm Hosted Repository
 echo "--- Testing Helm Hosted Repository ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
-metadata:
-  name: e2e-test-helm-hosted
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-test-helm-hosted
-    format: helm
-    type: hosted
-    online: true
-    storage:
-      blobStoreName: default
-      strictContentTypeValidation: true
-      writePolicy: ALLOW
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/repository-helm-hosted.yaml"
 
 echo "Waiting for Helm Hosted Repository to be ready..."
 sleep 5
@@ -55,34 +40,7 @@ fi
 # Test Helm Proxy Repository
 echo "--- Testing Helm Proxy Repository ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
-metadata:
-  name: e2e-test-helm-proxy
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-test-helm-proxy
-    format: helm
-    type: proxy
-    online: true
-    proxy:
-      remoteUrl: https://charts.helm.sh/stable
-      contentMaxAge: 1440
-      metadataMaxAge: 1440
-    storage:
-      blobStoreName: default
-      strictContentTypeValidation: true
-    httpClient:
-      blocked: false
-      autoBlock: true
-    negativeCache:
-      enabled: true
-      timeToLive: 1440
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/repository-helm-proxy.yaml"
 
 echo "Waiting for Helm Proxy Repository to be ready..."
 sleep 5

@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MANIFEST_DIR="${SCRIPT_DIR}/../manifests"
+
 NEXUS_URL="${NEXUS_URL:-http://localhost:8081}"
 NEXUS_USER="${NEXUS_USER:-admin}"
 NEXUS_PASS="${NEXUS_PASS:-admin123}"
@@ -10,23 +13,7 @@ echo "=== Testing Privilege Resources ==="
 # Test Application Privilege
 echo "--- Testing Application Privilege ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Privilege
-metadata:
-  name: e2e-test-app-privilege
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-test-app-privilege
-    description: "Application privilege created by e2e tests"
-    type: application
-    domain: analytics
-    actions:
-      - READ
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/privilege-application.yaml"
 
 echo "Waiting for Application Privilege to be ready..."
 sleep 5
@@ -53,25 +40,7 @@ fi
 # Test Repository-View Privilege (using default maven-central repository)
 echo "--- Testing Repository-View Privilege ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Privilege
-metadata:
-  name: e2e-test-repo-privilege
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-test-repo-privilege
-    description: "Repository-view privilege created by e2e tests"
-    type: repository-view
-    format: maven2
-    repository: maven-central
-    actions:
-      - READ
-      - BROWSE
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/privilege-repository-view.yaml"
 
 echo "Waiting for Repository-View Privilege to be ready..."
 sleep 5
@@ -98,21 +67,7 @@ fi
 # Test Wildcard Privilege
 echo "--- Testing Wildcard Privilege ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Privilege
-metadata:
-  name: e2e-test-wildcard-privilege
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-test-wildcard-privilege
-    description: "Wildcard privilege created by e2e tests"
-    type: wildcard
-    pattern: nexus:repository-view:*:*:read
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/privilege-wildcard.yaml"
 
 echo "Waiting for Wildcard Privilege to be ready..."
 sleep 5

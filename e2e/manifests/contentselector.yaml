@@ -1,0 +1,12 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: ContentSelector
+metadata:
+  name: e2e-test-selector
+  namespace: default
+spec:
+  forProvider:
+    name: e2e-test-selector
+    description: "Selector created by e2e tests"
+    expression: format == "maven2" and path =^ "/test/"
+  providerConfigRef:
+    name: default

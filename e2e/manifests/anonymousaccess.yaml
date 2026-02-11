@@ -1,0 +1,12 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: AnonymousAccess
+metadata:
+  name: e2e-test-anonymous
+  namespace: default
+spec:
+  forProvider:
+    enabled: true
+    userId: anonymous
+    realmName: NexusAuthorizingRealm
+  providerConfigRef:
+    name: default

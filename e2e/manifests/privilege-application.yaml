@@ -1,0 +1,15 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: Privilege
+metadata:
+  name: e2e-test-app-privilege
+  namespace: default
+spec:
+  forProvider:
+    name: e2e-test-app-privilege
+    description: "Application privilege created by e2e tests"
+    type: application
+    domain: analytics
+    actions:
+      - READ
+  providerConfigRef:
+    name: default

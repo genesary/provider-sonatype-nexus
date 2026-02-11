@@ -1,0 +1,13 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: SecurityRealm
+metadata:
+  name: e2e-test-realms
+  namespace: default
+spec:
+  forProvider:
+    activeRealms:
+      - NexusAuthenticatingRealm
+      - NexusAuthorizingRealm
+      - DockerToken
+  providerConfigRef:
+    name: default

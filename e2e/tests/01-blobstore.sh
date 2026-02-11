@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MANIFEST_DIR="${SCRIPT_DIR}/../manifests"
+
 NEXUS_URL="${NEXUS_URL:-http://localhost:8081}"
 NEXUS_USER="${NEXUS_USER:-admin}"
 NEXUS_PASS="${NEXUS_PASS:-admin123}"
@@ -10,22 +13,7 @@ echo "=== Testing BlobStore Resources ==="
 # Test File BlobStore
 echo "--- Testing File BlobStore ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: BlobStore
-metadata:
-  name: e2e-test-file-blobstore
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-test-file
-    type: File
-    softQuota:
-      type: spaceRemainingQuota
-      limit: 104857600
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/blobstore-file.yaml"
 
 echo "Waiting for BlobStore to be ready..."
 sleep 5

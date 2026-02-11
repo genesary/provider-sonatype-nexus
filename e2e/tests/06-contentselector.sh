@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MANIFEST_DIR="${SCRIPT_DIR}/../manifests"
+
 NEXUS_URL="${NEXUS_URL:-http://localhost:8081}"
 NEXUS_USER="${NEXUS_USER:-admin}"
 NEXUS_PASS="${NEXUS_PASS:-admin123}"
@@ -10,20 +13,7 @@ echo "=== Testing ContentSelector Resources ==="
 # Test ContentSelector creation
 echo "--- Testing ContentSelector Creation ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: ContentSelector
-metadata:
-  name: e2e-test-selector
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-test-selector
-    description: "Selector created by e2e tests"
-    expression: format == "maven2" and path =^ "/test/"
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/contentselector.yaml"
 
 echo "Waiting for ContentSelector to be ready..."
 sleep 5

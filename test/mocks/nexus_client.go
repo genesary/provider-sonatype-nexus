@@ -1630,18 +1630,18 @@ type MockSecurityService struct {
 	DeleteContentSelectorFn func(ctx context.Context, name string) error
 
 	// Privilege methods
-	GetPrivilegeFn                      func(ctx context.Context, name string) (*security.Privilege, error)
-	DeletePrivilegeFn                   func(ctx context.Context, name string) error
-	CreatePrivilegeApplicationFn        func(ctx context.Context, p security.PrivilegeApplication) error
-	UpdatePrivilegeApplicationFn        func(ctx context.Context, name string, p security.PrivilegeApplication) error
-	CreatePrivilegeRepositoryViewFn     func(ctx context.Context, p security.PrivilegeRepositoryView) error
-	UpdatePrivilegeRepositoryViewFn     func(ctx context.Context, name string, p security.PrivilegeRepositoryView) error
-	CreatePrivilegeWildcardFn           func(ctx context.Context, p security.PrivilegeWildcard) error
-	UpdatePrivilegeWildcardFn           func(ctx context.Context, name string, p security.PrivilegeWildcard) error
+	GetPrivilegeFn                  func(ctx context.Context, name string) (*security.Privilege, error)
+	DeletePrivilegeFn               func(ctx context.Context, name string) error
+	CreatePrivilegeApplicationFn    func(ctx context.Context, p security.PrivilegeApplication) error
+	UpdatePrivilegeApplicationFn    func(ctx context.Context, name string, p security.PrivilegeApplication) error
+	CreatePrivilegeRepositoryViewFn func(ctx context.Context, p security.PrivilegeRepositoryView) error
+	UpdatePrivilegeRepositoryViewFn func(ctx context.Context, name string, p security.PrivilegeRepositoryView) error
+	CreatePrivilegeWildcardFn       func(ctx context.Context, p security.PrivilegeWildcard) error
+	UpdatePrivilegeWildcardFn       func(ctx context.Context, name string, p security.PrivilegeWildcard) error
 
 	// Realm methods
-	ListActiveRealmsFn  func(ctx context.Context) ([]string, error)
-	ActivateRealmsFn    func(ctx context.Context, ids []string) error
+	ListActiveRealmsFn func(ctx context.Context) ([]string, error)
+	ActivateRealmsFn   func(ctx context.Context, ids []string) error
 
 	// Anonymous Access methods
 	GetAnonymousAccessFn    func(ctx context.Context) (*security.AnonymousAccessSettings, error)

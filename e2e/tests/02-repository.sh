@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MANIFEST_DIR="${SCRIPT_DIR}/../manifests"
+
 NEXUS_URL="${NEXUS_URL:-http://localhost:8081}"
 NEXUS_USER="${NEXUS_USER:-admin}"
 NEXUS_PASS="${NEXUS_PASS:-admin123}"
@@ -10,28 +13,7 @@ echo "=== Testing Repository Resources ==="
 # Test Maven Hosted Repository
 echo "--- Testing Maven Hosted Repository ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
-metadata:
-  name: e2e-test-maven-hosted
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-test-maven-hosted
-    format: maven2
-    type: hosted
-    online: true
-    maven:
-      versionPolicy: RELEASE
-      layoutPolicy: STRICT
-    storage:
-      blobStoreName: default
-      strictContentTypeValidation: true
-      writePolicy: ALLOW
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/repository-maven-hosted.yaml"
 
 echo "Waiting for Repository to be ready..."
 sleep 5
@@ -65,29 +47,7 @@ echo "--- Maven Hosted Repository test completed ---"
 # Test Docker Hosted Repository
 echo "--- Testing Docker Hosted Repository ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
-metadata:
-  name: e2e-test-docker-hosted
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-test-docker-hosted
-    format: docker
-    type: hosted
-    online: true
-    docker:
-      v1Enabled: false
-      forceBasicAuth: true
-      httpPort: 5000
-    storage:
-      blobStoreName: default
-      strictContentTypeValidation: true
-      writePolicy: ALLOW
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/repository-docker-hosted.yaml"
 
 echo "Waiting for Docker Repository to be ready..."
 sleep 5
@@ -111,37 +71,7 @@ echo "--- Docker Hosted Repository test completed ---"
 # Test Maven Proxy Repository
 echo "--- Testing Maven Proxy Repository ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
-metadata:
-  name: e2e-test-maven-proxy
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-test-maven-proxy
-    format: maven2
-    type: proxy
-    online: true
-    maven:
-      versionPolicy: RELEASE
-      layoutPolicy: STRICT
-    proxy:
-      remoteUrl: https://repo1.maven.org/maven2/
-      contentMaxAge: 1440
-      metadataMaxAge: 1440
-    storage:
-      blobStoreName: default
-      strictContentTypeValidation: true
-    httpClient:
-      blocked: false
-      autoBlock: true
-    negativeCache:
-      enabled: true
-      timeToLive: 1440
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/repository-maven-proxy.yaml"
 
 echo "Waiting for Maven Proxy Repository to be ready..."
 sleep 5
@@ -170,25 +100,7 @@ echo "--- Maven Proxy Repository test completed ---"
 # Test NPM Hosted Repository
 echo "--- Testing NPM Hosted Repository ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
-metadata:
-  name: e2e-test-npm-hosted
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-test-npm-hosted
-    format: npm
-    type: hosted
-    online: true
-    storage:
-      blobStoreName: default
-      strictContentTypeValidation: true
-      writePolicy: ALLOW
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/repository-npm-hosted.yaml"
 
 echo "Waiting for NPM Hosted Repository to be ready..."
 sleep 5
@@ -217,25 +129,7 @@ echo "--- NPM Hosted Repository test completed ---"
 # Test Raw Hosted Repository
 echo "--- Testing Raw Hosted Repository ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
-metadata:
-  name: e2e-test-raw-hosted
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-test-raw-hosted
-    format: raw
-    type: hosted
-    online: true
-    storage:
-      blobStoreName: default
-      strictContentTypeValidation: false
-      writePolicy: ALLOW
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/repository-raw-hosted.yaml"
 
 echo "Waiting for Raw Hosted Repository to be ready..."
 sleep 5
@@ -264,34 +158,7 @@ echo "--- Raw Hosted Repository test completed ---"
 # Test PyPI Proxy Repository
 echo "--- Testing PyPI Proxy Repository ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
-metadata:
-  name: e2e-test-pypi-proxy
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-test-pypi-proxy
-    format: pypi
-    type: proxy
-    online: true
-    proxy:
-      remoteUrl: https://pypi.org/
-      contentMaxAge: 1440
-      metadataMaxAge: 1440
-    storage:
-      blobStoreName: default
-      strictContentTypeValidation: true
-    httpClient:
-      blocked: false
-      autoBlock: true
-    negativeCache:
-      enabled: true
-      timeToLive: 1440
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/repository-pypi-proxy.yaml"
 
 echo "Waiting for PyPI Proxy Repository to be ready..."
 sleep 5

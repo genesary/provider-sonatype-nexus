@@ -1,0 +1,13 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: Privilege
+metadata:
+  name: e2e-test-wildcard-privilege
+  namespace: default
+spec:
+  forProvider:
+    name: e2e-test-wildcard-privilege
+    description: "Wildcard privilege created by e2e tests"
+    type: wildcard
+    pattern: nexus:repository-view:*:*:read
+  providerConfigRef:
+    name: default

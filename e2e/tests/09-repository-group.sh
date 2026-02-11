@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MANIFEST_DIR="${SCRIPT_DIR}/../manifests"
+
 NEXUS_URL="${NEXUS_URL:-http://localhost:8081}"
 NEXUS_USER="${NEXUS_USER:-admin}"
 NEXUS_PASS="${NEXUS_PASS:-admin123}"
@@ -10,28 +13,7 @@ echo "=== Testing Repository Group Resources ==="
 # First create a hosted repository to be part of the group
 echo "--- Creating Maven Hosted for Group ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
-metadata:
-  name: e2e-group-maven-hosted
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-group-maven-hosted
-    format: maven2
-    type: hosted
-    online: true
-    maven:
-      versionPolicy: RELEASE
-      layoutPolicy: STRICT
-    storage:
-      blobStoreName: default
-      strictContentTypeValidation: true
-      writePolicy: ALLOW
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/repository-group-maven-hosted.yaml"
 
 echo "Waiting for Maven Hosted to be ready..."
 sleep 5
@@ -49,37 +31,7 @@ done
 # Create a proxy repository to be part of the group
 echo "--- Creating Maven Proxy for Group ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
-metadata:
-  name: e2e-group-maven-proxy
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-group-maven-proxy
-    format: maven2
-    type: proxy
-    online: true
-    maven:
-      versionPolicy: RELEASE
-      layoutPolicy: STRICT
-    proxy:
-      remoteUrl: https://repo1.maven.org/maven2/
-      contentMaxAge: 1440
-      metadataMaxAge: 1440
-    storage:
-      blobStoreName: default
-      strictContentTypeValidation: true
-    httpClient:
-      blocked: false
-      autoBlock: true
-    negativeCache:
-      enabled: true
-      timeToLive: 1440
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/repository-group-maven-proxy.yaml"
 
 echo "Waiting for Maven Proxy to be ready..."
 sleep 5
@@ -97,31 +49,7 @@ done
 # Now create the group repository
 echo "--- Testing Maven Group Repository ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
-metadata:
-  name: e2e-test-maven-group
-  namespace: default
-spec:
-  forProvider:
-    name: e2e-test-maven-group
-    format: maven2
-    type: group
-    online: true
-    maven:
-      versionPolicy: RELEASE
-      layoutPolicy: STRICT
-    group:
-      memberNames:
-        - e2e-group-maven-hosted
-        - e2e-group-maven-proxy
-    storage:
-      blobStoreName: default
-      strictContentTypeValidation: true
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/repository-group-maven-group.yaml"
 
 echo "Waiting for Maven Group Repository to be ready..."
 sleep 5

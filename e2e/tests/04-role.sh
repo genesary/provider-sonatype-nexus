@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MANIFEST_DIR="${SCRIPT_DIR}/../manifests"
+
 NEXUS_URL="${NEXUS_URL:-http://localhost:8081}"
 NEXUS_USER="${NEXUS_USER:-admin}"
 NEXUS_PASS="${NEXUS_PASS:-admin123}"
@@ -10,23 +13,7 @@ echo "=== Testing Role Resources ==="
 # Test Role creation
 echo "--- Testing Role Creation ---"
 
-cat <<EOF | kubectl apply -f -
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Role
-metadata:
-  name: e2e-test-role
-  namespace: default
-spec:
-  forProvider:
-    id: e2e-test-role
-    name: E2E Test Role
-    description: "Role created by e2e tests"
-    privileges:
-      - nx-repository-view-*-*-browse
-      - nx-repository-view-*-*-read
-  providerConfigRef:
-    name: default
-EOF
+kubectl apply -f "${MANIFEST_DIR}/role.yaml"
 
 echo "Waiting for Role to be ready..."
 sleep 5

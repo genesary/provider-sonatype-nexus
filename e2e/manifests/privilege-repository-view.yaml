@@ -1,0 +1,17 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: Privilege
+metadata:
+  name: e2e-test-repo-privilege
+  namespace: default
+spec:
+  forProvider:
+    name: e2e-test-repo-privilege
+    description: "Repository-view privilege created by e2e tests"
+    type: repository-view
+    format: maven2
+    repository: maven-central
+    actions:
+      - READ
+      - BROWSE
+  providerConfigRef:
+    name: default

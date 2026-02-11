@@ -1,0 +1,26 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: Repository
+metadata:
+  name: e2e-test-pypi-proxy
+  namespace: default
+spec:
+  forProvider:
+    name: e2e-test-pypi-proxy
+    format: pypi
+    type: proxy
+    online: true
+    proxy:
+      remoteUrl: https://pypi.org/
+      contentMaxAge: 1440
+      metadataMaxAge: 1440
+    storage:
+      blobStoreName: default
+      strictContentTypeValidation: true
+    httpClient:
+      blocked: false
+      autoBlock: true
+    negativeCache:
+      enabled: true
+      timeToLive: 1440
+  providerConfigRef:
+    name: default

@@ -1,0 +1,20 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: Repository
+metadata:
+  name: e2e-group-maven-hosted
+  namespace: default
+spec:
+  forProvider:
+    name: e2e-group-maven-hosted
+    format: maven2
+    type: hosted
+    online: true
+    maven:
+      versionPolicy: RELEASE
+      layoutPolicy: STRICT
+    storage:
+      blobStoreName: default
+      strictContentTypeValidation: true
+      writePolicy: ALLOW
+  providerConfigRef:
+    name: default

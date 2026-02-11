@@ -1,0 +1,17 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: Repository
+metadata:
+  name: e2e-test-raw-hosted
+  namespace: default
+spec:
+  forProvider:
+    name: e2e-test-raw-hosted
+    format: raw
+    type: hosted
+    online: true
+    storage:
+      blobStoreName: default
+      strictContentTypeValidation: false
+      writePolicy: ALLOW
+  providerConfigRef:
+    name: default

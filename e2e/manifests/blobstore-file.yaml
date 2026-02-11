@@ -1,0 +1,14 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: BlobStore
+metadata:
+  name: e2e-test-file-blobstore
+  namespace: default
+spec:
+  forProvider:
+    name: e2e-test-file
+    type: File
+    softQuota:
+      type: spaceRemainingQuota
+      limit: 104857600
+  providerConfigRef:
+    name: default
