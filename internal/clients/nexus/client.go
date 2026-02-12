@@ -16,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	kubeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/AYDEV-FR/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 )
 
 // Credentials contains the credentials for connecting to Nexus.

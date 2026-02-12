@@ -17,7 +17,7 @@ linters:
 
 linters-settings:
   goimports:
-    local-prefixes: github.com/AYDEV-FR/provider-sonatype-nexus
+    local-prefixes: github.com/genesary/provider-sonatype-nexus
   errcheck:
     exclude-functions:
       - encoding/json.Marshal

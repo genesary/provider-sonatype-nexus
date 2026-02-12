@@ -1,4 +1,4 @@
-module github.com/AYDEV-FR/provider-sonatype-nexus
+module github.com/genesary/provider-sonatype-nexus
 
 go 1.22
 

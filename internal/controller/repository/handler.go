@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 
-	"github.com/AYDEV-FR/provider-sonatype-nexus/apis/v1alpha1"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
 // FormatHandler defines the operations for a specific repository format.

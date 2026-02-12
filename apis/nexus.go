@@ -4,7 +4,7 @@ package apis
 import (
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/AYDEV-FR/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 )
 
 func init() {

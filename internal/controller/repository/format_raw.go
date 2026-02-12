@@ -6,9 +6,9 @@ import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 	"github.com/pkg/errors"
 
-	"github.com/AYDEV-FR/provider-sonatype-nexus/apis/v1alpha1"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/utils"
+	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/utils"
 )
 
 // RawHandler handles Raw repository operations.

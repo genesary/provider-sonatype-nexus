@@ -7,8 +7,8 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/AYDEV-FR/provider-sonatype-nexus/apis/v1alpha1"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/test/mocks"
+	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/test/mocks"
 )
 
 func TestObserve(t *testing.T) {

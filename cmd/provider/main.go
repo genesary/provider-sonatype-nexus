@@ -13,8 +13,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	"github.com/AYDEV-FR/provider-sonatype-nexus/apis"
-	nexuscontroller "github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller"
+	"github.com/genesary/provider-sonatype-nexus/apis"
+	nexuscontroller "github.com/genesary/provider-sonatype-nexus/internal/controller"
 )
 
 func main() {

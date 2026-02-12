@@ -5,17 +5,17 @@ import (
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/anonymousaccess"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/blobstore"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/contentselector"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/ldap"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/privilege"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/repository"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/role"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/saml"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/securityrealm"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/user"
-	"github.com/AYDEV-FR/provider-sonatype-nexus/internal/controller/usertokenconfiguration"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/anonymousaccess"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/blobstore"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/contentselector"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/ldap"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/privilege"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/repository"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/role"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/saml"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/securityrealm"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/user"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/usertokenconfiguration"
 )
 
 // Setup creates all Nexus controllers and adds them to the supplied manager.
