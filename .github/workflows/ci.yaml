@@ -130,6 +130,7 @@ jobs:
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
     permissions:
+      contents: read
       packages: write
     steps:
       - name: Checkout
