@@ -4,11 +4,11 @@ This is the OWNERS file for the provider-sonatype-nexus project.
 
 ## Maintainers
 
-- Aymeric Deliencourt (@AYDEV-FR)
+- @AYDEV-FR
 
 ## Reviewers
 
-- Aymeric Deliencourt (@AYDEV-FR)
+- @AYDEV-FR
 
 ## Contact
 

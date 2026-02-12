@@ -4,7 +4,7 @@ metadata:
   name: provider-sonatype-nexus
   annotations:
     meta.crossplane.io/maintainer: AYDEV-FR <aymeric.deliencourt@aydev.fr>
-    meta.crossplane.io/source: github.com/AYDEV-FR/provider-sonatype-nexus
+    meta.crossplane.io/source: github.com/genesary/provider-sonatype-nexus
     meta.crossplane.io/license: Apache-2.0
     meta.crossplane.io/description: |
       A Crossplane provider for managing Sonatype Nexus Repository Manager resources
@@ -19,4 +19,4 @@ metadata:
       - Role
 spec:
   controller:
-    image: ghcr.io/aydev-fr/provider-sonatype-nexus:VERSION
+    image: ghcr.io/genesary/provider-sonatype-nexus:VERSION
