@@ -39,6 +39,7 @@ Thumbs.db
 # Build artifacts
 dist/
 _output/
+*.xpkg
 
 # Kubernetes
 kubeconfig

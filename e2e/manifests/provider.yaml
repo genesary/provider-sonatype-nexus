@@ -56,7 +56,7 @@ spec:
       serviceAccountName: provider-sonatype-nexus
       containers:
         - name: provider
-          image: provider-sonatype-nexus:e2e
+          image: provider-sonatype-nexus-controller:e2e
           imagePullPolicy: Never
           args:
             - --debug

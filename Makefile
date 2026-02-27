@@ -1,11 +1,15 @@
 # Project settings
 PROJECT_NAME := provider-sonatype-nexus
-PROJECT_REPO := github.com/crossplane-contrib/$(PROJECT_NAME)
+PROJECT_REPO := github.com/genesary/$(PROJECT_NAME)
 
 # Image settings
-REGISTRY ?= docker.io
-IMAGE_NAME ?= crossplane/$(PROJECT_NAME)
+REGISTRY ?= ghcr.io
+IMAGE_NAME ?= genesary/$(PROJECT_NAME)-controller
 IMAGE_TAG ?= latest
+
+# Crossplane package settings
+XPKG_NAME ?= genesary/$(PROJECT_NAME)
+XPKG_FILE ?= provider-sonatype-nexus.xpkg
 
 # Go settings
 GO_VERSION := 1.22
@@ -86,6 +90,22 @@ docker-build: ## Build Docker image
 docker-push: ## Push Docker image
 	docker push $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
 
+##@ Crossplane Package
+
+.PHONY: xpkg-build
+xpkg-build: generate ## Build Crossplane package (xpkg)
+	@echo "Updating controller image in crossplane.yaml..."
+	sed -i.bak 's|image:.*|image: $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)|' package/crossplane.yaml && rm -f package/crossplane.yaml.bak
+	crossplane xpkg build \
+		--package-root=package \
+		--package-file=$(XPKG_FILE)
+
+.PHONY: xpkg-push
+xpkg-push: ## Push Crossplane package to registry
+	crossplane xpkg push \
+		$(REGISTRY)/$(XPKG_NAME):$(IMAGE_TAG) \
+		-f $(XPKG_FILE)
+
 ##@ Install Tools
 
 .PHONY: install-tools
@@ -103,6 +123,7 @@ $(GOLANGCI_LINT):
 clean: ## Clean build artifacts
 	rm -rf bin/
 	rm -f coverage.out coverage.html
+	rm -f $(XPKG_FILE)
 
 .PHONY: clean-generated
 clean-generated: ## Clean generated files
@@ -120,8 +141,8 @@ e2e-setup: docker-build ## Setup e2e test environment (Kind + Nexus + Provider)
 	kind create cluster --config e2e/kind-config.yaml --wait 60s || true
 	@echo "Loading provider image into Kind..."
 	kind load docker-image $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) --name $(KIND_CLUSTER_NAME)
-	docker tag $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) provider-sonatype-nexus:$(E2E_IMAGE_TAG)
-	kind load docker-image provider-sonatype-nexus:$(E2E_IMAGE_TAG) --name $(KIND_CLUSTER_NAME)
+	docker tag $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) provider-sonatype-nexus-controller:$(E2E_IMAGE_TAG)
+	kind load docker-image provider-sonatype-nexus-controller:$(E2E_IMAGE_TAG) --name $(KIND_CLUSTER_NAME)
 	@echo "Installing CRDs..."
 	kubectl apply -f $(CRD_DIR)/
 	@echo "Deploying Nexus..."

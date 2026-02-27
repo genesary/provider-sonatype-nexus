@@ -1,4 +1,4 @@
-apiVersion: meta.pkg.crossplane.io/v1alpha1
+apiVersion: meta.pkg.crossplane.io/v1
 kind: Provider
 metadata:
   name: provider-sonatype-nexus
@@ -19,4 +19,4 @@ metadata:
       - Role
 spec:
   controller:
-    image: ghcr.io/genesary/provider-sonatype-nexus:VERSION
+    image: ghcr.io/genesary/provider-sonatype-nexus-controller:VERSION

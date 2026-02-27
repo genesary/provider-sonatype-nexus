@@ -53,13 +53,9 @@ The provider supports the following repository formats:
 - Kubernetes cluster with Crossplane installed
 - Sonatype Nexus Repository Manager instance
 
-### Install the Provider
+### Install via Crossplane (Recommended)
 
-```bash
-kubectl crossplane install provider ghcr.io/crossplane-contrib/provider-sonatype-nexus:latest
-```
-
-Or using a Provider manifest:
+Apply a `Provider` manifest to let Crossplane manage the installation:
 
 ```yaml
 apiVersion: pkg.crossplane.io/v1
@@ -67,7 +63,27 @@ kind: Provider
 metadata:
   name: provider-sonatype-nexus
 spec:
-  package: ghcr.io/crossplane-contrib/provider-sonatype-nexus:latest
+  package: ghcr.io/genesary/provider-sonatype-nexus:v0.1.0
+```
+
+Crossplane will pull the package, extract the CRDs and RBAC rules, and start the controller automatically.
+
+### Install via CLI
+
+```bash
+kubectl crossplane install provider ghcr.io/genesary/provider-sonatype-nexus:v0.1.0
+```
+
+### Manual Installation (without Crossplane package manager)
+
+If you prefer to deploy the controller directly:
+
+```bash
+# Apply CRDs
+kubectl apply -f package/crds/
+
+# Deploy the controller (adjust the image tag as needed)
+kubectl apply -f e2e/manifests/provider.yaml
 ```
 
 ## Configuration
@@ -273,7 +289,7 @@ spec:
 
 ### Prerequisites
 
-- Go 1.21+
+- Go 1.24+
 - Docker
 - kubectl
 - Kind (for e2e tests)
@@ -290,8 +306,11 @@ make build
 # Run unit tests
 make test
 
-# Build Docker image
+# Build Docker image (controller)
 make docker-build
+
+# Build Crossplane package (requires crossplane CLI)
+make xpkg-build
 ```
 
 ### Running E2E Tests

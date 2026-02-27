@@ -51,8 +51,7 @@ jobs:
           push: false
           load: true
           tags: |
-            provider-sonatype-nexus:e2e
-            docker.io/crossplane/provider-sonatype-nexus:latest
+            provider-sonatype-nexus-controller:e2e
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -65,8 +64,7 @@ jobs:
 
       - name: Load Image into Kind
         run: |
-          kind load docker-image provider-sonatype-nexus:e2e --name ${{ env.KIND_CLUSTER_NAME }}
-          kind load docker-image docker.io/crossplane/provider-sonatype-nexus:latest --name ${{ env.KIND_CLUSTER_NAME }}
+          kind load docker-image provider-sonatype-nexus-controller:e2e --name ${{ env.KIND_CLUSTER_NAME }}
 
       - name: Install CRDs
         run: kubectl apply -f package/crds/
