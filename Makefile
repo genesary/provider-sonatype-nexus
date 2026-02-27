@@ -133,21 +133,32 @@ clean-generated: ## Clean generated files
 KIND_CLUSTER_NAME ?= nexus-e2e
 E2E_IMAGE_TAG ?= e2e
 
+E2E_REGISTRY ?= localhost:5001
+
 .PHONY: e2e-setup
-e2e-setup: docker-build ## Setup e2e test environment (Kind + Nexus + Provider)
+e2e-setup: xpkg-build ## Setup e2e test environment (Kind + Crossplane + Nexus + Provider)
+	@echo "Starting local registry..."
+	docker rm -f kind-registry 2>/dev/null || true
+	docker run -d --restart=always -p 5001:5000 --network bridge --name kind-registry registry:2
 	@echo "Creating Kind cluster..."
 	kind create cluster --config e2e/kind-config.yaml --wait 60s || true
-	@echo "Loading provider image into Kind..."
-	kind load docker-image $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) --name $(KIND_CLUSTER_NAME)
-	docker tag $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) provider-sonatype-nexus-controller:$(E2E_IMAGE_TAG)
-	kind load docker-image provider-sonatype-nexus-controller:$(E2E_IMAGE_TAG) --name $(KIND_CLUSTER_NAME)
-	@echo "Installing CRDs..."
-	kubectl apply -f $(CRD_DIR)/
+	docker network connect kind kind-registry 2>/dev/null || true
+	@echo "Installing Crossplane..."
+	helm repo add crossplane-stable https://charts.crossplane.io/stable 2>/dev/null || true
+	helm repo update
+	helm upgrade --install crossplane crossplane-stable/crossplane \
+		--namespace crossplane-system --create-namespace --wait --timeout 120s
+	@echo "Pushing xpkg to local registry..."
+	crossplane xpkg push $(E2E_REGISTRY)/provider-sonatype-nexus:$(E2E_IMAGE_TAG) -f $(XPKG_FILE)
 	@echo "Deploying Nexus..."
 	kubectl apply -f e2e/manifests/nexus.yaml
-	@echo "Deploying Provider..."
+	@echo "Installing Provider via Crossplane..."
 	kubectl apply -f e2e/manifests/provider.yaml
-	@echo "Waiting for deployments..."
+	@echo "Waiting for Provider to be healthy..."
+	kubectl wait --for=condition=Healthy providers.pkg.crossplane.io/provider-sonatype-nexus --timeout=180s
+	@echo "Applying ProviderConfig..."
+	kubectl apply -f e2e/manifests/provider-config.yaml
+	@echo "Waiting for Nexus..."
 	kubectl wait --for=condition=available deployment/nexus -n nexus --timeout=300s || echo "Nexus still starting..."
 	@echo "E2E environment setup complete!"
 	@echo "Nexus will be available at http://localhost:8081 (default: admin/admin123)"
@@ -165,6 +176,7 @@ e2e-run: ## Run e2e tests
 .PHONY: e2e-cleanup
 e2e-cleanup: ## Cleanup e2e test environment
 	kind delete cluster --name $(KIND_CLUSTER_NAME) || true
+	docker rm -f kind-registry 2>/dev/null || true
 
 .PHONY: e2e
 e2e: e2e-setup e2e-wait e2e-run ## Run full e2e test cycle (setup + tests + keeps cluster)
