@@ -4,11 +4,10 @@ PROJECT_REPO := github.com/genesary/$(PROJECT_NAME)
 
 # Image settings
 REGISTRY ?= ghcr.io
-IMAGE_NAME ?= genesary/$(PROJECT_NAME)-controller
+IMAGE_NAME ?= genesary/$(PROJECT_NAME)
 IMAGE_TAG ?= latest
 
 # Crossplane package settings
-XPKG_NAME ?= genesary/$(PROJECT_NAME)
 XPKG_FILE ?= provider-sonatype-nexus.xpkg
 
 # Go settings
@@ -93,17 +92,16 @@ docker-push: ## Push Docker image
 ##@ Crossplane Package
 
 .PHONY: xpkg-build
-xpkg-build: generate ## Build Crossplane package (xpkg)
-	@echo "Updating controller image in crossplane.yaml..."
-	sed -i.bak 's|image:.*|image: $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)|' package/crossplane.yaml && rm -f package/crossplane.yaml.bak
+xpkg-build: docker-build ## Build Crossplane package (xpkg) with embedded runtime
 	crossplane xpkg build \
 		--package-root=package \
+		--embed-runtime-image=$(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) \
 		--package-file=$(XPKG_FILE)
 
 .PHONY: xpkg-push
 xpkg-push: ## Push Crossplane package to registry
 	crossplane xpkg push \
-		$(REGISTRY)/$(XPKG_NAME):$(IMAGE_TAG) \
+		$(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) \
 		-f $(XPKG_FILE)
 
 ##@ Install Tools

@@ -306,10 +306,10 @@ make build
 # Run unit tests
 make test
 
-# Build Docker image (controller)
+# Build Docker image
 make docker-build
 
-# Build Crossplane package (requires crossplane CLI)
+# Build Crossplane package with embedded runtime (requires crossplane CLI)
 make xpkg-build
 ```
 

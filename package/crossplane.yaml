@@ -17,6 +17,4 @@ metadata:
       - Repository (Maven, Docker, npm, Raw - hosted, proxy, group)
       - User
       - Role
-spec:
-  controller:
-    image: ghcr.io/genesary/provider-sonatype-nexus-controller:VERSION
+spec: {}
