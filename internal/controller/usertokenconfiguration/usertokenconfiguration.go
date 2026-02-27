@@ -98,12 +98,18 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotUserTokenConfig)
 	}
 
+	// UserTokenConfiguration is a singleton in Nexus (cannot be truly deleted).
+	// When the CR is being deleted, report the resource as absent so the
+	// managed reconciler can remove the finalizer and complete deletion.
+	if cr.GetDeletionTimestamp() != nil {
+		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
+
 	config, err := e.client.Security().GetUserTokenConfiguration(ctx)
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetUserTokenConfig)
 	}
 
-	// UserTokenConfiguration is a singleton that always exists
 	cr.SetConditions(v1alpha1.Available())
 
 	upToDate := isUserTokenConfigUpToDate(cr, config)

@@ -98,12 +98,18 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.New(errNotAnonymousAccess)
 	}
 
+	// AnonymousAccess is a singleton in Nexus (cannot be truly deleted).
+	// When the CR is being deleted, report the resource as absent so the
+	// managed reconciler can remove the finalizer and complete deletion.
+	if cr.GetDeletionTimestamp() != nil {
+		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
+
 	settings, err := e.client.Security().GetAnonymousAccess(ctx)
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetAnonymous)
 	}
 
-	// AnonymousAccess is a singleton that always exists
 	cr.SetConditions(v1alpha1.Available())
 
 	upToDate := isAnonymousAccessUpToDate(cr, settings)
