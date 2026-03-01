@@ -35,6 +35,8 @@ GO_SUBDIRS += cmd internal apis
 # Setup Kubernetes tools
 
 KIND_VERSION = v0.27.0
+CROSSPLANE_CLI_VERSION = v1.19.0
+CROSSPLANE_NAMESPACE = crossplane-system
 -include build/makelib/k8s_tools.mk
 
 # ====================================================================================
@@ -70,6 +72,9 @@ fallthrough: submodules
 # we ensure image is present in daemon.
 xpkg.build.provider-sonatype-nexus: do.build.images
 
+# Ensure crossplane CLI is installed before building xpkgs.
+build.init: $(CROSSPLANE_CLI)
+
 # ====================================================================================
 # Targets
 
@@ -83,16 +88,13 @@ submodules:
 
 # Generate CRDs and DeepCopy methods using controller-gen.
 generate.run:
-	@go install sigs.k8s.io/controller-tools/cmd/controller-gen@latest
-	@$(GOBIN)/controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./apis/..."
-	@$(GOBIN)/controller-gen crd:crdVersions=v1 paths="./apis/..." output:crd:artifacts:config=package/crds
+	@go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.3 object:headerFile="hack/boilerplate.go.txt" paths="./apis/..."
+	@go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.3 crd:crdVersions=v1 paths="./apis/..." output:crd:artifacts:config=package/crds
 
 # ====================================================================================
 # End to End Testing
 
 CROSSPLANE_VERSION = 1.19.0
-CROSSPLANE_CLI_VERSION = v1.19.0
-CROSSPLANE_NAMESPACE = crossplane-system
 -include build/makelib/local.xpkg.mk
 -include build/makelib/controlplane.mk
 
