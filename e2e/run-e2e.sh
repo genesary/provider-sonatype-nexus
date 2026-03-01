@@ -38,10 +38,10 @@ run_tests() {
 
         if bash "$test_script"; then
             log_info "PASSED: $test_name"
-            ((passed++))
+            passed=$((passed + 1))
         else
             log_error "FAILED: $test_name"
-            ((failed++))
+            failed=$((failed + 1))
         fi
 
         echo ""
