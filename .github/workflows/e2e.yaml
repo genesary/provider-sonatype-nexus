@@ -16,25 +16,25 @@ env:
 
 jobs:
   detect-noop:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     outputs:
       noop: ${{ steps.noop.outputs.should_skip }}
     steps:
       - name: Detect No-op Changes
         id: noop
-        uses: fkirc/skip-duplicate-actions@v5
+        uses: fkirc/skip-duplicate-actions@v5.3.1
         with:
           github_token: ${{ github.token }}
           paths_ignore: '["**.md", "**.png", "**.jpg", "**.svg", "docs/**"]'
           do_not_skip: '["workflow_dispatch", "schedule", "push"]'
 
   e2e:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -51,12 +51,12 @@ jobs:
 
       - name: Find the Go Build Cache
         id: go
-        run: echo "cache=$(make go.cachedir)" >> $GITHUB_OUTPUT
+        run: echo "cachedir=$(make go.cachedir)" >> $GITHUB_ENV
 
       - name: Cache the Go Build Cache
         uses: actions/cache@v4
         with:
-          path: ${{ steps.go.outputs.cache }}
+          path: ${{ env.cachedir }}
           key: ${{ runner.os }}-build-e2e-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-build-e2e-
 
@@ -67,8 +67,8 @@ jobs:
           key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-pkg-
 
-      - name: Vendor Dependencies
-        run: make vendor vendor.check
+      - name: Download Go Modules
+        run: make modules.download modules.check
 
       - name: Build Provider
         run: make build

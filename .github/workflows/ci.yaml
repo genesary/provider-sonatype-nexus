@@ -9,33 +9,32 @@ on:
   workflow_dispatch: {}
 
 env:
+  # Common versions
   GO_VERSION: '1.24'
   GOLANGCI_VERSION: 'v1.64'
   DOCKER_BUILDX_VERSION: 'v0.19.0'
 
-  REGISTRY_ORGS: 'ghcr.io/genesary'
-
 jobs:
   detect-noop:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     outputs:
       noop: ${{ steps.noop.outputs.should_skip }}
     steps:
       - name: Detect No-op Changes
         id: noop
-        uses: fkirc/skip-duplicate-actions@v5
+        uses: fkirc/skip-duplicate-actions@v5.3.1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          paths_ignore: '["**.md", "**.png", "**.jpg", "**.svg", "docs/**", "examples/**"]'
+          paths_ignore: '["**.md", "**.png", "**.jpg"]'
           do_not_skip: '["workflow_dispatch", "schedule", "push"]'
 
   lint:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -46,12 +45,12 @@ jobs:
 
       - name: Find the Go Build Cache
         id: go
-        run: echo "cache=$(make go.cachedir)" >> $GITHUB_OUTPUT
+        run: echo "cachedir=$(make go.cachedir)" >> $GITHUB_ENV
 
       - name: Cache the Go Build Cache
         uses: actions/cache@v4
         with:
-          path: ${{ steps.go.outputs.cache }}
+          path: ${{ env.cachedir }}
           key: ${{ runner.os }}-build-lint-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-build-lint-
 
@@ -62,9 +61,11 @@ jobs:
           key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-pkg-
 
-      - name: Vendor Dependencies
-        run: make vendor vendor.check
+      - name: Download Go Modules
+        run: make modules.download modules.check
 
+      # We could run 'make lint' but we prefer this action because it leaves
+      # 'annotations' (i.e. it comments on PRs to point out linter violations).
       - name: Lint
         uses: golangci/golangci-lint-action@v6
         with:
@@ -72,12 +73,12 @@ jobs:
           args: --timeout 10m
 
   check-diff:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -88,12 +89,12 @@ jobs:
 
       - name: Find the Go Build Cache
         id: go
-        run: echo "cache=$(make go.cachedir)" >> $GITHUB_OUTPUT
+        run: echo "cachedir=$(make go.cachedir)" >> $GITHUB_ENV
 
       - name: Cache the Go Build Cache
         uses: actions/cache@v4
         with:
-          path: ${{ steps.go.outputs.cache }}
+          path: ${{ env.cachedir }}
           key: ${{ runner.os }}-build-check-diff-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-build-check-diff-
 
@@ -104,19 +105,26 @@ jobs:
           key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-pkg-
 
-      - name: Vendor Dependencies
-        run: make vendor vendor.check
+      - name: Download Go Modules
+        run: make modules.download modules.check
 
       - name: Check Diff
-        run: make check-diff
+        id: check-diff
+        run: |
+          mkdir -p _output
+          make check-diff
+
+      - name: Show diff
+        if: failure() && steps.check-diff.outcome == 'failure'
+        run: git diff
 
   unit-tests:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -130,12 +138,12 @@ jobs:
 
       - name: Find the Go Build Cache
         id: go
-        run: echo "cache=$(make go.cachedir)" >> $GITHUB_OUTPUT
+        run: echo "cachedir=$(make go.cachedir)" >> $GITHUB_ENV
 
       - name: Cache the Go Build Cache
         uses: actions/cache@v4
         with:
-          path: ${{ steps.go.outputs.cache }}
+          path: ${{ env.cachedir }}
           key: ${{ runner.os }}-build-unit-tests-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-build-unit-tests-
 
@@ -146,13 +154,13 @@ jobs:
           key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-pkg-
 
-      - name: Vendor Dependencies
-        run: make vendor vendor.check
+      - name: Download Go Modules
+        run: make modules.download modules.check
 
       - name: Run Unit Tests
         run: make -j2 test
 
-      - name: Upload Coverage
+      - name: Publish Unit Test Coverage
         uses: codecov/codecov-action@v4
         with:
           flags: unittests
@@ -161,12 +169,12 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   local-deploy:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -180,12 +188,12 @@ jobs:
 
       - name: Find the Go Build Cache
         id: go
-        run: echo "cache=$(make go.cachedir)" >> $GITHUB_OUTPUT
+        run: echo "cachedir=$(make go.cachedir)" >> $GITHUB_ENV
 
       - name: Cache the Go Build Cache
         uses: actions/cache@v4
         with:
-          path: ${{ steps.go.outputs.cache }}
+          path: ${{ env.cachedir }}
           key: ${{ runner.os }}-build-local-deploy-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-build-local-deploy-
 
@@ -196,15 +204,15 @@ jobs:
           key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-pkg-
 
-      - name: Vendor Dependencies
-        run: make vendor vendor.check
+      - name: Download Go Modules
+        run: make modules.download modules.check
 
       - name: Deploying locally built provider package
         run: make local-deploy
 
   publish-artifacts:
-    runs-on: ubuntu-24.04
-    needs: [detect-noop, lint, check-diff, unit-tests, local-deploy]
+    runs-on: ubuntu-22.04
+    needs: detect-noop
     if: needs.detect-noop.outputs.noop != 'true'
     permissions:
       packages: write
@@ -222,6 +230,7 @@ jobs:
           install: true
 
       - name: Login to GHCR
+        if: github.event_name == 'push'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -229,7 +238,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -243,16 +252,12 @@ jobs:
 
       - name: Find the Go Build Cache
         id: go
-        run: echo "cache=$(make go.cachedir)" >> $GITHUB_OUTPUT
-
-      - name: Find the version
-        id: version
-        run: make common.buildvars >> $GITHUB_OUTPUT
+        run: echo "cachedir=$(make go.cachedir)" >> $GITHUB_ENV
 
       - name: Cache the Go Build Cache
         uses: actions/cache@v4
         with:
-          path: ${{ steps.go.outputs.cache }}
+          path: ${{ env.cachedir }}
           key: ${{ runner.os }}-build-publish-artifacts-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-build-publish-artifacts-
 
@@ -263,15 +268,17 @@ jobs:
           key: ${{ runner.os }}-pkg-${{ hashFiles('**/go.sum') }}
           restore-keys: ${{ runner.os }}-pkg-
 
-      - name: Vendor Dependencies
-        run: make vendor vendor.check
+      - name: Download Go Modules
+        run: make modules.download modules.check
 
       - name: Build Artifacts
         run: make -j2 build.all
         env:
+          # We're using docker buildx, which doesn't actually load the images it
+          # builds by default. Specifying --load does so.
           BUILD_ARGS: "--load"
 
-      - name: Upload Artifacts to GitHub
+      - name: Publish Artifacts to GitHub
         uses: actions/upload-artifact@v4
         with:
           name: output
@@ -279,4 +286,4 @@ jobs:
 
       - name: Publish Artifacts
         if: github.event_name == 'push'
-        run: make -j2 publish
+        run: make publish BRANCH_NAME=${GITHUB_REF##*/}

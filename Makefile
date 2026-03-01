@@ -1,15 +1,9 @@
 # ====================================================================================
 # Setup Project
-
-PROJECT_NAME ?= provider-sonatype-nexus
-PROJECT_REPO ?= github.com/genesary/$(PROJECT_NAME)
+PROJECT_NAME := provider-sonatype-nexus
+PROJECT_REPO := github.com/genesary/$(PROJECT_NAME)
 
 PLATFORMS ?= linux_amd64 linux_arm64
-
-# -include will silently skip missing files, which allows us
-# to load those files with a target in the Makefile. If only
-# "include" was used, the make command would fail and refuse
-# to run a target until the include commands succeeded.
 -include build/makelib/common.mk
 
 # ====================================================================================
@@ -20,29 +14,22 @@ PLATFORMS ?= linux_amd64 linux_arm64
 # ====================================================================================
 # Setup Go
 
-# Set a sane default so that the nprocs calculation below is less noisy on the initial
-# loading of this file
 NPROCS ?= 1
-
 GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
-
-GO_REQUIRED_VERSION ?= 1.24
 GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_SUBDIRS += cmd internal apis
+GO111MODULE = on
+GOLANGCILINT_VERSION = 1.64
 -include build/makelib/golang.mk
 
 # ====================================================================================
 # Setup Kubernetes tools
 
-KIND_VERSION = v0.27.0
-CROSSPLANE_CLI_VERSION = v1.19.0
-CROSSPLANE_NAMESPACE = crossplane-system
 -include build/makelib/k8s_tools.mk
 
 # ====================================================================================
 # Setup Images
 
-REGISTRY_ORGS ?= ghcr.io/genesary
 IMAGES = $(PROJECT_NAME)
 -include build/makelib/imagelight.mk
 
@@ -54,42 +41,48 @@ XPKG_REG_ORGS_NO_PROMOTE ?= ghcr.io/genesary
 XPKGS = $(PROJECT_NAME)
 -include build/makelib/xpkg.mk
 
-# ====================================================================================
-# Fallthrough
-
-# run `make help` to see the targets and options
-
-# We want submodules to be set up the first time `make` is run.
-# We manage the build/ folder and its Makefiles as a submodule.
-# The first time `make` is run, the includes of build/*.mk files will
-# all fail, and this target will be run. The next time, the default as defined
-# by the includes will be run instead.
-fallthrough: submodules
-	@echo Initial setup complete. Running make again . . .
-	@make
-
 # NOTE: we force image building to happen prior to xpkg build so that
 # we ensure image is present in daemon.
 xpkg.build.provider-sonatype-nexus: do.build.images
 
-# Ensure crossplane CLI is installed before building xpkgs.
-build.init: $(CROSSPLANE_CLI)
-
-# ====================================================================================
-# Targets
-
-go.cachedir:
-	@go env GOCACHE
+fallthrough: submodules
+	@echo Initial setup complete. Running make again . . .
+	@make
 
 # Update the submodules, such as the common build scripts.
 submodules:
 	@git submodule sync
 	@git submodule update --init --recursive
 
+# NOTE: the build submodule currently overrides XDG_CACHE_HOME in order to
+# force the Helm 3 to use the .work/helm directory. This causes Go on Linux
+# machines to use that directory as the build cache as well. We should adjust
+# this behavior in the build submodule because it is also causing Linux users
+# to duplicate their build cache, but for now we just make it easier to identify
+# its location in CI so that we cache between builds.
+go.cachedir:
+	@go env GOCACHE
+
+go.mod.cachedir:
+	@go env GOMODCACHE
+
+# NOTE: we must ensure up is installed in tool cache prior to build
+# as including the k8s_tools machinery prior to the xpkg machinery sets UP to
+# point to tool cache.
+build.init: $(CROSSPLANE_CLI)
+
 # Generate CRDs and DeepCopy methods using controller-gen.
 generate.run:
 	@go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.3 object:headerFile="hack/boilerplate.go.txt" paths="./apis/..."
 	@go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.3 crd:crdVersions=v1 paths="./apis/..." output:crd:artifacts:config=package/crds
+
+# This is for running out-of-cluster locally, and is for convenience. Running
+# this make target will print out the command which was used. For more control,
+# try running the binary directly with different arguments.
+run: go.build
+	@$(INFO) Running Crossplane locally out-of-cluster . . .
+	@# To see other arguments that can be provided, run the command with --help instead
+	$(GO_OUT_DIR)/provider --debug
 
 # ====================================================================================
 # End to End Testing
@@ -104,7 +97,7 @@ local-deploy: build controlplane.up local.xpkg.deploy.provider.$(PROJECT_NAME)
 	@$(KUBECTL) wait provider.pkg $(PROJECT_NAME) --for condition=Healthy --for condition=Installed --for=create --timeout 5m
 	@$(OK) running locally built provider
 
-.PHONY: submodules fallthrough
+.PHONY: submodules fallthrough run
 
 # ====================================================================================
 # Special Targets
@@ -112,9 +105,11 @@ local-deploy: build controlplane.up local.xpkg.deploy.provider.$(PROJECT_NAME)
 define CROSSPLANE_MAKE_HELP
 Crossplane Targets:
     submodules            Update the submodules, such as the common build scripts.
-    local-deploy          Deploy the provider locally using Kind + Crossplane.
+    run                   Run crossplane locally, out-of-cluster. Useful for development.
 
 endef
+# The reason CROSSPLANE_MAKE_HELP is used instead of CROSSPLANE_HELP is because the crossplane
+# binary will try to use CROSSPLANE_HELP if it is set, and this is for something different.
 export CROSSPLANE_MAKE_HELP
 
 crossplane.help:
@@ -123,6 +118,3 @@ crossplane.help:
 help-special: crossplane.help
 
 .PHONY: crossplane.help help-special
-
-vendor: modules.download
-vendor.check: modules.check
