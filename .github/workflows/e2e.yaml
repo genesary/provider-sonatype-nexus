@@ -11,8 +11,8 @@ on:
 
 env:
   GO_VERSION: '1.24'
+  CROSSPLANE_VERSION: '1.19.0'
   KIND_CLUSTER_NAME: nexus-e2e
-  E2E_REGISTRY: localhost:5001
 
 jobs:
   detect-noop:
@@ -75,50 +75,35 @@ jobs:
         env:
           BUILD_ARGS: "--load"
 
-      - name: Start Local Registry
-        run: |
-          docker run -d --restart=always -p 5001:5000 --network bridge --name kind-registry registry:2
-
       - name: Setup Kind
         uses: helm/kind-action@v1
         with:
           cluster_name: ${{ env.KIND_CLUSTER_NAME }}
           config: e2e/kind-config.yaml
-          wait: 120s
-
-      - name: Connect Registry to Kind Network
-        run: docker network connect kind kind-registry 2>/dev/null || true
+          node_image: kindest/node:v1.31.4@sha256:2cb39f7295fe7eafee0842b1052a599a4fb0f8bcf3f83d96c7f4864c357c6c30
+          wait: 300s
 
       - name: Install Crossplane
         run: |
           helm repo add crossplane-stable https://charts.crossplane.io/stable
           helm repo update
           helm install crossplane crossplane-stable/crossplane \
-            --namespace crossplane-system --create-namespace --wait --timeout 120s
+            --namespace crossplane-system --create-namespace --wait --timeout 120s \
+            --version ${{ env.CROSSPLANE_VERSION }}
 
-      - name: Push xpkg to Local Registry
+      - name: Deploy Provider via local xpkg
         run: |
-          XPKG_PATH=$(ls _output/xpkg/linux_amd64/provider-sonatype-nexus-*.xpkg 2>/dev/null | head -1)
-          if [ -z "$XPKG_PATH" ]; then
-            echo "ERROR: No xpkg file found in _output/xpkg/linux_amd64/"
-            ls -la _output/xpkg/linux_amd64/ 2>/dev/null || echo "Directory does not exist"
-            exit 1
-          fi
-          crossplane xpkg push ${{ env.E2E_REGISTRY }}/provider-sonatype-nexus:e2e \
-            -f "$XPKG_PATH"
+          make local.xpkg.deploy.provider.provider-sonatype-nexus KIND_CLUSTER_NAME=${{ env.KIND_CLUSTER_NAME }}
+
+      - name: Wait for Provider to be healthy
+        run: |
+          kubectl wait --for=condition=Healthy providers.pkg.crossplane.io/provider-sonatype-nexus --timeout=180s
 
       - name: Deploy Nexus
         run: |
           kubectl apply -f e2e/manifests/nexus.yaml
           echo "Waiting for Nexus..."
           kubectl wait --for=condition=available deployment/nexus -n nexus --timeout=300s || true
-
-      - name: Install Provider via Crossplane
-        run: kubectl apply -f e2e/manifests/provider.yaml
-
-      - name: Wait for Provider to be healthy
-        run: |
-          kubectl wait --for=condition=Healthy providers.pkg.crossplane.io/provider-sonatype-nexus --timeout=180s
 
       - name: Apply ProviderConfig
         run: kubectl apply -f e2e/manifests/provider-config.yaml
@@ -152,4 +137,3 @@ jobs:
         if: always()
         run: |
           kind delete cluster --name ${{ env.KIND_CLUSTER_NAME }} || true
-          docker rm -f kind-registry 2>/dev/null || true
