@@ -1,185 +1,126 @@
-# Project settings
-PROJECT_NAME := provider-sonatype-nexus
-PROJECT_REPO := github.com/genesary/$(PROJECT_NAME)
+# ====================================================================================
+# Setup Project
 
-# Image settings
-REGISTRY ?= ghcr.io
-IMAGE_NAME ?= genesary/$(PROJECT_NAME)
-IMAGE_TAG ?= latest
+PROJECT_NAME ?= provider-sonatype-nexus
+PROJECT_REPO ?= github.com/genesary/$(PROJECT_NAME)
 
-# Crossplane package settings
-XPKG_FILE ?= provider-sonatype-nexus.xpkg
+PLATFORMS ?= linux_amd64 linux_arm64
 
-# Go settings
-GO_VERSION := 1.22
-GOPATH ?= $(shell go env GOPATH)
-GOBIN ?= $(GOPATH)/bin
+# -include will silently skip missing files, which allows us
+# to load those files with a target in the Makefile. If only
+# "include" was used, the make command would fail and refuse
+# to run a target until the include commands succeeded.
+-include build/makelib/common.mk
 
-# Tools
-CONTROLLER_GEN := $(GOBIN)/controller-gen
-GOLANGCI_LINT := $(GOBIN)/golangci-lint
+# ====================================================================================
+# Setup Output
 
-# Kubernetes manifests
-CRD_DIR := package/crds
-RBAC_DIR := package/rbac
+-include build/makelib/output.mk
 
-.PHONY: all
-all: generate build test
+# ====================================================================================
+# Setup Go
 
-##@ General
+# Set a sane default so that the nprocs calculation below is less noisy on the initial
+# loading of this file
+NPROCS ?= 1
 
-.PHONY: help
-help: ## Display this help
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
+GO_TEST_PARALLEL := $(shell echo $$(( $(NPROCS) / 2 )))
 
-##@ Development
+GO_REQUIRED_VERSION ?= 1.24
+GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
+GO_SUBDIRS += cmd internal apis
+-include build/makelib/golang.mk
 
-.PHONY: generate
-generate: ## Generate code (CRDs, DeepCopy, etc.)
-	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./apis/..."
-	$(CONTROLLER_GEN) crd:crdVersions=v1 paths="./apis/..." output:crd:artifacts:config=$(CRD_DIR)
+# ====================================================================================
+# Setup Kubernetes tools
 
-.PHONY: fmt
-fmt: ## Run go fmt
-	go fmt ./...
+KIND_VERSION = v0.27.0
+-include build/makelib/k8s_tools.mk
 
-.PHONY: vet
-vet: ## Run go vet
-	go vet ./...
+# ====================================================================================
+# Setup Images
 
-.PHONY: lint
-lint: $(GOLANGCI_LINT) ## Run golangci-lint
-	$(GOLANGCI_LINT) run ./...
+REGISTRY_ORGS ?= ghcr.io/genesary
+IMAGES = $(PROJECT_NAME)
+-include build/makelib/imagelight.mk
 
-.PHONY: tidy
-tidy: ## Run go mod tidy
-	go mod tidy
+# ====================================================================================
+# Setup XPKG
 
-##@ Build
+XPKG_REG_ORGS ?= ghcr.io/genesary
+XPKG_REG_ORGS_NO_PROMOTE ?= ghcr.io/genesary
+XPKGS = $(PROJECT_NAME)
+-include build/makelib/xpkg.mk
 
-.PHONY: build
-build: generate fmt vet ## Build the provider binary
-	go build -o bin/provider ./cmd/provider
+# ====================================================================================
+# Fallthrough
 
-.PHONY: run
-run: generate fmt vet ## Run the provider locally
-	go run ./cmd/provider
+# run `make help` to see the targets and options
 
-##@ Testing
+# We want submodules to be set up the first time `make` is run.
+# We manage the build/ folder and its Makefiles as a submodule.
+# The first time `make` is run, the includes of build/*.mk files will
+# all fail, and this target will be run. The next time, the default as defined
+# by the includes will be run instead.
+fallthrough: submodules
+	@echo Initial setup complete. Running make again . . .
+	@make
 
-.PHONY: test
-test: generate fmt vet ## Run unit tests
-	go test -v -race -coverprofile=coverage.out ./...
+# NOTE: we force image building to happen prior to xpkg build so that
+# we ensure image is present in daemon.
+xpkg.build.provider-sonatype-nexus: do.build.images
 
-.PHONY: test-integration
-test-integration: ## Run integration tests (requires running Nexus)
-	go test -v -tags=integration ./...
+# ====================================================================================
+# Targets
 
-.PHONY: coverage
-coverage: test ## Generate coverage report
-	go tool cover -html=coverage.out -o coverage.html
+go.cachedir:
+	@go env GOCACHE
 
-##@ Docker
+# Update the submodules, such as the common build scripts.
+submodules:
+	@git submodule sync
+	@git submodule update --init --recursive
 
-.PHONY: docker-build
-docker-build: ## Build Docker image
-	docker build -t $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) .
+# Generate CRDs and DeepCopy methods using controller-gen.
+generate.run:
+	@go install sigs.k8s.io/controller-tools/cmd/controller-gen@latest
+	@$(GOBIN)/controller-gen object:headerFile="hack/boilerplate.go.txt" paths="./apis/..."
+	@$(GOBIN)/controller-gen crd:crdVersions=v1 paths="./apis/..." output:crd:artifacts:config=package/crds
 
-.PHONY: docker-push
-docker-push: ## Push Docker image
-	docker push $(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG)
+# ====================================================================================
+# End to End Testing
 
-##@ Crossplane Package
+CROSSPLANE_VERSION = 1.19.0
+CROSSPLANE_CLI_VERSION = v1.19.0
+CROSSPLANE_NAMESPACE = crossplane-system
+-include build/makelib/local.xpkg.mk
+-include build/makelib/controlplane.mk
 
-.PHONY: xpkg-build
-xpkg-build: docker-build ## Build Crossplane package (xpkg) with embedded runtime
-	crossplane xpkg build \
-		--package-root=package \
-		--embed-runtime-image=$(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) \
-		--package-file=$(XPKG_FILE)
+local-deploy: build controlplane.up local.xpkg.deploy.provider.$(PROJECT_NAME)
+	@$(INFO) running locally built provider
+	@$(KUBECTL) wait crd providers.pkg.crossplane.io --for=create --timeout 5m
+	@$(KUBECTL) wait provider.pkg $(PROJECT_NAME) --for condition=Healthy --for condition=Installed --for=create --timeout 5m
+	@$(OK) running locally built provider
 
-.PHONY: xpkg-push
-xpkg-push: ## Push Crossplane package to registry
-	crossplane xpkg push \
-		$(REGISTRY)/$(IMAGE_NAME):$(IMAGE_TAG) \
-		-f $(XPKG_FILE)
+.PHONY: submodules fallthrough
 
-##@ Install Tools
+# ====================================================================================
+# Special Targets
 
-.PHONY: install-tools
-install-tools: $(CONTROLLER_GEN) $(GOLANGCI_LINT) ## Install required tools
+define CROSSPLANE_MAKE_HELP
+Crossplane Targets:
+    submodules            Update the submodules, such as the common build scripts.
+    local-deploy          Deploy the provider locally using Kind + Crossplane.
 
-$(CONTROLLER_GEN):
-	go install sigs.k8s.io/controller-tools/cmd/controller-gen@latest
+endef
+export CROSSPLANE_MAKE_HELP
 
-$(GOLANGCI_LINT):
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+crossplane.help:
+	@echo "$$CROSSPLANE_MAKE_HELP"
 
-##@ Clean
+help-special: crossplane.help
 
-.PHONY: clean
-clean: ## Clean build artifacts
-	rm -rf bin/
-	rm -f coverage.out coverage.html
-	rm -f $(XPKG_FILE)
+.PHONY: crossplane.help help-special
 
-.PHONY: clean-generated
-clean-generated: ## Clean generated files
-	rm -f apis/v1alpha1/zz_generated.deepcopy.go
-	rm -rf $(CRD_DIR)/*
-
-##@ E2E Testing
-
-KIND_CLUSTER_NAME ?= nexus-e2e
-E2E_IMAGE_TAG ?= e2e
-
-E2E_REGISTRY ?= localhost:5001
-
-.PHONY: e2e-setup
-e2e-setup: xpkg-build ## Setup e2e test environment (Kind + Crossplane + Nexus + Provider)
-	@echo "Starting local registry..."
-	docker rm -f kind-registry 2>/dev/null || true
-	docker run -d --restart=always -p 5001:5000 --network bridge --name kind-registry registry:2
-	@echo "Creating Kind cluster..."
-	kind create cluster --config e2e/kind-config.yaml --wait 60s || true
-	docker network connect kind kind-registry 2>/dev/null || true
-	@echo "Installing Crossplane..."
-	helm repo add crossplane-stable https://charts.crossplane.io/stable 2>/dev/null || true
-	helm repo update
-	helm upgrade --install crossplane crossplane-stable/crossplane \
-		--namespace crossplane-system --create-namespace --wait --timeout 120s
-	@echo "Pushing xpkg to local registry..."
-	crossplane xpkg push $(E2E_REGISTRY)/provider-sonatype-nexus:$(E2E_IMAGE_TAG) -f $(XPKG_FILE)
-	@echo "Deploying Nexus..."
-	kubectl apply -f e2e/manifests/nexus.yaml
-	@echo "Installing Provider via Crossplane..."
-	kubectl apply -f e2e/manifests/provider.yaml
-	@echo "Waiting for Provider to be healthy..."
-	kubectl wait --for=condition=Healthy providers.pkg.crossplane.io/provider-sonatype-nexus --timeout=180s
-	@echo "Applying ProviderConfig..."
-	kubectl apply -f e2e/manifests/provider-config.yaml
-	@echo "Waiting for Nexus..."
-	kubectl wait --for=condition=available deployment/nexus -n nexus --timeout=300s || echo "Nexus still starting..."
-	@echo "E2E environment setup complete!"
-	@echo "Nexus will be available at http://localhost:8081 (default: admin/admin123)"
-
-.PHONY: e2e-wait
-e2e-wait: ## Wait for all e2e components to be ready
-	chmod +x e2e/tests/*.sh e2e/run-e2e.sh
-	NEXUS_URL=http://localhost:8081 ./e2e/tests/00-wait-ready.sh
-
-.PHONY: e2e-run
-e2e-run: ## Run e2e tests
-	chmod +x e2e/tests/*.sh e2e/run-e2e.sh
-	NEXUS_URL=http://localhost:8081 ./e2e/run-e2e.sh run
-
-.PHONY: e2e-cleanup
-e2e-cleanup: ## Cleanup e2e test environment
-	kind delete cluster --name $(KIND_CLUSTER_NAME) || true
-	docker rm -f kind-registry 2>/dev/null || true
-
-.PHONY: e2e
-e2e: e2e-setup e2e-wait e2e-run ## Run full e2e test cycle (setup + tests + keeps cluster)
-
-.PHONY: e2e-full
-e2e-full: e2e e2e-cleanup ## Run full e2e test cycle with cleanup
+vendor: modules.download
+vendor.check: modules.check
