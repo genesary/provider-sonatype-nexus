@@ -31,6 +31,7 @@ GOLANGCILINT_VERSION = 1.64
 # Setup Images
 
 IMAGES = $(PROJECT_NAME)
+RELEASE_BRANCH_FILTER ?= main master release-% v%
 -include build/makelib/imagelight.mk
 
 # ====================================================================================
