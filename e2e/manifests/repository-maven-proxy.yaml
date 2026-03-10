@@ -22,6 +22,15 @@ spec:
     httpClient:
       blocked: false
       autoBlock: true
+      connection:
+        useTrustStore: true
+      authentication:
+        type: username
+        username: proxyuser
+        passwordSecretRef:
+          name: e2e-proxy-auth
+          namespace: default
+          key: password
     negativeCache:
       enabled: true
       timeToLive: 1440
