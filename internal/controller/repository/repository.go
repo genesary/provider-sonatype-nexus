@@ -17,6 +17,7 @@ import (
 	"context"
 	"strings"
 
+	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/crossplane/crossplane-runtime/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/pkg/event"
 	"github.com/crossplane/crossplane-runtime/pkg/meta"
@@ -40,7 +41,26 @@ const (
 	errCreateRepository = "cannot create repository in Nexus"
 	errUpdateRepository = "cannot update repository in Nexus"
 	errDeleteRepository = "cannot delete repository from Nexus"
+	errResolvePassword  = "cannot resolve password from secret"
 )
+
+// contextKey is used for passing resolved values through context.
+type contextKey string
+
+const resolvedPasswordKey contextKey = "resolvedHTTPClientPassword"
+
+// withResolvedPassword stores a resolved password in the context.
+func withResolvedPassword(ctx context.Context, password string) context.Context {
+	return context.WithValue(ctx, resolvedPasswordKey, password)
+}
+
+// getResolvedPassword retrieves the resolved password from the context.
+func getResolvedPassword(ctx context.Context) string {
+	if v, ok := ctx.Value(resolvedPasswordKey).(string); ok {
+		return v
+	}
+	return ""
+}
 
 // Setup adds a controller that reconciles Repository managed resources.
 func Setup(mgr ctrl.Manager, o controller.Options) error {
@@ -97,12 +117,13 @@ func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.E
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{client: nc}, nil
+	return &external{client: nc, kube: c.kube}, nil
 }
 
 // external implements managed.ExternalClient.
 type external struct {
 	client nexus.Client
+	kube   client.Client
 }
 
 // Observe the external resource.
@@ -153,6 +174,11 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.Errorf("unsupported format: %s", format)
 	}
 
+	ctx, err := e.resolveHTTPClientPassword(ctx, cr)
+	if err != nil {
+		return managed.ExternalCreation{}, errors.Wrap(err, errResolvePassword)
+	}
+
 	if err := handler.Create(ctx, e.client, cr, repoType); err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateRepository)
 	}
@@ -179,6 +205,11 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	handler := GetHandler(format)
 	if handler == nil {
 		return managed.ExternalUpdate{}, errors.Errorf("unsupported format: %s", format)
+	}
+
+	ctx, err := e.resolveHTTPClientPassword(ctx, cr)
+	if err != nil {
+		return managed.ExternalUpdate{}, errors.Wrap(err, errResolvePassword)
 	}
 
 	if err := handler.Update(ctx, e.client, name, cr, repoType); err != nil {
@@ -213,6 +244,27 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 	}
 
 	return nil
+}
+
+// resolveHTTPClientPassword resolves the password from a Kubernetes secret if
+// httpClient.authentication.passwordSecretRef is configured. The resolved password
+// is stored in the context for use by shared HTTP client generation functions.
+func (e *external) resolveHTTPClientPassword(ctx context.Context, cr *v1alpha1.Repository) (context.Context, error) {
+	if cr.Spec.ForProvider.HTTPClient == nil ||
+		cr.Spec.ForProvider.HTTPClient.Authentication == nil ||
+		cr.Spec.ForProvider.HTTPClient.Authentication.PasswordSecretRef == nil {
+		return ctx, nil
+	}
+
+	ref := cr.Spec.ForProvider.HTTPClient.Authentication.PasswordSecretRef
+	data, err := resource.ExtractSecret(ctx, e.kube, xpv1.CommonCredentialSelectors{
+		SecretRef: ref,
+	})
+	if err != nil {
+		return ctx, err
+	}
+
+	return withResolvedPassword(ctx, string(data)), nil
 }
 
 // isNotFound checks if an error indicates a resource was not found.

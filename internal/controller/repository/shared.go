@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"context"
+
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 
 	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
@@ -125,7 +127,7 @@ func generateNegativeCache(cr *v1alpha1.Repository) repository.NegativeCache {
 }
 
 // generateHTTPClient converts HTTP client configuration.
-func generateHTTPClient(cr *v1alpha1.Repository) repository.HTTPClient {
+func generateHTTPClient(ctx context.Context, cr *v1alpha1.Repository) repository.HTTPClient {
 	hc := repository.HTTPClient{
 		Blocked:   false,
 		AutoBlock: true,
@@ -138,13 +140,19 @@ func generateHTTPClient(cr *v1alpha1.Repository) repository.HTTPClient {
 		if cr.Spec.ForProvider.HTTPClient.AutoBlock != nil {
 			hc.AutoBlock = *cr.Spec.ForProvider.HTTPClient.AutoBlock
 		}
+		if cr.Spec.ForProvider.HTTPClient.Connection != nil {
+			hc.Connection = generateHTTPClientConnection(cr.Spec.ForProvider.HTTPClient.Connection)
+		}
+		if cr.Spec.ForProvider.HTTPClient.Authentication != nil {
+			hc.Authentication = generateHTTPClientAuth(ctx, cr.Spec.ForProvider.HTTPClient.Authentication)
+		}
 	}
 
 	return hc
 }
 
 // generateHTTPClientWithPreemptiveAuth converts HTTP client configuration with preemptive auth.
-func generateHTTPClientWithPreemptiveAuth(cr *v1alpha1.Repository) repository.HTTPClientWithPreemptiveAuth {
+func generateHTTPClientWithPreemptiveAuth(ctx context.Context, cr *v1alpha1.Repository) repository.HTTPClientWithPreemptiveAuth {
 	hc := repository.HTTPClientWithPreemptiveAuth{
 		Blocked:   false,
 		AutoBlock: true,
@@ -157,9 +165,79 @@ func generateHTTPClientWithPreemptiveAuth(cr *v1alpha1.Repository) repository.HT
 		if cr.Spec.ForProvider.HTTPClient.AutoBlock != nil {
 			hc.AutoBlock = *cr.Spec.ForProvider.HTTPClient.AutoBlock
 		}
+		if cr.Spec.ForProvider.HTTPClient.Connection != nil {
+			hc.Connection = generateHTTPClientConnection(cr.Spec.ForProvider.HTTPClient.Connection)
+		}
+		if cr.Spec.ForProvider.HTTPClient.Authentication != nil {
+			hc.Authentication = generateHTTPClientAuthWithPreemptive(ctx, cr.Spec.ForProvider.HTTPClient.Authentication)
+		}
 	}
 
 	return hc
+}
+
+// generateHTTPClientConnection converts connection configuration.
+func generateHTTPClientConnection(conn *v1alpha1.HTTPClientConnection) *repository.HTTPClientConnection {
+	rc := &repository.HTTPClientConnection{}
+
+	if conn.Retries != nil {
+		retries := int(*conn.Retries)
+		rc.Retries = &retries
+	}
+	if conn.UserAgentSuffix != nil {
+		rc.UserAgentSuffix = *conn.UserAgentSuffix
+	}
+	if conn.Timeout != nil {
+		timeout := int(*conn.Timeout)
+		rc.Timeout = &timeout
+	}
+	rc.EnableCircularRedirects = conn.EnableCircularRedirects
+	rc.EnableCookies = conn.EnableCookies
+	rc.UseTrustStore = conn.UseTrustStore
+
+	return rc
+}
+
+// generateHTTPClientAuth converts authentication configuration.
+func generateHTTPClientAuth(ctx context.Context, auth *v1alpha1.HTTPClientAuthentication) *repository.HTTPClientAuthentication {
+	ra := &repository.HTTPClientAuthentication{}
+
+	if auth.Type != nil {
+		ra.Type = repository.HTTPClientAuthenticationType(*auth.Type)
+	}
+	if auth.Username != nil {
+		ra.Username = *auth.Username
+	}
+	if auth.NTLMHost != nil {
+		ra.NTLMHost = *auth.NTLMHost
+	}
+	if auth.NTLMDomain != nil {
+		ra.NTLMDomain = *auth.NTLMDomain
+	}
+	ra.Password = getResolvedPassword(ctx)
+
+	return ra
+}
+
+// generateHTTPClientAuthWithPreemptive converts authentication configuration with preemptive support.
+func generateHTTPClientAuthWithPreemptive(ctx context.Context, auth *v1alpha1.HTTPClientAuthentication) *repository.HTTPClientAuthenticationWithPreemptive {
+	ra := &repository.HTTPClientAuthenticationWithPreemptive{}
+
+	if auth.Type != nil {
+		ra.Type = repository.HTTPClientAuthenticationType(*auth.Type)
+	}
+	if auth.Username != nil {
+		ra.Username = *auth.Username
+	}
+	if auth.NTLMHost != nil {
+		ra.NTLMHost = *auth.NTLMHost
+	}
+	if auth.NTLMDomain != nil {
+		ra.NTLMDomain = *auth.NTLMDomain
+	}
+	ra.Password = getResolvedPassword(ctx)
+
+	return ra
 }
 
 // generateGroupConfig converts group configuration.

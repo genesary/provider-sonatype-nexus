@@ -47,7 +47,7 @@ func (h *DockerHandler) Create(ctx context.Context, client nexus.Client, cr *v1a
 	case "hosted":
 		return client.Repository().CreateDockerHosted(ctx, h.generateHosted(cr))
 	case "proxy":
-		return client.Repository().CreateDockerProxy(ctx, h.generateProxy(cr))
+		return client.Repository().CreateDockerProxy(ctx, h.generateProxy(ctx, cr))
 	case "group":
 		return client.Repository().CreateDockerGroup(ctx, h.generateGroup(cr))
 	}
@@ -59,7 +59,7 @@ func (h *DockerHandler) Update(ctx context.Context, client nexus.Client, name st
 	case "hosted":
 		return client.Repository().UpdateDockerHosted(ctx, name, h.generateHosted(cr))
 	case "proxy":
-		return client.Repository().UpdateDockerProxy(ctx, name, h.generateProxy(cr))
+		return client.Repository().UpdateDockerProxy(ctx, name, h.generateProxy(ctx, cr))
 	case "group":
 		return client.Repository().UpdateDockerGroup(ctx, name, h.generateGroup(cr))
 	}
@@ -88,7 +88,7 @@ func (h *DockerHandler) generateHosted(cr *v1alpha1.Repository) repository.Docke
 	}
 }
 
-func (h *DockerHandler) generateProxy(cr *v1alpha1.Repository) repository.DockerProxyRepository {
+func (h *DockerHandler) generateProxy(ctx context.Context, cr *v1alpha1.Repository) repository.DockerProxyRepository {
 	return repository.DockerProxyRepository{
 		Name:          cr.Spec.ForProvider.Name,
 		Online:        getOnline(cr),
@@ -96,7 +96,7 @@ func (h *DockerHandler) generateProxy(cr *v1alpha1.Repository) repository.Docker
 		Docker:        generateDockerConfig(cr),
 		Proxy:         generateProxyConfig(cr),
 		NegativeCache: generateNegativeCache(cr),
-		HTTPClient:    generateHTTPClient(cr),
+		HTTPClient:    generateHTTPClient(ctx, cr),
 		DockerProxy: repository.DockerProxy{
 			IndexType: repository.DockerProxyIndexTypeHub,
 		},
