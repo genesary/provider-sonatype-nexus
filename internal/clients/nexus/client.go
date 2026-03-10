@@ -2,8 +2,13 @@
 package nexus
 
 import (
+	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
 
 	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
 	"github.com/datadrivers/go-nexus-client/nexus3"
@@ -27,11 +32,32 @@ type Credentials struct {
 	Insecure bool   `json:"insecure"`
 }
 
+// LicenseDetails represents the response from the Nexus Licensing API.
+type LicenseDetails struct {
+	ContactCompany string `json:"contactCompany,omitempty"`
+	ContactEmail   string `json:"contactEmail,omitempty"`
+	ContactName    string `json:"contactName,omitempty"`
+	EffectiveDate  string `json:"effectiveDate,omitempty"`
+	ExpirationDate string `json:"expirationDate,omitempty"`
+	Features       string `json:"features,omitempty"`
+	Fingerprint    string `json:"fingerprint,omitempty"`
+	LicenseType    string `json:"licenseType,omitempty"`
+	LicensedUsers  string `json:"licensedUsers,omitempty"`
+}
+
+// LicenseService provides methods for managing the Nexus license.
+type LicenseService interface {
+	GetLicense(ctx context.Context) (*LicenseDetails, error)
+	InstallLicense(ctx context.Context, licenseBytes []byte) (*LicenseDetails, error)
+	DeleteLicense(ctx context.Context) error
+}
+
 // Client is an interface for interacting with the Nexus API.
 type Client interface {
 	BlobStore() BlobStoreService
 	Repository() RepositoryService
 	Security() SecurityService
+	License() LicenseService
 }
 
 // BlobStoreService provides methods for managing blob stores.
@@ -350,6 +376,7 @@ type SecurityService interface {
 // nexusClientWrapper implements the Client interface.
 type nexusClientWrapper struct {
 	client *nexus3.NexusClient
+	creds  Credentials
 }
 
 // blobStoreService implements BlobStoreService.
@@ -381,7 +408,7 @@ func NewClient(creds Credentials) (Client, error) {
 		return nil, errors.New("failed to create Nexus client")
 	}
 
-	return &nexusClientWrapper{client: nc}, nil
+	return &nexusClientWrapper{client: nc, creds: creds}, nil
 }
 
 // GetCredentialsFromSecret extracts Nexus credentials from a Kubernetes secret.
@@ -458,6 +485,111 @@ func (c *nexusClientWrapper) Repository() RepositoryService {
 // Security returns the SecurityService.
 func (c *nexusClientWrapper) Security() SecurityService {
 	return &securityService{client: c.client}
+}
+
+func (c *nexusClientWrapper) License() LicenseService {
+	return &licenseService{creds: c.creds}
+}
+
+// licenseService implements LicenseService using direct HTTP calls
+// because the go-nexus-client library does not support the licensing API.
+type licenseService struct {
+	creds Credentials
+}
+
+func (s *licenseService) httpClient() *http.Client {
+	transport := &http.Transport{}
+	if s.creds.Insecure {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec
+	}
+	return &http.Client{Transport: transport}
+}
+
+func (s *licenseService) doRequest(req *http.Request) (*http.Response, error) {
+	req.SetBasicAuth(s.creds.Username, s.creds.Password)
+	return s.httpClient().Do(req)
+}
+
+// GetLicense retrieves the current license details from Nexus.
+func (s *licenseService) GetLicense(ctx context.Context) (*LicenseDetails, error) {
+	url := fmt.Sprintf("%s/service/rest/v1/system/license", s.creds.URL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot create request")
+	}
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := s.doRequest(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot execute request")
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusNoContent {
+		return nil, nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var details LicenseDetails
+	if err := json.NewDecoder(resp.Body).Decode(&details); err != nil {
+		return nil, errors.Wrap(err, "cannot decode response")
+	}
+	return &details, nil
+}
+
+// InstallLicense installs a license by sending the raw license bytes to Nexus.
+func (s *licenseService) InstallLicense(ctx context.Context, licenseBytes []byte) (*LicenseDetails, error) {
+	url := fmt.Sprintf("%s/service/rest/v1/system/license", s.creds.URL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(licenseBytes))
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot create request")
+	}
+	req.Header.Set("Content-Type", "application/octet-stream")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := s.doRequest(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot execute request")
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var details LicenseDetails
+	if err := json.NewDecoder(resp.Body).Decode(&details); err != nil {
+		return nil, errors.Wrap(err, "cannot decode response")
+	}
+	return &details, nil
+}
+
+// DeleteLicense removes the current license from Nexus.
+func (s *licenseService) DeleteLicense(ctx context.Context) error {
+	url := fmt.Sprintf("%s/service/rest/v1/system/license", s.creds.URL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, url, nil)
+	if err != nil {
+		return errors.Wrap(err, "cannot create request")
+	}
+
+	resp, err := s.doRequest(req)
+	if err != nil {
+		return errors.Wrap(err, "cannot execute request")
+	}
+	defer resp.Body.Close() //nolint:errcheck
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil
+	}
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("unexpected status %d: %s", resp.StatusCode, string(body))
+	}
+	return nil
 }
 
 // BlobStoreService implementations

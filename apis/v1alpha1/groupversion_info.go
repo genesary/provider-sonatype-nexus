@@ -115,3 +115,11 @@ var (
 	UserTokenConfigurationKindAPIVersion   = UserTokenConfigurationKind + "." + SchemeGroupVersion.String()
 	UserTokenConfigurationGroupVersionKind = SchemeGroupVersion.WithKind(UserTokenConfigurationKind)
 )
+
+// License type metadata.
+var (
+	LicenseKind             = reflect.TypeOf(License{}).Name()
+	LicenseGroupKind        = schema.GroupKind{Group: Group, Kind: LicenseKind}.String()
+	LicenseKindAPIVersion   = LicenseKind + "." + SchemeGroupVersion.String()
+	LicenseGroupVersionKind = SchemeGroupVersion.WithKind(LicenseKind)
+)

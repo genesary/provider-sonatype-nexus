@@ -690,6 +690,68 @@ func (mg *UserTokenConfiguration) SetWriteConnectionSecretToReference(r *xpv1.Se
 	mg.Spec.WriteConnectionSecretToReference = r
 }
 
+// License managed resource interface implementations
+
+// GetCondition of this License.
+func (mg *License) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+	return mg.Status.GetCondition(ct)
+}
+
+// SetConditions of this License.
+func (mg *License) SetConditions(c ...xpv1.Condition) {
+	mg.Status.SetConditions(c...)
+}
+
+// GetDeletionPolicy of this License.
+func (mg *License) GetDeletionPolicy() xpv1.DeletionPolicy {
+	return mg.Spec.DeletionPolicy
+}
+
+// SetDeletionPolicy of this License.
+func (mg *License) SetDeletionPolicy(r xpv1.DeletionPolicy) {
+	mg.Spec.DeletionPolicy = r
+}
+
+// GetManagementPolicies of this License.
+func (mg *License) GetManagementPolicies() xpv1.ManagementPolicies {
+	return mg.Spec.ManagementPolicies
+}
+
+// SetManagementPolicies of this License.
+func (mg *License) SetManagementPolicies(r xpv1.ManagementPolicies) {
+	mg.Spec.ManagementPolicies = r
+}
+
+// GetProviderConfigReference of this License.
+func (mg *License) GetProviderConfigReference() *xpv1.Reference {
+	return mg.Spec.ProviderConfigReference
+}
+
+// SetProviderConfigReference of this License.
+func (mg *License) SetProviderConfigReference(r *xpv1.Reference) {
+	mg.Spec.ProviderConfigReference = r
+}
+
+// GetPublishConnectionDetailsTo of this License.
+func (mg *License) GetPublishConnectionDetailsTo() *xpv1.PublishConnectionDetailsTo {
+	return mg.Spec.PublishConnectionDetailsTo
+}
+
+// SetPublishConnectionDetailsTo of this License.
+func (mg *License) SetPublishConnectionDetailsTo(r *xpv1.PublishConnectionDetailsTo) {
+	mg.Spec.PublishConnectionDetailsTo = r
+}
+
+// GetWriteConnectionSecretToReference of this License.
+func (mg *License) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
+	return mg.Spec.WriteConnectionSecretToReference
+}
+
+// SetWriteConnectionSecretToReference of this License.
+func (mg *License) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
+	mg.Spec.WriteConnectionSecretToReference = r
+}
+
 // ProviderConfigUsage interface implementations (different pattern - non-pointer references)
 
 // GetProviderConfigReference of this ProviderConfigUsage.

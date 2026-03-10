@@ -1,0 +1,18 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: License
+metadata:
+  name: nexus-license
+spec:
+  forProvider:
+    licenseSecretRef:
+      name: nexus-license-file
+      namespace: crossplane-system
+      key: license.lic
+  providerConfigRef:
+    name: nexus-provider-config
+---
+# The license file must be stored in a Kubernetes Secret.
+# Create it with:
+#   kubectl create secret generic nexus-license-file \
+#     --from-file=license.lic=/path/to/your/sonatype-license.lic \
+#     -n crossplane-system

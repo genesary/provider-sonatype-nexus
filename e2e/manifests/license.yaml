@@ -1,0 +1,12 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: License
+metadata:
+  name: e2e-test-license
+spec:
+  forProvider:
+    licenseSecretRef:
+      name: e2e-license-file
+      namespace: default
+      key: license.lic
+  providerConfigRef:
+    name: default

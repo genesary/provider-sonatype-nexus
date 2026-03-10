@@ -9,6 +9,7 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/blobstore"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/contentselector"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/ldap"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/license"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/privilege"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/repository"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/role"
@@ -26,6 +27,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		blobstore.Setup,
 		contentselector.Setup,
 		ldap.Setup,
+		license.Setup,
 		privilege.Setup,
 		repository.Setup,
 		role.Setup,

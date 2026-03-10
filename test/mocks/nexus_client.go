@@ -18,6 +18,7 @@ type MockClient struct {
 	MockBlobStore  *MockBlobStoreService
 	MockRepository *MockRepositoryService
 	MockSecurity   *MockSecurityService
+	MockLicense    *MockLicenseService
 }
 
 // NewMockClient creates a new MockClient with default mocks.
@@ -26,6 +27,7 @@ func NewMockClient() *MockClient {
 		MockBlobStore:  &MockBlobStoreService{},
 		MockRepository: &MockRepositoryService{},
 		MockSecurity:   &MockSecurityService{},
+		MockLicense:    &MockLicenseService{},
 	}
 }
 
@@ -42,6 +44,11 @@ func (m *MockClient) Repository() nexus.RepositoryService {
 // Security returns the mock security service.
 func (m *MockClient) Security() nexus.SecurityService {
 	return m.MockSecurity
+}
+
+// License returns the mock license service.
+func (m *MockClient) License() nexus.LicenseService {
+	return m.MockLicense
 }
 
 // MockBlobStoreService is a mock implementation of nexus.BlobStoreService.
@@ -1998,6 +2005,37 @@ func (m *MockSecurityService) GetUserTokenConfiguration(ctx context.Context) (*s
 func (m *MockSecurityService) UpdateUserTokenConfiguration(ctx context.Context, config security.UserTokenConfiguration) error {
 	if m.UpdateUserTokenConfigFn != nil {
 		return m.UpdateUserTokenConfigFn(ctx, config)
+	}
+	return nil
+}
+
+// MockLicenseService is a mock implementation of nexus.LicenseService.
+type MockLicenseService struct {
+	GetLicenseFn     func(ctx context.Context) (*nexus.LicenseDetails, error)
+	InstallLicenseFn func(ctx context.Context, licenseBytes []byte) (*nexus.LicenseDetails, error)
+	DeleteLicenseFn  func(ctx context.Context) error
+}
+
+// GetLicense mock implementation.
+func (m *MockLicenseService) GetLicense(ctx context.Context) (*nexus.LicenseDetails, error) {
+	if m.GetLicenseFn != nil {
+		return m.GetLicenseFn(ctx)
+	}
+	return nil, nil
+}
+
+// InstallLicense mock implementation.
+func (m *MockLicenseService) InstallLicense(ctx context.Context, licenseBytes []byte) (*nexus.LicenseDetails, error) {
+	if m.InstallLicenseFn != nil {
+		return m.InstallLicenseFn(ctx, licenseBytes)
+	}
+	return nil, nil
+}
+
+// DeleteLicense mock implementation.
+func (m *MockLicenseService) DeleteLicense(ctx context.Context) error {
+	if m.DeleteLicenseFn != nil {
+		return m.DeleteLicenseFn(ctx)
 	}
 	return nil
 }
