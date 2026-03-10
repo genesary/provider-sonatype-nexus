@@ -115,3 +115,11 @@ var (
 	UserTokenConfigurationKindAPIVersion   = UserTokenConfigurationKind + "." + SchemeGroupVersion.String()
 	UserTokenConfigurationGroupVersionKind = SchemeGroupVersion.WithKind(UserTokenConfigurationKind)
 )
+
+// SecuritySSLTruststore type metadata.
+var (
+	SecuritySSLTruststoreKind             = reflect.TypeOf(SecuritySSLTruststore{}).Name()
+	SecuritySSLTruststoreGroupKind        = schema.GroupKind{Group: Group, Kind: SecuritySSLTruststoreKind}.String()
+	SecuritySSLTruststoreKindAPIVersion   = SecuritySSLTruststoreKind + "." + SchemeGroupVersion.String()
+	SecuritySSLTruststoreGroupVersionKind = SchemeGroupVersion.WithKind(SecuritySSLTruststoreKind)
+)

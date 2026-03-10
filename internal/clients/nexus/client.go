@@ -27,11 +27,19 @@ type Credentials struct {
 	Insecure bool   `json:"insecure"`
 }
 
+// SSLService provides methods for managing SSL truststore certificates.
+type SSLService interface {
+	AddCertificate(ctx context.Context, cert *security.SSLCertificate) error
+	RemoveCertificate(ctx context.Context, id string) error
+	ListCertificates(ctx context.Context) ([]security.SSLCertificate, error)
+}
+
 // Client is an interface for interacting with the Nexus API.
 type Client interface {
 	BlobStore() BlobStoreService
 	Repository() RepositoryService
 	Security() SecurityService
+	SSL() SSLService
 }
 
 // BlobStoreService provides methods for managing blob stores.
@@ -367,6 +375,11 @@ type securityService struct {
 	client *nexus3.NexusClient
 }
 
+// sslService implements SSLService.
+type sslService struct {
+	client *nexus3.NexusClient
+}
+
 // NewClient creates a new Nexus client from the provided credentials.
 func NewClient(creds Credentials) (Client, error) {
 	cfg := client.Config{
@@ -458,6 +471,11 @@ func (c *nexusClientWrapper) Repository() RepositoryService {
 // Security returns the SecurityService.
 func (c *nexusClientWrapper) Security() SecurityService {
 	return &securityService{client: c.client}
+}
+
+// SSL returns the SSLService.
+func (c *nexusClientWrapper) SSL() SSLService {
+	return &sslService{client: c.client}
 }
 
 // BlobStoreService implementations
@@ -1632,4 +1650,28 @@ func (s *securityService) GetUserTokenConfiguration(ctx context.Context) (*secur
 // UpdateUserTokenConfiguration updates the user token configuration.
 func (s *securityService) UpdateUserTokenConfiguration(ctx context.Context, config security.UserTokenConfiguration) error {
 	return s.client.Security.UserTokens.Configure(config)
+}
+
+// SSL Truststore management
+
+// AddCertificate adds a certificate to the Nexus truststore.
+func (s *sslService) AddCertificate(ctx context.Context, cert *security.SSLCertificate) error {
+	return s.client.Security.SSL.AddCertificate(cert)
+}
+
+// RemoveCertificate removes a certificate from the Nexus truststore by ID.
+func (s *sslService) RemoveCertificate(ctx context.Context, id string) error {
+	return s.client.Security.SSL.RemoveCertificate(id)
+}
+
+// ListCertificates retrieves all certificates in the Nexus truststore.
+func (s *sslService) ListCertificates(ctx context.Context) ([]security.SSLCertificate, error) {
+	certs, err := s.client.Security.SSL.ListCertificates()
+	if err != nil {
+		return nil, err
+	}
+	if certs == nil {
+		return nil, nil
+	}
+	return *certs, nil
 }

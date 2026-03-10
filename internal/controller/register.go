@@ -14,6 +14,7 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/role"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/saml"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/securityrealm"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/securityssltruststore"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/user"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/usertokenconfiguration"
 )
@@ -31,6 +32,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		role.Setup,
 		saml.Setup,
 		securityrealm.Setup,
+		securityssltruststore.Setup,
 		user.Setup,
 		usertokenconfiguration.Setup,
 	} {

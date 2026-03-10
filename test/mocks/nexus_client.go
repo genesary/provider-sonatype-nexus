@@ -18,6 +18,7 @@ type MockClient struct {
 	MockBlobStore  *MockBlobStoreService
 	MockRepository *MockRepositoryService
 	MockSecurity   *MockSecurityService
+	MockSSL        *MockSSLService
 }
 
 // NewMockClient creates a new MockClient with default mocks.
@@ -26,6 +27,7 @@ func NewMockClient() *MockClient {
 		MockBlobStore:  &MockBlobStoreService{},
 		MockRepository: &MockRepositoryService{},
 		MockSecurity:   &MockSecurityService{},
+		MockSSL:        &MockSSLService{},
 	}
 }
 
@@ -42,6 +44,11 @@ func (m *MockClient) Repository() nexus.RepositoryService {
 // Security returns the mock security service.
 func (m *MockClient) Security() nexus.SecurityService {
 	return m.MockSecurity
+}
+
+// SSL returns the mock SSL service.
+func (m *MockClient) SSL() nexus.SSLService {
+	return m.MockSSL
 }
 
 // MockBlobStoreService is a mock implementation of nexus.BlobStoreService.
@@ -2000,4 +2007,35 @@ func (m *MockSecurityService) UpdateUserTokenConfiguration(ctx context.Context, 
 		return m.UpdateUserTokenConfigFn(ctx, config)
 	}
 	return nil
+}
+
+// MockSSLService is a mock implementation of nexus.SSLService.
+type MockSSLService struct {
+	AddCertificateFn    func(ctx context.Context, cert *security.SSLCertificate) error
+	RemoveCertificateFn func(ctx context.Context, id string) error
+	ListCertificatesFn  func(ctx context.Context) ([]security.SSLCertificate, error)
+}
+
+// AddCertificate mock implementation.
+func (m *MockSSLService) AddCertificate(ctx context.Context, cert *security.SSLCertificate) error {
+	if m.AddCertificateFn != nil {
+		return m.AddCertificateFn(ctx, cert)
+	}
+	return nil
+}
+
+// RemoveCertificate mock implementation.
+func (m *MockSSLService) RemoveCertificate(ctx context.Context, id string) error {
+	if m.RemoveCertificateFn != nil {
+		return m.RemoveCertificateFn(ctx, id)
+	}
+	return nil
+}
+
+// ListCertificates mock implementation.
+func (m *MockSSLService) ListCertificates(ctx context.Context) ([]security.SSLCertificate, error) {
+	if m.ListCertificatesFn != nil {
+		return m.ListCertificatesFn(ctx)
+	}
+	return nil, nil
 }
