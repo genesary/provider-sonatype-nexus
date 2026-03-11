@@ -47,7 +47,7 @@ func (h *MavenHandler) Create(ctx context.Context, client nexus.Client, cr *v1al
 	case "hosted":
 		return client.Repository().CreateMavenHosted(ctx, h.generateHosted(cr))
 	case "proxy":
-		return client.Repository().CreateMavenProxy(ctx, h.generateProxy(cr))
+		return client.Repository().CreateMavenProxy(ctx, h.generateProxy(ctx, cr))
 	case "group":
 		return client.Repository().CreateMavenGroup(ctx, h.generateGroup(cr))
 	}
@@ -59,7 +59,7 @@ func (h *MavenHandler) Update(ctx context.Context, client nexus.Client, name str
 	case "hosted":
 		return client.Repository().UpdateMavenHosted(ctx, name, h.generateHosted(cr))
 	case "proxy":
-		return client.Repository().UpdateMavenProxy(ctx, name, h.generateProxy(cr))
+		return client.Repository().UpdateMavenProxy(ctx, name, h.generateProxy(ctx, cr))
 	case "group":
 		return client.Repository().UpdateMavenGroup(ctx, name, h.generateGroup(cr))
 	}
@@ -88,7 +88,7 @@ func (h *MavenHandler) generateHosted(cr *v1alpha1.Repository) repository.MavenH
 	}
 }
 
-func (h *MavenHandler) generateProxy(cr *v1alpha1.Repository) repository.MavenProxyRepository {
+func (h *MavenHandler) generateProxy(ctx context.Context, cr *v1alpha1.Repository) repository.MavenProxyRepository {
 	return repository.MavenProxyRepository{
 		Name:          cr.Spec.ForProvider.Name,
 		Online:        getOnline(cr),
@@ -96,7 +96,7 @@ func (h *MavenHandler) generateProxy(cr *v1alpha1.Repository) repository.MavenPr
 		Maven:         generateMavenConfig(cr),
 		Proxy:         generateProxyConfig(cr),
 		NegativeCache: generateNegativeCache(cr),
-		HTTPClient:    generateHTTPClientWithPreemptiveAuth(cr),
+		HTTPClient:    generateHTTPClientWithPreemptiveAuth(ctx, cr),
 	}
 }
 

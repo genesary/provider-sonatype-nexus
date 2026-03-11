@@ -50,7 +50,7 @@ func (h *NugetHandler) Create(ctx context.Context, client nexus.Client, cr *v1al
 	case "hosted":
 		return client.Repository().CreateNugetHosted(ctx, repository.NugetHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	case "proxy":
-		repo := repository.NugetProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)}
+		repo := repository.NugetProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)}
 		if cr.Spec.ForProvider.NugetProxy != nil {
 			if cr.Spec.ForProvider.NugetProxy.QueryCacheItemMaxAge != nil {
 				repo.NugetProxy.QueryCacheItemMaxAge = int(*cr.Spec.ForProvider.NugetProxy.QueryCacheItemMaxAge)
@@ -71,7 +71,7 @@ func (h *NugetHandler) Update(ctx context.Context, client nexus.Client, name str
 	case "hosted":
 		return client.Repository().UpdateNugetHosted(ctx, name, repository.NugetHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	case "proxy":
-		repo := repository.NugetProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)}
+		repo := repository.NugetProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)}
 		if cr.Spec.ForProvider.NugetProxy != nil {
 			if cr.Spec.ForProvider.NugetProxy.QueryCacheItemMaxAge != nil {
 				repo.NugetProxy.QueryCacheItemMaxAge = int(*cr.Spec.ForProvider.NugetProxy.QueryCacheItemMaxAge)
@@ -133,7 +133,7 @@ func (h *PypiHandler) Create(ctx context.Context, client nexus.Client, cr *v1alp
 	case "hosted":
 		return client.Repository().CreatePypiHosted(ctx, repository.PypiHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	case "proxy":
-		return client.Repository().CreatePypiProxy(ctx, repository.PypiProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().CreatePypiProxy(ctx, repository.PypiProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	case "group":
 		return client.Repository().CreatePypiGroup(ctx, repository.PypiGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
@@ -145,7 +145,7 @@ func (h *PypiHandler) Update(ctx context.Context, client nexus.Client, name stri
 	case "hosted":
 		return client.Repository().UpdatePypiHosted(ctx, name, repository.PypiHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	case "proxy":
-		return client.Repository().UpdatePypiProxy(ctx, name, repository.PypiProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().UpdatePypiProxy(ctx, name, repository.PypiProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	case "group":
 		return client.Repository().UpdatePypiGroup(ctx, name, repository.PypiGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
@@ -198,7 +198,7 @@ func (h *RubygemsHandler) Create(ctx context.Context, client nexus.Client, cr *v
 	case "hosted":
 		return client.Repository().CreateRubygemsHosted(ctx, repository.RubyGemsHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	case "proxy":
-		return client.Repository().CreateRubygemsProxy(ctx, repository.RubyGemsProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().CreateRubygemsProxy(ctx, repository.RubyGemsProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	case "group":
 		return client.Repository().CreateRubygemsGroup(ctx, repository.RubyGemsGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
@@ -210,7 +210,7 @@ func (h *RubygemsHandler) Update(ctx context.Context, client nexus.Client, name 
 	case "hosted":
 		return client.Repository().UpdateRubygemsHosted(ctx, name, repository.RubyGemsHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	case "proxy":
-		return client.Repository().UpdateRubygemsProxy(ctx, name, repository.RubyGemsProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().UpdateRubygemsProxy(ctx, name, repository.RubyGemsProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	case "group":
 		return client.Repository().UpdateRubygemsGroup(ctx, name, repository.RubyGemsGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
@@ -273,7 +273,7 @@ func (h *YumHandler) Create(ctx context.Context, client nexus.Client, cr *v1alph
 		}
 		return client.Repository().CreateYumHosted(ctx, repo)
 	case "proxy":
-		return client.Repository().CreateYumProxy(ctx, repository.YumProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().CreateYumProxy(ctx, repository.YumProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	case "group":
 		return client.Repository().CreateYumGroup(ctx, repository.YumGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
@@ -295,7 +295,7 @@ func (h *YumHandler) Update(ctx context.Context, client nexus.Client, name strin
 		}
 		return client.Repository().UpdateYumHosted(ctx, name, repo)
 	case "proxy":
-		return client.Repository().UpdateYumProxy(ctx, name, repository.YumProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().UpdateYumProxy(ctx, name, repository.YumProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	case "group":
 		return client.Repository().UpdateYumGroup(ctx, name, repository.YumGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
@@ -348,7 +348,7 @@ func (h *RHandler) Create(ctx context.Context, client nexus.Client, cr *v1alpha1
 	case "hosted":
 		return client.Repository().CreateRHosted(ctx, repository.RHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	case "proxy":
-		return client.Repository().CreateRProxy(ctx, repository.RProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().CreateRProxy(ctx, repository.RProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	case "group":
 		return client.Repository().CreateRGroup(ctx, repository.RGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
@@ -360,7 +360,7 @@ func (h *RHandler) Update(ctx context.Context, client nexus.Client, name string,
 	case "hosted":
 		return client.Repository().UpdateRHosted(ctx, name, repository.RHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	case "proxy":
-		return client.Repository().UpdateRProxy(ctx, name, repository.RProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().UpdateRProxy(ctx, name, repository.RProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	case "group":
 		return client.Repository().UpdateRGroup(ctx, name, repository.RGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
@@ -413,7 +413,7 @@ func (h *CargoHandler) Create(ctx context.Context, client nexus.Client, cr *v1al
 	case "hosted":
 		return client.Repository().CreateCargoHosted(ctx, repository.CargoHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	case "proxy":
-		return client.Repository().CreateCargoProxy(ctx, repository.CargoProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().CreateCargoProxy(ctx, repository.CargoProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	case "group":
 		return client.Repository().CreateCargoGroup(ctx, repository.CargoGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
@@ -425,7 +425,7 @@ func (h *CargoHandler) Update(ctx context.Context, client nexus.Client, name str
 	case "hosted":
 		return client.Repository().UpdateCargoHosted(ctx, name, repository.CargoHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	case "proxy":
-		return client.Repository().UpdateCargoProxy(ctx, name, repository.CargoProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().UpdateCargoProxy(ctx, name, repository.CargoProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	case "group":
 		return client.Repository().UpdateCargoGroup(ctx, name, repository.CargoGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
@@ -478,7 +478,7 @@ func (h *BowerHandler) Create(ctx context.Context, client nexus.Client, cr *v1al
 	case "hosted":
 		return client.Repository().CreateBowerHosted(ctx, repository.BowerHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	case "proxy":
-		repo := repository.BowerProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)}
+		repo := repository.BowerProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)}
 		if cr.Spec.ForProvider.Bower != nil && cr.Spec.ForProvider.Bower.RewritePackageUrls != nil {
 			repo.Bower = repository.Bower{RewritePackageUrls: *cr.Spec.ForProvider.Bower.RewritePackageUrls}
 		}
@@ -494,7 +494,7 @@ func (h *BowerHandler) Update(ctx context.Context, client nexus.Client, name str
 	case "hosted":
 		return client.Repository().UpdateBowerHosted(ctx, name, repository.BowerHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	case "proxy":
-		repo := repository.BowerProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)}
+		repo := repository.BowerProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)}
 		if cr.Spec.ForProvider.Bower != nil && cr.Spec.ForProvider.Bower.RewritePackageUrls != nil {
 			repo.Bower = repository.Bower{RewritePackageUrls: *cr.Spec.ForProvider.Bower.RewritePackageUrls}
 		}
@@ -552,7 +552,7 @@ func (h *AptHandler) Create(ctx context.Context, client nexus.Client, cr *v1alph
 		}
 		return client.Repository().CreateAptHosted(ctx, repo)
 	case "proxy":
-		repo := repository.AptProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)}
+		repo := repository.AptProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)}
 		if cr.Spec.ForProvider.Apt != nil {
 			if cr.Spec.ForProvider.Apt.Distribution != nil {
 				repo.Apt.Distribution = *cr.Spec.ForProvider.Apt.Distribution
@@ -578,7 +578,7 @@ func (h *AptHandler) Update(ctx context.Context, client nexus.Client, name strin
 		}
 		return client.Repository().UpdateAptHosted(ctx, name, repo)
 	case "proxy":
-		repo := repository.AptProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)}
+		repo := repository.AptProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)}
 		if cr.Spec.ForProvider.Apt != nil {
 			if cr.Spec.ForProvider.Apt.Distribution != nil {
 				repo.Apt.Distribution = *cr.Spec.ForProvider.Apt.Distribution
@@ -630,7 +630,7 @@ func (h *HelmHandler) Create(ctx context.Context, client nexus.Client, cr *v1alp
 	case "hosted":
 		return client.Repository().CreateHelmHosted(ctx, repository.HelmHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	case "proxy":
-		return client.Repository().CreateHelmProxy(ctx, repository.HelmProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().CreateHelmProxy(ctx, repository.HelmProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
 	return errors.Errorf("unsupported helm repository type: %s", repoType)
 }
@@ -640,7 +640,7 @@ func (h *HelmHandler) Update(ctx context.Context, client nexus.Client, name stri
 	case "hosted":
 		return client.Repository().UpdateHelmHosted(ctx, name, repository.HelmHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	case "proxy":
-		return client.Repository().UpdateHelmProxy(ctx, name, repository.HelmProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().UpdateHelmProxy(ctx, name, repository.HelmProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
 	return errors.Errorf("unsupported helm repository type: %s", repoType)
 }
@@ -681,7 +681,7 @@ func (h *GoHandler) Observe(ctx context.Context, client nexus.Client, name, repo
 func (h *GoHandler) Create(ctx context.Context, client nexus.Client, cr *v1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case "proxy":
-		return client.Repository().CreateGoProxy(ctx, repository.GoProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().CreateGoProxy(ctx, repository.GoProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	case "group":
 		return client.Repository().CreateGoGroup(ctx, repository.GoGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
@@ -691,7 +691,7 @@ func (h *GoHandler) Create(ctx context.Context, client nexus.Client, cr *v1alpha
 func (h *GoHandler) Update(ctx context.Context, client nexus.Client, name string, cr *v1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case "proxy":
-		return client.Repository().UpdateGoProxy(ctx, name, repository.GoProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().UpdateGoProxy(ctx, name, repository.GoProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	case "group":
 		return client.Repository().UpdateGoGroup(ctx, name, repository.GoGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
@@ -763,14 +763,14 @@ func (h *CocoapodsHandler) Observe(ctx context.Context, client nexus.Client, nam
 
 func (h *CocoapodsHandler) Create(ctx context.Context, client nexus.Client, cr *v1alpha1.Repository, repoType string) error {
 	if repoType == "proxy" {
-		return client.Repository().CreateCocoapodsProxy(ctx, repository.CocoapodsProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().CreateCocoapodsProxy(ctx, repository.CocoapodsProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
 	return errors.Errorf("unsupported cocoapods repository type: %s", repoType)
 }
 
 func (h *CocoapodsHandler) Update(ctx context.Context, client nexus.Client, name string, cr *v1alpha1.Repository, repoType string) error {
 	if repoType == "proxy" {
-		return client.Repository().UpdateCocoapodsProxy(ctx, name, repository.CocoapodsProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().UpdateCocoapodsProxy(ctx, name, repository.CocoapodsProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
 	return errors.Errorf("unsupported cocoapods repository type: %s", repoType)
 }
@@ -800,14 +800,14 @@ func (h *ConanHandler) Observe(ctx context.Context, client nexus.Client, name, r
 
 func (h *ConanHandler) Create(ctx context.Context, client nexus.Client, cr *v1alpha1.Repository, repoType string) error {
 	if repoType == "proxy" {
-		return client.Repository().CreateConanProxy(ctx, repository.ConanProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().CreateConanProxy(ctx, repository.ConanProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
 	return errors.Errorf("unsupported conan repository type: %s", repoType)
 }
 
 func (h *ConanHandler) Update(ctx context.Context, client nexus.Client, name string, cr *v1alpha1.Repository, repoType string) error {
 	if repoType == "proxy" {
-		return client.Repository().UpdateConanProxy(ctx, name, repository.ConanProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().UpdateConanProxy(ctx, name, repository.ConanProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
 	return errors.Errorf("unsupported conan repository type: %s", repoType)
 }
@@ -837,14 +837,14 @@ func (h *CondaHandler) Observe(ctx context.Context, client nexus.Client, name, r
 
 func (h *CondaHandler) Create(ctx context.Context, client nexus.Client, cr *v1alpha1.Repository, repoType string) error {
 	if repoType == "proxy" {
-		return client.Repository().CreateCondaProxy(ctx, repository.CondaProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().CreateCondaProxy(ctx, repository.CondaProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
 	return errors.Errorf("unsupported conda repository type: %s", repoType)
 }
 
 func (h *CondaHandler) Update(ctx context.Context, client nexus.Client, name string, cr *v1alpha1.Repository, repoType string) error {
 	if repoType == "proxy" {
-		return client.Repository().UpdateCondaProxy(ctx, name, repository.CondaProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(cr)})
+		return client.Repository().UpdateCondaProxy(ctx, name, repository.CondaProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
 	return errors.Errorf("unsupported conda repository type: %s", repoType)
 }

@@ -47,7 +47,7 @@ func (h *RawHandler) Create(ctx context.Context, client nexus.Client, cr *v1alph
 	case "hosted":
 		return client.Repository().CreateRawHosted(ctx, h.generateHosted(cr))
 	case "proxy":
-		return client.Repository().CreateRawProxy(ctx, h.generateProxy(cr))
+		return client.Repository().CreateRawProxy(ctx, h.generateProxy(ctx, cr))
 	case "group":
 		return client.Repository().CreateRawGroup(ctx, h.generateGroup(cr))
 	}
@@ -59,7 +59,7 @@ func (h *RawHandler) Update(ctx context.Context, client nexus.Client, name strin
 	case "hosted":
 		return client.Repository().UpdateRawHosted(ctx, name, h.generateHosted(cr))
 	case "proxy":
-		return client.Repository().UpdateRawProxy(ctx, name, h.generateProxy(cr))
+		return client.Repository().UpdateRawProxy(ctx, name, h.generateProxy(ctx, cr))
 	case "group":
 		return client.Repository().UpdateRawGroup(ctx, name, h.generateGroup(cr))
 	}
@@ -87,14 +87,14 @@ func (h *RawHandler) generateHosted(cr *v1alpha1.Repository) repository.RawHoste
 	}
 }
 
-func (h *RawHandler) generateProxy(cr *v1alpha1.Repository) repository.RawProxyRepository {
+func (h *RawHandler) generateProxy(ctx context.Context, cr *v1alpha1.Repository) repository.RawProxyRepository {
 	return repository.RawProxyRepository{
 		Name:          cr.Spec.ForProvider.Name,
 		Online:        getOnline(cr),
 		Storage:       generateProxyStorage(cr),
 		Proxy:         generateProxyConfig(cr),
 		NegativeCache: generateNegativeCache(cr),
-		HTTPClient:    generateHTTPClient(cr),
+		HTTPClient:    generateHTTPClient(ctx, cr),
 	}
 }
 
