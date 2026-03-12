@@ -1,0 +1,12 @@
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: SecuritySSLTruststore
+metadata:
+  name: e2e-test-ssl-cert
+spec:
+  forProvider:
+    pem: |
+      -----BEGIN CERTIFICATE-----
+      PLACEHOLDER_WILL_BE_REPLACED_BY_TEST_SCRIPT
+      -----END CERTIFICATE-----
+  providerConfigRef:
+    name: default

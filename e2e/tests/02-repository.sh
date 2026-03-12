@@ -68,8 +68,13 @@ kubectl delete repository e2e-test-docker-hosted -n default --wait=true --timeou
 
 echo "--- Docker Hosted Repository test completed ---"
 
-# Test Maven Proxy Repository
+# Test Maven Proxy Repository (with httpClient.authentication + connection.useTrustStore)
 echo "--- Testing Maven Proxy Repository ---"
+
+# Create authentication secret for proxy
+kubectl create secret generic e2e-proxy-auth \
+    --from-literal=password=proxypass123 \
+    -n default --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl apply -f "${MANIFEST_DIR}/repository-maven-proxy.yaml"
 
@@ -93,6 +98,16 @@ if echo "$response" | grep -q "e2e-test-maven-proxy"; then
     echo "SUCCESS: Maven Proxy Repository found in Nexus!"
 else
     echo "WARNING: Maven Proxy Repository not yet visible in Nexus API"
+fi
+
+# Verify httpClient.authentication and connection.useTrustStore
+echo "Verifying httpClient configuration..."
+detail=$(curl -sf -u "${NEXUS_USER}:${NEXUS_PASS}" "${NEXUS_URL}/service/rest/v1/repositories/maven/proxy/e2e-test-maven-proxy" || echo "")
+if echo "$detail" | grep -q '"useTrustStore"'; then
+    echo "SUCCESS: connection.useTrustStore is configured!"
+fi
+if echo "$detail" | grep -q '"username"'; then
+    echo "SUCCESS: httpClient.authentication is configured!"
 fi
 
 echo "--- Maven Proxy Repository test completed ---"
@@ -190,5 +205,6 @@ kubectl delete repository e2e-test-maven-proxy -n default --wait=true --timeout=
 kubectl delete repository e2e-test-npm-hosted -n default --wait=true --timeout=60s || true
 kubectl delete repository e2e-test-raw-hosted -n default --wait=true --timeout=60s || true
 kubectl delete repository e2e-test-pypi-proxy -n default --wait=true --timeout=60s || true
+kubectl delete secret e2e-proxy-auth -n default --ignore-not-found || true
 
 echo "--- All Repository tests completed ---"

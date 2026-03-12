@@ -690,6 +690,68 @@ func (mg *UserTokenConfiguration) SetWriteConnectionSecretToReference(r *xpv1.Se
 	mg.Spec.WriteConnectionSecretToReference = r
 }
 
+// SecuritySSLTruststore managed resource interface implementations
+
+// GetCondition of this SecuritySSLTruststore.
+func (mg *SecuritySSLTruststore) GetCondition(ct xpv1.ConditionType) xpv1.Condition {
+	return mg.Status.GetCondition(ct)
+}
+
+// SetConditions of this SecuritySSLTruststore.
+func (mg *SecuritySSLTruststore) SetConditions(c ...xpv1.Condition) {
+	mg.Status.SetConditions(c...)
+}
+
+// GetDeletionPolicy of this SecuritySSLTruststore.
+func (mg *SecuritySSLTruststore) GetDeletionPolicy() xpv1.DeletionPolicy {
+	return mg.Spec.DeletionPolicy
+}
+
+// SetDeletionPolicy of this SecuritySSLTruststore.
+func (mg *SecuritySSLTruststore) SetDeletionPolicy(r xpv1.DeletionPolicy) {
+	mg.Spec.DeletionPolicy = r
+}
+
+// GetManagementPolicies of this SecuritySSLTruststore.
+func (mg *SecuritySSLTruststore) GetManagementPolicies() xpv1.ManagementPolicies {
+	return mg.Spec.ManagementPolicies
+}
+
+// SetManagementPolicies of this SecuritySSLTruststore.
+func (mg *SecuritySSLTruststore) SetManagementPolicies(r xpv1.ManagementPolicies) {
+	mg.Spec.ManagementPolicies = r
+}
+
+// GetProviderConfigReference of this SecuritySSLTruststore.
+func (mg *SecuritySSLTruststore) GetProviderConfigReference() *xpv1.Reference {
+	return mg.Spec.ProviderConfigReference
+}
+
+// SetProviderConfigReference of this SecuritySSLTruststore.
+func (mg *SecuritySSLTruststore) SetProviderConfigReference(r *xpv1.Reference) {
+	mg.Spec.ProviderConfigReference = r
+}
+
+// GetPublishConnectionDetailsTo of this SecuritySSLTruststore.
+func (mg *SecuritySSLTruststore) GetPublishConnectionDetailsTo() *xpv1.PublishConnectionDetailsTo {
+	return mg.Spec.PublishConnectionDetailsTo
+}
+
+// SetPublishConnectionDetailsTo of this SecuritySSLTruststore.
+func (mg *SecuritySSLTruststore) SetPublishConnectionDetailsTo(r *xpv1.PublishConnectionDetailsTo) {
+	mg.Spec.PublishConnectionDetailsTo = r
+}
+
+// GetWriteConnectionSecretToReference of this SecuritySSLTruststore.
+func (mg *SecuritySSLTruststore) GetWriteConnectionSecretToReference() *xpv1.SecretReference {
+	return mg.Spec.WriteConnectionSecretToReference
+}
+
+// SetWriteConnectionSecretToReference of this SecuritySSLTruststore.
+func (mg *SecuritySSLTruststore) SetWriteConnectionSecretToReference(r *xpv1.SecretReference) {
+	mg.Spec.WriteConnectionSecretToReference = r
+}
+
 // ProviderConfigUsage interface implementations (different pattern - non-pointer references)
 
 // GetProviderConfigReference of this ProviderConfigUsage.
