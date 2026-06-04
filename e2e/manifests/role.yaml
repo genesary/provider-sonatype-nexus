@@ -12,4 +12,5 @@ spec:
       - nx-repository-view-*-*-browse
       - nx-repository-view-*-*-read
   providerConfigRef:
+    kind: ProviderConfig
     name: default

@@ -91,6 +91,7 @@ func (m *MockBlobStoreService) GetFile(ctx context.Context, name string) (*blobs
 	if m.GetFileFn != nil {
 		return m.GetFileFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -100,6 +101,7 @@ func (m *MockBlobStoreService) GetS3(ctx context.Context, name string) (*blobsto
 	if m.GetS3Fn != nil {
 		return m.GetS3Fn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -109,6 +111,7 @@ func (m *MockBlobStoreService) CreateFile(ctx context.Context, bs *blobstore.Fil
 	if m.CreateFileFn != nil {
 		return m.CreateFileFn(ctx, bs)
 	}
+
 	return nil
 }
 
@@ -118,6 +121,7 @@ func (m *MockBlobStoreService) CreateS3(ctx context.Context, bs *blobstore.S3) e
 	if m.CreateS3Fn != nil {
 		return m.CreateS3Fn(ctx, bs)
 	}
+
 	return nil
 }
 
@@ -127,6 +131,7 @@ func (m *MockBlobStoreService) UpdateFile(ctx context.Context, name string, bs *
 	if m.UpdateFileFn != nil {
 		return m.UpdateFileFn(ctx, name, bs)
 	}
+
 	return nil
 }
 
@@ -136,6 +141,7 @@ func (m *MockBlobStoreService) UpdateS3(ctx context.Context, name string, bs *bl
 	if m.UpdateS3Fn != nil {
 		return m.UpdateS3Fn(ctx, name, bs)
 	}
+
 	return nil
 }
 
@@ -145,6 +151,7 @@ func (m *MockBlobStoreService) Delete(ctx context.Context, name string) error {
 	if m.DeleteFn != nil {
 		return m.DeleteFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -154,6 +161,7 @@ func (m *MockBlobStoreService) List(ctx context.Context) ([]blobstore.Generic, e
 	if m.ListFn != nil {
 		return m.ListFn(ctx)
 	}
+
 	return nil, nil
 }
 
@@ -393,11 +401,12 @@ type MockRepositoryService struct {
 	DeleteYumGroupFn func(ctx context.Context, name string) error
 }
 
-// Maven implementations
+// Maven implementations.
 func (m *MockRepositoryService) GetMavenHosted(ctx context.Context, name string) (*repository.MavenHostedRepository, error) {
 	if m.GetMavenHostedFn != nil {
 		return m.GetMavenHostedFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -405,6 +414,7 @@ func (m *MockRepositoryService) CreateMavenHosted(ctx context.Context, repo repo
 	if m.CreateMavenHostedFn != nil {
 		return m.CreateMavenHostedFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -412,6 +422,7 @@ func (m *MockRepositoryService) UpdateMavenHosted(ctx context.Context, name stri
 	if m.UpdateMavenHostedFn != nil {
 		return m.UpdateMavenHostedFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -419,6 +430,7 @@ func (m *MockRepositoryService) DeleteMavenHosted(ctx context.Context, name stri
 	if m.DeleteMavenHostedFn != nil {
 		return m.DeleteMavenHostedFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -426,6 +438,7 @@ func (m *MockRepositoryService) GetMavenProxy(ctx context.Context, name string) 
 	if m.GetMavenProxyFn != nil {
 		return m.GetMavenProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -433,6 +446,7 @@ func (m *MockRepositoryService) CreateMavenProxy(ctx context.Context, repo repos
 	if m.CreateMavenProxyFn != nil {
 		return m.CreateMavenProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -440,6 +454,7 @@ func (m *MockRepositoryService) UpdateMavenProxy(ctx context.Context, name strin
 	if m.UpdateMavenProxyFn != nil {
 		return m.UpdateMavenProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -447,6 +462,7 @@ func (m *MockRepositoryService) DeleteMavenProxy(ctx context.Context, name strin
 	if m.DeleteMavenProxyFn != nil {
 		return m.DeleteMavenProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -454,6 +470,7 @@ func (m *MockRepositoryService) GetMavenGroup(ctx context.Context, name string) 
 	if m.GetMavenGroupFn != nil {
 		return m.GetMavenGroupFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -461,6 +478,7 @@ func (m *MockRepositoryService) CreateMavenGroup(ctx context.Context, repo repos
 	if m.CreateMavenGroupFn != nil {
 		return m.CreateMavenGroupFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -468,6 +486,7 @@ func (m *MockRepositoryService) UpdateMavenGroup(ctx context.Context, name strin
 	if m.UpdateMavenGroupFn != nil {
 		return m.UpdateMavenGroupFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -475,14 +494,16 @@ func (m *MockRepositoryService) DeleteMavenGroup(ctx context.Context, name strin
 	if m.DeleteMavenGroupFn != nil {
 		return m.DeleteMavenGroupFn(ctx, name)
 	}
+
 	return nil
 }
 
-// Docker implementations
+// Docker implementations.
 func (m *MockRepositoryService) GetDockerHosted(ctx context.Context, name string) (*repository.DockerHostedRepository, error) {
 	if m.GetDockerHostedFn != nil {
 		return m.GetDockerHostedFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -490,6 +511,7 @@ func (m *MockRepositoryService) CreateDockerHosted(ctx context.Context, repo rep
 	if m.CreateDockerHostedFn != nil {
 		return m.CreateDockerHostedFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -497,6 +519,7 @@ func (m *MockRepositoryService) UpdateDockerHosted(ctx context.Context, name str
 	if m.UpdateDockerHostedFn != nil {
 		return m.UpdateDockerHostedFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -504,6 +527,7 @@ func (m *MockRepositoryService) DeleteDockerHosted(ctx context.Context, name str
 	if m.DeleteDockerHostedFn != nil {
 		return m.DeleteDockerHostedFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -511,6 +535,7 @@ func (m *MockRepositoryService) GetDockerProxy(ctx context.Context, name string)
 	if m.GetDockerProxyFn != nil {
 		return m.GetDockerProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -518,6 +543,7 @@ func (m *MockRepositoryService) CreateDockerProxy(ctx context.Context, repo repo
 	if m.CreateDockerProxyFn != nil {
 		return m.CreateDockerProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -525,6 +551,7 @@ func (m *MockRepositoryService) UpdateDockerProxy(ctx context.Context, name stri
 	if m.UpdateDockerProxyFn != nil {
 		return m.UpdateDockerProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -532,6 +559,7 @@ func (m *MockRepositoryService) DeleteDockerProxy(ctx context.Context, name stri
 	if m.DeleteDockerProxyFn != nil {
 		return m.DeleteDockerProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -539,6 +567,7 @@ func (m *MockRepositoryService) GetDockerGroup(ctx context.Context, name string)
 	if m.GetDockerGroupFn != nil {
 		return m.GetDockerGroupFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -546,6 +575,7 @@ func (m *MockRepositoryService) CreateDockerGroup(ctx context.Context, repo repo
 	if m.CreateDockerGroupFn != nil {
 		return m.CreateDockerGroupFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -553,6 +583,7 @@ func (m *MockRepositoryService) UpdateDockerGroup(ctx context.Context, name stri
 	if m.UpdateDockerGroupFn != nil {
 		return m.UpdateDockerGroupFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -560,14 +591,16 @@ func (m *MockRepositoryService) DeleteDockerGroup(ctx context.Context, name stri
 	if m.DeleteDockerGroupFn != nil {
 		return m.DeleteDockerGroupFn(ctx, name)
 	}
+
 	return nil
 }
 
-// npm implementations
+// npm implementations.
 func (m *MockRepositoryService) GetNpmHosted(ctx context.Context, name string) (*repository.NpmHostedRepository, error) {
 	if m.GetNpmHostedFn != nil {
 		return m.GetNpmHostedFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -575,6 +608,7 @@ func (m *MockRepositoryService) CreateNpmHosted(ctx context.Context, repo reposi
 	if m.CreateNpmHostedFn != nil {
 		return m.CreateNpmHostedFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -582,6 +616,7 @@ func (m *MockRepositoryService) UpdateNpmHosted(ctx context.Context, name string
 	if m.UpdateNpmHostedFn != nil {
 		return m.UpdateNpmHostedFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -589,6 +624,7 @@ func (m *MockRepositoryService) DeleteNpmHosted(ctx context.Context, name string
 	if m.DeleteNpmHostedFn != nil {
 		return m.DeleteNpmHostedFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -596,6 +632,7 @@ func (m *MockRepositoryService) GetNpmProxy(ctx context.Context, name string) (*
 	if m.GetNpmProxyFn != nil {
 		return m.GetNpmProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -603,6 +640,7 @@ func (m *MockRepositoryService) CreateNpmProxy(ctx context.Context, repo reposit
 	if m.CreateNpmProxyFn != nil {
 		return m.CreateNpmProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -610,6 +648,7 @@ func (m *MockRepositoryService) UpdateNpmProxy(ctx context.Context, name string,
 	if m.UpdateNpmProxyFn != nil {
 		return m.UpdateNpmProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -617,6 +656,7 @@ func (m *MockRepositoryService) DeleteNpmProxy(ctx context.Context, name string)
 	if m.DeleteNpmProxyFn != nil {
 		return m.DeleteNpmProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -624,6 +664,7 @@ func (m *MockRepositoryService) GetNpmGroup(ctx context.Context, name string) (*
 	if m.GetNpmGroupFn != nil {
 		return m.GetNpmGroupFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -631,6 +672,7 @@ func (m *MockRepositoryService) CreateNpmGroup(ctx context.Context, repo reposit
 	if m.CreateNpmGroupFn != nil {
 		return m.CreateNpmGroupFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -638,6 +680,7 @@ func (m *MockRepositoryService) UpdateNpmGroup(ctx context.Context, name string,
 	if m.UpdateNpmGroupFn != nil {
 		return m.UpdateNpmGroupFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -645,14 +688,16 @@ func (m *MockRepositoryService) DeleteNpmGroup(ctx context.Context, name string)
 	if m.DeleteNpmGroupFn != nil {
 		return m.DeleteNpmGroupFn(ctx, name)
 	}
+
 	return nil
 }
 
-// Raw implementations
+// Raw implementations.
 func (m *MockRepositoryService) GetRawHosted(ctx context.Context, name string) (*repository.RawHostedRepository, error) {
 	if m.GetRawHostedFn != nil {
 		return m.GetRawHostedFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -660,6 +705,7 @@ func (m *MockRepositoryService) CreateRawHosted(ctx context.Context, repo reposi
 	if m.CreateRawHostedFn != nil {
 		return m.CreateRawHostedFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -667,6 +713,7 @@ func (m *MockRepositoryService) UpdateRawHosted(ctx context.Context, name string
 	if m.UpdateRawHostedFn != nil {
 		return m.UpdateRawHostedFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -674,6 +721,7 @@ func (m *MockRepositoryService) DeleteRawHosted(ctx context.Context, name string
 	if m.DeleteRawHostedFn != nil {
 		return m.DeleteRawHostedFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -681,6 +729,7 @@ func (m *MockRepositoryService) GetRawProxy(ctx context.Context, name string) (*
 	if m.GetRawProxyFn != nil {
 		return m.GetRawProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -688,6 +737,7 @@ func (m *MockRepositoryService) CreateRawProxy(ctx context.Context, repo reposit
 	if m.CreateRawProxyFn != nil {
 		return m.CreateRawProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -695,6 +745,7 @@ func (m *MockRepositoryService) UpdateRawProxy(ctx context.Context, name string,
 	if m.UpdateRawProxyFn != nil {
 		return m.UpdateRawProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -702,6 +753,7 @@ func (m *MockRepositoryService) DeleteRawProxy(ctx context.Context, name string)
 	if m.DeleteRawProxyFn != nil {
 		return m.DeleteRawProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -709,6 +761,7 @@ func (m *MockRepositoryService) GetRawGroup(ctx context.Context, name string) (*
 	if m.GetRawGroupFn != nil {
 		return m.GetRawGroupFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -716,6 +769,7 @@ func (m *MockRepositoryService) CreateRawGroup(ctx context.Context, repo reposit
 	if m.CreateRawGroupFn != nil {
 		return m.CreateRawGroupFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -723,6 +777,7 @@ func (m *MockRepositoryService) UpdateRawGroup(ctx context.Context, name string,
 	if m.UpdateRawGroupFn != nil {
 		return m.UpdateRawGroupFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -730,14 +785,16 @@ func (m *MockRepositoryService) DeleteRawGroup(ctx context.Context, name string)
 	if m.DeleteRawGroupFn != nil {
 		return m.DeleteRawGroupFn(ctx, name)
 	}
+
 	return nil
 }
 
-// APT implementations
+// APT implementations.
 func (m *MockRepositoryService) GetAptHosted(ctx context.Context, name string) (*repository.AptHostedRepository, error) {
 	if m.GetAptHostedFn != nil {
 		return m.GetAptHostedFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -745,6 +802,7 @@ func (m *MockRepositoryService) CreateAptHosted(ctx context.Context, repo reposi
 	if m.CreateAptHostedFn != nil {
 		return m.CreateAptHostedFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -752,6 +810,7 @@ func (m *MockRepositoryService) UpdateAptHosted(ctx context.Context, name string
 	if m.UpdateAptHostedFn != nil {
 		return m.UpdateAptHostedFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -759,6 +818,7 @@ func (m *MockRepositoryService) DeleteAptHosted(ctx context.Context, name string
 	if m.DeleteAptHostedFn != nil {
 		return m.DeleteAptHostedFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -766,6 +826,7 @@ func (m *MockRepositoryService) GetAptProxy(ctx context.Context, name string) (*
 	if m.GetAptProxyFn != nil {
 		return m.GetAptProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -773,6 +834,7 @@ func (m *MockRepositoryService) CreateAptProxy(ctx context.Context, repo reposit
 	if m.CreateAptProxyFn != nil {
 		return m.CreateAptProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -780,6 +842,7 @@ func (m *MockRepositoryService) UpdateAptProxy(ctx context.Context, name string,
 	if m.UpdateAptProxyFn != nil {
 		return m.UpdateAptProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -787,14 +850,16 @@ func (m *MockRepositoryService) DeleteAptProxy(ctx context.Context, name string)
 	if m.DeleteAptProxyFn != nil {
 		return m.DeleteAptProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
-// Bower implementations
+// Bower implementations.
 func (m *MockRepositoryService) GetBowerHosted(ctx context.Context, name string) (*repository.BowerHostedRepository, error) {
 	if m.GetBowerHostedFn != nil {
 		return m.GetBowerHostedFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -802,6 +867,7 @@ func (m *MockRepositoryService) CreateBowerHosted(ctx context.Context, repo repo
 	if m.CreateBowerHostedFn != nil {
 		return m.CreateBowerHostedFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -809,6 +875,7 @@ func (m *MockRepositoryService) UpdateBowerHosted(ctx context.Context, name stri
 	if m.UpdateBowerHostedFn != nil {
 		return m.UpdateBowerHostedFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -816,6 +883,7 @@ func (m *MockRepositoryService) DeleteBowerHosted(ctx context.Context, name stri
 	if m.DeleteBowerHostedFn != nil {
 		return m.DeleteBowerHostedFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -823,6 +891,7 @@ func (m *MockRepositoryService) GetBowerProxy(ctx context.Context, name string) 
 	if m.GetBowerProxyFn != nil {
 		return m.GetBowerProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -830,6 +899,7 @@ func (m *MockRepositoryService) CreateBowerProxy(ctx context.Context, repo repos
 	if m.CreateBowerProxyFn != nil {
 		return m.CreateBowerProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -837,6 +907,7 @@ func (m *MockRepositoryService) UpdateBowerProxy(ctx context.Context, name strin
 	if m.UpdateBowerProxyFn != nil {
 		return m.UpdateBowerProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -844,6 +915,7 @@ func (m *MockRepositoryService) DeleteBowerProxy(ctx context.Context, name strin
 	if m.DeleteBowerProxyFn != nil {
 		return m.DeleteBowerProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -851,6 +923,7 @@ func (m *MockRepositoryService) GetBowerGroup(ctx context.Context, name string) 
 	if m.GetBowerGroupFn != nil {
 		return m.GetBowerGroupFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -858,6 +931,7 @@ func (m *MockRepositoryService) CreateBowerGroup(ctx context.Context, repo repos
 	if m.CreateBowerGroupFn != nil {
 		return m.CreateBowerGroupFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -865,6 +939,7 @@ func (m *MockRepositoryService) UpdateBowerGroup(ctx context.Context, name strin
 	if m.UpdateBowerGroupFn != nil {
 		return m.UpdateBowerGroupFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -872,14 +947,16 @@ func (m *MockRepositoryService) DeleteBowerGroup(ctx context.Context, name strin
 	if m.DeleteBowerGroupFn != nil {
 		return m.DeleteBowerGroupFn(ctx, name)
 	}
+
 	return nil
 }
 
-// Cargo implementations
+// Cargo implementations.
 func (m *MockRepositoryService) GetCargoHosted(ctx context.Context, name string) (*repository.CargoHostedRepository, error) {
 	if m.GetCargoHostedFn != nil {
 		return m.GetCargoHostedFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -887,6 +964,7 @@ func (m *MockRepositoryService) CreateCargoHosted(ctx context.Context, repo repo
 	if m.CreateCargoHostedFn != nil {
 		return m.CreateCargoHostedFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -894,6 +972,7 @@ func (m *MockRepositoryService) UpdateCargoHosted(ctx context.Context, name stri
 	if m.UpdateCargoHostedFn != nil {
 		return m.UpdateCargoHostedFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -901,6 +980,7 @@ func (m *MockRepositoryService) DeleteCargoHosted(ctx context.Context, name stri
 	if m.DeleteCargoHostedFn != nil {
 		return m.DeleteCargoHostedFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -908,6 +988,7 @@ func (m *MockRepositoryService) GetCargoProxy(ctx context.Context, name string) 
 	if m.GetCargoProxyFn != nil {
 		return m.GetCargoProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -915,6 +996,7 @@ func (m *MockRepositoryService) CreateCargoProxy(ctx context.Context, repo repos
 	if m.CreateCargoProxyFn != nil {
 		return m.CreateCargoProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -922,6 +1004,7 @@ func (m *MockRepositoryService) UpdateCargoProxy(ctx context.Context, name strin
 	if m.UpdateCargoProxyFn != nil {
 		return m.UpdateCargoProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -929,6 +1012,7 @@ func (m *MockRepositoryService) DeleteCargoProxy(ctx context.Context, name strin
 	if m.DeleteCargoProxyFn != nil {
 		return m.DeleteCargoProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -936,6 +1020,7 @@ func (m *MockRepositoryService) GetCargoGroup(ctx context.Context, name string) 
 	if m.GetCargoGroupFn != nil {
 		return m.GetCargoGroupFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -943,6 +1028,7 @@ func (m *MockRepositoryService) CreateCargoGroup(ctx context.Context, repo repos
 	if m.CreateCargoGroupFn != nil {
 		return m.CreateCargoGroupFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -950,6 +1036,7 @@ func (m *MockRepositoryService) UpdateCargoGroup(ctx context.Context, name strin
 	if m.UpdateCargoGroupFn != nil {
 		return m.UpdateCargoGroupFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -957,14 +1044,16 @@ func (m *MockRepositoryService) DeleteCargoGroup(ctx context.Context, name strin
 	if m.DeleteCargoGroupFn != nil {
 		return m.DeleteCargoGroupFn(ctx, name)
 	}
+
 	return nil
 }
 
-// Cocoapods implementations
+// Cocoapods implementations.
 func (m *MockRepositoryService) GetCocoapodsProxy(ctx context.Context, name string) (*repository.CocoapodsProxyRepository, error) {
 	if m.GetCocoapodsProxyFn != nil {
 		return m.GetCocoapodsProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -972,6 +1061,7 @@ func (m *MockRepositoryService) CreateCocoapodsProxy(ctx context.Context, repo r
 	if m.CreateCocoapodsProxyFn != nil {
 		return m.CreateCocoapodsProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -979,6 +1069,7 @@ func (m *MockRepositoryService) UpdateCocoapodsProxy(ctx context.Context, name s
 	if m.UpdateCocoapodsProxyFn != nil {
 		return m.UpdateCocoapodsProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -986,14 +1077,16 @@ func (m *MockRepositoryService) DeleteCocoapodsProxy(ctx context.Context, name s
 	if m.DeleteCocoapodsProxyFn != nil {
 		return m.DeleteCocoapodsProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
-// Conan implementations
+// Conan implementations.
 func (m *MockRepositoryService) GetConanProxy(ctx context.Context, name string) (*repository.ConanProxyRepository, error) {
 	if m.GetConanProxyFn != nil {
 		return m.GetConanProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1001,6 +1094,7 @@ func (m *MockRepositoryService) CreateConanProxy(ctx context.Context, repo repos
 	if m.CreateConanProxyFn != nil {
 		return m.CreateConanProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1008,6 +1102,7 @@ func (m *MockRepositoryService) UpdateConanProxy(ctx context.Context, name strin
 	if m.UpdateConanProxyFn != nil {
 		return m.UpdateConanProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1015,14 +1110,16 @@ func (m *MockRepositoryService) DeleteConanProxy(ctx context.Context, name strin
 	if m.DeleteConanProxyFn != nil {
 		return m.DeleteConanProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
-// Conda implementations
+// Conda implementations.
 func (m *MockRepositoryService) GetCondaProxy(ctx context.Context, name string) (*repository.CondaProxyRepository, error) {
 	if m.GetCondaProxyFn != nil {
 		return m.GetCondaProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1030,6 +1127,7 @@ func (m *MockRepositoryService) CreateCondaProxy(ctx context.Context, repo repos
 	if m.CreateCondaProxyFn != nil {
 		return m.CreateCondaProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1037,6 +1135,7 @@ func (m *MockRepositoryService) UpdateCondaProxy(ctx context.Context, name strin
 	if m.UpdateCondaProxyFn != nil {
 		return m.UpdateCondaProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1044,14 +1143,16 @@ func (m *MockRepositoryService) DeleteCondaProxy(ctx context.Context, name strin
 	if m.DeleteCondaProxyFn != nil {
 		return m.DeleteCondaProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
-// GitLFS implementations
+// GitLFS implementations.
 func (m *MockRepositoryService) GetGitLfsHosted(ctx context.Context, name string) (*repository.GitLfsHostedRepository, error) {
 	if m.GetGitLfsHostedFn != nil {
 		return m.GetGitLfsHostedFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1059,6 +1160,7 @@ func (m *MockRepositoryService) CreateGitLfsHosted(ctx context.Context, repo rep
 	if m.CreateGitLfsHostedFn != nil {
 		return m.CreateGitLfsHostedFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1066,6 +1168,7 @@ func (m *MockRepositoryService) UpdateGitLfsHosted(ctx context.Context, name str
 	if m.UpdateGitLfsHostedFn != nil {
 		return m.UpdateGitLfsHostedFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1073,14 +1176,16 @@ func (m *MockRepositoryService) DeleteGitLfsHosted(ctx context.Context, name str
 	if m.DeleteGitLfsHostedFn != nil {
 		return m.DeleteGitLfsHostedFn(ctx, name)
 	}
+
 	return nil
 }
 
-// Go implementations
+// Go implementations.
 func (m *MockRepositoryService) GetGoProxy(ctx context.Context, name string) (*repository.GoProxyRepository, error) {
 	if m.GetGoProxyFn != nil {
 		return m.GetGoProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1088,6 +1193,7 @@ func (m *MockRepositoryService) CreateGoProxy(ctx context.Context, repo reposito
 	if m.CreateGoProxyFn != nil {
 		return m.CreateGoProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1095,6 +1201,7 @@ func (m *MockRepositoryService) UpdateGoProxy(ctx context.Context, name string, 
 	if m.UpdateGoProxyFn != nil {
 		return m.UpdateGoProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1102,6 +1209,7 @@ func (m *MockRepositoryService) DeleteGoProxy(ctx context.Context, name string) 
 	if m.DeleteGoProxyFn != nil {
 		return m.DeleteGoProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1109,6 +1217,7 @@ func (m *MockRepositoryService) GetGoGroup(ctx context.Context, name string) (*r
 	if m.GetGoGroupFn != nil {
 		return m.GetGoGroupFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1116,6 +1225,7 @@ func (m *MockRepositoryService) CreateGoGroup(ctx context.Context, repo reposito
 	if m.CreateGoGroupFn != nil {
 		return m.CreateGoGroupFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1123,6 +1233,7 @@ func (m *MockRepositoryService) UpdateGoGroup(ctx context.Context, name string, 
 	if m.UpdateGoGroupFn != nil {
 		return m.UpdateGoGroupFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1130,14 +1241,16 @@ func (m *MockRepositoryService) DeleteGoGroup(ctx context.Context, name string) 
 	if m.DeleteGoGroupFn != nil {
 		return m.DeleteGoGroupFn(ctx, name)
 	}
+
 	return nil
 }
 
-// Helm implementations
+// Helm implementations.
 func (m *MockRepositoryService) GetHelmHosted(ctx context.Context, name string) (*repository.HelmHostedRepository, error) {
 	if m.GetHelmHostedFn != nil {
 		return m.GetHelmHostedFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1145,6 +1258,7 @@ func (m *MockRepositoryService) CreateHelmHosted(ctx context.Context, repo repos
 	if m.CreateHelmHostedFn != nil {
 		return m.CreateHelmHostedFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1152,6 +1266,7 @@ func (m *MockRepositoryService) UpdateHelmHosted(ctx context.Context, name strin
 	if m.UpdateHelmHostedFn != nil {
 		return m.UpdateHelmHostedFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1159,6 +1274,7 @@ func (m *MockRepositoryService) DeleteHelmHosted(ctx context.Context, name strin
 	if m.DeleteHelmHostedFn != nil {
 		return m.DeleteHelmHostedFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1166,6 +1282,7 @@ func (m *MockRepositoryService) GetHelmProxy(ctx context.Context, name string) (
 	if m.GetHelmProxyFn != nil {
 		return m.GetHelmProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1173,6 +1290,7 @@ func (m *MockRepositoryService) CreateHelmProxy(ctx context.Context, repo reposi
 	if m.CreateHelmProxyFn != nil {
 		return m.CreateHelmProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1180,6 +1298,7 @@ func (m *MockRepositoryService) UpdateHelmProxy(ctx context.Context, name string
 	if m.UpdateHelmProxyFn != nil {
 		return m.UpdateHelmProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1187,14 +1306,16 @@ func (m *MockRepositoryService) DeleteHelmProxy(ctx context.Context, name string
 	if m.DeleteHelmProxyFn != nil {
 		return m.DeleteHelmProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
-// NuGet implementations
+// NuGet implementations.
 func (m *MockRepositoryService) GetNugetHosted(ctx context.Context, name string) (*repository.NugetHostedRepository, error) {
 	if m.GetNugetHostedFn != nil {
 		return m.GetNugetHostedFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1202,6 +1323,7 @@ func (m *MockRepositoryService) CreateNugetHosted(ctx context.Context, repo repo
 	if m.CreateNugetHostedFn != nil {
 		return m.CreateNugetHostedFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1209,6 +1331,7 @@ func (m *MockRepositoryService) UpdateNugetHosted(ctx context.Context, name stri
 	if m.UpdateNugetHostedFn != nil {
 		return m.UpdateNugetHostedFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1216,6 +1339,7 @@ func (m *MockRepositoryService) DeleteNugetHosted(ctx context.Context, name stri
 	if m.DeleteNugetHostedFn != nil {
 		return m.DeleteNugetHostedFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1223,6 +1347,7 @@ func (m *MockRepositoryService) GetNugetProxy(ctx context.Context, name string) 
 	if m.GetNugetProxyFn != nil {
 		return m.GetNugetProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1230,6 +1355,7 @@ func (m *MockRepositoryService) CreateNugetProxy(ctx context.Context, repo repos
 	if m.CreateNugetProxyFn != nil {
 		return m.CreateNugetProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1237,6 +1363,7 @@ func (m *MockRepositoryService) UpdateNugetProxy(ctx context.Context, name strin
 	if m.UpdateNugetProxyFn != nil {
 		return m.UpdateNugetProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1244,6 +1371,7 @@ func (m *MockRepositoryService) DeleteNugetProxy(ctx context.Context, name strin
 	if m.DeleteNugetProxyFn != nil {
 		return m.DeleteNugetProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1251,6 +1379,7 @@ func (m *MockRepositoryService) GetNugetGroup(ctx context.Context, name string) 
 	if m.GetNugetGroupFn != nil {
 		return m.GetNugetGroupFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1258,6 +1387,7 @@ func (m *MockRepositoryService) CreateNugetGroup(ctx context.Context, repo repos
 	if m.CreateNugetGroupFn != nil {
 		return m.CreateNugetGroupFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1265,6 +1395,7 @@ func (m *MockRepositoryService) UpdateNugetGroup(ctx context.Context, name strin
 	if m.UpdateNugetGroupFn != nil {
 		return m.UpdateNugetGroupFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1272,14 +1403,16 @@ func (m *MockRepositoryService) DeleteNugetGroup(ctx context.Context, name strin
 	if m.DeleteNugetGroupFn != nil {
 		return m.DeleteNugetGroupFn(ctx, name)
 	}
+
 	return nil
 }
 
-// PyPI implementations
+// PyPI implementations.
 func (m *MockRepositoryService) GetPypiHosted(ctx context.Context, name string) (*repository.PypiHostedRepository, error) {
 	if m.GetPypiHostedFn != nil {
 		return m.GetPypiHostedFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1287,6 +1420,7 @@ func (m *MockRepositoryService) CreatePypiHosted(ctx context.Context, repo repos
 	if m.CreatePypiHostedFn != nil {
 		return m.CreatePypiHostedFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1294,6 +1428,7 @@ func (m *MockRepositoryService) UpdatePypiHosted(ctx context.Context, name strin
 	if m.UpdatePypiHostedFn != nil {
 		return m.UpdatePypiHostedFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1301,6 +1436,7 @@ func (m *MockRepositoryService) DeletePypiHosted(ctx context.Context, name strin
 	if m.DeletePypiHostedFn != nil {
 		return m.DeletePypiHostedFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1308,6 +1444,7 @@ func (m *MockRepositoryService) GetPypiProxy(ctx context.Context, name string) (
 	if m.GetPypiProxyFn != nil {
 		return m.GetPypiProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1315,6 +1452,7 @@ func (m *MockRepositoryService) CreatePypiProxy(ctx context.Context, repo reposi
 	if m.CreatePypiProxyFn != nil {
 		return m.CreatePypiProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1322,6 +1460,7 @@ func (m *MockRepositoryService) UpdatePypiProxy(ctx context.Context, name string
 	if m.UpdatePypiProxyFn != nil {
 		return m.UpdatePypiProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1329,6 +1468,7 @@ func (m *MockRepositoryService) DeletePypiProxy(ctx context.Context, name string
 	if m.DeletePypiProxyFn != nil {
 		return m.DeletePypiProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1336,6 +1476,7 @@ func (m *MockRepositoryService) GetPypiGroup(ctx context.Context, name string) (
 	if m.GetPypiGroupFn != nil {
 		return m.GetPypiGroupFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1343,6 +1484,7 @@ func (m *MockRepositoryService) CreatePypiGroup(ctx context.Context, repo reposi
 	if m.CreatePypiGroupFn != nil {
 		return m.CreatePypiGroupFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1350,6 +1492,7 @@ func (m *MockRepositoryService) UpdatePypiGroup(ctx context.Context, name string
 	if m.UpdatePypiGroupFn != nil {
 		return m.UpdatePypiGroupFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1357,14 +1500,16 @@ func (m *MockRepositoryService) DeletePypiGroup(ctx context.Context, name string
 	if m.DeletePypiGroupFn != nil {
 		return m.DeletePypiGroupFn(ctx, name)
 	}
+
 	return nil
 }
 
-// R implementations
+// R implementations.
 func (m *MockRepositoryService) GetRHosted(ctx context.Context, name string) (*repository.RHostedRepository, error) {
 	if m.GetRHostedFn != nil {
 		return m.GetRHostedFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1372,6 +1517,7 @@ func (m *MockRepositoryService) CreateRHosted(ctx context.Context, repo reposito
 	if m.CreateRHostedFn != nil {
 		return m.CreateRHostedFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1379,6 +1525,7 @@ func (m *MockRepositoryService) UpdateRHosted(ctx context.Context, name string, 
 	if m.UpdateRHostedFn != nil {
 		return m.UpdateRHostedFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1386,6 +1533,7 @@ func (m *MockRepositoryService) DeleteRHosted(ctx context.Context, name string) 
 	if m.DeleteRHostedFn != nil {
 		return m.DeleteRHostedFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1393,6 +1541,7 @@ func (m *MockRepositoryService) GetRProxy(ctx context.Context, name string) (*re
 	if m.GetRProxyFn != nil {
 		return m.GetRProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1400,6 +1549,7 @@ func (m *MockRepositoryService) CreateRProxy(ctx context.Context, repo repositor
 	if m.CreateRProxyFn != nil {
 		return m.CreateRProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1407,6 +1557,7 @@ func (m *MockRepositoryService) UpdateRProxy(ctx context.Context, name string, r
 	if m.UpdateRProxyFn != nil {
 		return m.UpdateRProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1414,6 +1565,7 @@ func (m *MockRepositoryService) DeleteRProxy(ctx context.Context, name string) e
 	if m.DeleteRProxyFn != nil {
 		return m.DeleteRProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1421,6 +1573,7 @@ func (m *MockRepositoryService) GetRGroup(ctx context.Context, name string) (*re
 	if m.GetRGroupFn != nil {
 		return m.GetRGroupFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1428,6 +1581,7 @@ func (m *MockRepositoryService) CreateRGroup(ctx context.Context, repo repositor
 	if m.CreateRGroupFn != nil {
 		return m.CreateRGroupFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1435,6 +1589,7 @@ func (m *MockRepositoryService) UpdateRGroup(ctx context.Context, name string, r
 	if m.UpdateRGroupFn != nil {
 		return m.UpdateRGroupFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1442,14 +1597,16 @@ func (m *MockRepositoryService) DeleteRGroup(ctx context.Context, name string) e
 	if m.DeleteRGroupFn != nil {
 		return m.DeleteRGroupFn(ctx, name)
 	}
+
 	return nil
 }
 
-// RubyGems implementations
+// RubyGems implementations.
 func (m *MockRepositoryService) GetRubygemsHosted(ctx context.Context, name string) (*repository.RubyGemsHostedRepository, error) {
 	if m.GetRubygemsHostedFn != nil {
 		return m.GetRubygemsHostedFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1457,6 +1614,7 @@ func (m *MockRepositoryService) CreateRubygemsHosted(ctx context.Context, repo r
 	if m.CreateRubygemsHostedFn != nil {
 		return m.CreateRubygemsHostedFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1464,6 +1622,7 @@ func (m *MockRepositoryService) UpdateRubygemsHosted(ctx context.Context, name s
 	if m.UpdateRubygemsHostedFn != nil {
 		return m.UpdateRubygemsHostedFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1471,6 +1630,7 @@ func (m *MockRepositoryService) DeleteRubygemsHosted(ctx context.Context, name s
 	if m.DeleteRubygemsHostedFn != nil {
 		return m.DeleteRubygemsHostedFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1478,6 +1638,7 @@ func (m *MockRepositoryService) GetRubygemsProxy(ctx context.Context, name strin
 	if m.GetRubygemsProxyFn != nil {
 		return m.GetRubygemsProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1485,6 +1646,7 @@ func (m *MockRepositoryService) CreateRubygemsProxy(ctx context.Context, repo re
 	if m.CreateRubygemsProxyFn != nil {
 		return m.CreateRubygemsProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1492,6 +1654,7 @@ func (m *MockRepositoryService) UpdateRubygemsProxy(ctx context.Context, name st
 	if m.UpdateRubygemsProxyFn != nil {
 		return m.UpdateRubygemsProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1499,6 +1662,7 @@ func (m *MockRepositoryService) DeleteRubygemsProxy(ctx context.Context, name st
 	if m.DeleteRubygemsProxyFn != nil {
 		return m.DeleteRubygemsProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1506,6 +1670,7 @@ func (m *MockRepositoryService) GetRubygemsGroup(ctx context.Context, name strin
 	if m.GetRubygemsGroupFn != nil {
 		return m.GetRubygemsGroupFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1513,6 +1678,7 @@ func (m *MockRepositoryService) CreateRubygemsGroup(ctx context.Context, repo re
 	if m.CreateRubygemsGroupFn != nil {
 		return m.CreateRubygemsGroupFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1520,6 +1686,7 @@ func (m *MockRepositoryService) UpdateRubygemsGroup(ctx context.Context, name st
 	if m.UpdateRubygemsGroupFn != nil {
 		return m.UpdateRubygemsGroupFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1527,14 +1694,16 @@ func (m *MockRepositoryService) DeleteRubygemsGroup(ctx context.Context, name st
 	if m.DeleteRubygemsGroupFn != nil {
 		return m.DeleteRubygemsGroupFn(ctx, name)
 	}
+
 	return nil
 }
 
-// Yum implementations
+// Yum implementations.
 func (m *MockRepositoryService) GetYumHosted(ctx context.Context, name string) (*repository.YumHostedRepository, error) {
 	if m.GetYumHostedFn != nil {
 		return m.GetYumHostedFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1542,6 +1711,7 @@ func (m *MockRepositoryService) CreateYumHosted(ctx context.Context, repo reposi
 	if m.CreateYumHostedFn != nil {
 		return m.CreateYumHostedFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1549,6 +1719,7 @@ func (m *MockRepositoryService) UpdateYumHosted(ctx context.Context, name string
 	if m.UpdateYumHostedFn != nil {
 		return m.UpdateYumHostedFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1556,6 +1727,7 @@ func (m *MockRepositoryService) DeleteYumHosted(ctx context.Context, name string
 	if m.DeleteYumHostedFn != nil {
 		return m.DeleteYumHostedFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1563,6 +1735,7 @@ func (m *MockRepositoryService) GetYumProxy(ctx context.Context, name string) (*
 	if m.GetYumProxyFn != nil {
 		return m.GetYumProxyFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1570,6 +1743,7 @@ func (m *MockRepositoryService) CreateYumProxy(ctx context.Context, repo reposit
 	if m.CreateYumProxyFn != nil {
 		return m.CreateYumProxyFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1577,6 +1751,7 @@ func (m *MockRepositoryService) UpdateYumProxy(ctx context.Context, name string,
 	if m.UpdateYumProxyFn != nil {
 		return m.UpdateYumProxyFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1584,6 +1759,7 @@ func (m *MockRepositoryService) DeleteYumProxy(ctx context.Context, name string)
 	if m.DeleteYumProxyFn != nil {
 		return m.DeleteYumProxyFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1591,6 +1767,7 @@ func (m *MockRepositoryService) GetYumGroup(ctx context.Context, name string) (*
 	if m.GetYumGroupFn != nil {
 		return m.GetYumGroupFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1598,6 +1775,7 @@ func (m *MockRepositoryService) CreateYumGroup(ctx context.Context, repo reposit
 	if m.CreateYumGroupFn != nil {
 		return m.CreateYumGroupFn(ctx, repo)
 	}
+
 	return nil
 }
 
@@ -1605,6 +1783,7 @@ func (m *MockRepositoryService) UpdateYumGroup(ctx context.Context, name string,
 	if m.UpdateYumGroupFn != nil {
 		return m.UpdateYumGroupFn(ctx, name, repo)
 	}
+
 	return nil
 }
 
@@ -1612,6 +1791,7 @@ func (m *MockRepositoryService) DeleteYumGroup(ctx context.Context, name string)
 	if m.DeleteYumGroupFn != nil {
 		return m.DeleteYumGroupFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1705,6 +1885,7 @@ func (m *MockSecurityService) GetUser(ctx context.Context, id string) (*security
 	if m.GetUserFn != nil {
 		return m.GetUserFn(ctx, id)
 	}
+
 	return nil, nil
 }
 
@@ -1714,6 +1895,7 @@ func (m *MockSecurityService) CreateUser(ctx context.Context, user security.User
 	if m.CreateUserFn != nil {
 		return m.CreateUserFn(ctx, user)
 	}
+
 	return nil
 }
 
@@ -1723,6 +1905,7 @@ func (m *MockSecurityService) UpdateUser(ctx context.Context, id string, user se
 	if m.UpdateUserFn != nil {
 		return m.UpdateUserFn(ctx, id, user)
 	}
+
 	return nil
 }
 
@@ -1732,6 +1915,7 @@ func (m *MockSecurityService) DeleteUser(ctx context.Context, id string) error {
 	if m.DeleteUserFn != nil {
 		return m.DeleteUserFn(ctx, id)
 	}
+
 	return nil
 }
 
@@ -1741,6 +1925,7 @@ func (m *MockSecurityService) ChangePassword(ctx context.Context, id string, pas
 	if m.ChangePasswordFn != nil {
 		return m.ChangePasswordFn(ctx, id, password)
 	}
+
 	return nil
 }
 
@@ -1750,6 +1935,7 @@ func (m *MockSecurityService) GetRole(ctx context.Context, id string) (*security
 	if m.GetRoleFn != nil {
 		return m.GetRoleFn(ctx, id)
 	}
+
 	return nil, nil
 }
 
@@ -1759,6 +1945,7 @@ func (m *MockSecurityService) CreateRole(ctx context.Context, role security.Role
 	if m.CreateRoleFn != nil {
 		return m.CreateRoleFn(ctx, role)
 	}
+
 	return nil
 }
 
@@ -1768,6 +1955,7 @@ func (m *MockSecurityService) UpdateRole(ctx context.Context, id string, role se
 	if m.UpdateRoleFn != nil {
 		return m.UpdateRoleFn(ctx, id, role)
 	}
+
 	return nil
 }
 
@@ -1777,6 +1965,7 @@ func (m *MockSecurityService) DeleteRole(ctx context.Context, id string) error {
 	if m.DeleteRoleFn != nil {
 		return m.DeleteRoleFn(ctx, id)
 	}
+
 	return nil
 }
 
@@ -1790,6 +1979,7 @@ func (m *MockSecurityService) ListActiveRealms(ctx context.Context) ([]string, e
 	if m.ListActiveRealmsFn != nil {
 		return m.ListActiveRealmsFn(ctx)
 	}
+
 	return nil, nil
 }
 
@@ -1797,6 +1987,7 @@ func (m *MockSecurityService) ActivateRealms(ctx context.Context, ids []string) 
 	if m.ActivateRealmsFn != nil {
 		return m.ActivateRealmsFn(ctx, ids)
 	}
+
 	return nil
 }
 
@@ -1806,6 +1997,7 @@ func (m *MockSecurityService) GetContentSelector(ctx context.Context, name strin
 	if m.GetContentSelectorFn != nil {
 		return m.GetContentSelectorFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1817,6 +2009,7 @@ func (m *MockSecurityService) CreateContentSelector(ctx context.Context, cs secu
 	if m.CreateContentSelectorFn != nil {
 		return m.CreateContentSelectorFn(ctx, cs)
 	}
+
 	return nil
 }
 
@@ -1824,6 +2017,7 @@ func (m *MockSecurityService) UpdateContentSelector(ctx context.Context, name st
 	if m.UpdateContentSelectorFn != nil {
 		return m.UpdateContentSelectorFn(ctx, name, cs)
 	}
+
 	return nil
 }
 
@@ -1831,6 +2025,7 @@ func (m *MockSecurityService) DeleteContentSelector(ctx context.Context, name st
 	if m.DeleteContentSelectorFn != nil {
 		return m.DeleteContentSelectorFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1840,6 +2035,7 @@ func (m *MockSecurityService) GetPrivilege(ctx context.Context, name string) (*s
 	if m.GetPrivilegeFn != nil {
 		return m.GetPrivilegeFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1851,6 +2047,7 @@ func (m *MockSecurityService) DeletePrivilege(ctx context.Context, name string) 
 	if m.DeletePrivilegeFn != nil {
 		return m.DeletePrivilegeFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1858,6 +2055,7 @@ func (m *MockSecurityService) CreatePrivilegeApplication(ctx context.Context, p 
 	if m.CreatePrivilegeApplicationFn != nil {
 		return m.CreatePrivilegeApplicationFn(ctx, p)
 	}
+
 	return nil
 }
 
@@ -1865,6 +2063,7 @@ func (m *MockSecurityService) UpdatePrivilegeApplication(ctx context.Context, na
 	if m.UpdatePrivilegeApplicationFn != nil {
 		return m.UpdatePrivilegeApplicationFn(ctx, name, p)
 	}
+
 	return nil
 }
 
@@ -1872,6 +2071,7 @@ func (m *MockSecurityService) CreatePrivilegeRepositoryView(ctx context.Context,
 	if m.CreatePrivilegeRepositoryViewFn != nil {
 		return m.CreatePrivilegeRepositoryViewFn(ctx, p)
 	}
+
 	return nil
 }
 
@@ -1879,6 +2079,7 @@ func (m *MockSecurityService) UpdatePrivilegeRepositoryView(ctx context.Context,
 	if m.UpdatePrivilegeRepositoryViewFn != nil {
 		return m.UpdatePrivilegeRepositoryViewFn(ctx, name, p)
 	}
+
 	return nil
 }
 
@@ -1910,6 +2111,7 @@ func (m *MockSecurityService) CreatePrivilegeWildcard(ctx context.Context, p sec
 	if m.CreatePrivilegeWildcardFn != nil {
 		return m.CreatePrivilegeWildcardFn(ctx, p)
 	}
+
 	return nil
 }
 
@@ -1917,6 +2119,7 @@ func (m *MockSecurityService) UpdatePrivilegeWildcard(ctx context.Context, name 
 	if m.UpdatePrivilegeWildcardFn != nil {
 		return m.UpdatePrivilegeWildcardFn(ctx, name, p)
 	}
+
 	return nil
 }
 
@@ -1926,6 +2129,7 @@ func (m *MockSecurityService) GetAnonymousAccess(ctx context.Context) (*security
 	if m.GetAnonymousAccessFn != nil {
 		return m.GetAnonymousAccessFn(ctx)
 	}
+
 	return nil, nil
 }
 
@@ -1933,6 +2137,7 @@ func (m *MockSecurityService) UpdateAnonymousAccess(ctx context.Context, setting
 	if m.UpdateAnonymousAccessFn != nil {
 		return m.UpdateAnonymousAccessFn(ctx, settings)
 	}
+
 	return nil
 }
 
@@ -1942,6 +2147,7 @@ func (m *MockSecurityService) GetSAML(ctx context.Context) (*security.SAML, erro
 	if m.GetSAMLFn != nil {
 		return m.GetSAMLFn(ctx)
 	}
+
 	return nil, nil
 }
 
@@ -1949,6 +2155,7 @@ func (m *MockSecurityService) ApplySAML(ctx context.Context, saml security.SAML)
 	if m.UpdateSAMLFn != nil {
 		return m.UpdateSAMLFn(ctx, saml)
 	}
+
 	return nil
 }
 
@@ -1956,6 +2163,7 @@ func (m *MockSecurityService) DeleteSAML(ctx context.Context) error {
 	if m.DeleteSAMLFn != nil {
 		return m.DeleteSAMLFn(ctx)
 	}
+
 	return nil
 }
 
@@ -1965,6 +2173,7 @@ func (m *MockSecurityService) GetLDAP(ctx context.Context, name string) (*securi
 	if m.GetLDAPFn != nil {
 		return m.GetLDAPFn(ctx, name)
 	}
+
 	return nil, nil
 }
 
@@ -1976,6 +2185,7 @@ func (m *MockSecurityService) CreateLDAP(ctx context.Context, ldap security.LDAP
 	if m.CreateLDAPFn != nil {
 		return m.CreateLDAPFn(ctx, ldap)
 	}
+
 	return nil
 }
 
@@ -1983,6 +2193,7 @@ func (m *MockSecurityService) UpdateLDAP(ctx context.Context, name string, ldap 
 	if m.UpdateLDAPFn != nil {
 		return m.UpdateLDAPFn(ctx, name, ldap)
 	}
+
 	return nil
 }
 
@@ -1990,6 +2201,7 @@ func (m *MockSecurityService) DeleteLDAP(ctx context.Context, name string) error
 	if m.DeleteLDAPFn != nil {
 		return m.DeleteLDAPFn(ctx, name)
 	}
+
 	return nil
 }
 
@@ -1999,6 +2211,7 @@ func (m *MockSecurityService) GetUserTokenConfiguration(ctx context.Context) (*s
 	if m.GetUserTokenConfigFn != nil {
 		return m.GetUserTokenConfigFn(ctx)
 	}
+
 	return nil, nil
 }
 
@@ -2006,6 +2219,7 @@ func (m *MockSecurityService) UpdateUserTokenConfiguration(ctx context.Context, 
 	if m.UpdateUserTokenConfigFn != nil {
 		return m.UpdateUserTokenConfigFn(ctx, config)
 	}
+
 	return nil
 }
 
@@ -2021,6 +2235,7 @@ func (m *MockSSLService) AddCertificate(ctx context.Context, cert *security.SSLC
 	if m.AddCertificateFn != nil {
 		return m.AddCertificateFn(ctx, cert)
 	}
+
 	return nil
 }
 
@@ -2029,6 +2244,7 @@ func (m *MockSSLService) RemoveCertificate(ctx context.Context, id string) error
 	if m.RemoveCertificateFn != nil {
 		return m.RemoveCertificateFn(ctx, id)
 	}
+
 	return nil
 }
 
@@ -2037,5 +2253,6 @@ func (m *MockSSLService) ListCertificates(ctx context.Context) ([]security.SSLCe
 	if m.ListCertificatesFn != nil {
 		return m.ListCertificatesFn(ctx)
 	}
+
 	return nil, nil
 }

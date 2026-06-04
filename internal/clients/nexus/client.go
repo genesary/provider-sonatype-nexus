@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/datadrivers/go-nexus-client/nexus3"
 	"github.com/datadrivers/go-nexus-client/nexus3/pkg/client"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
@@ -410,6 +410,7 @@ func GetCredentialsFromSecret(ctx context.Context, kube kubeclient.Client, pc *v
 	}
 
 	secret := &corev1.Secret{}
+
 	err := kube.Get(ctx, types.NamespacedName{
 		Name:      pc.Spec.Credentials.SecretRef.Name,
 		Namespace: pc.Spec.Credentials.SecretRef.Namespace,
@@ -436,12 +437,13 @@ func GetCredentialsFromSecret(ctx context.Context, kube kubeclient.Client, pc *v
 }
 
 // GetSecretValue retrieves a value from a Kubernetes secret using a SecretKeySelector.
-func GetSecretValue(ctx context.Context, kube kubeclient.Client, selector *xpv1.SecretKeySelector) (string, error) {
+func GetSecretValue(ctx context.Context, kube kubeclient.Client, selector *xpv2.SecretKeySelector) (string, error) {
 	if selector == nil {
 		return "", errors.New("secretKeySelector is nil")
 	}
 
 	secret := &corev1.Secret{}
+
 	err := kube.Get(ctx, types.NamespacedName{
 		Name:      selector.Name,
 		Namespace: selector.Namespace,
@@ -1670,8 +1672,10 @@ func (s *sslService) ListCertificates(ctx context.Context) ([]security.SSLCertif
 	if err != nil {
 		return nil, err
 	}
+
 	if certs == nil {
 		return nil, nil
 	}
+
 	return *certs, nil
 }

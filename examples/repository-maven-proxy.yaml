@@ -29,4 +29,5 @@ spec:
       blobStoreName: default
       strictContentTypeValidation: true
   providerConfigRef:
+    kind: ProviderConfig
     name: default

@@ -21,4 +21,5 @@ spec:
       strictContentTypeValidation: true
       writePolicy: ALLOW
   providerConfigRef:
+    kind: ProviderConfig
     name: default

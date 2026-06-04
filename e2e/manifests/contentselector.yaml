@@ -9,4 +9,5 @@ spec:
     description: "Selector created by e2e tests"
     expression: format == "maven2" and path =^ "/test/"
   providerConfigRef:
+    kind: ProviderConfig
     name: default

@@ -11,4 +11,5 @@ spec:
       type: spaceRemainingQuota
       limit: 104857600
   providerConfigRef:
+    kind: ProviderConfig
     name: default

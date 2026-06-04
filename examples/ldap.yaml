@@ -29,4 +29,5 @@ spec:
     groupMemberAttribute: uniqueMember
     groupMemberFormat: "uid=${username},ou=people,dc=example,dc=com"
   providerConfigRef:
+    kind: ProviderConfig
     name: nexus-provider-config

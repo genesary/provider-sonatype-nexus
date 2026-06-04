@@ -12,4 +12,5 @@ spec:
     actions:
       - READ
   providerConfigRef:
+    kind: ProviderConfig
     name: default

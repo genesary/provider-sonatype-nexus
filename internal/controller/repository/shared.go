@@ -4,16 +4,16 @@ import (
 	"context"
 
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
+	"k8s.io/utils/ptr"
 
 	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
-	"github.com/genesary/provider-sonatype-nexus/internal/utils"
 )
 
 // Shared configuration generators used by all format handlers.
 
 // getOnline returns the online status, defaulting to true if not specified.
 func getOnline(cr *v1alpha1.Repository) bool {
-	return utils.BoolValueDefault(cr.Spec.ForProvider.Online, true)
+	return ptr.Deref(cr.Spec.ForProvider.Online, true)
 }
 
 // generateCleanup converts cleanup policy configuration.
@@ -23,6 +23,7 @@ func generateCleanup(cr *v1alpha1.Repository) *repository.Cleanup {
 			PolicyNames: cr.Spec.ForProvider.Cleanup.PolicyNames,
 		}
 	}
+
 	return nil
 }
 
@@ -40,6 +41,7 @@ func generateHostedStorage(cr *v1alpha1.Repository) repository.HostedStorage {
 		if cr.Spec.ForProvider.Storage.StrictContentTypeValidation != nil {
 			storage.StrictContentTypeValidation = *cr.Spec.ForProvider.Storage.StrictContentTypeValidation
 		}
+
 		if cr.Spec.ForProvider.Storage.WritePolicy != nil {
 			wp := repository.StorageWritePolicy(*cr.Spec.ForProvider.Storage.WritePolicy)
 			storage.WritePolicy = &wp
@@ -62,6 +64,7 @@ func generateDockerHostedStorage(cr *v1alpha1.Repository) repository.DockerHoste
 		if cr.Spec.ForProvider.Storage.StrictContentTypeValidation != nil {
 			storage.StrictContentTypeValidation = *cr.Spec.ForProvider.Storage.StrictContentTypeValidation
 		}
+
 		if cr.Spec.ForProvider.Storage.WritePolicy != nil {
 			storage.WritePolicy = repository.StorageWritePolicy(*cr.Spec.ForProvider.Storage.WritePolicy)
 		}
@@ -99,6 +102,7 @@ func generateProxyConfig(cr *v1alpha1.Repository) repository.Proxy {
 		if cr.Spec.ForProvider.Proxy.ContentMaxAge != nil {
 			proxy.ContentMaxAge = int(*cr.Spec.ForProvider.Proxy.ContentMaxAge)
 		}
+
 		if cr.Spec.ForProvider.Proxy.MetadataMaxAge != nil {
 			proxy.MetadataMaxAge = int(*cr.Spec.ForProvider.Proxy.MetadataMaxAge)
 		}
@@ -118,6 +122,7 @@ func generateNegativeCache(cr *v1alpha1.Repository) repository.NegativeCache {
 		if cr.Spec.ForProvider.NegativeCache.Enabled != nil {
 			nc.Enabled = *cr.Spec.ForProvider.NegativeCache.Enabled
 		}
+
 		if cr.Spec.ForProvider.NegativeCache.TimeToLive != nil {
 			nc.TTL = int(*cr.Spec.ForProvider.NegativeCache.TimeToLive)
 		}
@@ -137,12 +142,15 @@ func generateHTTPClient(ctx context.Context, cr *v1alpha1.Repository) repository
 		if cr.Spec.ForProvider.HTTPClient.Blocked != nil {
 			hc.Blocked = *cr.Spec.ForProvider.HTTPClient.Blocked
 		}
+
 		if cr.Spec.ForProvider.HTTPClient.AutoBlock != nil {
 			hc.AutoBlock = *cr.Spec.ForProvider.HTTPClient.AutoBlock
 		}
+
 		if cr.Spec.ForProvider.HTTPClient.Connection != nil {
 			hc.Connection = generateHTTPClientConnection(cr.Spec.ForProvider.HTTPClient.Connection)
 		}
+
 		if cr.Spec.ForProvider.HTTPClient.Authentication != nil {
 			hc.Authentication = generateHTTPClientAuth(ctx, cr.Spec.ForProvider.HTTPClient.Authentication)
 		}
@@ -162,12 +170,15 @@ func generateHTTPClientWithPreemptiveAuth(ctx context.Context, cr *v1alpha1.Repo
 		if cr.Spec.ForProvider.HTTPClient.Blocked != nil {
 			hc.Blocked = *cr.Spec.ForProvider.HTTPClient.Blocked
 		}
+
 		if cr.Spec.ForProvider.HTTPClient.AutoBlock != nil {
 			hc.AutoBlock = *cr.Spec.ForProvider.HTTPClient.AutoBlock
 		}
+
 		if cr.Spec.ForProvider.HTTPClient.Connection != nil {
 			hc.Connection = generateHTTPClientConnection(cr.Spec.ForProvider.HTTPClient.Connection)
 		}
+
 		if cr.Spec.ForProvider.HTTPClient.Authentication != nil {
 			hc.Authentication = generateHTTPClientAuthWithPreemptive(ctx, cr.Spec.ForProvider.HTTPClient.Authentication)
 		}
@@ -184,13 +195,16 @@ func generateHTTPClientConnection(conn *v1alpha1.HTTPClientConnection) *reposito
 		retries := int(*conn.Retries)
 		rc.Retries = &retries
 	}
+
 	if conn.UserAgentSuffix != nil {
 		rc.UserAgentSuffix = *conn.UserAgentSuffix
 	}
+
 	if conn.Timeout != nil {
 		timeout := int(*conn.Timeout)
 		rc.Timeout = &timeout
 	}
+
 	rc.EnableCircularRedirects = conn.EnableCircularRedirects
 	rc.EnableCookies = conn.EnableCookies
 	rc.UseTrustStore = conn.UseTrustStore
@@ -205,15 +219,19 @@ func generateHTTPClientAuth(ctx context.Context, auth *v1alpha1.HTTPClientAuthen
 	if auth.Type != nil {
 		ra.Type = repository.HTTPClientAuthenticationType(*auth.Type)
 	}
+
 	if auth.Username != nil {
 		ra.Username = *auth.Username
 	}
+
 	if auth.NTLMHost != nil {
 		ra.NTLMHost = *auth.NTLMHost
 	}
+
 	if auth.NTLMDomain != nil {
 		ra.NTLMDomain = *auth.NTLMDomain
 	}
+
 	ra.Password = getResolvedPassword(ctx)
 
 	return ra
@@ -226,15 +244,19 @@ func generateHTTPClientAuthWithPreemptive(ctx context.Context, auth *v1alpha1.HT
 	if auth.Type != nil {
 		ra.Type = repository.HTTPClientAuthenticationType(*auth.Type)
 	}
+
 	if auth.Username != nil {
 		ra.Username = *auth.Username
 	}
+
 	if auth.NTLMHost != nil {
 		ra.NTLMHost = *auth.NTLMHost
 	}
+
 	if auth.NTLMDomain != nil {
 		ra.NTLMDomain = *auth.NTLMDomain
 	}
+
 	ra.Password = getResolvedPassword(ctx)
 
 	return ra
@@ -274,9 +296,11 @@ func generateMavenConfig(cr *v1alpha1.Repository) repository.Maven {
 		if cr.Spec.ForProvider.Maven.VersionPolicy != nil {
 			maven.VersionPolicy = repository.MavenVersionPolicy(*cr.Spec.ForProvider.Maven.VersionPolicy)
 		}
+
 		if cr.Spec.ForProvider.Maven.LayoutPolicy != nil {
 			maven.LayoutPolicy = repository.MavenLayoutPolicy(*cr.Spec.ForProvider.Maven.LayoutPolicy)
 		}
+
 		if cr.Spec.ForProvider.Maven.ContentDisposition != nil {
 			cd := repository.MavenContentDisposition(*cr.Spec.ForProvider.Maven.ContentDisposition)
 			maven.ContentDisposition = &cd
@@ -297,17 +321,21 @@ func generateDockerConfig(cr *v1alpha1.Repository) repository.Docker {
 		if cr.Spec.ForProvider.Docker.V1Enabled != nil {
 			docker.V1Enabled = *cr.Spec.ForProvider.Docker.V1Enabled
 		}
+
 		if cr.Spec.ForProvider.Docker.ForceBasicAuth != nil {
 			docker.ForceBasicAuth = *cr.Spec.ForProvider.Docker.ForceBasicAuth
 		}
+
 		if cr.Spec.ForProvider.Docker.HTTPPort != nil {
 			port := int(*cr.Spec.ForProvider.Docker.HTTPPort)
 			docker.HTTPPort = &port
 		}
+
 		if cr.Spec.ForProvider.Docker.HTTPSPort != nil {
 			port := int(*cr.Spec.ForProvider.Docker.HTTPSPort)
 			docker.HTTPSPort = &port
 		}
+
 		docker.Subdomain = cr.Spec.ForProvider.Docker.Subdomain
 	}
 

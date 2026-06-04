@@ -28,20 +28,24 @@ func (h *NugetHandler) Observe(ctx context.Context, client nexus.Client, name, r
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, isBasicHostedUpToDate(cr, repo.Name, repo.Online)
 	case "proxy":
 		repo, err := client.Repository().GetNugetProxy(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.Proxy.RemoteURL)
+
+		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.RemoteURL)
 	case "group":
 		repo, err := client.Repository().GetNugetGroup(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.Group.MemberNames)
+
+		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.MemberNames)
 	}
+
 	return false, false
 }
 
@@ -53,16 +57,19 @@ func (h *NugetHandler) Create(ctx context.Context, client nexus.Client, cr *v1al
 		repo := repository.NugetProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)}
 		if cr.Spec.ForProvider.NugetProxy != nil {
 			if cr.Spec.ForProvider.NugetProxy.QueryCacheItemMaxAge != nil {
-				repo.NugetProxy.QueryCacheItemMaxAge = int(*cr.Spec.ForProvider.NugetProxy.QueryCacheItemMaxAge)
+				repo.QueryCacheItemMaxAge = int(*cr.Spec.ForProvider.NugetProxy.QueryCacheItemMaxAge)
 			}
+
 			if cr.Spec.ForProvider.NugetProxy.NugetVersion != nil {
-				repo.NugetProxy.NugetVersion = repository.NugetVersion(*cr.Spec.ForProvider.NugetProxy.NugetVersion)
+				repo.NugetVersion = repository.NugetVersion(*cr.Spec.ForProvider.NugetProxy.NugetVersion)
 			}
 		}
+
 		return client.Repository().CreateNugetProxy(ctx, repo)
 	case "group":
 		return client.Repository().CreateNugetGroup(ctx, repository.NugetGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported nuget repository type: %s", repoType)
 }
 
@@ -74,16 +81,19 @@ func (h *NugetHandler) Update(ctx context.Context, client nexus.Client, name str
 		repo := repository.NugetProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)}
 		if cr.Spec.ForProvider.NugetProxy != nil {
 			if cr.Spec.ForProvider.NugetProxy.QueryCacheItemMaxAge != nil {
-				repo.NugetProxy.QueryCacheItemMaxAge = int(*cr.Spec.ForProvider.NugetProxy.QueryCacheItemMaxAge)
+				repo.QueryCacheItemMaxAge = int(*cr.Spec.ForProvider.NugetProxy.QueryCacheItemMaxAge)
 			}
+
 			if cr.Spec.ForProvider.NugetProxy.NugetVersion != nil {
-				repo.NugetProxy.NugetVersion = repository.NugetVersion(*cr.Spec.ForProvider.NugetProxy.NugetVersion)
+				repo.NugetVersion = repository.NugetVersion(*cr.Spec.ForProvider.NugetProxy.NugetVersion)
 			}
 		}
+
 		return client.Repository().UpdateNugetProxy(ctx, name, repo)
 	case "group":
 		return client.Repository().UpdateNugetGroup(ctx, name, repository.NugetGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported nuget repository type: %s", repoType)
 }
 
@@ -96,6 +106,7 @@ func (h *NugetHandler) Delete(ctx context.Context, client nexus.Client, name, re
 	case "group":
 		return client.Repository().DeleteNugetGroup(ctx, name)
 	}
+
 	return errors.Errorf("unsupported nuget repository type: %s", repoType)
 }
 
@@ -111,20 +122,24 @@ func (h *PypiHandler) Observe(ctx context.Context, client nexus.Client, name, re
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, isBasicHostedUpToDate(cr, repo.Name, repo.Online)
 	case "proxy":
 		repo, err := client.Repository().GetPypiProxy(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.Proxy.RemoteURL)
+
+		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.RemoteURL)
 	case "group":
 		repo, err := client.Repository().GetPypiGroup(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.Group.MemberNames)
+
+		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.MemberNames)
 	}
+
 	return false, false
 }
 
@@ -137,6 +152,7 @@ func (h *PypiHandler) Create(ctx context.Context, client nexus.Client, cr *v1alp
 	case "group":
 		return client.Repository().CreatePypiGroup(ctx, repository.PypiGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported pypi repository type: %s", repoType)
 }
 
@@ -149,6 +165,7 @@ func (h *PypiHandler) Update(ctx context.Context, client nexus.Client, name stri
 	case "group":
 		return client.Repository().UpdatePypiGroup(ctx, name, repository.PypiGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported pypi repository type: %s", repoType)
 }
 
@@ -161,6 +178,7 @@ func (h *PypiHandler) Delete(ctx context.Context, client nexus.Client, name, rep
 	case "group":
 		return client.Repository().DeletePypiGroup(ctx, name)
 	}
+
 	return errors.Errorf("unsupported pypi repository type: %s", repoType)
 }
 
@@ -176,20 +194,24 @@ func (h *RubygemsHandler) Observe(ctx context.Context, client nexus.Client, name
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, isBasicHostedUpToDate(cr, repo.Name, repo.Online)
 	case "proxy":
 		repo, err := client.Repository().GetRubygemsProxy(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.Proxy.RemoteURL)
+
+		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.RemoteURL)
 	case "group":
 		repo, err := client.Repository().GetRubygemsGroup(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.Group.MemberNames)
+
+		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.MemberNames)
 	}
+
 	return false, false
 }
 
@@ -202,6 +224,7 @@ func (h *RubygemsHandler) Create(ctx context.Context, client nexus.Client, cr *v
 	case "group":
 		return client.Repository().CreateRubygemsGroup(ctx, repository.RubyGemsGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported rubygems repository type: %s", repoType)
 }
 
@@ -214,6 +237,7 @@ func (h *RubygemsHandler) Update(ctx context.Context, client nexus.Client, name 
 	case "group":
 		return client.Repository().UpdateRubygemsGroup(ctx, name, repository.RubyGemsGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported rubygems repository type: %s", repoType)
 }
 
@@ -226,6 +250,7 @@ func (h *RubygemsHandler) Delete(ctx context.Context, client nexus.Client, name,
 	case "group":
 		return client.Repository().DeleteRubygemsGroup(ctx, name)
 	}
+
 	return errors.Errorf("unsupported rubygems repository type: %s", repoType)
 }
 
@@ -241,20 +266,24 @@ func (h *YumHandler) Observe(ctx context.Context, client nexus.Client, name, rep
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, isBasicHostedUpToDate(cr, repo.Name, repo.Online)
 	case "proxy":
 		repo, err := client.Repository().GetYumProxy(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.Proxy.RemoteURL)
+
+		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.RemoteURL)
 	case "group":
 		repo, err := client.Repository().GetYumGroup(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.Group.MemberNames)
+
+		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.MemberNames)
 	}
+
 	return false, false
 }
 
@@ -264,19 +293,22 @@ func (h *YumHandler) Create(ctx context.Context, client nexus.Client, cr *v1alph
 		repo := repository.YumHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)}
 		if cr.Spec.ForProvider.Yum != nil {
 			if cr.Spec.ForProvider.Yum.RepodataDepth != nil {
-				repo.Yum.RepodataDepth = int(*cr.Spec.ForProvider.Yum.RepodataDepth)
+				repo.RepodataDepth = int(*cr.Spec.ForProvider.Yum.RepodataDepth)
 			}
+
 			if cr.Spec.ForProvider.Yum.DeployPolicy != nil {
 				deployPolicy := repository.YumDeployPolicy(*cr.Spec.ForProvider.Yum.DeployPolicy)
-				repo.Yum.DeployPolicy = &deployPolicy
+				repo.DeployPolicy = &deployPolicy
 			}
 		}
+
 		return client.Repository().CreateYumHosted(ctx, repo)
 	case "proxy":
 		return client.Repository().CreateYumProxy(ctx, repository.YumProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	case "group":
 		return client.Repository().CreateYumGroup(ctx, repository.YumGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported yum repository type: %s", repoType)
 }
 
@@ -286,19 +318,22 @@ func (h *YumHandler) Update(ctx context.Context, client nexus.Client, name strin
 		repo := repository.YumHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)}
 		if cr.Spec.ForProvider.Yum != nil {
 			if cr.Spec.ForProvider.Yum.RepodataDepth != nil {
-				repo.Yum.RepodataDepth = int(*cr.Spec.ForProvider.Yum.RepodataDepth)
+				repo.RepodataDepth = int(*cr.Spec.ForProvider.Yum.RepodataDepth)
 			}
+
 			if cr.Spec.ForProvider.Yum.DeployPolicy != nil {
 				deployPolicy := repository.YumDeployPolicy(*cr.Spec.ForProvider.Yum.DeployPolicy)
-				repo.Yum.DeployPolicy = &deployPolicy
+				repo.DeployPolicy = &deployPolicy
 			}
 		}
+
 		return client.Repository().UpdateYumHosted(ctx, name, repo)
 	case "proxy":
 		return client.Repository().UpdateYumProxy(ctx, name, repository.YumProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	case "group":
 		return client.Repository().UpdateYumGroup(ctx, name, repository.YumGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported yum repository type: %s", repoType)
 }
 
@@ -311,6 +346,7 @@ func (h *YumHandler) Delete(ctx context.Context, client nexus.Client, name, repo
 	case "group":
 		return client.Repository().DeleteYumGroup(ctx, name)
 	}
+
 	return errors.Errorf("unsupported yum repository type: %s", repoType)
 }
 
@@ -326,20 +362,24 @@ func (h *RHandler) Observe(ctx context.Context, client nexus.Client, name, repoT
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, isBasicHostedUpToDate(cr, repo.Name, repo.Online)
 	case "proxy":
 		repo, err := client.Repository().GetRProxy(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.Proxy.RemoteURL)
+
+		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.RemoteURL)
 	case "group":
 		repo, err := client.Repository().GetRGroup(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.Group.MemberNames)
+
+		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.MemberNames)
 	}
+
 	return false, false
 }
 
@@ -352,6 +392,7 @@ func (h *RHandler) Create(ctx context.Context, client nexus.Client, cr *v1alpha1
 	case "group":
 		return client.Repository().CreateRGroup(ctx, repository.RGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported r repository type: %s", repoType)
 }
 
@@ -364,6 +405,7 @@ func (h *RHandler) Update(ctx context.Context, client nexus.Client, name string,
 	case "group":
 		return client.Repository().UpdateRGroup(ctx, name, repository.RGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported r repository type: %s", repoType)
 }
 
@@ -376,6 +418,7 @@ func (h *RHandler) Delete(ctx context.Context, client nexus.Client, name, repoTy
 	case "group":
 		return client.Repository().DeleteRGroup(ctx, name)
 	}
+
 	return errors.Errorf("unsupported r repository type: %s", repoType)
 }
 
@@ -391,20 +434,24 @@ func (h *CargoHandler) Observe(ctx context.Context, client nexus.Client, name, r
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, isBasicHostedUpToDate(cr, repo.Name, repo.Online)
 	case "proxy":
 		repo, err := client.Repository().GetCargoProxy(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.Proxy.RemoteURL)
+
+		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.RemoteURL)
 	case "group":
 		repo, err := client.Repository().GetCargoGroup(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.Group.MemberNames)
+
+		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.MemberNames)
 	}
+
 	return false, false
 }
 
@@ -417,6 +464,7 @@ func (h *CargoHandler) Create(ctx context.Context, client nexus.Client, cr *v1al
 	case "group":
 		return client.Repository().CreateCargoGroup(ctx, repository.CargoGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported cargo repository type: %s", repoType)
 }
 
@@ -429,6 +477,7 @@ func (h *CargoHandler) Update(ctx context.Context, client nexus.Client, name str
 	case "group":
 		return client.Repository().UpdateCargoGroup(ctx, name, repository.CargoGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported cargo repository type: %s", repoType)
 }
 
@@ -441,6 +490,7 @@ func (h *CargoHandler) Delete(ctx context.Context, client nexus.Client, name, re
 	case "group":
 		return client.Repository().DeleteCargoGroup(ctx, name)
 	}
+
 	return errors.Errorf("unsupported cargo repository type: %s", repoType)
 }
 
@@ -456,20 +506,24 @@ func (h *BowerHandler) Observe(ctx context.Context, client nexus.Client, name, r
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, isBasicHostedUpToDate(cr, repo.Name, repo.Online)
 	case "proxy":
 		repo, err := client.Repository().GetBowerProxy(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.Proxy.RemoteURL)
+
+		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.RemoteURL)
 	case "group":
 		repo, err := client.Repository().GetBowerGroup(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.Group.MemberNames)
+
+		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.MemberNames)
 	}
+
 	return false, false
 }
 
@@ -482,10 +536,12 @@ func (h *BowerHandler) Create(ctx context.Context, client nexus.Client, cr *v1al
 		if cr.Spec.ForProvider.Bower != nil && cr.Spec.ForProvider.Bower.RewritePackageUrls != nil {
 			repo.Bower = repository.Bower{RewritePackageUrls: *cr.Spec.ForProvider.Bower.RewritePackageUrls}
 		}
+
 		return client.Repository().CreateBowerProxy(ctx, repo)
 	case "group":
 		return client.Repository().CreateBowerGroup(ctx, repository.BowerGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported bower repository type: %s", repoType)
 }
 
@@ -498,10 +554,12 @@ func (h *BowerHandler) Update(ctx context.Context, client nexus.Client, name str
 		if cr.Spec.ForProvider.Bower != nil && cr.Spec.ForProvider.Bower.RewritePackageUrls != nil {
 			repo.Bower = repository.Bower{RewritePackageUrls: *cr.Spec.ForProvider.Bower.RewritePackageUrls}
 		}
+
 		return client.Repository().UpdateBowerProxy(ctx, name, repo)
 	case "group":
 		return client.Repository().UpdateBowerGroup(ctx, name, repository.BowerGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported bower repository type: %s", repoType)
 }
 
@@ -514,6 +572,7 @@ func (h *BowerHandler) Delete(ctx context.Context, client nexus.Client, name, re
 	case "group":
 		return client.Repository().DeleteBowerGroup(ctx, name)
 	}
+
 	return errors.Errorf("unsupported bower repository type: %s", repoType)
 }
 
@@ -529,14 +588,17 @@ func (h *AptHandler) Observe(ctx context.Context, client nexus.Client, name, rep
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, isBasicHostedUpToDate(cr, repo.Name, repo.Online)
 	case "proxy":
 		repo, err := client.Repository().GetAptProxy(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.Proxy.RemoteURL)
+
+		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.RemoteURL)
 	}
+
 	return false, false
 }
 
@@ -547,9 +609,11 @@ func (h *AptHandler) Create(ctx context.Context, client nexus.Client, cr *v1alph
 		if cr.Spec.ForProvider.Apt != nil && cr.Spec.ForProvider.Apt.Distribution != nil {
 			repo.Apt.Distribution = *cr.Spec.ForProvider.Apt.Distribution
 		}
+
 		if cr.Spec.ForProvider.AptSigning != nil {
 			repo.AptSigning = repository.AptSigning{Keypair: cr.Spec.ForProvider.AptSigning.Keypair, Passphrase: cr.Spec.ForProvider.AptSigning.Passphrase}
 		}
+
 		return client.Repository().CreateAptHosted(ctx, repo)
 	case "proxy":
 		repo := repository.AptProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)}
@@ -557,12 +621,15 @@ func (h *AptHandler) Create(ctx context.Context, client nexus.Client, cr *v1alph
 			if cr.Spec.ForProvider.Apt.Distribution != nil {
 				repo.Apt.Distribution = *cr.Spec.ForProvider.Apt.Distribution
 			}
+
 			if cr.Spec.ForProvider.Apt.Flat != nil {
 				repo.Apt.Flat = *cr.Spec.ForProvider.Apt.Flat
 			}
 		}
+
 		return client.Repository().CreateAptProxy(ctx, repo)
 	}
+
 	return errors.Errorf("unsupported apt repository type: %s", repoType)
 }
 
@@ -573,9 +640,11 @@ func (h *AptHandler) Update(ctx context.Context, client nexus.Client, name strin
 		if cr.Spec.ForProvider.Apt != nil && cr.Spec.ForProvider.Apt.Distribution != nil {
 			repo.Apt.Distribution = *cr.Spec.ForProvider.Apt.Distribution
 		}
+
 		if cr.Spec.ForProvider.AptSigning != nil {
 			repo.AptSigning = repository.AptSigning{Keypair: cr.Spec.ForProvider.AptSigning.Keypair, Passphrase: cr.Spec.ForProvider.AptSigning.Passphrase}
 		}
+
 		return client.Repository().UpdateAptHosted(ctx, name, repo)
 	case "proxy":
 		repo := repository.AptProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)}
@@ -583,12 +652,15 @@ func (h *AptHandler) Update(ctx context.Context, client nexus.Client, name strin
 			if cr.Spec.ForProvider.Apt.Distribution != nil {
 				repo.Apt.Distribution = *cr.Spec.ForProvider.Apt.Distribution
 			}
+
 			if cr.Spec.ForProvider.Apt.Flat != nil {
 				repo.Apt.Flat = *cr.Spec.ForProvider.Apt.Flat
 			}
 		}
+
 		return client.Repository().UpdateAptProxy(ctx, name, repo)
 	}
+
 	return errors.Errorf("unsupported apt repository type: %s", repoType)
 }
 
@@ -599,6 +671,7 @@ func (h *AptHandler) Delete(ctx context.Context, client nexus.Client, name, repo
 	case "proxy":
 		return client.Repository().DeleteAptProxy(ctx, name)
 	}
+
 	return errors.Errorf("unsupported apt repository type: %s", repoType)
 }
 
@@ -614,14 +687,17 @@ func (h *HelmHandler) Observe(ctx context.Context, client nexus.Client, name, re
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, isBasicHostedUpToDate(cr, repo.Name, repo.Online)
 	case "proxy":
 		repo, err := client.Repository().GetHelmProxy(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.Proxy.RemoteURL)
+
+		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.RemoteURL)
 	}
+
 	return false, false
 }
 
@@ -632,6 +708,7 @@ func (h *HelmHandler) Create(ctx context.Context, client nexus.Client, cr *v1alp
 	case "proxy":
 		return client.Repository().CreateHelmProxy(ctx, repository.HelmProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
+
 	return errors.Errorf("unsupported helm repository type: %s", repoType)
 }
 
@@ -642,6 +719,7 @@ func (h *HelmHandler) Update(ctx context.Context, client nexus.Client, name stri
 	case "proxy":
 		return client.Repository().UpdateHelmProxy(ctx, name, repository.HelmProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
+
 	return errors.Errorf("unsupported helm repository type: %s", repoType)
 }
 
@@ -652,6 +730,7 @@ func (h *HelmHandler) Delete(ctx context.Context, client nexus.Client, name, rep
 	case "proxy":
 		return client.Repository().DeleteHelmProxy(ctx, name)
 	}
+
 	return errors.Errorf("unsupported helm repository type: %s", repoType)
 }
 
@@ -667,14 +746,17 @@ func (h *GoHandler) Observe(ctx context.Context, client nexus.Client, name, repo
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.Proxy.RemoteURL)
+
+		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.RemoteURL)
 	case "group":
 		repo, err := client.Repository().GetGoGroup(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.Group.MemberNames)
+
+		return true, isBasicGroupUpToDate(cr, repo.Name, repo.Online, repo.MemberNames)
 	}
+
 	return false, false
 }
 
@@ -685,6 +767,7 @@ func (h *GoHandler) Create(ctx context.Context, client nexus.Client, cr *v1alpha
 	case "group":
 		return client.Repository().CreateGoGroup(ctx, repository.GoGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported go repository type: %s", repoType)
 }
 
@@ -695,6 +778,7 @@ func (h *GoHandler) Update(ctx context.Context, client nexus.Client, name string
 	case "group":
 		return client.Repository().UpdateGoGroup(ctx, name, repository.GoGroupRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Group: generateGroupConfig(cr)})
 	}
+
 	return errors.Errorf("unsupported go repository type: %s", repoType)
 }
 
@@ -705,6 +789,7 @@ func (h *GoHandler) Delete(ctx context.Context, client nexus.Client, name, repoT
 	case "group":
 		return client.Repository().DeleteGoGroup(ctx, name)
 	}
+
 	return errors.Errorf("unsupported go repository type: %s", repoType)
 }
 
@@ -719,8 +804,10 @@ func (h *GitLfsHandler) Observe(ctx context.Context, client nexus.Client, name, 
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, isBasicHostedUpToDate(cr, repo.Name, repo.Online)
 	}
+
 	return false, false
 }
 
@@ -728,6 +815,7 @@ func (h *GitLfsHandler) Create(ctx context.Context, client nexus.Client, cr *v1a
 	if repoType == "hosted" {
 		return client.Repository().CreateGitLfsHosted(ctx, repository.GitLfsHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	}
+
 	return errors.Errorf("unsupported gitlfs repository type: %s", repoType)
 }
 
@@ -735,6 +823,7 @@ func (h *GitLfsHandler) Update(ctx context.Context, client nexus.Client, name st
 	if repoType == "hosted" {
 		return client.Repository().UpdateGitLfsHosted(ctx, name, repository.GitLfsHostedRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateHostedStorage(cr), Cleanup: generateCleanup(cr)})
 	}
+
 	return errors.Errorf("unsupported gitlfs repository type: %s", repoType)
 }
 
@@ -742,6 +831,7 @@ func (h *GitLfsHandler) Delete(ctx context.Context, client nexus.Client, name, r
 	if repoType == "hosted" {
 		return client.Repository().DeleteGitLfsHosted(ctx, name)
 	}
+
 	return errors.Errorf("unsupported gitlfs repository type: %s", repoType)
 }
 
@@ -756,8 +846,10 @@ func (h *CocoapodsHandler) Observe(ctx context.Context, client nexus.Client, nam
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.Proxy.RemoteURL)
+
+		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.RemoteURL)
 	}
+
 	return false, false
 }
 
@@ -765,6 +857,7 @@ func (h *CocoapodsHandler) Create(ctx context.Context, client nexus.Client, cr *
 	if repoType == "proxy" {
 		return client.Repository().CreateCocoapodsProxy(ctx, repository.CocoapodsProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
+
 	return errors.Errorf("unsupported cocoapods repository type: %s", repoType)
 }
 
@@ -772,6 +865,7 @@ func (h *CocoapodsHandler) Update(ctx context.Context, client nexus.Client, name
 	if repoType == "proxy" {
 		return client.Repository().UpdateCocoapodsProxy(ctx, name, repository.CocoapodsProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
+
 	return errors.Errorf("unsupported cocoapods repository type: %s", repoType)
 }
 
@@ -779,6 +873,7 @@ func (h *CocoapodsHandler) Delete(ctx context.Context, client nexus.Client, name
 	if repoType == "proxy" {
 		return client.Repository().DeleteCocoapodsProxy(ctx, name)
 	}
+
 	return errors.Errorf("unsupported cocoapods repository type: %s", repoType)
 }
 
@@ -793,8 +888,10 @@ func (h *ConanHandler) Observe(ctx context.Context, client nexus.Client, name, r
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.Proxy.RemoteURL)
+
+		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.RemoteURL)
 	}
+
 	return false, false
 }
 
@@ -802,6 +899,7 @@ func (h *ConanHandler) Create(ctx context.Context, client nexus.Client, cr *v1al
 	if repoType == "proxy" {
 		return client.Repository().CreateConanProxy(ctx, repository.ConanProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
+
 	return errors.Errorf("unsupported conan repository type: %s", repoType)
 }
 
@@ -809,6 +907,7 @@ func (h *ConanHandler) Update(ctx context.Context, client nexus.Client, name str
 	if repoType == "proxy" {
 		return client.Repository().UpdateConanProxy(ctx, name, repository.ConanProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
+
 	return errors.Errorf("unsupported conan repository type: %s", repoType)
 }
 
@@ -816,6 +915,7 @@ func (h *ConanHandler) Delete(ctx context.Context, client nexus.Client, name, re
 	if repoType == "proxy" {
 		return client.Repository().DeleteConanProxy(ctx, name)
 	}
+
 	return errors.Errorf("unsupported conan repository type: %s", repoType)
 }
 
@@ -830,8 +930,10 @@ func (h *CondaHandler) Observe(ctx context.Context, client nexus.Client, name, r
 		if err != nil || repo == nil {
 			return false, false
 		}
-		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.Proxy.RemoteURL)
+
+		return true, isBasicProxyUpToDate(cr, repo.Name, repo.Online, repo.RemoteURL)
 	}
+
 	return false, false
 }
 
@@ -839,6 +941,7 @@ func (h *CondaHandler) Create(ctx context.Context, client nexus.Client, cr *v1al
 	if repoType == "proxy" {
 		return client.Repository().CreateCondaProxy(ctx, repository.CondaProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
+
 	return errors.Errorf("unsupported conda repository type: %s", repoType)
 }
 
@@ -846,6 +949,7 @@ func (h *CondaHandler) Update(ctx context.Context, client nexus.Client, name str
 	if repoType == "proxy" {
 		return client.Repository().UpdateCondaProxy(ctx, name, repository.CondaProxyRepository{Name: cr.Spec.ForProvider.Name, Online: getOnline(cr), Storage: generateProxyStorage(cr), Proxy: generateProxyConfig(cr), NegativeCache: generateNegativeCache(cr), HTTPClient: generateHTTPClient(ctx, cr)})
 	}
+
 	return errors.Errorf("unsupported conda repository type: %s", repoType)
 }
 
@@ -853,6 +957,7 @@ func (h *CondaHandler) Delete(ctx context.Context, client nexus.Client, name, re
 	if repoType == "proxy" {
 		return client.Repository().DeleteCondaProxy(ctx, name)
 	}
+
 	return errors.Errorf("unsupported conda repository type: %s", repoType)
 }
 
@@ -862,9 +967,11 @@ func isBasicHostedUpToDate(cr *v1alpha1.Repository, name string, online bool) bo
 	if cr.Spec.ForProvider.Name != name {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Online != nil && *cr.Spec.ForProvider.Online != online {
 		return false
 	}
+
 	return true
 }
 
@@ -872,12 +979,15 @@ func isBasicProxyUpToDate(cr *v1alpha1.Repository, name string, online bool, rem
 	if cr.Spec.ForProvider.Name != name {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Online != nil && *cr.Spec.ForProvider.Online != online {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Proxy != nil && cr.Spec.ForProvider.Proxy.RemoteURL != remoteURL {
 		return false
 	}
+
 	return true
 }
 
@@ -885,18 +995,21 @@ func isBasicGroupUpToDate(cr *v1alpha1.Repository, name string, online bool, mem
 	if cr.Spec.ForProvider.Name != name {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Online != nil && *cr.Spec.ForProvider.Online != online {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Group != nil {
 		if !utils.StringSlicesEqual(cr.Spec.ForProvider.Group.MemberNames, memberNames) {
 			return false
 		}
 	}
+
 	return true
 }
 
-// stringSlicesEqual is kept for backward compatibility with tests
+// stringSlicesEqual is kept for backward compatibility with tests.
 func stringSlicesEqual(a, b []string) bool {
 	return utils.StringSlicesEqual(a, b)
 }

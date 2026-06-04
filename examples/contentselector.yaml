@@ -9,4 +9,5 @@ spec:
     description: "Selector for Maven release artifacts"
     expression: format == "maven2" and path =^ "/releases/"
   providerConfigRef:
+    kind: ProviderConfig
     name: nexus-provider-config

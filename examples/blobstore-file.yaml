@@ -14,4 +14,5 @@ spec:
       type: spaceRemainingQuota  # or spaceUsedQuota
       limit: 104857600  # 100MB in bytes
   providerConfigRef:
+    kind: ProviderConfig
     name: default

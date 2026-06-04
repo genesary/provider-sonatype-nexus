@@ -9,4 +9,5 @@ spec:
     expirationEnabled: true
     expirationDays: 30
   providerConfigRef:
+    kind: ProviderConfig
     name: nexus-provider-config

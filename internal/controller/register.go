@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/crossplane/crossplane-runtime/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -36,9 +36,11 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		user.Setup,
 		usertokenconfiguration.Setup,
 	} {
-		if err := setup(mgr, o); err != nil {
+		err := setup(mgr, o)
+		if err != nil {
 			return errors.Wrap(err, "cannot setup controller")
 		}
 	}
+
 	return nil
 }

@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -254,7 +254,7 @@ type HTTPClientAuthentication struct {
 
 	// PasswordSecretRef is a reference to a secret containing the password.
 	// +optional
-	PasswordSecretRef *xpv1.SecretKeySelector `json:"passwordSecretRef,omitempty"`
+	PasswordSecretRef *xpv2.SecretKeySelector `json:"passwordSecretRef,omitempty"`
 
 	// NTLMHost is the NTLM host.
 	// +optional
@@ -390,14 +390,16 @@ type RepositoryObservation struct {
 
 // RepositorySpec defines the desired state of Repository.
 type RepositorySpec struct {
-	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       RepositoryParameters `json:"forProvider"`
+	xpv2.ManagedResourceSpec `json:",inline"`
+
+	ForProvider RepositoryParameters `json:"forProvider"`
 }
 
 // RepositoryStatus defines the observed state of Repository.
 type RepositoryStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          RepositoryObservation `json:"atProvider,omitempty"`
+	xpv2.ManagedResourceStatus `json:",inline"`
+
+	AtProvider RepositoryObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -423,7 +425,8 @@ type Repository struct {
 type RepositoryList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Repository `json:"items"`
+
+	Items []Repository `json:"items"`
 }
 
 func init() {

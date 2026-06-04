@@ -26,4 +26,5 @@ spec:
       enabled: true
       timeToLive: 1440
   providerConfigRef:
+    kind: ProviderConfig
     name: default

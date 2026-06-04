@@ -5,12 +5,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/crossplane/crossplane-runtime/pkg/controller"
-	"github.com/crossplane/crossplane-runtime/pkg/event"
-	"github.com/crossplane/crossplane-runtime/pkg/meta"
-	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
-	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,14 +38,13 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 
 	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.RoleGroupVersionKind),
-		managed.WithExternalConnecter(&connector{
+		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{}),
 		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
-		managed.WithConnectionPublishers(managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())))
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
@@ -55,25 +54,30 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnecter.
+// connector implements managed.ExternalConnector.
 type connector struct {
 	kube  client.Client
-	usage resource.Tracker
+	usage *resource.ProviderConfigUsageTracker
 }
 
 // Connect produces an ExternalClient for the given managed resource.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	cr, ok := mg.(*v1alpha1.Role)
+	_, ok := mg.(*v1alpha1.Role)
 	if !ok {
 		return nil, errors.New(errNotRole)
 	}
 
-	if err := c.usage.Track(ctx, mg); err != nil {
+	modernMG, ok := mg.(resource.ModernManaged)
+	if !ok {
+		return nil, errors.New("managed resource is not a ModernManaged")
+	}
+
+	if err := c.usage.Track(ctx, modernMG); err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
 	pc := &v1alpha1.ProviderConfig{}
-	if err := c.kube.Get(ctx, client.ObjectKey{Name: cr.GetProviderConfigReference().Name}, pc); err != nil {
+	if err := c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, pc); err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
@@ -112,6 +116,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		if isNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
+
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetRole)
 	}
 
@@ -137,11 +142,14 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	role := generateRole(cr)
-	if err := e.client.Security().CreateRole(ctx, role); err != nil {
+
+	err := e.client.Security().CreateRole(ctx, role)
+	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateRole)
 	}
 
 	meta.SetExternalName(cr, cr.Spec.ForProvider.ID)
+
 	return managed.ExternalCreation{}, nil
 }
 
@@ -158,7 +166,9 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	role := generateRole(cr)
-	if err := e.client.Security().UpdateRole(ctx, roleID, role); err != nil {
+
+	err := e.client.Security().UpdateRole(ctx, roleID, role)
+	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateRole)
 	}
 
@@ -166,10 +176,10 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 // Delete the external resource.
-func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
+func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	cr, ok := mg.(*v1alpha1.Role)
 	if !ok {
-		return errors.New(errNotRole)
+		return managed.ExternalDelete{}, errors.New(errNotRole)
 	}
 
 	roleID := meta.GetExternalName(cr)
@@ -177,13 +187,20 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 		roleID = cr.Spec.ForProvider.ID
 	}
 
-	if err := e.client.Security().DeleteRole(ctx, roleID); err != nil {
+	err := e.client.Security().DeleteRole(ctx, roleID)
+	if err != nil {
 		if isNotFound(err) {
-			return nil
+			return managed.ExternalDelete{}, nil
 		}
-		return errors.Wrap(err, errDeleteRole)
+
+		return managed.ExternalDelete{}, errors.Wrap(err, errDeleteRole)
 	}
 
+	return managed.ExternalDelete{}, nil
+}
+
+// Disconnect from the provider.
+func (e *external) Disconnect(ctx context.Context) error {
 	return nil
 }
 
@@ -208,12 +225,15 @@ func isRoleUpToDate(cr *v1alpha1.Role, role *security.Role) bool {
 	if cr.Spec.ForProvider.Name != role.Name {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Description != nil && *cr.Spec.ForProvider.Description != role.Description {
 		return false
 	}
+
 	if !stringSlicesEqual(cr.Spec.ForProvider.Privileges, role.Privileges) {
 		return false
 	}
+
 	if !stringSlicesEqual(cr.Spec.ForProvider.Roles, role.Roles) {
 		return false
 	}
@@ -226,11 +246,13 @@ func stringSlicesEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}
+
 	for i := range a {
 		if a[i] != b[i] {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -239,6 +261,7 @@ func isNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return strings.Contains(err.Error(), "404") ||
 		strings.Contains(err.Error(), "not found") ||
 		strings.Contains(strings.ToLower(err.Error()), "does not exist")

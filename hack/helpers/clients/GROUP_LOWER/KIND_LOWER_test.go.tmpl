@@ -1,0 +1,34 @@
+package {{ .Env.GROUP | strings.ToLower }}
+
+import (
+	"testing"
+)
+
+// Unlike many Kubernetes projects Crossplane does not use third party testing
+// libraries, per the common Go test review comments. Crossplane encourages the
+// use of table driven unit tests. The tests of the crossplane-runtime project
+// are representative of the testing style Crossplane encourages.
+//
+// https://github.com/golang/go/wiki/TestComments
+// https://github.com/crossplane/crossplane/blob/master/CONTRIBUTING.md#contributing-code
+
+// TestLateInitialize{{ .Env.KIND }} tests the LateInitialize{{ .Env.KIND }} function.
+func TestLateInitialize{{ .Env.KIND }}(t *testing.T) {
+    t.Parallel()
+    // Fail because not implemented yet
+    t.Fatal("not implemented yet")
+}
+
+// TestIs{{ .Env.KIND }}LateInitialized tests the Is{{ .Env.KIND }}LateInitialized function.
+func TestIs{{ .Env.KIND }}LateInitialized(t *testing.T) {
+    t.Parallel()
+    // Fail because not implemented yet
+    t.Fatal("not implemented yet")
+}
+
+// TestIs{{ .Env.KIND }}UpToDate tests the Is{{ .Env.KIND }}UpToDate function.
+func TestIs{{ .Env.KIND }}UpToDate(t *testing.T) {
+    t.Parallel()
+    // Fail because not implemented yet
+    t.Fatal("not implemented yet")
+}

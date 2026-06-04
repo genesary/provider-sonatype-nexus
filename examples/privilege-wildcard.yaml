@@ -10,4 +10,5 @@ spec:
     type: wildcard
     pattern: nexus:repository-view:maven2:*:read
   providerConfigRef:
+    kind: ProviderConfig
     name: nexus-provider-config

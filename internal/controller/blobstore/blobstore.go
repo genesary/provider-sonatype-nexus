@@ -5,12 +5,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/crossplane/crossplane-runtime/pkg/controller"
-	"github.com/crossplane/crossplane-runtime/pkg/event"
-	"github.com/crossplane/crossplane-runtime/pkg/meta"
-	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
-	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,14 +38,13 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 
 	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.BlobStoreGroupVersionKind),
-		managed.WithExternalConnecter(&connector{
+		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{}),
 		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
-		managed.WithConnectionPublishers(managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())))
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
@@ -55,25 +54,30 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnecter.
+// connector implements managed.ExternalConnector.
 type connector struct {
 	kube  client.Client
-	usage resource.Tracker
+	usage *resource.ProviderConfigUsageTracker
 }
 
 // Connect produces an ExternalClient for the given managed resource.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	cr, ok := mg.(*v1alpha1.BlobStore)
+	_, ok := mg.(*v1alpha1.BlobStore)
 	if !ok {
 		return nil, errors.New(errNotBlobStore)
 	}
 
-	if err := c.usage.Track(ctx, mg); err != nil {
+	modernMG, ok := mg.(resource.ModernManaged)
+	if !ok {
+		return nil, errors.New("managed resource is not a ModernManaged")
+	}
+
+	if err := c.usage.Track(ctx, modernMG); err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
 	pc := &v1alpha1.ProviderConfig{}
-	if err := c.kube.Get(ctx, client.ObjectKey{Name: cr.GetProviderConfigReference().Name}, pc); err != nil {
+	if err := c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, pc); err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
@@ -107,8 +111,10 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		name = cr.Spec.ForProvider.Name
 	}
 
-	var exists bool
-	var upToDate bool
+	var (
+		exists   bool
+		upToDate bool
+	)
 
 	switch cr.Spec.ForProvider.Type {
 	case "File":
@@ -117,8 +123,10 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			if isNotFound(err) {
 				return managed.ExternalObservation{ResourceExists: false}, nil
 			}
+
 			return managed.ExternalObservation{}, errors.Wrap(err, errGetBlobStore)
 		}
+
 		if bs != nil {
 			exists = true
 			upToDate = isFileBlobStoreUpToDate(cr, bs)
@@ -129,8 +137,10 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			if isNotFound(err) {
 				return managed.ExternalObservation{ResourceExists: false}, nil
 			}
+
 			return managed.ExternalObservation{}, errors.Wrap(err, errGetBlobStore)
 		}
+
 		if bs != nil {
 			exists = true
 			upToDate = isS3BlobStoreUpToDate(cr, bs)
@@ -142,8 +152,10 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 			if isNotFound(err) {
 				return managed.ExternalObservation{ResourceExists: false}, nil
 			}
+
 			return managed.ExternalObservation{}, errors.Wrap(err, errGetBlobStore)
 		}
+
 		if bs != nil {
 			exists = true
 			upToDate = isFileBlobStoreUpToDate(cr, bs)
@@ -172,23 +184,30 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	switch cr.Spec.ForProvider.Type {
 	case "File":
 		bs := generateFileBlobStore(cr)
-		if err := e.client.BlobStore().CreateFile(ctx, bs); err != nil {
+
+		err := e.client.BlobStore().CreateFile(ctx, bs)
+		if err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errCreateBlobStore)
 		}
 	case "S3":
 		bs := generateS3BlobStore(cr)
-		if err := e.client.BlobStore().CreateS3(ctx, bs); err != nil {
+
+		err := e.client.BlobStore().CreateS3(ctx, bs)
+		if err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errCreateBlobStore)
 		}
 	default:
 		// Default to File type
 		bs := generateFileBlobStore(cr)
-		if err := e.client.BlobStore().CreateFile(ctx, bs); err != nil {
+
+		err := e.client.BlobStore().CreateFile(ctx, bs)
+		if err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errCreateBlobStore)
 		}
 	}
 
 	meta.SetExternalName(cr, cr.Spec.ForProvider.Name)
+
 	return managed.ExternalCreation{}, nil
 }
 
@@ -207,18 +226,24 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	switch cr.Spec.ForProvider.Type {
 	case "File":
 		bs := generateFileBlobStore(cr)
-		if err := e.client.BlobStore().UpdateFile(ctx, name, bs); err != nil {
+
+		err := e.client.BlobStore().UpdateFile(ctx, name, bs)
+		if err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateBlobStore)
 		}
 	case "S3":
 		bs := generateS3BlobStore(cr)
-		if err := e.client.BlobStore().UpdateS3(ctx, name, bs); err != nil {
+
+		err := e.client.BlobStore().UpdateS3(ctx, name, bs)
+		if err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateBlobStore)
 		}
 	default:
 		// Default to File type
 		bs := generateFileBlobStore(cr)
-		if err := e.client.BlobStore().UpdateFile(ctx, name, bs); err != nil {
+
+		err := e.client.BlobStore().UpdateFile(ctx, name, bs)
+		if err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateBlobStore)
 		}
 	}
@@ -227,10 +252,10 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 // Delete the external resource.
-func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
+func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	cr, ok := mg.(*v1alpha1.BlobStore)
 	if !ok {
-		return errors.New(errNotBlobStore)
+		return managed.ExternalDelete{}, errors.New(errNotBlobStore)
 	}
 
 	name := meta.GetExternalName(cr)
@@ -238,13 +263,20 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 		name = cr.Spec.ForProvider.Name
 	}
 
-	if err := e.client.BlobStore().Delete(ctx, name); err != nil {
+	err := e.client.BlobStore().Delete(ctx, name)
+	if err != nil {
 		if isNotFound(err) {
-			return nil
+			return managed.ExternalDelete{}, nil
 		}
-		return errors.Wrap(err, errDeleteBlobStore)
+
+		return managed.ExternalDelete{}, errors.Wrap(err, errDeleteBlobStore)
 	}
 
+	return managed.ExternalDelete{}, nil
+}
+
+// Disconnect from the provider.
+func (e *external) Disconnect(ctx context.Context) error {
 	return nil
 }
 
@@ -263,6 +295,7 @@ func generateFileBlobStore(cr *v1alpha1.BlobStore) *blobstore.File {
 		if cr.Spec.ForProvider.SoftQuota.Type != nil {
 			bs.SoftQuota.Type = *cr.Spec.ForProvider.SoftQuota.Type
 		}
+
 		if cr.Spec.ForProvider.SoftQuota.Limit != nil {
 			bs.SoftQuota.Limit = *cr.Spec.ForProvider.SoftQuota.Limit
 		}
@@ -282,6 +315,7 @@ func generateS3BlobStore(cr *v1alpha1.BlobStore) *blobstore.S3 {
 		if cr.Spec.ForProvider.SoftQuota.Type != nil {
 			bs.SoftQuota.Type = *cr.Spec.ForProvider.SoftQuota.Type
 		}
+
 		if cr.Spec.ForProvider.SoftQuota.Limit != nil {
 			bs.SoftQuota.Limit = *cr.Spec.ForProvider.SoftQuota.Limit
 		}
@@ -296,9 +330,11 @@ func generateS3BlobStore(cr *v1alpha1.BlobStore) *blobstore.S3 {
 		if cr.Spec.ForProvider.S3Config.Region != nil {
 			bs.BucketConfiguration.Bucket.Region = *cr.Spec.ForProvider.S3Config.Region
 		}
+
 		if cr.Spec.ForProvider.S3Config.Prefix != nil {
 			bs.BucketConfiguration.Bucket.Prefix = *cr.Spec.ForProvider.S3Config.Prefix
 		}
+
 		if cr.Spec.ForProvider.S3Config.ExpirationDays != nil {
 			bs.BucketConfiguration.Bucket.Expiration = *cr.Spec.ForProvider.S3Config.ExpirationDays
 		}
@@ -317,9 +353,11 @@ func isFileBlobStoreUpToDate(cr *v1alpha1.BlobStore, bs *blobstore.File) bool {
 		if bs.SoftQuota == nil {
 			return false
 		}
+
 		if cr.Spec.ForProvider.SoftQuota.Type != nil && bs.SoftQuota.Type != *cr.Spec.ForProvider.SoftQuota.Type {
 			return false
 		}
+
 		if cr.Spec.ForProvider.SoftQuota.Limit != nil && bs.SoftQuota.Limit != *cr.Spec.ForProvider.SoftQuota.Limit {
 			return false
 		}
@@ -334,9 +372,11 @@ func isS3BlobStoreUpToDate(cr *v1alpha1.BlobStore, bs *blobstore.S3) bool {
 		if bs.SoftQuota == nil {
 			return false
 		}
+
 		if cr.Spec.ForProvider.SoftQuota.Type != nil && bs.SoftQuota.Type != *cr.Spec.ForProvider.SoftQuota.Type {
 			return false
 		}
+
 		if cr.Spec.ForProvider.SoftQuota.Limit != nil && bs.SoftQuota.Limit != *cr.Spec.ForProvider.SoftQuota.Limit {
 			return false
 		}
@@ -346,9 +386,11 @@ func isS3BlobStoreUpToDate(cr *v1alpha1.BlobStore, bs *blobstore.S3) bool {
 		if bs.BucketConfiguration.Bucket.Name != cr.Spec.ForProvider.S3Config.Bucket {
 			return false
 		}
+
 		if cr.Spec.ForProvider.S3Config.Region != nil && bs.BucketConfiguration.Bucket.Region != *cr.Spec.ForProvider.S3Config.Region {
 			return false
 		}
+
 		if cr.Spec.ForProvider.S3Config.Prefix != nil && bs.BucketConfiguration.Bucket.Prefix != *cr.Spec.ForProvider.S3Config.Prefix {
 			return false
 		}
@@ -362,6 +404,7 @@ func isNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return strings.Contains(err.Error(), "404") ||
 		strings.Contains(err.Error(), "not found") ||
 		strings.Contains(strings.ToLower(err.Error()), "does not exist")

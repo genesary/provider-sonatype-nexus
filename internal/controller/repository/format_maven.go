@@ -25,20 +25,24 @@ func (h *MavenHandler) Observe(ctx context.Context, client nexus.Client, name, r
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, h.isHostedUpToDate(cr, repo)
 	case "proxy":
 		repo, err := client.Repository().GetMavenProxy(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, h.isProxyUpToDate(cr, repo)
 	case "group":
 		repo, err := client.Repository().GetMavenGroup(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, h.isGroupUpToDate(cr, repo)
 	}
+
 	return false, false
 }
 
@@ -51,6 +55,7 @@ func (h *MavenHandler) Create(ctx context.Context, client nexus.Client, cr *v1al
 	case "group":
 		return client.Repository().CreateMavenGroup(ctx, h.generateGroup(cr))
 	}
+
 	return errors.Errorf("unsupported maven repository type: %s", repoType)
 }
 
@@ -63,6 +68,7 @@ func (h *MavenHandler) Update(ctx context.Context, client nexus.Client, name str
 	case "group":
 		return client.Repository().UpdateMavenGroup(ctx, name, h.generateGroup(cr))
 	}
+
 	return errors.Errorf("unsupported maven repository type: %s", repoType)
 }
 
@@ -75,6 +81,7 @@ func (h *MavenHandler) Delete(ctx context.Context, client nexus.Client, name, re
 	case "group":
 		return client.Repository().DeleteMavenGroup(ctx, name)
 	}
+
 	return errors.Errorf("unsupported maven repository type: %s", repoType)
 }
 
@@ -113,25 +120,30 @@ func (h *MavenHandler) isHostedUpToDate(cr *v1alpha1.Repository, repo *repositor
 	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Storage != nil {
 		if repo.Storage.BlobStoreName != cr.Spec.ForProvider.Storage.BlobStoreName {
 			return false
 		}
+
 		if cr.Spec.ForProvider.Storage.WritePolicy != nil && repo.Storage.WritePolicy != nil &&
 			string(*repo.Storage.WritePolicy) != *cr.Spec.ForProvider.Storage.WritePolicy {
 			return false
 		}
 	}
+
 	if cr.Spec.ForProvider.Maven != nil {
 		if cr.Spec.ForProvider.Maven.VersionPolicy != nil &&
-			string(repo.Maven.VersionPolicy) != *cr.Spec.ForProvider.Maven.VersionPolicy {
+			string(repo.VersionPolicy) != *cr.Spec.ForProvider.Maven.VersionPolicy {
 			return false
 		}
+
 		if cr.Spec.ForProvider.Maven.LayoutPolicy != nil &&
-			string(repo.Maven.LayoutPolicy) != *cr.Spec.ForProvider.Maven.LayoutPolicy {
+			string(repo.LayoutPolicy) != *cr.Spec.ForProvider.Maven.LayoutPolicy {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -139,26 +151,31 @@ func (h *MavenHandler) isProxyUpToDate(cr *v1alpha1.Repository, repo *repository
 	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Storage != nil {
-		if repo.Storage.BlobStoreName != cr.Spec.ForProvider.Storage.BlobStoreName {
+		if repo.BlobStoreName != cr.Spec.ForProvider.Storage.BlobStoreName {
 			return false
 		}
 	}
+
 	if cr.Spec.ForProvider.Proxy != nil {
-		if repo.Proxy.RemoteURL != cr.Spec.ForProvider.Proxy.RemoteURL {
+		if repo.RemoteURL != cr.Spec.ForProvider.Proxy.RemoteURL {
 			return false
 		}
 	}
+
 	if cr.Spec.ForProvider.Maven != nil {
 		if cr.Spec.ForProvider.Maven.VersionPolicy != nil &&
-			string(repo.Maven.VersionPolicy) != *cr.Spec.ForProvider.Maven.VersionPolicy {
+			string(repo.VersionPolicy) != *cr.Spec.ForProvider.Maven.VersionPolicy {
 			return false
 		}
+
 		if cr.Spec.ForProvider.Maven.LayoutPolicy != nil &&
-			string(repo.Maven.LayoutPolicy) != *cr.Spec.ForProvider.Maven.LayoutPolicy {
+			string(repo.LayoutPolicy) != *cr.Spec.ForProvider.Maven.LayoutPolicy {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -166,10 +183,12 @@ func (h *MavenHandler) isGroupUpToDate(cr *v1alpha1.Repository, repo *repository
 	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Group != nil {
-		if !utils.StringSlicesEqual(repo.Group.MemberNames, cr.Spec.ForProvider.Group.MemberNames) {
+		if !utils.StringSlicesEqual(repo.MemberNames, cr.Spec.ForProvider.Group.MemberNames) {
 			return false
 		}
 	}
+
 	return true
 }

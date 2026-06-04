@@ -9,4 +9,5 @@ spec:
       PLACEHOLDER_WILL_BE_REPLACED_BY_TEST_SCRIPT
       -----END CERTIFICATE-----
   providerConfigRef:
+    kind: ProviderConfig
     name: default

@@ -25,20 +25,24 @@ func (h *NpmHandler) Observe(ctx context.Context, client nexus.Client, name, rep
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, h.isHostedUpToDate(cr, repo)
 	case "proxy":
 		repo, err := client.Repository().GetNpmProxy(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, h.isProxyUpToDate(cr, repo)
 	case "group":
 		repo, err := client.Repository().GetNpmGroup(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, h.isGroupUpToDate(cr, repo)
 	}
+
 	return false, false
 }
 
@@ -51,6 +55,7 @@ func (h *NpmHandler) Create(ctx context.Context, client nexus.Client, cr *v1alph
 	case "group":
 		return client.Repository().CreateNpmGroup(ctx, h.generateGroup(cr))
 	}
+
 	return errors.Errorf("unsupported npm repository type: %s", repoType)
 }
 
@@ -63,6 +68,7 @@ func (h *NpmHandler) Update(ctx context.Context, client nexus.Client, name strin
 	case "group":
 		return client.Repository().UpdateNpmGroup(ctx, name, h.generateGroup(cr))
 	}
+
 	return errors.Errorf("unsupported npm repository type: %s", repoType)
 }
 
@@ -75,6 +81,7 @@ func (h *NpmHandler) Delete(ctx context.Context, client nexus.Client, name, repo
 	case "group":
 		return client.Repository().DeleteNpmGroup(ctx, name)
 	}
+
 	return errors.Errorf("unsupported npm repository type: %s", repoType)
 }
 
@@ -111,15 +118,18 @@ func (h *NpmHandler) isHostedUpToDate(cr *v1alpha1.Repository, repo *repository.
 	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Storage != nil {
 		if repo.Storage.BlobStoreName != cr.Spec.ForProvider.Storage.BlobStoreName {
 			return false
 		}
+
 		if cr.Spec.ForProvider.Storage.WritePolicy != nil && repo.Storage.WritePolicy != nil &&
 			string(*repo.Storage.WritePolicy) != *cr.Spec.ForProvider.Storage.WritePolicy {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -127,11 +137,13 @@ func (h *NpmHandler) isProxyUpToDate(cr *v1alpha1.Repository, repo *repository.N
 	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Proxy != nil {
-		if repo.Proxy.RemoteURL != cr.Spec.ForProvider.Proxy.RemoteURL {
+		if repo.RemoteURL != cr.Spec.ForProvider.Proxy.RemoteURL {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -139,10 +151,12 @@ func (h *NpmHandler) isGroupUpToDate(cr *v1alpha1.Repository, repo *repository.N
 	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Group != nil {
 		if !utils.StringSlicesEqual(repo.Group.MemberNames, cr.Spec.ForProvider.Group.MemberNames) {
 			return false
 		}
 	}
+
 	return true
 }

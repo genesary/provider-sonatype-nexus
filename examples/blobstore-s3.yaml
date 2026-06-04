@@ -18,4 +18,5 @@ spec:
       type: spaceUsedQuota
       limit: 1073741824  # 1GB in bytes
   providerConfigRef:
+    kind: ProviderConfig
     name: default

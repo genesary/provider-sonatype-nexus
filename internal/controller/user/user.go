@@ -5,12 +5,12 @@ import (
 	"context"
 	"strings"
 
-	"github.com/crossplane/crossplane-runtime/pkg/controller"
-	"github.com/crossplane/crossplane-runtime/pkg/event"
-	"github.com/crossplane/crossplane-runtime/pkg/meta"
-	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
-	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -42,14 +42,13 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 
 	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.UserGroupVersionKind),
-		managed.WithExternalConnecter(&connector{
+		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{}),
 		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
-		managed.WithConnectionPublishers(managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())))
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
@@ -59,25 +58,30 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnecter.
+// connector implements managed.ExternalConnector.
 type connector struct {
 	kube  client.Client
-	usage resource.Tracker
+	usage *resource.ProviderConfigUsageTracker
 }
 
 // Connect produces an ExternalClient for the given managed resource.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	cr, ok := mg.(*v1alpha1.User)
+	_, ok := mg.(*v1alpha1.User)
 	if !ok {
 		return nil, errors.New(errNotUser)
 	}
 
-	if err := c.usage.Track(ctx, mg); err != nil {
+	modernMG, ok := mg.(resource.ModernManaged)
+	if !ok {
+		return nil, errors.New("managed resource is not a ModernManaged")
+	}
+
+	if err := c.usage.Track(ctx, modernMG); err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
 	pc := &v1alpha1.ProviderConfig{}
-	if err := c.kube.Get(ctx, client.ObjectKey{Name: cr.GetProviderConfigReference().Name}, pc); err != nil {
+	if err := c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, pc); err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
@@ -117,6 +121,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		if isNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
+
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetUser)
 	}
 
@@ -152,6 +157,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	meta.SetExternalName(cr, cr.Spec.ForProvider.UserID)
+
 	return managed.ExternalCreation{}, nil
 }
 
@@ -169,7 +175,9 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	// Update user info (without password)
 	user := generateUser(cr, "")
-	if err := e.client.Security().UpdateUser(ctx, userID, user); err != nil {
+
+	err := e.client.Security().UpdateUser(ctx, userID, user)
+	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateUser)
 	}
 
@@ -179,8 +187,10 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		if err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errGetPassword)
 		}
+
 		if password != "" {
-			if err := e.client.Security().ChangePassword(ctx, userID, password); err != nil {
+			err := e.client.Security().ChangePassword(ctx, userID, password)
+			if err != nil {
 				return managed.ExternalUpdate{}, errors.Wrap(err, errChangePassword)
 			}
 		}
@@ -190,10 +200,10 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 // Delete the external resource.
-func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
+func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	cr, ok := mg.(*v1alpha1.User)
 	if !ok {
-		return errors.New(errNotUser)
+		return managed.ExternalDelete{}, errors.New(errNotUser)
 	}
 
 	userID := meta.GetExternalName(cr)
@@ -201,13 +211,20 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 		userID = cr.Spec.ForProvider.UserID
 	}
 
-	if err := e.client.Security().DeleteUser(ctx, userID); err != nil {
+	err := e.client.Security().DeleteUser(ctx, userID)
+	if err != nil {
 		if isNotFound(err) {
-			return nil
+			return managed.ExternalDelete{}, nil
 		}
-		return errors.Wrap(err, errDeleteUser)
+
+		return managed.ExternalDelete{}, errors.Wrap(err, errDeleteUser)
 	}
 
+	return managed.ExternalDelete{}, nil
+}
+
+// Disconnect from the provider.
+func (e *external) Disconnect(ctx context.Context) error {
 	return nil
 }
 
@@ -218,6 +235,7 @@ func (e *external) getPassword(ctx context.Context, cr *v1alpha1.User) (string, 
 	}
 
 	secret := &corev1.Secret{}
+
 	err := e.kube.Get(ctx, types.NamespacedName{
 		Name:      cr.Spec.ForProvider.PasswordSecretRef.Name,
 		Namespace: cr.Spec.ForProvider.PasswordSecretRef.Namespace,
@@ -268,15 +286,19 @@ func isUserUpToDate(cr *v1alpha1.User, user *security.User) bool {
 	if cr.Spec.ForProvider.FirstName != user.FirstName {
 		return false
 	}
+
 	if cr.Spec.ForProvider.LastName != user.LastName {
 		return false
 	}
+
 	if cr.Spec.ForProvider.EmailAddress != user.EmailAddress {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Status != nil && *cr.Spec.ForProvider.Status != user.Status {
 		return false
 	}
+
 	if !stringSlicesEqual(cr.Spec.ForProvider.Roles, user.Roles) {
 		return false
 	}
@@ -289,11 +311,13 @@ func stringSlicesEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}
+
 	for i := range a {
 		if a[i] != b[i] {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -302,6 +326,7 @@ func isNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return strings.Contains(err.Error(), "404") ||
 		strings.Contains(err.Error(), "not found") ||
 		strings.Contains(strings.ToLower(err.Error()), "does not exist")

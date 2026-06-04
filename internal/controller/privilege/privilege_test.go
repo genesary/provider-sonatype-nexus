@@ -106,11 +106,14 @@ func TestObserve(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Observe() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if obs.ResourceExists != tt.wantExists {
 				t.Errorf("Observe() ResourceExists = %v, want %v", obs.ResourceExists, tt.wantExists)
 			}
+
 			if obs.ResourceUpToDate != tt.wantUpToDate {
 				t.Errorf("Observe() ResourceUpToDate = %v, want %v", obs.ResourceUpToDate, tt.wantUpToDate)
 			}
@@ -292,7 +295,7 @@ func TestDelete(t *testing.T) {
 			}
 
 			e := &external{client: mc}
-			err := e.Delete(context.Background(), tt.cr)
+			_, err := e.Delete(context.Background(), tt.cr)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)

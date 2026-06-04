@@ -10,4 +10,5 @@ spec:
       - DockerToken
       - NpmToken
   providerConfigRef:
+    kind: ProviderConfig
     name: nexus-provider-config
