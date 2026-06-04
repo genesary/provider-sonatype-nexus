@@ -4,16 +4,16 @@ import (
 	"context"
 
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
+	"k8s.io/utils/ptr"
 
 	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
-	"github.com/genesary/provider-sonatype-nexus/internal/utils"
 )
 
 // Shared configuration generators used by all format handlers.
 
 // getOnline returns the online status, defaulting to true if not specified.
 func getOnline(cr *v1alpha1.Repository) bool {
-	return utils.BoolValueDefault(cr.Spec.ForProvider.Online, true)
+	return ptr.Deref(cr.Spec.ForProvider.Online, true)
 }
 
 // generateCleanup converts cleanup policy configuration.

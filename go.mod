@@ -1,6 +1,6 @@
 module github.com/genesary/provider-sonatype-nexus
 
-go 1.24.0
+go 1.26.3
 
 require (
 	github.com/crossplane/crossplane-runtime v1.16.0
