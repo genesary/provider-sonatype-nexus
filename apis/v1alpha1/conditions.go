@@ -6,7 +6,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Available returns a condition that indicates the resource is available for use.
+// Available returns a condition that indicates the resource is
+// available for use.
 func Available() xpv2.Condition {
 	return xpv2.Condition{
 		Type:               xpv2.TypeReady,

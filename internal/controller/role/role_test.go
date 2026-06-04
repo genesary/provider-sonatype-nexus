@@ -12,7 +12,10 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/test/mocks"
 )
 
+// TestRoleObserve tests the Observe method for roles.
 func TestRoleObserve(t *testing.T) {
+	t.Parallel()
+
 	testDescription := "Test role description"
 
 	tests := []struct {
@@ -121,6 +124,8 @@ func TestRoleObserve(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -148,7 +153,10 @@ func TestRoleObserve(t *testing.T) {
 	}
 }
 
+// TestRoleCreate tests the Create method for roles.
 func TestRoleCreate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		cr        *v1alpha1.Role
@@ -175,6 +183,8 @@ func TestRoleCreate(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, mc *mocks.MockClient) {
+				t.Helper()
+
 				if len(mc.MockSecurity.CreateRoleCalls) != 1 {
 					t.Errorf("Expected 1 CreateRole call, got %d", len(mc.MockSecurity.CreateRoleCalls))
 				}
@@ -206,6 +216,8 @@ func TestRoleCreate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -227,7 +239,10 @@ func TestRoleCreate(t *testing.T) {
 	}
 }
 
+// TestRoleUpdate tests the Update method for roles.
 func TestRoleUpdate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		cr        *v1alpha1.Role
@@ -259,6 +274,8 @@ func TestRoleUpdate(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, mc *mocks.MockClient) {
+				t.Helper()
+
 				if len(mc.MockSecurity.UpdateRoleCalls) != 1 {
 					t.Errorf("Expected 1 UpdateRole call, got %d", len(mc.MockSecurity.UpdateRoleCalls))
 				}
@@ -295,6 +312,8 @@ func TestRoleUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -316,7 +335,10 @@ func TestRoleUpdate(t *testing.T) {
 	}
 }
 
+// TestRoleDelete tests the Delete method for roles.
 func TestRoleDelete(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		cr        *v1alpha1.Role
@@ -346,6 +368,8 @@ func TestRoleDelete(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, mc *mocks.MockClient) {
+				t.Helper()
+
 				if len(mc.MockSecurity.DeleteRoleCalls) != 1 {
 					t.Errorf("Expected 1 DeleteRole call, got %d", len(mc.MockSecurity.DeleteRoleCalls))
 				}
@@ -403,6 +427,8 @@ func TestRoleDelete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -424,7 +450,10 @@ func TestRoleDelete(t *testing.T) {
 	}
 }
 
+// TestGenerateRole tests the generateRole function.
 func TestGenerateRole(t *testing.T) {
+	t.Parallel()
+
 	testDescription := "Test role description"
 
 	tests := []struct {
@@ -474,6 +503,8 @@ func TestGenerateRole(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := generateRole(tt.cr)
 			if got.ID != tt.want.ID {
 				t.Errorf("generateRole() ID = %v, want %v", got.ID, tt.want.ID)
@@ -490,7 +521,10 @@ func TestGenerateRole(t *testing.T) {
 	}
 }
 
+// TestIsRoleUpToDate tests the isRoleUpToDate function.
 func TestIsRoleUpToDate(t *testing.T) {
+	t.Parallel()
+
 	testDescription := "Test description"
 
 	tests := []struct {
@@ -577,6 +611,8 @@ func TestIsRoleUpToDate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := isRoleUpToDate(tt.cr, tt.role); got != tt.want {
 				t.Errorf("isRoleUpToDate() = %v, want %v", got, tt.want)
 			}
@@ -584,7 +620,10 @@ func TestIsRoleUpToDate(t *testing.T) {
 	}
 }
 
+// TestRoleIsNotFound tests the isNotFound function for roles.
 func TestRoleIsNotFound(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		err  error
@@ -619,6 +658,8 @@ func TestRoleIsNotFound(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := isNotFound(tt.err); got != tt.want {
 				t.Errorf("isNotFound() = %v, want %v", got, tt.want)
 			}
@@ -626,7 +667,10 @@ func TestRoleIsNotFound(t *testing.T) {
 	}
 }
 
+// TestRoleStringSlicesEqual tests the stringSlicesEqual function for roles.
 func TestRoleStringSlicesEqual(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		a    []string
@@ -667,6 +711,8 @@ func TestRoleStringSlicesEqual(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := stringSlicesEqual(tt.a, tt.b); got != tt.want {
 				t.Errorf("stringSlicesEqual() = %v, want %v", got, tt.want)
 			}

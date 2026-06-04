@@ -66,6 +66,7 @@ type AnonymousAccessList struct {
 	Items []AnonymousAccess `json:"items"`
 }
 
+// init registers this type with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&AnonymousAccess{}, &AnonymousAccessList{})
 }

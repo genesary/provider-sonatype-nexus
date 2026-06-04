@@ -23,39 +23,55 @@ import (
 )
 
 const (
-	errNotUser        = "managed resource is not a User custom resource"
-	errTrackPCUsage   = "cannot track ProviderConfig usage"
-	errGetPC          = "cannot get ProviderConfig"
-	errGetCreds       = "cannot get credentials"
-	errNewClient      = "cannot create new Nexus client"
-	errGetUser        = "cannot get user from Nexus"
-	errCreateUser     = "cannot create user in Nexus"
-	errUpdateUser     = "cannot update user in Nexus"
-	errDeleteUser     = "cannot delete user from Nexus"
-	errGetPassword    = "cannot get password from secret"
+	// errNotUser is returned when the managed resource is not a User.
+	errNotUser = "managed resource is not a User custom resource"
+	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
+	errTrackPCUsage = "cannot track ProviderConfig usage"
+	// errGetPC is returned when getting the ProviderConfig fails.
+	errGetPC = "cannot get ProviderConfig"
+	// errGetCreds is returned when getting credentials fails.
+	errGetCreds = "cannot get credentials"
+	// errNewClient is returned when creating the Nexus client fails.
+	errNewClient = "cannot create new Nexus client"
+	// errGetUser is returned when getting the user from Nexus fails.
+	errGetUser = "cannot get user from Nexus"
+	// errCreateUser is returned when creating the user in Nexus fails.
+	errCreateUser = "cannot create user in Nexus"
+	// errUpdateUser is returned when updating the user in Nexus fails.
+	errUpdateUser = "cannot update user in Nexus"
+	// errDeleteUser is returned when deleting the user from Nexus fails.
+	errDeleteUser = "cannot delete user from Nexus"
+	// errGetPassword is returned when getting the password from a secret fails.
+	errGetPassword = "cannot get password from secret"
+	// errChangePassword is returned when changing the user password fails.
 	errChangePassword = "cannot change user password"
+
+	// userStatusActive is the active status string for Nexus users.
+	userStatusActive = "active"
+	// userSourceDefault is the default source string for Nexus users.
+	userSourceDefault = "default"
 )
 
-// Setup adds a controller that reconciles User managed resources.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+// Setup creates a controller for User resources.
+func Setup(mgr ctrl.Manager, opts controller.Options) error {
 	name := managed.ControllerName(v1alpha1.UserGroupKind)
 
-	r := managed.NewReconciler(mgr,
+	rec := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.UserGroupVersionKind),
 		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{}),
 		}),
-		managed.WithLogger(o.Logger.WithValues("controller", name)),
-		managed.WithPollInterval(o.PollInterval),
+		managed.WithLogger(opts.Logger.WithValues("controller", name)),
+		managed.WithPollInterval(opts.PollInterval),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		WithOptions(o.ForControllerRuntime()).
+		WithOptions(opts.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1alpha1.User{}).
-		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
+		Complete(ratelimiter.NewReconciler(name, rec, opts.GlobalRateLimiter))
 }
 
 // connector implements managed.ExternalConnector.
@@ -64,28 +80,31 @@ type connector struct {
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	_, ok := mg.(*v1alpha1.User)
-	if !ok {
+// Connect creates an ExternalClient for the User controller.
+func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
+	_, isUser := managedRes.(*v1alpha1.User)
+	if !isUser {
 		return nil, errors.New(errNotUser)
 	}
 
-	modernMG, ok := mg.(resource.ModernManaged)
-	if !ok {
+	modernMG, isModern := managedRes.(resource.ModernManaged)
+	if !isModern {
 		return nil, errors.New("managed resource is not a ModernManaged")
 	}
 
-	if err := c.usage.Track(ctx, modernMG); err != nil {
+	err := c.usage.Track(ctx, modernMG)
+	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	pc := &v1alpha1.ProviderConfig{}
-	if err := c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, pc); err != nil {
+	providerConfig := &v1alpha1.ProviderConfig{}
+
+	err = c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, providerConfig)
+	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
-	creds, err := nexus.GetCredentialsFromSecret(ctx, c.kube, pc)
+	creds, err := nexus.GetCredentialsFromSecret(ctx, c.kube, providerConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetCreds)
 	}
@@ -104,19 +123,19 @@ type external struct {
 	kube   client.Client
 }
 
-// Observe the external resource.
-func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := mg.(*v1alpha1.User)
-	if !ok {
+// Observe checks if the User resource exists and is up-to-date.
+func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
+	userCR, isUser := managedRes.(*v1alpha1.User)
+	if !isUser {
 		return managed.ExternalObservation{}, errors.New(errNotUser)
 	}
 
-	userID := meta.GetExternalName(cr)
+	userID := meta.GetExternalName(userCR)
 	if userID == "" {
-		userID = cr.Spec.ForProvider.UserID
+		userID = userCR.Spec.ForProvider.UserID
 	}
 
-	user, err := e.client.Security().GetUser(ctx, userID)
+	nexusUser, err := e.client.Security().GetUser(ctx, userID)
 	if err != nil {
 		if isNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
@@ -125,13 +144,13 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetUser)
 	}
 
-	if user == nil {
+	if nexusUser == nil {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	cr.SetConditions(v1alpha1.Available())
+	userCR.SetConditions(v1alpha1.Available())
 
-	upToDate := isUserUpToDate(cr, user)
+	upToDate := isUserUpToDate(userCR, nexusUser)
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
@@ -139,51 +158,53 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}, nil
 }
 
-// Create the external resource.
-func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1alpha1.User)
-	if !ok {
+// Create creates a new User resource.
+func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
+	userCR, isUser := managedRes.(*v1alpha1.User)
+	if !isUser {
 		return managed.ExternalCreation{}, errors.New(errNotUser)
 	}
 
-	password, err := e.getPassword(ctx, cr)
+	password, err := e.getPassword(ctx, userCR)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errGetPassword)
 	}
 
-	user := generateUser(cr, password)
-	if err := e.client.Security().CreateUser(ctx, user); err != nil {
+	nexusUser := generateUser(userCR, password)
+
+	err = e.client.Security().CreateUser(ctx, nexusUser)
+	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateUser)
 	}
 
-	meta.SetExternalName(cr, cr.Spec.ForProvider.UserID)
+	meta.SetExternalName(userCR, userCR.Spec.ForProvider.UserID)
 
 	return managed.ExternalCreation{}, nil
 }
 
-// Update the external resource.
-func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1alpha1.User)
-	if !ok {
+// Update modifies an existing User resource.
+func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
+	userCR, isUser := managedRes.(*v1alpha1.User)
+	if !isUser {
 		return managed.ExternalUpdate{}, errors.New(errNotUser)
 	}
 
-	userID := meta.GetExternalName(cr)
+	userID := meta.GetExternalName(userCR)
 	if userID == "" {
-		userID = cr.Spec.ForProvider.UserID
+		userID = userCR.Spec.ForProvider.UserID
 	}
 
 	// Update user info (without password)
-	user := generateUser(cr, "")
+	nexusUser := generateUser(userCR, "")
 
-	err := e.client.Security().UpdateUser(ctx, userID, user)
+	err := e.client.Security().UpdateUser(ctx, userID, nexusUser)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateUser)
 	}
 
 	// Handle password change if secret is specified
-	if cr.Spec.ForProvider.PasswordSecretRef != nil {
-		password, err := e.getPassword(ctx, cr)
+	if userCR.Spec.ForProvider.PasswordSecretRef != nil {
+		password, err := e.getPassword(ctx, userCR)
 		if err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errGetPassword)
 		}
@@ -199,16 +220,16 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalUpdate{}, nil
 }
 
-// Delete the external resource.
-func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	cr, ok := mg.(*v1alpha1.User)
-	if !ok {
+// Delete removes an existing User resource.
+func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
+	userCR, isUser := managedRes.(*v1alpha1.User)
+	if !isUser {
 		return managed.ExternalDelete{}, errors.New(errNotUser)
 	}
 
-	userID := meta.GetExternalName(cr)
+	userID := meta.GetExternalName(userCR)
 	if userID == "" {
-		userID = cr.Spec.ForProvider.UserID
+		userID = userCR.Spec.ForProvider.UserID
 	}
 
 	err := e.client.Security().DeleteUser(ctx, userID)
@@ -229,28 +250,28 @@ func (e *external) Disconnect(ctx context.Context) error {
 }
 
 // getPassword retrieves the password from the secret reference.
-func (e *external) getPassword(ctx context.Context, cr *v1alpha1.User) (string, error) {
-	if cr.Spec.ForProvider.PasswordSecretRef == nil {
+func (e *external) getPassword(ctx context.Context, userCR *v1alpha1.User) (string, error) {
+	if userCR.Spec.ForProvider.PasswordSecretRef == nil {
 		return "", nil
 	}
 
 	secret := &corev1.Secret{}
 
 	err := e.kube.Get(ctx, types.NamespacedName{
-		Name:      cr.Spec.ForProvider.PasswordSecretRef.Name,
-		Namespace: cr.Spec.ForProvider.PasswordSecretRef.Namespace,
+		Name:      userCR.Spec.ForProvider.PasswordSecretRef.Name,
+		Namespace: userCR.Spec.ForProvider.PasswordSecretRef.Namespace,
 	}, secret)
 	if err != nil {
 		return "", err
 	}
 
-	key := cr.Spec.ForProvider.PasswordSecretRef.Key
+	key := userCR.Spec.ForProvider.PasswordSecretRef.Key
 	if key == "" {
 		key = "password"
 	}
 
-	data, ok := secret.Data[key]
-	if !ok {
+	data, hasKey := secret.Data[key]
+	if !hasKey {
 		return "", errors.Errorf("secret does not contain key %q", key)
 	}
 
@@ -258,48 +279,48 @@ func (e *external) getPassword(ctx context.Context, cr *v1alpha1.User) (string, 
 }
 
 // generateUser generates a User from the CR spec.
-func generateUser(cr *v1alpha1.User, password string) security.User {
-	user := security.User{
-		UserID:       cr.Spec.ForProvider.UserID,
-		FirstName:    cr.Spec.ForProvider.FirstName,
-		LastName:     cr.Spec.ForProvider.LastName,
-		EmailAddress: cr.Spec.ForProvider.EmailAddress,
+func generateUser(userCR *v1alpha1.User, password string) security.User {
+	nexusUser := security.User{
+		UserID:       userCR.Spec.ForProvider.UserID,
+		FirstName:    userCR.Spec.ForProvider.FirstName,
+		LastName:     userCR.Spec.ForProvider.LastName,
+		EmailAddress: userCR.Spec.ForProvider.EmailAddress,
 		Password:     password,
-		Status:       "active",
-		Source:       "default",
-		Roles:        cr.Spec.ForProvider.Roles,
+		Status:       userStatusActive,
+		Source:       userSourceDefault,
+		Roles:        userCR.Spec.ForProvider.Roles,
 	}
 
-	if cr.Spec.ForProvider.Status != nil {
-		user.Status = *cr.Spec.ForProvider.Status
+	if userCR.Spec.ForProvider.Status != nil {
+		nexusUser.Status = *userCR.Spec.ForProvider.Status
 	}
 
-	if cr.Spec.ForProvider.Source != nil {
-		user.Source = *cr.Spec.ForProvider.Source
+	if userCR.Spec.ForProvider.Source != nil {
+		nexusUser.Source = *userCR.Spec.ForProvider.Source
 	}
 
-	return user
+	return nexusUser
 }
 
 // isUserUpToDate checks if a User is up to date.
-func isUserUpToDate(cr *v1alpha1.User, user *security.User) bool {
-	if cr.Spec.ForProvider.FirstName != user.FirstName {
+func isUserUpToDate(userCR *v1alpha1.User, nexusUser *security.User) bool {
+	if userCR.Spec.ForProvider.FirstName != nexusUser.FirstName {
 		return false
 	}
 
-	if cr.Spec.ForProvider.LastName != user.LastName {
+	if userCR.Spec.ForProvider.LastName != nexusUser.LastName {
 		return false
 	}
 
-	if cr.Spec.ForProvider.EmailAddress != user.EmailAddress {
+	if userCR.Spec.ForProvider.EmailAddress != nexusUser.EmailAddress {
 		return false
 	}
 
-	if cr.Spec.ForProvider.Status != nil && *cr.Spec.ForProvider.Status != user.Status {
+	if userCR.Spec.ForProvider.Status != nil && *userCR.Spec.ForProvider.Status != nexusUser.Status {
 		return false
 	}
 
-	if !stringSlicesEqual(cr.Spec.ForProvider.Roles, user.Roles) {
+	if !stringSlicesEqual(userCR.Spec.ForProvider.Roles, nexusUser.Roles) {
 		return false
 	}
 
@@ -307,13 +328,13 @@ func isUserUpToDate(cr *v1alpha1.User, user *security.User) bool {
 }
 
 // stringSlicesEqual compares two string slices for equality.
-func stringSlicesEqual(a, b []string) bool {
-	if len(a) != len(b) {
+func stringSlicesEqual(sliceA, sliceB []string) bool {
+	if len(sliceA) != len(sliceB) {
 		return false
 	}
 
-	for i := range a {
-		if a[i] != b[i] {
+	for idx := range sliceA {
+		if sliceA[idx] != sliceB[idx] {
 			return false
 		}
 	}

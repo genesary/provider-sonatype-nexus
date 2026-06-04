@@ -14,132 +14,118 @@ import (
 // RawHandler handles Raw repository operations.
 type RawHandler struct{}
 
+// SupportedTypes returns the repository types supported by RawHandler.
 func (h *RawHandler) SupportedTypes() []string {
-	return []string{"hosted", "proxy", "group"}
+	return []string{repoTypeHosted, repoTypeProxy, repoTypeGroup}
 }
 
-func (h *RawHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, cr *v1alpha1.Repository) (bool, bool) {
+// Observe checks whether the Raw repository exists and is up to date.
+func (h *RawHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
-	case "hosted":
-		repo, err := client.Repository().GetRawHosted(ctx, name)
-		if err != nil || repo == nil {
-			return false, false
-		}
-
-		return true, h.isHostedUpToDate(cr, repo)
-	case "proxy":
-		repo, err := client.Repository().GetRawProxy(ctx, name)
-		if err != nil || repo == nil {
-			return false, false
-		}
-
-		return true, h.isProxyUpToDate(cr, repo)
-	case "group":
-		repo, err := client.Repository().GetRawGroup(ctx, name)
-		if err != nil || repo == nil {
-			return false, false
-		}
-
-		return true, h.isGroupUpToDate(cr, repo)
+	case repoTypeHosted:
+		return observeRepo(ctx, name, client.Repository().GetRawHosted, h.isHostedUpToDate, repoCR)
+	case repoTypeProxy:
+		return observeRepo(ctx, name, client.Repository().GetRawProxy, h.isProxyUpToDate, repoCR)
+	case repoTypeGroup:
+		return observeRepo(ctx, name, client.Repository().GetRawGroup, h.isGroupUpToDate, repoCR)
 	}
 
 	return false, false
 }
 
-func (h *RawHandler) Create(ctx context.Context, client nexus.Client, cr *v1alpha1.Repository, repoType string) error {
+// Create creates a new Raw repository of the given type.
+func (h *RawHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
 	switch repoType {
-	case "hosted":
-		return client.Repository().CreateRawHosted(ctx, h.generateHosted(cr))
-	case "proxy":
-		return client.Repository().CreateRawProxy(ctx, h.generateProxy(ctx, cr))
-	case "group":
-		return client.Repository().CreateRawGroup(ctx, h.generateGroup(cr))
+	case repoTypeHosted:
+		return client.Repository().CreateRawHosted(ctx, h.generateHosted(repoCR))
+	case repoTypeProxy:
+		return client.Repository().CreateRawProxy(ctx, h.generateProxy(ctx, repoCR))
+	case repoTypeGroup:
+		return client.Repository().CreateRawGroup(ctx, h.generateGroup(repoCR))
 	}
 
 	return errors.Errorf("unsupported raw repository type: %s", repoType)
 }
 
-func (h *RawHandler) Update(ctx context.Context, client nexus.Client, name string, cr *v1alpha1.Repository, repoType string) error {
+// Update updates an existing Raw repository of the given type.
+func (h *RawHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
 	switch repoType {
-	case "hosted":
-		return client.Repository().UpdateRawHosted(ctx, name, h.generateHosted(cr))
-	case "proxy":
-		return client.Repository().UpdateRawProxy(ctx, name, h.generateProxy(ctx, cr))
-	case "group":
-		return client.Repository().UpdateRawGroup(ctx, name, h.generateGroup(cr))
+	case repoTypeHosted:
+		return client.Repository().UpdateRawHosted(ctx, name, h.generateHosted(repoCR))
+	case repoTypeProxy:
+		return client.Repository().UpdateRawProxy(ctx, name, h.generateProxy(ctx, repoCR))
+	case repoTypeGroup:
+		return client.Repository().UpdateRawGroup(ctx, name, h.generateGroup(repoCR))
 	}
 
 	return errors.Errorf("unsupported raw repository type: %s", repoType)
 }
 
+// Delete removes a Raw repository of the given type.
 func (h *RawHandler) Delete(ctx context.Context, client nexus.Client, name, repoType string) error {
 	switch repoType {
-	case "hosted":
+	case repoTypeHosted:
 		return client.Repository().DeleteRawHosted(ctx, name)
-	case "proxy":
+	case repoTypeProxy:
 		return client.Repository().DeleteRawProxy(ctx, name)
-	case "group":
+	case repoTypeGroup:
 		return client.Repository().DeleteRawGroup(ctx, name)
 	}
 
 	return errors.Errorf("unsupported raw repository type: %s", repoType)
 }
 
-func (h *RawHandler) generateHosted(cr *v1alpha1.Repository) repository.RawHostedRepository {
+// generateHosted builds a RawHostedRepository from the CR spec.
+func (h *RawHandler) generateHosted(repoCR *v1alpha1.Repository) repository.RawHostedRepository {
 	return repository.RawHostedRepository{
-		Name:    cr.Spec.ForProvider.Name,
-		Online:  getOnline(cr),
-		Storage: generateHostedStorage(cr),
-		Cleanup: generateCleanup(cr),
+		Name:    repoCR.Spec.ForProvider.Name,
+		Online:  getOnline(repoCR),
+		Storage: generateHostedStorage(repoCR),
+		Cleanup: generateCleanup(repoCR),
 	}
 }
 
-func (h *RawHandler) generateProxy(ctx context.Context, cr *v1alpha1.Repository) repository.RawProxyRepository {
+// generateProxy builds a RawProxyRepository from the CR spec.
+func (h *RawHandler) generateProxy(ctx context.Context, repoCR *v1alpha1.Repository) repository.RawProxyRepository {
 	return repository.RawProxyRepository{
-		Name:          cr.Spec.ForProvider.Name,
-		Online:        getOnline(cr),
-		Storage:       generateProxyStorage(cr),
-		Proxy:         generateProxyConfig(cr),
-		NegativeCache: generateNegativeCache(cr),
-		HTTPClient:    generateHTTPClient(ctx, cr),
+		Name:          repoCR.Spec.ForProvider.Name,
+		Online:        getOnline(repoCR),
+		Storage:       generateProxyStorage(repoCR),
+		Proxy:         generateProxyConfig(repoCR),
+		NegativeCache: generateNegativeCache(repoCR),
+		HTTPClient:    generateHTTPClient(ctx, repoCR),
 	}
 }
 
-func (h *RawHandler) generateGroup(cr *v1alpha1.Repository) repository.RawGroupRepository {
+// generateGroup builds a RawGroupRepository from the CR spec.
+func (h *RawHandler) generateGroup(repoCR *v1alpha1.Repository) repository.RawGroupRepository {
 	return repository.RawGroupRepository{
-		Name:    cr.Spec.ForProvider.Name,
-		Online:  getOnline(cr),
-		Storage: generateProxyStorage(cr),
-		Group:   generateGroupConfig(cr),
+		Name:    repoCR.Spec.ForProvider.Name,
+		Online:  getOnline(repoCR),
+		Storage: generateProxyStorage(repoCR),
+		Group:   generateGroupConfig(repoCR),
 	}
 }
 
-func (h *RawHandler) isHostedUpToDate(cr *v1alpha1.Repository, repo *repository.RawHostedRepository) bool {
-	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
-		return false
-	}
-
-	if cr.Spec.ForProvider.Storage != nil {
-		if repo.Storage.BlobStoreName != cr.Spec.ForProvider.Storage.BlobStoreName {
-			return false
-		}
-
-		if cr.Spec.ForProvider.Storage.WritePolicy != nil && repo.Storage.WritePolicy != nil &&
-			string(*repo.Storage.WritePolicy) != *cr.Spec.ForProvider.Storage.WritePolicy {
-			return false
-		}
-	}
-
-	return true
+// isHostedUpToDate reports whether the raw hosted repository matches the
+// CR spec.
+func (h *RawHandler) isHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.RawHostedRepository) bool {
+	return isSimpleHostedUpToDate(
+		repoCR,
+		repo.Online,
+		repo.Storage.BlobStoreName,
+		repo.Storage.WritePolicy,
+	)
 }
 
-func (h *RawHandler) isProxyUpToDate(cr *v1alpha1.Repository, repo *repository.RawProxyRepository) bool {
-	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
+// isProxyUpToDate reports whether the proxy repository matches the CR spec.
+func (h *RawHandler) isProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.RawProxyRepository) bool {
+	if repoCR.Spec.ForProvider.Online != nil && repo.Online != *repoCR.Spec.ForProvider.Online {
 		return false
 	}
 
-	if cr.Spec.ForProvider.Proxy != nil {
-		if repo.RemoteURL != cr.Spec.ForProvider.Proxy.RemoteURL {
+	if repoCR.Spec.ForProvider.Proxy != nil {
+		if repo.RemoteURL != repoCR.Spec.ForProvider.Proxy.RemoteURL {
 			return false
 		}
 	}
@@ -147,13 +133,14 @@ func (h *RawHandler) isProxyUpToDate(cr *v1alpha1.Repository, repo *repository.R
 	return true
 }
 
-func (h *RawHandler) isGroupUpToDate(cr *v1alpha1.Repository, repo *repository.RawGroupRepository) bool {
-	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
+// isGroupUpToDate reports whether the group repository matches the CR spec.
+func (h *RawHandler) isGroupUpToDate(repoCR *v1alpha1.Repository, repo *repository.RawGroupRepository) bool {
+	if repoCR.Spec.ForProvider.Online != nil && repo.Online != *repoCR.Spec.ForProvider.Online {
 		return false
 	}
 
-	if cr.Spec.ForProvider.Group != nil {
-		if !utils.StringSlicesEqual(repo.MemberNames, cr.Spec.ForProvider.Group.MemberNames) {
+	if repoCR.Spec.ForProvider.Group != nil {
+		if !utils.StringSlicesEqual(repo.MemberNames, repoCR.Spec.ForProvider.Group.MemberNames) {
 			return false
 		}
 	}

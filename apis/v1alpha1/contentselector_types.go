@@ -21,7 +21,8 @@ type ContentSelectorParameters struct {
 	Expression string `json:"expression"`
 }
 
-// ContentSelectorObservation represents the observed state of a ContentSelector.
+// ContentSelectorObservation represents the observed state of a
+// ContentSelector.
 type ContentSelectorObservation struct {
 }
 
@@ -66,6 +67,7 @@ type ContentSelectorList struct {
 	Items []ContentSelector `json:"items"`
 }
 
+// init registers this type with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&ContentSelector{}, &ContentSelectorList{})
 }

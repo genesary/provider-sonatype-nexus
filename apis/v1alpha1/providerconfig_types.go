@@ -13,13 +13,13 @@ type ProviderConfigSpec struct {
 
 // ProviderCredentials defines the credentials for Nexus authentication.
 type ProviderCredentials struct {
-	// Source of the provider credentials.
-	// +kubebuilder:validation:Enum=None;Secret
-	Source xpv2.CredentialsSource `json:"source"`
-
 	// SecretRef is a reference to a secret containing credentials.
 	// +optional
 	xpv2.CommonCredentialSelectors `json:",inline"`
+
+	// Source of the provider credentials.
+	// +kubebuilder:validation:Enum=None;Secret
+	Source xpv2.CredentialsSource `json:"source"`
 }
 
 // ProviderConfigStatus defines the observed state of ProviderConfig.
@@ -77,6 +77,7 @@ type ProviderConfigUsageList struct {
 	Items []ProviderConfigUsage `json:"items"`
 }
 
+// init registers this type with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&ProviderConfig{}, &ProviderConfigList{})
 	SchemeBuilder.Register(&ProviderConfigUsage{}, &ProviderConfigUsageList{})

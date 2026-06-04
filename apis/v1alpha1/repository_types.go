@@ -429,6 +429,7 @@ type RepositoryList struct {
 	Items []Repository `json:"items"`
 }
 
+// init registers this type with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&Repository{}, &RepositoryList{})
 }

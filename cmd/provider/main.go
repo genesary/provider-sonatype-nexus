@@ -17,12 +17,20 @@ import (
 	nexuscontroller "github.com/genesary/provider-sonatype-nexus/internal/controller"
 )
 
+const (
+	// defaultMaxReconcileRate is the default maximum reconcile rate.
+	defaultMaxReconcileRate = 10
+	// decimalBase is the base for decimal integer parsing.
+	decimalBase = 10
+)
+
+// main is the entry point for the provider.
 func main() {
 	var (
 		debug            = getEnvBool("DEBUG", false)
 		pollInterval     = getEnvDuration("POLL_INTERVAL", time.Minute)
 		leaderElection   = getEnvBool("LEADER_ELECTION", false)
-		maxReconcileRate = getEnvInt("MAX_RECONCILE_RATE", 10)
+		maxReconcileRate = getEnvInt("MAX_RECONCILE_RATE", defaultMaxReconcileRate)
 	)
 
 	zl := zap.New(zap.UseDevMode(debug))
@@ -45,12 +53,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+	err = apis.AddToScheme(mgr.GetScheme())
+	if err != nil {
 		log.Info("Cannot add APIs to scheme", "error", err)
 		os.Exit(1)
 	}
 
-	o := controller.Options{
+	opts := controller.Options{
 		Logger:                  log,
 		MaxConcurrentReconciles: maxReconcileRate,
 		PollInterval:            pollInterval,
@@ -58,19 +67,22 @@ func main() {
 		Features:                &feature.Flags{},
 	}
 
-	if err := nexuscontroller.Setup(mgr, o); err != nil {
+	err = nexuscontroller.Setup(mgr, opts)
+	if err != nil {
 		log.Info("Cannot setup controllers", "error", err)
 		os.Exit(1)
 	}
 
 	log.Info("Starting controller manager")
 
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	err = mgr.Start(ctrl.SetupSignalHandler())
+	if err != nil {
 		log.Info("Cannot start controller manager", "error", err)
 		os.Exit(1)
 	}
 }
 
+// getEnvBool returns a boolean environment variable value or a default.
 func getEnvBool(key string, defaultVal bool) bool {
 	if val := os.Getenv(key); val != "" {
 		return val == "true" || val == "1"
@@ -79,9 +91,11 @@ func getEnvBool(key string, defaultVal bool) bool {
 	return defaultVal
 }
 
+// getEnvDuration returns a duration environment variable value or a default.
 func getEnvDuration(key string, defaultVal time.Duration) time.Duration {
 	if val := os.Getenv(key); val != "" {
-		if d, err := time.ParseDuration(val); err == nil {
+		d, err := time.ParseDuration(val)
+		if err == nil {
 			return d
 		}
 	}
@@ -89,19 +103,20 @@ func getEnvDuration(key string, defaultVal time.Duration) time.Duration {
 	return defaultVal
 }
 
+// getEnvInt returns an integer environment variable value or a default.
 func getEnvInt(key string, defaultVal int) int {
 	if val := os.Getenv(key); val != "" {
-		var i int
+		var result int
 
 		for _, c := range val {
 			if c < '0' || c > '9' {
 				return defaultVal
 			}
 
-			i = i*10 + int(c-'0')
+			result = result*decimalBase + int(c-'0')
 		}
 
-		return i
+		return result
 	}
 
 	return defaultVal

@@ -20,7 +20,7 @@ import (
 )
 
 // Setup creates all Nexus controllers and adds them to the supplied manager.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+func Setup(mgr ctrl.Manager, opts controller.Options) error {
 	// List of all controller setup functions
 	for _, setup := range []func(ctrl.Manager, controller.Options) error{
 		anonymousaccess.Setup,
@@ -36,7 +36,7 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		user.Setup,
 		usertokenconfiguration.Setup,
 	} {
-		err := setup(mgr, o)
+		err := setup(mgr, opts)
 		if err != nil {
 			return errors.Wrap(err, "cannot setup controller")
 		}

@@ -1,4 +1,5 @@
-// Package nexus provides a client interface for Sonatype Nexus Repository Manager.
+// Package nexus provides a client interface for Sonatype Nexus
+// Repository Manager.
 package nexus
 
 import (
@@ -297,7 +298,7 @@ type SecurityService interface {
 	CreateUser(ctx context.Context, user security.User) error
 	UpdateUser(ctx context.Context, id string, user security.User) error
 	DeleteUser(ctx context.Context, id string) error
-	ChangePassword(ctx context.Context, id string, password string) error
+	ChangePassword(ctx context.Context, id, password string) error
 
 	// Role management
 	GetRole(ctx context.Context, id string) (*security.Role, error)
@@ -397,31 +398,32 @@ func NewClient(creds Credentials) (Client, error) {
 	return &nexusClientWrapper{client: nc}, nil
 }
 
-// GetCredentialsFromSecret extracts Nexus credentials from a Kubernetes secret.
-func GetCredentialsFromSecret(ctx context.Context, kube kubeclient.Client, pc *v1alpha1.ProviderConfig) (Credentials, error) {
+// GetCredentialsFromSecret extracts Nexus credentials from a
+// Kubernetes secret.
+func GetCredentialsFromSecret(ctx context.Context, kube kubeclient.Client, providerConfig *v1alpha1.ProviderConfig) (Credentials, error) {
 	var creds Credentials
 
-	if pc.Spec.Credentials.Source != "Secret" {
+	if providerConfig.Spec.Credentials.Source != "Secret" {
 		return creds, errors.New("only Secret source is supported")
 	}
 
-	if pc.Spec.Credentials.SecretRef == nil {
+	if providerConfig.Spec.Credentials.SecretRef == nil {
 		return creds, errors.New("secretRef is required when source is Secret")
 	}
 
 	secret := &corev1.Secret{}
 
 	err := kube.Get(ctx, types.NamespacedName{
-		Name:      pc.Spec.Credentials.SecretRef.Name,
-		Namespace: pc.Spec.Credentials.SecretRef.Namespace,
+		Name:      providerConfig.Spec.Credentials.SecretRef.Name,
+		Namespace: providerConfig.Spec.Credentials.SecretRef.Namespace,
 	}, secret)
 	if err != nil {
 		return creds, errors.Wrap(err, "failed to get credentials secret")
 	}
 
 	key := "credentials"
-	if pc.Spec.Credentials.SecretRef.Key != "" {
-		key = pc.Spec.Credentials.SecretRef.Key
+	if providerConfig.Spec.Credentials.SecretRef.Key != "" {
+		key = providerConfig.Spec.Credentials.SecretRef.Key
 	}
 
 	data, ok := secret.Data[key]
@@ -429,14 +431,16 @@ func GetCredentialsFromSecret(ctx context.Context, kube kubeclient.Client, pc *v
 		return creds, errors.Errorf("secret does not contain key %q", key)
 	}
 
-	if err := json.Unmarshal(data, &creds); err != nil {
-		return creds, errors.Wrap(err, "failed to unmarshal credentials")
+	jsonErr := json.Unmarshal(data, &creds)
+	if jsonErr != nil {
+		return creds, errors.Wrap(jsonErr, "failed to unmarshal credentials")
 	}
 
 	return creds, nil
 }
 
-// GetSecretValue retrieves a value from a Kubernetes secret using a SecretKeySelector.
+// GetSecretValue retrieves a value from a Kubernetes secret using a
+// SecretKeySelector.
 func GetSecretValue(ctx context.Context, kube kubeclient.Client, selector *xpv2.SecretKeySelector) (string, error) {
 	if selector == nil {
 		return "", errors.New("secretKeySelector is nil")
@@ -1441,7 +1445,7 @@ func (s *securityService) DeleteUser(ctx context.Context, id string) error {
 }
 
 // ChangePassword changes a user's password.
-func (s *securityService) ChangePassword(ctx context.Context, id string, password string) error {
+func (s *securityService) ChangePassword(ctx context.Context, id, password string) error {
 	return s.client.Security.User.ChangePassword(id, password)
 }
 
@@ -1556,12 +1560,14 @@ func (s *securityService) UpdatePrivilegeRepositoryAdmin(ctx context.Context, na
 	return s.client.Security.Privilege.RepositoryAdmin.Update(name, p)
 }
 
-// CreatePrivilegeRepositoryContentSelector creates a repository content selector privilege.
+// CreatePrivilegeRepositoryContentSelector creates a repository
+// content selector privilege.
 func (s *securityService) CreatePrivilegeRepositoryContentSelector(ctx context.Context, p security.PrivilegeRepositoryContentSelector) error {
 	return s.client.Security.Privilege.RepositoryContentSelector.Create(p)
 }
 
-// UpdatePrivilegeRepositoryContentSelector updates a repository content selector privilege.
+// UpdatePrivilegeRepositoryContentSelector updates a repository
+// content selector privilege.
 func (s *securityService) UpdatePrivilegeRepositoryContentSelector(ctx context.Context, name string, p security.PrivilegeRepositoryContentSelector) error {
 	return s.client.Security.Privilege.RepositoryContentSelector.Update(name, p)
 }

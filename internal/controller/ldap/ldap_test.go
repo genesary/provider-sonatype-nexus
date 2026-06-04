@@ -12,7 +12,10 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/test/mocks"
 )
 
+// TestObserve tests the Observe method.
 func TestObserve(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name         string
 		cr           *v1alpha1.LDAP
@@ -93,6 +96,8 @@ func TestObserve(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -118,7 +123,10 @@ func TestObserve(t *testing.T) {
 	}
 }
 
+// TestCreate tests the Create method.
 func TestCreate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		cr        *v1alpha1.LDAP
@@ -166,6 +174,8 @@ func TestCreate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -181,7 +191,10 @@ func TestCreate(t *testing.T) {
 	}
 }
 
+// TestDelete tests the Delete method.
 func TestDelete(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		cr        *v1alpha1.LDAP
@@ -236,6 +249,8 @@ func TestDelete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)

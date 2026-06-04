@@ -5,7 +5,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// UserTokenConfigurationParameters defines the desired state of UserTokenConfiguration.
+// UserTokenConfigurationParameters defines the desired state of
+// UserTokenConfiguration.
 type UserTokenConfigurationParameters struct {
 	// Enabled determines if user tokens are enabled.
 	// +kubebuilder:validation:Required
@@ -25,18 +26,21 @@ type UserTokenConfigurationParameters struct {
 	ExpirationDays *int32 `json:"expirationDays,omitempty"`
 }
 
-// UserTokenConfigurationObservation represents the observed state of UserTokenConfiguration.
+// UserTokenConfigurationObservation represents the observed state of
+// UserTokenConfiguration.
 type UserTokenConfigurationObservation struct {
 }
 
-// UserTokenConfigurationSpec defines the desired state of UserTokenConfiguration.
+// UserTokenConfigurationSpec defines the desired state of
+// UserTokenConfiguration.
 type UserTokenConfigurationSpec struct {
 	xpv2.ManagedResourceSpec `json:",inline"`
 
 	ForProvider UserTokenConfigurationParameters `json:"forProvider"`
 }
 
-// UserTokenConfigurationStatus defines the observed state of UserTokenConfiguration.
+// UserTokenConfigurationStatus defines the observed state of
+// UserTokenConfiguration.
 type UserTokenConfigurationStatus struct {
 	xpv2.ManagedResourceStatus `json:",inline"`
 
@@ -71,6 +75,7 @@ type UserTokenConfigurationList struct {
 	Items []UserTokenConfiguration `json:"items"`
 }
 
+// init registers this type with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&UserTokenConfiguration{}, &UserTokenConfigurationList{})
 }

@@ -21,37 +21,49 @@ import (
 )
 
 const (
-	errNotBlobStore    = "managed resource is not a BlobStore custom resource"
-	errTrackPCUsage    = "cannot track ProviderConfig usage"
-	errGetPC           = "cannot get ProviderConfig"
-	errGetCreds        = "cannot get credentials"
-	errNewClient       = "cannot create new Nexus client"
-	errGetBlobStore    = "cannot get blob store from Nexus"
+	// errNotBlobStore is returned when the managed resource is not a BlobStore.
+	errNotBlobStore = "managed resource is not a BlobStore custom resource"
+	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
+	errTrackPCUsage = "cannot track ProviderConfig usage"
+	// errGetPC is returned when getting the ProviderConfig fails.
+	errGetPC = "cannot get ProviderConfig"
+	// errGetCreds is returned when getting credentials fails.
+	errGetCreds = "cannot get credentials"
+	// errNewClient is returned when creating the Nexus client fails.
+	errNewClient = "cannot create new Nexus client"
+	// errGetBlobStore is returned when getting the blob store from Nexus fails.
+	errGetBlobStore = "cannot get blob store from Nexus"
+	// errCreateBlobStore is returned when creating the blob store in Nexus fails.
 	errCreateBlobStore = "cannot create blob store in Nexus"
+	// errUpdateBlobStore is returned when updating the blob store in Nexus fails.
 	errUpdateBlobStore = "cannot update blob store in Nexus"
+	// errDeleteBlobStore is returned when deleting the blob store from Nexus fails.
 	errDeleteBlobStore = "cannot delete blob store from Nexus"
+
+	// blobStoreTypeFile is the string identifier for File-type blob stores.
+	blobStoreTypeFile = "File"
 )
 
-// Setup adds a controller that reconciles BlobStore managed resources.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+// Setup creates a controller for BlobStore resources.
+func Setup(mgr ctrl.Manager, opts controller.Options) error {
 	name := managed.ControllerName(v1alpha1.BlobStoreGroupKind)
 
-	r := managed.NewReconciler(mgr,
+	rec := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.BlobStoreGroupVersionKind),
 		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{}),
 		}),
-		managed.WithLogger(o.Logger.WithValues("controller", name)),
-		managed.WithPollInterval(o.PollInterval),
+		managed.WithLogger(opts.Logger.WithValues("controller", name)),
+		managed.WithPollInterval(opts.PollInterval),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		WithOptions(o.ForControllerRuntime()).
+		WithOptions(opts.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1alpha1.BlobStore{}).
-		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
+		Complete(ratelimiter.NewReconciler(name, rec, opts.GlobalRateLimiter))
 }
 
 // connector implements managed.ExternalConnector.
@@ -60,28 +72,31 @@ type connector struct {
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	_, ok := mg.(*v1alpha1.BlobStore)
-	if !ok {
+// Connect creates an ExternalClient for the BlobStore controller.
+func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
+	_, isBlobStore := managedRes.(*v1alpha1.BlobStore)
+	if !isBlobStore {
 		return nil, errors.New(errNotBlobStore)
 	}
 
-	modernMG, ok := mg.(resource.ModernManaged)
-	if !ok {
+	modernMG, isModern := managedRes.(resource.ModernManaged)
+	if !isModern {
 		return nil, errors.New("managed resource is not a ModernManaged")
 	}
 
-	if err := c.usage.Track(ctx, modernMG); err != nil {
+	err := c.usage.Track(ctx, modernMG)
+	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	pc := &v1alpha1.ProviderConfig{}
-	if err := c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, pc); err != nil {
+	providerConfig := &v1alpha1.ProviderConfig{}
+
+	err = c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, providerConfig)
+	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
-	creds, err := nexus.GetCredentialsFromSecret(ctx, c.kube, pc)
+	creds, err := nexus.GetCredentialsFromSecret(ctx, c.kube, providerConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetCreds)
 	}
@@ -99,150 +114,123 @@ type external struct {
 	client nexus.Client
 }
 
-// Observe the external resource.
-func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := mg.(*v1alpha1.BlobStore)
-	if !ok {
+// Observe checks if the BlobStore resource exists and is up-to-date.
+func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
+	blobStore, isBlobStore := managedRes.(*v1alpha1.BlobStore)
+	if !isBlobStore {
 		return managed.ExternalObservation{}, errors.New(errNotBlobStore)
 	}
 
-	name := meta.GetExternalName(cr)
-	if name == "" {
-		name = cr.Spec.ForProvider.Name
-	}
-
-	var (
-		exists   bool
-		upToDate bool
-	)
-
-	switch cr.Spec.ForProvider.Type {
-	case "File":
-		bs, err := e.client.BlobStore().GetFile(ctx, name)
-		if err != nil {
-			if isNotFound(err) {
-				return managed.ExternalObservation{ResourceExists: false}, nil
-			}
-
-			return managed.ExternalObservation{}, errors.Wrap(err, errGetBlobStore)
-		}
-
-		if bs != nil {
-			exists = true
-			upToDate = isFileBlobStoreUpToDate(cr, bs)
-		}
+	switch blobStore.Spec.ForProvider.Type {
+	case blobStoreTypeFile:
+		return e.observeFileBlobStore(ctx, blobStore)
 	case "S3":
-		bs, err := e.client.BlobStore().GetS3(ctx, name)
-		if err != nil {
-			if isNotFound(err) {
-				return managed.ExternalObservation{ResourceExists: false}, nil
-			}
-
-			return managed.ExternalObservation{}, errors.Wrap(err, errGetBlobStore)
-		}
-
-		if bs != nil {
-			exists = true
-			upToDate = isS3BlobStoreUpToDate(cr, bs)
-		}
+		return e.observeS3BlobStore(ctx, blobStore)
 	default:
-		// Default to File type
-		bs, err := e.client.BlobStore().GetFile(ctx, name)
-		if err != nil {
-			if isNotFound(err) {
-				return managed.ExternalObservation{ResourceExists: false}, nil
-			}
+		return e.observeFileBlobStore(ctx, blobStore)
+	}
+}
 
-			return managed.ExternalObservation{}, errors.Wrap(err, errGetBlobStore)
-		}
-
-		if bs != nil {
-			exists = true
-			upToDate = isFileBlobStoreUpToDate(cr, bs)
-		}
+// observeBlobStoreByType is a generic helper for observing a blob store
+// using a typed getter function and an up-to-date checker.
+func observeBlobStoreByType[T any](
+	ctx context.Context,
+	blobStore *v1alpha1.BlobStore,
+	getter func(context.Context, string) (*T, error),
+	checker func(*v1alpha1.BlobStore, *T) bool,
+) (managed.ExternalObservation, error) {
+	name := meta.GetExternalName(blobStore)
+	if name == "" {
+		name = blobStore.Spec.ForProvider.Name
 	}
 
-	if !exists {
+	result, err := getter(ctx, name)
+	if err != nil {
+		if isNotFound(err) {
+			return managed.ExternalObservation{ResourceExists: false}, nil
+		}
+
+		return managed.ExternalObservation{}, errors.Wrap(err, errGetBlobStore)
+	}
+
+	if result == nil {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	cr.SetConditions(v1alpha1.Available())
+	blobStore.SetConditions(v1alpha1.Available())
 
-	return managed.ExternalObservation{
-		ResourceExists:   true,
-		ResourceUpToDate: upToDate,
-	}, nil
+	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: checker(blobStore, result)}, nil
 }
 
-// Create the external resource.
-func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1alpha1.BlobStore)
-	if !ok {
+// Create creates a new BlobStore resource.
+func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
+	blobStore, isBlobStore := managedRes.(*v1alpha1.BlobStore)
+	if !isBlobStore {
 		return managed.ExternalCreation{}, errors.New(errNotBlobStore)
 	}
 
-	switch cr.Spec.ForProvider.Type {
-	case "File":
-		bs := generateFileBlobStore(cr)
+	switch blobStore.Spec.ForProvider.Type {
+	case blobStoreTypeFile:
+		fileBlobStore := generateFileBlobStore(blobStore)
 
-		err := e.client.BlobStore().CreateFile(ctx, bs)
+		err := e.client.BlobStore().CreateFile(ctx, fileBlobStore)
 		if err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errCreateBlobStore)
 		}
 	case "S3":
-		bs := generateS3BlobStore(cr)
+		s3BlobStore := generateS3BlobStore(blobStore)
 
-		err := e.client.BlobStore().CreateS3(ctx, bs)
+		err := e.client.BlobStore().CreateS3(ctx, s3BlobStore)
 		if err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errCreateBlobStore)
 		}
 	default:
 		// Default to File type
-		bs := generateFileBlobStore(cr)
+		fileBlobStore := generateFileBlobStore(blobStore)
 
-		err := e.client.BlobStore().CreateFile(ctx, bs)
+		err := e.client.BlobStore().CreateFile(ctx, fileBlobStore)
 		if err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errCreateBlobStore)
 		}
 	}
 
-	meta.SetExternalName(cr, cr.Spec.ForProvider.Name)
+	meta.SetExternalName(blobStore, blobStore.Spec.ForProvider.Name)
 
 	return managed.ExternalCreation{}, nil
 }
 
-// Update the external resource.
-func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1alpha1.BlobStore)
-	if !ok {
+// Update modifies an existing BlobStore resource.
+func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
+	blobStore, isBlobStore := managedRes.(*v1alpha1.BlobStore)
+	if !isBlobStore {
 		return managed.ExternalUpdate{}, errors.New(errNotBlobStore)
 	}
 
-	name := meta.GetExternalName(cr)
+	name := meta.GetExternalName(blobStore)
 	if name == "" {
-		name = cr.Spec.ForProvider.Name
+		name = blobStore.Spec.ForProvider.Name
 	}
 
-	switch cr.Spec.ForProvider.Type {
-	case "File":
-		bs := generateFileBlobStore(cr)
+	switch blobStore.Spec.ForProvider.Type {
+	case blobStoreTypeFile:
+		fileBlobStore := generateFileBlobStore(blobStore)
 
-		err := e.client.BlobStore().UpdateFile(ctx, name, bs)
+		err := e.client.BlobStore().UpdateFile(ctx, name, fileBlobStore)
 		if err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateBlobStore)
 		}
 	case "S3":
-		bs := generateS3BlobStore(cr)
+		s3BlobStore := generateS3BlobStore(blobStore)
 
-		err := e.client.BlobStore().UpdateS3(ctx, name, bs)
+		err := e.client.BlobStore().UpdateS3(ctx, name, s3BlobStore)
 		if err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateBlobStore)
 		}
 	default:
 		// Default to File type
-		bs := generateFileBlobStore(cr)
+		fileBlobStore := generateFileBlobStore(blobStore)
 
-		err := e.client.BlobStore().UpdateFile(ctx, name, bs)
+		err := e.client.BlobStore().UpdateFile(ctx, name, fileBlobStore)
 		if err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateBlobStore)
 		}
@@ -251,16 +239,16 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalUpdate{}, nil
 }
 
-// Delete the external resource.
-func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	cr, ok := mg.(*v1alpha1.BlobStore)
-	if !ok {
+// Delete removes an existing BlobStore resource.
+func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
+	blobStore, isBlobStore := managedRes.(*v1alpha1.BlobStore)
+	if !isBlobStore {
 		return managed.ExternalDelete{}, errors.New(errNotBlobStore)
 	}
 
-	name := meta.GetExternalName(cr)
+	name := meta.GetExternalName(blobStore)
 	if name == "" {
-		name = cr.Spec.ForProvider.Name
+		name = blobStore.Spec.ForProvider.Name
 	}
 
 	err := e.client.BlobStore().Delete(ctx, name)
@@ -280,85 +268,95 @@ func (e *external) Disconnect(ctx context.Context) error {
 	return nil
 }
 
+// observeFileBlobStore handles Observe for File-type blob stores.
+func (e *external) observeFileBlobStore(ctx context.Context, blobStore *v1alpha1.BlobStore) (managed.ExternalObservation, error) {
+	return observeBlobStoreByType(ctx, blobStore, e.client.BlobStore().GetFile, isFileBlobStoreUpToDate)
+}
+
+// observeS3BlobStore handles Observe for S3-type blob stores.
+func (e *external) observeS3BlobStore(ctx context.Context, blobStore *v1alpha1.BlobStore) (managed.ExternalObservation, error) {
+	return observeBlobStoreByType(ctx, blobStore, e.client.BlobStore().GetS3, isS3BlobStoreUpToDate)
+}
+
 // generateFileBlobStore generates a File blob store from the CR spec.
-func generateFileBlobStore(cr *v1alpha1.BlobStore) *blobstore.File {
-	bs := &blobstore.File{
-		Name: cr.Spec.ForProvider.Name,
+func generateFileBlobStore(blobStoreCR *v1alpha1.BlobStore) *blobstore.File {
+	fileBlobStore := &blobstore.File{
+		Name: blobStoreCR.Spec.ForProvider.Name,
 	}
 
-	if cr.Spec.ForProvider.Path != nil {
-		bs.Path = *cr.Spec.ForProvider.Path
+	if blobStoreCR.Spec.ForProvider.Path != nil {
+		fileBlobStore.Path = *blobStoreCR.Spec.ForProvider.Path
 	}
 
-	if cr.Spec.ForProvider.SoftQuota != nil {
-		bs.SoftQuota = &blobstore.SoftQuota{}
-		if cr.Spec.ForProvider.SoftQuota.Type != nil {
-			bs.SoftQuota.Type = *cr.Spec.ForProvider.SoftQuota.Type
+	if blobStoreCR.Spec.ForProvider.SoftQuota != nil {
+		fileBlobStore.SoftQuota = &blobstore.SoftQuota{}
+		if blobStoreCR.Spec.ForProvider.SoftQuota.Type != nil {
+			fileBlobStore.SoftQuota.Type = *blobStoreCR.Spec.ForProvider.SoftQuota.Type
 		}
 
-		if cr.Spec.ForProvider.SoftQuota.Limit != nil {
-			bs.SoftQuota.Limit = *cr.Spec.ForProvider.SoftQuota.Limit
+		if blobStoreCR.Spec.ForProvider.SoftQuota.Limit != nil {
+			fileBlobStore.SoftQuota.Limit = *blobStoreCR.Spec.ForProvider.SoftQuota.Limit
 		}
 	}
 
-	return bs
+	return fileBlobStore
 }
 
 // generateS3BlobStore generates an S3 blob store from the CR spec.
-func generateS3BlobStore(cr *v1alpha1.BlobStore) *blobstore.S3 {
-	bs := &blobstore.S3{
-		Name: cr.Spec.ForProvider.Name,
+func generateS3BlobStore(blobStoreCR *v1alpha1.BlobStore) *blobstore.S3 {
+	s3BlobStore := &blobstore.S3{
+		Name: blobStoreCR.Spec.ForProvider.Name,
 	}
 
-	if cr.Spec.ForProvider.SoftQuota != nil {
-		bs.SoftQuota = &blobstore.SoftQuota{}
-		if cr.Spec.ForProvider.SoftQuota.Type != nil {
-			bs.SoftQuota.Type = *cr.Spec.ForProvider.SoftQuota.Type
+	if blobStoreCR.Spec.ForProvider.SoftQuota != nil {
+		s3BlobStore.SoftQuota = &blobstore.SoftQuota{}
+		if blobStoreCR.Spec.ForProvider.SoftQuota.Type != nil {
+			s3BlobStore.SoftQuota.Type = *blobStoreCR.Spec.ForProvider.SoftQuota.Type
 		}
 
-		if cr.Spec.ForProvider.SoftQuota.Limit != nil {
-			bs.SoftQuota.Limit = *cr.Spec.ForProvider.SoftQuota.Limit
+		if blobStoreCR.Spec.ForProvider.SoftQuota.Limit != nil {
+			s3BlobStore.SoftQuota.Limit = *blobStoreCR.Spec.ForProvider.SoftQuota.Limit
 		}
 	}
 
-	if cr.Spec.ForProvider.S3Config != nil {
-		bs.BucketConfiguration = blobstore.S3BucketConfiguration{
+	if blobStoreCR.Spec.ForProvider.S3Config != nil {
+		s3BlobStore.BucketConfiguration = blobstore.S3BucketConfiguration{
 			Bucket: blobstore.S3Bucket{
-				Name: cr.Spec.ForProvider.S3Config.Bucket,
+				Name: blobStoreCR.Spec.ForProvider.S3Config.Bucket,
 			},
 		}
-		if cr.Spec.ForProvider.S3Config.Region != nil {
-			bs.BucketConfiguration.Bucket.Region = *cr.Spec.ForProvider.S3Config.Region
+		if blobStoreCR.Spec.ForProvider.S3Config.Region != nil {
+			s3BlobStore.BucketConfiguration.Bucket.Region = *blobStoreCR.Spec.ForProvider.S3Config.Region
 		}
 
-		if cr.Spec.ForProvider.S3Config.Prefix != nil {
-			bs.BucketConfiguration.Bucket.Prefix = *cr.Spec.ForProvider.S3Config.Prefix
+		if blobStoreCR.Spec.ForProvider.S3Config.Prefix != nil {
+			s3BlobStore.BucketConfiguration.Bucket.Prefix = *blobStoreCR.Spec.ForProvider.S3Config.Prefix
 		}
 
-		if cr.Spec.ForProvider.S3Config.ExpirationDays != nil {
-			bs.BucketConfiguration.Bucket.Expiration = *cr.Spec.ForProvider.S3Config.ExpirationDays
+		if blobStoreCR.Spec.ForProvider.S3Config.ExpirationDays != nil {
+			s3BlobStore.BucketConfiguration.Bucket.Expiration = *blobStoreCR.Spec.ForProvider.S3Config.ExpirationDays
 		}
 	}
 
-	return bs
+	return s3BlobStore
 }
 
 // isFileBlobStoreUpToDate checks if a File blob store is up to date.
-func isFileBlobStoreUpToDate(cr *v1alpha1.BlobStore, bs *blobstore.File) bool {
-	if cr.Spec.ForProvider.Path != nil && bs.Path != *cr.Spec.ForProvider.Path {
+func isFileBlobStoreUpToDate(blobStoreCR *v1alpha1.BlobStore, fileBlobStore *blobstore.File) bool {
+	if blobStoreCR.Spec.ForProvider.Path != nil && fileBlobStore.Path != *blobStoreCR.Spec.ForProvider.Path {
 		return false
 	}
 
-	if cr.Spec.ForProvider.SoftQuota != nil {
-		if bs.SoftQuota == nil {
+	if blobStoreCR.Spec.ForProvider.SoftQuota != nil {
+		if fileBlobStore.SoftQuota == nil {
 			return false
 		}
 
-		if cr.Spec.ForProvider.SoftQuota.Type != nil && bs.SoftQuota.Type != *cr.Spec.ForProvider.SoftQuota.Type {
+		if blobStoreCR.Spec.ForProvider.SoftQuota.Type != nil && fileBlobStore.SoftQuota.Type != *blobStoreCR.Spec.ForProvider.SoftQuota.Type {
 			return false
 		}
 
-		if cr.Spec.ForProvider.SoftQuota.Limit != nil && bs.SoftQuota.Limit != *cr.Spec.ForProvider.SoftQuota.Limit {
+		if blobStoreCR.Spec.ForProvider.SoftQuota.Limit != nil && fileBlobStore.SoftQuota.Limit != *blobStoreCR.Spec.ForProvider.SoftQuota.Limit {
 			return false
 		}
 	}
@@ -367,33 +365,56 @@ func isFileBlobStoreUpToDate(cr *v1alpha1.BlobStore, bs *blobstore.File) bool {
 }
 
 // isS3BlobStoreUpToDate checks if an S3 blob store is up to date.
-func isS3BlobStoreUpToDate(cr *v1alpha1.BlobStore, bs *blobstore.S3) bool {
-	if cr.Spec.ForProvider.SoftQuota != nil {
-		if bs.SoftQuota == nil {
-			return false
-		}
-
-		if cr.Spec.ForProvider.SoftQuota.Type != nil && bs.SoftQuota.Type != *cr.Spec.ForProvider.SoftQuota.Type {
-			return false
-		}
-
-		if cr.Spec.ForProvider.SoftQuota.Limit != nil && bs.SoftQuota.Limit != *cr.Spec.ForProvider.SoftQuota.Limit {
-			return false
-		}
+func isS3BlobStoreUpToDate(blobStoreCR *v1alpha1.BlobStore, s3BlobStore *blobstore.S3) bool {
+	if !isS3SoftQuotaUpToDate(blobStoreCR, s3BlobStore) {
+		return false
 	}
 
-	if cr.Spec.ForProvider.S3Config != nil {
-		if bs.BucketConfiguration.Bucket.Name != cr.Spec.ForProvider.S3Config.Bucket {
-			return false
-		}
+	if !isS3BucketConfigUpToDate(blobStoreCR, s3BlobStore) {
+		return false
+	}
 
-		if cr.Spec.ForProvider.S3Config.Region != nil && bs.BucketConfiguration.Bucket.Region != *cr.Spec.ForProvider.S3Config.Region {
-			return false
-		}
+	return true
+}
 
-		if cr.Spec.ForProvider.S3Config.Prefix != nil && bs.BucketConfiguration.Bucket.Prefix != *cr.Spec.ForProvider.S3Config.Prefix {
-			return false
-		}
+// isS3SoftQuotaUpToDate checks if the S3 blob store soft quota is up to date.
+func isS3SoftQuotaUpToDate(blobStoreCR *v1alpha1.BlobStore, s3BlobStore *blobstore.S3) bool {
+	if blobStoreCR.Spec.ForProvider.SoftQuota == nil {
+		return true
+	}
+
+	if s3BlobStore.SoftQuota == nil {
+		return false
+	}
+
+	if blobStoreCR.Spec.ForProvider.SoftQuota.Type != nil && s3BlobStore.SoftQuota.Type != *blobStoreCR.Spec.ForProvider.SoftQuota.Type {
+		return false
+	}
+
+	if blobStoreCR.Spec.ForProvider.SoftQuota.Limit != nil && s3BlobStore.SoftQuota.Limit != *blobStoreCR.Spec.ForProvider.SoftQuota.Limit {
+		return false
+	}
+
+	return true
+}
+
+// isS3BucketConfigUpToDate checks if the S3 blob store bucket
+// configuration is up to date.
+func isS3BucketConfigUpToDate(blobStoreCR *v1alpha1.BlobStore, s3BlobStore *blobstore.S3) bool {
+	if blobStoreCR.Spec.ForProvider.S3Config == nil {
+		return true
+	}
+
+	if s3BlobStore.BucketConfiguration.Bucket.Name != blobStoreCR.Spec.ForProvider.S3Config.Bucket {
+		return false
+	}
+
+	if blobStoreCR.Spec.ForProvider.S3Config.Region != nil && s3BlobStore.BucketConfiguration.Bucket.Region != *blobStoreCR.Spec.ForProvider.S3Config.Region {
+		return false
+	}
+
+	if blobStoreCR.Spec.ForProvider.S3Config.Prefix != nil && s3BlobStore.BucketConfiguration.Bucket.Prefix != *blobStoreCR.Spec.ForProvider.S3Config.Prefix {
+		return false
 	}
 
 	return true

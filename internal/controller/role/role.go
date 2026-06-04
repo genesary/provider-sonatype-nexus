@@ -21,37 +21,46 @@ import (
 )
 
 const (
-	errNotRole      = "managed resource is not a Role custom resource"
+	// errNotRole is returned when the managed resource is not a Role.
+	errNotRole = "managed resource is not a Role custom resource"
+	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
-	errGetPC        = "cannot get ProviderConfig"
-	errGetCreds     = "cannot get credentials"
-	errNewClient    = "cannot create new Nexus client"
-	errGetRole      = "cannot get role from Nexus"
-	errCreateRole   = "cannot create role in Nexus"
-	errUpdateRole   = "cannot update role in Nexus"
-	errDeleteRole   = "cannot delete role from Nexus"
+	// errGetPC is returned when retrieving the ProviderConfig fails.
+	errGetPC = "cannot get ProviderConfig"
+	// errGetCreds is returned when retrieving credentials fails.
+	errGetCreds = "cannot get credentials"
+	// errNewClient is returned when creating the Nexus client fails.
+	errNewClient = "cannot create new Nexus client"
+	// errGetRole is returned when retrieving a Role fails.
+	errGetRole = "cannot get role from Nexus"
+	// errCreateRole is returned when creating a Role fails.
+	errCreateRole = "cannot create role in Nexus"
+	// errUpdateRole is returned when updating a Role fails.
+	errUpdateRole = "cannot update role in Nexus"
+	// errDeleteRole is returned when deleting a Role fails.
+	errDeleteRole = "cannot delete role from Nexus"
 )
 
-// Setup adds a controller that reconciles Role managed resources.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+// Setup creates a controller for Role resources.
+func Setup(mgr ctrl.Manager, opts controller.Options) error {
 	name := managed.ControllerName(v1alpha1.RoleGroupKind)
 
-	r := managed.NewReconciler(mgr,
+	rec := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.RoleGroupVersionKind),
 		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{}),
 		}),
-		managed.WithLogger(o.Logger.WithValues("controller", name)),
-		managed.WithPollInterval(o.PollInterval),
+		managed.WithLogger(opts.Logger.WithValues("controller", name)),
+		managed.WithPollInterval(opts.PollInterval),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		WithOptions(o.ForControllerRuntime()).
+		WithOptions(opts.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1alpha1.Role{}).
-		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
+		Complete(ratelimiter.NewReconciler(name, rec, opts.GlobalRateLimiter))
 }
 
 // connector implements managed.ExternalConnector.
@@ -60,38 +69,41 @@ type connector struct {
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	_, ok := mg.(*v1alpha1.Role)
-	if !ok {
+// Connect creates an ExternalClient for the Role controller.
+func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
+	_, isRole := managedRes.(*v1alpha1.Role)
+	if !isRole {
 		return nil, errors.New(errNotRole)
 	}
 
-	modernMG, ok := mg.(resource.ModernManaged)
-	if !ok {
+	modernMG, isModern := managedRes.(resource.ModernManaged)
+	if !isModern {
 		return nil, errors.New("managed resource is not a ModernManaged")
 	}
 
-	if err := c.usage.Track(ctx, modernMG); err != nil {
+	err := c.usage.Track(ctx, modernMG)
+	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	pc := &v1alpha1.ProviderConfig{}
-	if err := c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, pc); err != nil {
+	provConfig := &v1alpha1.ProviderConfig{}
+
+	err = c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, provConfig)
+	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
-	creds, err := nexus.GetCredentialsFromSecret(ctx, c.kube, pc)
+	creds, err := nexus.GetCredentialsFromSecret(ctx, c.kube, provConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetCreds)
 	}
 
-	nc, err := nexus.NewClient(creds)
+	nexusClient, err := nexus.NewClient(creds)
 	if err != nil {
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{client: nc}, nil
+	return &external{client: nexusClient}, nil
 }
 
 // external implements managed.ExternalClient.
@@ -99,19 +111,19 @@ type external struct {
 	client nexus.Client
 }
 
-// Observe the external resource.
-func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := mg.(*v1alpha1.Role)
-	if !ok {
+// Observe checks if the Role resource exists and is up-to-date.
+func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
+	roleRes, isRole := managedRes.(*v1alpha1.Role)
+	if !isRole {
 		return managed.ExternalObservation{}, errors.New(errNotRole)
 	}
 
-	roleID := meta.GetExternalName(cr)
+	roleID := meta.GetExternalName(roleRes)
 	if roleID == "" {
-		roleID = cr.Spec.ForProvider.ID
+		roleID = roleRes.Spec.ForProvider.ID
 	}
 
-	role, err := e.client.Security().GetRole(ctx, roleID)
+	roleResult, err := e.client.Security().GetRole(ctx, roleID)
 	if err != nil {
 		if isNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
@@ -120,13 +132,13 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetRole)
 	}
 
-	if role == nil {
+	if roleResult == nil {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	cr.SetConditions(v1alpha1.Available())
+	roleRes.SetConditions(v1alpha1.Available())
 
-	upToDate := isRoleUpToDate(cr, role)
+	upToDate := isRoleUpToDate(roleRes, roleResult)
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
@@ -134,40 +146,40 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}, nil
 }
 
-// Create the external resource.
-func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1alpha1.Role)
-	if !ok {
+// Create creates a new Role resource.
+func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
+	roleRes, isRole := managedRes.(*v1alpha1.Role)
+	if !isRole {
 		return managed.ExternalCreation{}, errors.New(errNotRole)
 	}
 
-	role := generateRole(cr)
+	roleData := generateRole(roleRes)
 
-	err := e.client.Security().CreateRole(ctx, role)
+	err := e.client.Security().CreateRole(ctx, roleData)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateRole)
 	}
 
-	meta.SetExternalName(cr, cr.Spec.ForProvider.ID)
+	meta.SetExternalName(roleRes, roleRes.Spec.ForProvider.ID)
 
 	return managed.ExternalCreation{}, nil
 }
 
-// Update the external resource.
-func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1alpha1.Role)
-	if !ok {
+// Update modifies an existing Role resource.
+func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
+	roleRes, isRole := managedRes.(*v1alpha1.Role)
+	if !isRole {
 		return managed.ExternalUpdate{}, errors.New(errNotRole)
 	}
 
-	roleID := meta.GetExternalName(cr)
+	roleID := meta.GetExternalName(roleRes)
 	if roleID == "" {
-		roleID = cr.Spec.ForProvider.ID
+		roleID = roleRes.Spec.ForProvider.ID
 	}
 
-	role := generateRole(cr)
+	roleData := generateRole(roleRes)
 
-	err := e.client.Security().UpdateRole(ctx, roleID, role)
+	err := e.client.Security().UpdateRole(ctx, roleID, roleData)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateRole)
 	}
@@ -175,16 +187,16 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalUpdate{}, nil
 }
 
-// Delete the external resource.
-func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	cr, ok := mg.(*v1alpha1.Role)
-	if !ok {
+// Delete removes an existing Role resource.
+func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
+	roleRes, isRole := managedRes.(*v1alpha1.Role)
+	if !isRole {
 		return managed.ExternalDelete{}, errors.New(errNotRole)
 	}
 
-	roleID := meta.GetExternalName(cr)
+	roleID := meta.GetExternalName(roleRes)
 	if roleID == "" {
-		roleID = cr.Spec.ForProvider.ID
+		roleID = roleRes.Spec.ForProvider.ID
 	}
 
 	err := e.client.Security().DeleteRole(ctx, roleID)
@@ -200,41 +212,42 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 // Disconnect from the provider.
-func (e *external) Disconnect(ctx context.Context) error {
+func (e *external) Disconnect(_ context.Context) error {
 	return nil
 }
 
 // generateRole generates a Role from the CR spec.
-func generateRole(cr *v1alpha1.Role) security.Role {
-	role := security.Role{
-		ID:         cr.Spec.ForProvider.ID,
-		Name:       cr.Spec.ForProvider.Name,
-		Privileges: cr.Spec.ForProvider.Privileges,
-		Roles:      cr.Spec.ForProvider.Roles,
+func generateRole(roleRes *v1alpha1.Role) security.Role {
+	roleData := security.Role{
+		ID:         roleRes.Spec.ForProvider.ID,
+		Name:       roleRes.Spec.ForProvider.Name,
+		Privileges: roleRes.Spec.ForProvider.Privileges,
+		Roles:      roleRes.Spec.ForProvider.Roles,
 	}
 
-	if cr.Spec.ForProvider.Description != nil {
-		role.Description = *cr.Spec.ForProvider.Description
+	if roleRes.Spec.ForProvider.Description != nil {
+		roleData.Description = *roleRes.Spec.ForProvider.Description
 	}
 
-	return role
+	return roleData
 }
 
 // isRoleUpToDate checks if a Role is up to date.
-func isRoleUpToDate(cr *v1alpha1.Role, role *security.Role) bool {
-	if cr.Spec.ForProvider.Name != role.Name {
+func isRoleUpToDate(roleRes *v1alpha1.Role, roleData *security.Role) bool {
+	if roleRes.Spec.ForProvider.Name != roleData.Name {
 		return false
 	}
 
-	if cr.Spec.ForProvider.Description != nil && *cr.Spec.ForProvider.Description != role.Description {
+	if roleRes.Spec.ForProvider.Description != nil &&
+		*roleRes.Spec.ForProvider.Description != roleData.Description {
 		return false
 	}
 
-	if !stringSlicesEqual(cr.Spec.ForProvider.Privileges, role.Privileges) {
+	if !stringSlicesEqual(roleRes.Spec.ForProvider.Privileges, roleData.Privileges) {
 		return false
 	}
 
-	if !stringSlicesEqual(cr.Spec.ForProvider.Roles, role.Roles) {
+	if !stringSlicesEqual(roleRes.Spec.ForProvider.Roles, roleData.Roles) {
 		return false
 	}
 
@@ -242,13 +255,13 @@ func isRoleUpToDate(cr *v1alpha1.Role, role *security.Role) bool {
 }
 
 // stringSlicesEqual compares two string slices for equality.
-func stringSlicesEqual(a, b []string) bool {
-	if len(a) != len(b) {
+func stringSlicesEqual(sliceA, sliceB []string) bool {
+	if len(sliceA) != len(sliceB) {
 		return false
 	}
 
-	for i := range a {
-		if a[i] != b[i] {
+	for idx := range sliceA {
+		if sliceA[idx] != sliceB[idx] {
 			return false
 		}
 	}

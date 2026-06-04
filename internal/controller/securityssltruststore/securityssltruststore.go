@@ -1,8 +1,10 @@
-// Package securityssltruststore contains the controller for SecuritySSLTruststore resources.
+// Package securityssltruststore contains the controller for
+// SecuritySSLTruststore resources.
 package securityssltruststore
 
 import (
 	"context"
+	stderrors "errors"
 	"strings"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
@@ -21,37 +23,51 @@ import (
 )
 
 const (
+	// errNotTruststore is returned when the managed resource is not a
+	// SecuritySSLTruststore.
 	errNotTruststore = "managed resource is not a SecuritySSLTruststore custom resource"
-	errTrackPCUsage  = "cannot track ProviderConfig usage"
-	errGetPC         = "cannot get ProviderConfig"
-	errGetCreds      = "cannot get credentials"
-	errNewClient     = "cannot create new Nexus client"
-	errListCerts     = "cannot list certificates from Nexus truststore"
-	errAddCert       = "cannot add certificate to Nexus truststore"
-	errRemoveCert    = "cannot remove certificate from Nexus truststore"
-	errFindCert      = "cannot find certificate after adding to truststore"
+	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
+	errTrackPCUsage = "cannot track ProviderConfig usage"
+	// errGetPC is returned when getting the ProviderConfig fails.
+	errGetPC = "cannot get ProviderConfig"
+	// errGetCreds is returned when getting credentials fails.
+	errGetCreds = "cannot get credentials"
+	// errNewClient is returned when creating the Nexus client fails.
+	errNewClient = "cannot create new Nexus client"
+	// errListCerts is returned when listing certificates from Nexus fails.
+	errListCerts = "cannot list certificates from Nexus truststore"
+	// errAddCert is returned when adding a certificate to Nexus fails.
+	errAddCert = "cannot add certificate to Nexus truststore"
+	// errRemoveCert is returned when removing a certificate from Nexus fails.
+	errRemoveCert = "cannot remove certificate from Nexus truststore"
+	// errFindCert is returned when a certificate cannot be found after adding.
+	errFindCert = "cannot find certificate after adding to truststore"
 )
 
-// Setup adds a controller that reconciles SecuritySSLTruststore managed resources.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+// errCertNotFound is a sentinel error returned by findCertificateByID when
+// the requested certificate ID is not present in the truststore list.
+var errCertNotFound = errors.New("certificate not found in truststore")
+
+// Setup creates a controller for SecuritySSLTruststore resources.
+func Setup(mgr ctrl.Manager, opts controller.Options) error {
 	name := managed.ControllerName(v1alpha1.SecuritySSLTruststoreGroupKind)
 
-	r := managed.NewReconciler(mgr,
+	rec := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.SecuritySSLTruststoreGroupVersionKind),
 		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{}),
 		}),
-		managed.WithLogger(o.Logger.WithValues("controller", name)),
-		managed.WithPollInterval(o.PollInterval),
+		managed.WithLogger(opts.Logger.WithValues("controller", name)),
+		managed.WithPollInterval(opts.PollInterval),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		WithOptions(o.ForControllerRuntime()).
+		WithOptions(opts.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1alpha1.SecuritySSLTruststore{}).
-		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
+		Complete(ratelimiter.NewReconciler(name, rec, opts.GlobalRateLimiter))
 }
 
 // connector implements managed.ExternalConnector.
@@ -60,28 +76,31 @@ type connector struct {
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	_, ok := mg.(*v1alpha1.SecuritySSLTruststore)
-	if !ok {
+// Connect creates an ExternalClient for the SecuritySSLTruststore controller.
+func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
+	_, isTruststore := managedRes.(*v1alpha1.SecuritySSLTruststore)
+	if !isTruststore {
 		return nil, errors.New(errNotTruststore)
 	}
 
-	modernMG, ok := mg.(resource.ModernManaged)
-	if !ok {
+	modernMG, isModern := managedRes.(resource.ModernManaged)
+	if !isModern {
 		return nil, errors.New("managed resource is not a ModernManaged")
 	}
 
-	if err := c.usage.Track(ctx, modernMG); err != nil {
+	err := c.usage.Track(ctx, modernMG)
+	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	pc := &v1alpha1.ProviderConfig{}
-	if err := c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, pc); err != nil {
+	providerConfig := &v1alpha1.ProviderConfig{}
+
+	err = c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, providerConfig)
+	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
-	creds, err := nexus.GetCredentialsFromSecret(ctx, c.kube, pc)
+	creds, err := nexus.GetCredentialsFromSecret(ctx, c.kube, providerConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetCreds)
 	}
@@ -99,33 +118,34 @@ type external struct {
 	client nexus.Client
 }
 
-// Observe the external resource.
-func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := mg.(*v1alpha1.SecuritySSLTruststore)
-	if !ok {
+// Observe checks if the SecuritySSLTruststore resource exists and is
+// up-to-date.
+func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
+	truststoreCR, isTruststore := managedRes.(*v1alpha1.SecuritySSLTruststore)
+	if !isTruststore {
 		return managed.ExternalObservation{}, errors.New(errNotTruststore)
 	}
 
-	certID := meta.GetExternalName(cr)
+	certID := meta.GetExternalName(truststoreCR)
 	if certID == "" {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
 	cert, err := e.findCertificateByID(ctx, certID)
 	if err != nil {
+		if stderrors.Is(err, errCertNotFound) {
+			return managed.ExternalObservation{ResourceExists: false}, nil
+		}
+
 		return managed.ExternalObservation{}, errors.Wrap(err, errListCerts)
 	}
 
-	if cert == nil {
-		return managed.ExternalObservation{ResourceExists: false}, nil
-	}
-
 	// Populate status
-	cr.Status.AtProvider = certToObservation(cert)
+	truststoreCR.Status.AtProvider = certToObservation(cert)
 
-	cr.SetConditions(v1alpha1.Available())
+	truststoreCR.SetConditions(v1alpha1.Available())
 
-	upToDate := isCertUpToDate(cr, cert)
+	upToDate := isCertUpToDate(truststoreCR, cert)
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
@@ -133,23 +153,24 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}, nil
 }
 
-// Create the external resource.
-func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1alpha1.SecuritySSLTruststore)
-	if !ok {
+// Create creates a new SecuritySSLTruststore resource.
+func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
+	truststoreCR, isTruststore := managedRes.(*v1alpha1.SecuritySSLTruststore)
+	if !isTruststore {
 		return managed.ExternalCreation{}, errors.New(errNotTruststore)
 	}
 
 	cert := &security.SSLCertificate{
-		Pem: cr.Spec.ForProvider.Pem,
+		Pem: truststoreCR.Spec.ForProvider.Pem,
 	}
 
-	if err := e.client.SSL().AddCertificate(ctx, cert); err != nil {
+	err := e.client.SSL().AddCertificate(ctx, cert)
+	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errAddCert)
 	}
 
 	// Find the certificate we just added to get its ID
-	added, err := e.findCertificateByPem(ctx, cr.Spec.ForProvider.Pem)
+	added, err := e.findCertificateByPem(ctx, truststoreCR.Spec.ForProvider.Pem)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errFindCert)
 	}
@@ -158,20 +179,20 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errFindCert)
 	}
 
-	meta.SetExternalName(cr, added.Id)
+	meta.SetExternalName(truststoreCR, added.Id)
 
 	return managed.ExternalCreation{}, nil
 }
 
-// Update the external resource.
-func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1alpha1.SecuritySSLTruststore)
-	if !ok {
+// Update modifies an existing SecuritySSLTruststore resource.
+func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
+	truststoreCR, isTruststore := managedRes.(*v1alpha1.SecuritySSLTruststore)
+	if !isTruststore {
 		return managed.ExternalUpdate{}, errors.New(errNotTruststore)
 	}
 
 	// Remove old certificate
-	oldID := meta.GetExternalName(cr)
+	oldID := meta.GetExternalName(truststoreCR)
 	if oldID != "" {
 		err := e.client.SSL().RemoveCertificate(ctx, oldID)
 		if err != nil {
@@ -183,15 +204,16 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	// Add new certificate
 	cert := &security.SSLCertificate{
-		Pem: cr.Spec.ForProvider.Pem,
+		Pem: truststoreCR.Spec.ForProvider.Pem,
 	}
 
-	if err := e.client.SSL().AddCertificate(ctx, cert); err != nil {
+	err := e.client.SSL().AddCertificate(ctx, cert)
+	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errAddCert)
 	}
 
 	// Find the new certificate to get its ID
-	added, err := e.findCertificateByPem(ctx, cr.Spec.ForProvider.Pem)
+	added, err := e.findCertificateByPem(ctx, truststoreCR.Spec.ForProvider.Pem)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errFindCert)
 	}
@@ -200,19 +222,19 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New(errFindCert)
 	}
 
-	meta.SetExternalName(cr, added.Id)
+	meta.SetExternalName(truststoreCR, added.Id)
 
 	return managed.ExternalUpdate{}, nil
 }
 
-// Delete the external resource.
-func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	cr, ok := mg.(*v1alpha1.SecuritySSLTruststore)
-	if !ok {
+// Delete removes an existing SecuritySSLTruststore resource.
+func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
+	truststoreCR, isTruststore := managedRes.(*v1alpha1.SecuritySSLTruststore)
+	if !isTruststore {
 		return managed.ExternalDelete{}, errors.New(errNotTruststore)
 	}
 
-	certID := meta.GetExternalName(cr)
+	certID := meta.GetExternalName(truststoreCR)
 	if certID == "" {
 		return managed.ExternalDelete{}, nil
 	}
@@ -235,22 +257,24 @@ func (e *external) Disconnect(ctx context.Context) error {
 }
 
 // findCertificateByID finds a certificate in the truststore by its ID.
-func (e *external) findCertificateByID(ctx context.Context, id string) (*security.SSLCertificate, error) {
+// Returns errCertNotFound sentinel when the ID is not present in the list.
+func (e *external) findCertificateByID(ctx context.Context, certID string) (*security.SSLCertificate, error) {
 	certs, err := e.client.SSL().ListCertificates(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	for i := range certs {
-		if certs[i].Id == id {
-			return &certs[i], nil
+	for idx := range certs {
+		if certs[idx].Id == certID {
+			return &certs[idx], nil
 		}
 	}
 
-	return nil, nil
+	return nil, errCertNotFound
 }
 
-// findCertificateByPem finds a certificate in the truststore by its PEM content.
+// findCertificateByPem finds a certificate in the truststore by its
+// PEM content.
 func (e *external) findCertificateByPem(ctx context.Context, pem string) (*security.SSLCertificate, error) {
 	certs, err := e.client.SSL().ListCertificates(ctx)
 	if err != nil {
@@ -258,18 +282,28 @@ func (e *external) findCertificateByPem(ctx context.Context, pem string) (*secur
 	}
 
 	normalizedPem := strings.TrimSpace(pem)
-	for i := range certs {
-		if strings.TrimSpace(certs[i].Pem) == normalizedPem {
-			return &certs[i], nil
+	for idx := range certs {
+		if strings.TrimSpace(certs[idx].Pem) == normalizedPem {
+			return &certs[idx], nil
 		}
 	}
 
-	return nil, nil
+	return nil, errors.New(errFindCert)
 }
 
 // certToObservation converts an SSLCertificate to an observation.
 func certToObservation(cert *security.SSLCertificate) v1alpha1.SecuritySSLTruststoreObservation {
 	obs := v1alpha1.SecuritySSLTruststoreObservation{}
+	setCertBasicFields(&obs, cert)
+	setCertIssuerFields(&obs, cert)
+	setCertSubjectFields(&obs, cert)
+	setCertDateFields(&obs, cert)
+
+	return obs
+}
+
+// setCertBasicFields sets the ID, fingerprint, and serial number fields.
+func setCertBasicFields(obs *v1alpha1.SecuritySSLTruststoreObservation, cert *security.SSLCertificate) {
 	if cert.Id != "" {
 		obs.ID = &cert.Id
 	}
@@ -281,7 +315,10 @@ func certToObservation(cert *security.SSLCertificate) v1alpha1.SecuritySSLTrusts
 	if cert.SerialNumber != "" {
 		obs.SerialNumber = &cert.SerialNumber
 	}
+}
 
+// setCertIssuerFields sets the issuer-related observation fields.
+func setCertIssuerFields(obs *v1alpha1.SecuritySSLTruststoreObservation, cert *security.SSLCertificate) {
 	if cert.IssuerCommonName != "" {
 		obs.IssuerCommonName = &cert.IssuerCommonName
 	}
@@ -293,7 +330,10 @@ func certToObservation(cert *security.SSLCertificate) v1alpha1.SecuritySSLTrusts
 	if cert.IssuerOrganizationUnit != "" {
 		obs.IssuerOrganizationUnit = &cert.IssuerOrganizationUnit
 	}
+}
 
+// setCertSubjectFields sets the subject-related observation fields.
+func setCertSubjectFields(obs *v1alpha1.SecuritySSLTruststoreObservation, cert *security.SSLCertificate) {
 	if cert.SubjectCommonName != "" {
 		obs.SubjectCommonName = &cert.SubjectCommonName
 	}
@@ -305,7 +345,10 @@ func certToObservation(cert *security.SSLCertificate) v1alpha1.SecuritySSLTrusts
 	if cert.SubjectOrganizationUnit != "" {
 		obs.SubjectOrganizationUnit = &cert.SubjectOrganizationUnit
 	}
+}
 
+// setCertDateFields sets the issued-on and expires-on observation fields.
+func setCertDateFields(obs *v1alpha1.SecuritySSLTruststoreObservation, cert *security.SSLCertificate) {
 	if cert.IssuedOn != 0 {
 		obs.IssuedOn = &cert.IssuedOn
 	}
@@ -313,13 +356,11 @@ func certToObservation(cert *security.SSLCertificate) v1alpha1.SecuritySSLTrusts
 	if cert.ExpiresOn != 0 {
 		obs.ExpiresOn = &cert.ExpiresOn
 	}
-
-	return obs
 }
 
 // isCertUpToDate checks if the certificate PEM matches.
-func isCertUpToDate(cr *v1alpha1.SecuritySSLTruststore, cert *security.SSLCertificate) bool {
-	return strings.TrimSpace(cr.Spec.ForProvider.Pem) == strings.TrimSpace(cert.Pem)
+func isCertUpToDate(truststoreCR *v1alpha1.SecuritySSLTruststore, cert *security.SSLCertificate) bool {
+	return strings.TrimSpace(truststoreCR.Spec.ForProvider.Pem) == strings.TrimSpace(cert.Pem)
 }
 
 // isNotFound checks if an error indicates a resource was not found.

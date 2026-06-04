@@ -14,136 +14,131 @@ import (
 // DockerHandler handles Docker repository operations.
 type DockerHandler struct{}
 
+// SupportedTypes returns the repository types supported by DockerHandler.
 func (h *DockerHandler) SupportedTypes() []string {
-	return []string{"hosted", "proxy", "group"}
+	return []string{repoTypeHosted, repoTypeProxy, repoTypeGroup}
 }
 
-func (h *DockerHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, cr *v1alpha1.Repository) (bool, bool) {
+// Observe checks whether the Docker repository exists and is up to date.
+func (h *DockerHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
-	case "hosted":
-		repo, err := client.Repository().GetDockerHosted(ctx, name)
-		if err != nil || repo == nil {
-			return false, false
-		}
-
-		return true, h.isHostedUpToDate(cr, repo)
-	case "proxy":
-		repo, err := client.Repository().GetDockerProxy(ctx, name)
-		if err != nil || repo == nil {
-			return false, false
-		}
-
-		return true, h.isProxyUpToDate(cr, repo)
-	case "group":
-		repo, err := client.Repository().GetDockerGroup(ctx, name)
-		if err != nil || repo == nil {
-			return false, false
-		}
-
-		return true, h.isGroupUpToDate(cr, repo)
+	case repoTypeHosted:
+		return observeRepo(ctx, name, client.Repository().GetDockerHosted, h.isHostedUpToDate, repoCR)
+	case repoTypeProxy:
+		return observeRepo(ctx, name, client.Repository().GetDockerProxy, h.isProxyUpToDate, repoCR)
+	case repoTypeGroup:
+		return observeRepo(ctx, name, client.Repository().GetDockerGroup, h.isGroupUpToDate, repoCR)
 	}
 
 	return false, false
 }
 
-func (h *DockerHandler) Create(ctx context.Context, client nexus.Client, cr *v1alpha1.Repository, repoType string) error {
+// Create creates a new Docker repository of the given type.
+func (h *DockerHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
 	switch repoType {
-	case "hosted":
-		return client.Repository().CreateDockerHosted(ctx, h.generateHosted(cr))
-	case "proxy":
-		return client.Repository().CreateDockerProxy(ctx, h.generateProxy(ctx, cr))
-	case "group":
-		return client.Repository().CreateDockerGroup(ctx, h.generateGroup(cr))
+	case repoTypeHosted:
+		return client.Repository().CreateDockerHosted(ctx, h.generateHosted(repoCR))
+	case repoTypeProxy:
+		return client.Repository().CreateDockerProxy(ctx, h.generateProxy(ctx, repoCR))
+	case repoTypeGroup:
+		return client.Repository().CreateDockerGroup(ctx, h.generateGroup(repoCR))
 	}
 
 	return errors.Errorf("unsupported docker repository type: %s", repoType)
 }
 
-func (h *DockerHandler) Update(ctx context.Context, client nexus.Client, name string, cr *v1alpha1.Repository, repoType string) error {
+// Update updates an existing Docker repository of the given type.
+func (h *DockerHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
 	switch repoType {
-	case "hosted":
-		return client.Repository().UpdateDockerHosted(ctx, name, h.generateHosted(cr))
-	case "proxy":
-		return client.Repository().UpdateDockerProxy(ctx, name, h.generateProxy(ctx, cr))
-	case "group":
-		return client.Repository().UpdateDockerGroup(ctx, name, h.generateGroup(cr))
+	case repoTypeHosted:
+		return client.Repository().UpdateDockerHosted(ctx, name, h.generateHosted(repoCR))
+	case repoTypeProxy:
+		return client.Repository().UpdateDockerProxy(ctx, name, h.generateProxy(ctx, repoCR))
+	case repoTypeGroup:
+		return client.Repository().UpdateDockerGroup(ctx, name, h.generateGroup(repoCR))
 	}
 
 	return errors.Errorf("unsupported docker repository type: %s", repoType)
 }
 
+// Delete removes a Docker repository of the given type.
 func (h *DockerHandler) Delete(ctx context.Context, client nexus.Client, name, repoType string) error {
 	switch repoType {
-	case "hosted":
+	case repoTypeHosted:
 		return client.Repository().DeleteDockerHosted(ctx, name)
-	case "proxy":
+	case repoTypeProxy:
 		return client.Repository().DeleteDockerProxy(ctx, name)
-	case "group":
+	case repoTypeGroup:
 		return client.Repository().DeleteDockerGroup(ctx, name)
 	}
 
 	return errors.Errorf("unsupported docker repository type: %s", repoType)
 }
 
-func (h *DockerHandler) generateHosted(cr *v1alpha1.Repository) repository.DockerHostedRepository {
+// generateHosted builds a DockerHostedRepository from the CR spec.
+func (h *DockerHandler) generateHosted(repoCR *v1alpha1.Repository) repository.DockerHostedRepository {
 	return repository.DockerHostedRepository{
-		Name:    cr.Spec.ForProvider.Name,
-		Online:  getOnline(cr),
-		Storage: generateDockerHostedStorage(cr),
-		Docker:  generateDockerConfig(cr),
-		Cleanup: generateCleanup(cr),
+		Name:    repoCR.Spec.ForProvider.Name,
+		Online:  getOnline(repoCR),
+		Storage: generateDockerHostedStorage(repoCR),
+		Docker:  generateDockerConfig(repoCR),
+		Cleanup: generateCleanup(repoCR),
 	}
 }
 
-func (h *DockerHandler) generateProxy(ctx context.Context, cr *v1alpha1.Repository) repository.DockerProxyRepository {
+// generateProxy builds a DockerProxyRepository from the CR spec.
+func (h *DockerHandler) generateProxy(ctx context.Context, repoCR *v1alpha1.Repository) repository.DockerProxyRepository {
 	return repository.DockerProxyRepository{
-		Name:          cr.Spec.ForProvider.Name,
-		Online:        getOnline(cr),
-		Storage:       generateProxyStorage(cr),
-		Docker:        generateDockerConfig(cr),
-		Proxy:         generateProxyConfig(cr),
-		NegativeCache: generateNegativeCache(cr),
-		HTTPClient:    generateHTTPClient(ctx, cr),
+		Name:          repoCR.Spec.ForProvider.Name,
+		Online:        getOnline(repoCR),
+		Storage:       generateProxyStorage(repoCR),
+		Docker:        generateDockerConfig(repoCR),
+		Proxy:         generateProxyConfig(repoCR),
+		NegativeCache: generateNegativeCache(repoCR),
+		HTTPClient:    generateHTTPClient(ctx, repoCR),
 		DockerProxy: repository.DockerProxy{
 			IndexType: repository.DockerProxyIndexTypeHub,
 		},
 	}
 }
 
-func (h *DockerHandler) generateGroup(cr *v1alpha1.Repository) repository.DockerGroupRepository {
+// generateGroup builds a DockerGroupRepository from the CR spec.
+func (h *DockerHandler) generateGroup(repoCR *v1alpha1.Repository) repository.DockerGroupRepository {
 	return repository.DockerGroupRepository{
-		Name:    cr.Spec.ForProvider.Name,
-		Online:  getOnline(cr),
-		Storage: generateProxyStorage(cr),
-		Docker:  generateDockerConfig(cr),
-		Group:   generateGroupDeployConfig(cr),
+		Name:    repoCR.Spec.ForProvider.Name,
+		Online:  getOnline(repoCR),
+		Storage: generateProxyStorage(repoCR),
+		Docker:  generateDockerConfig(repoCR),
+		Group:   generateGroupDeployConfig(repoCR),
 	}
 }
 
-func (h *DockerHandler) isHostedUpToDate(cr *v1alpha1.Repository, repo *repository.DockerHostedRepository) bool {
-	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
+// isHostedUpToDate reports whether the hosted repository matches the CR spec.
+func (h *DockerHandler) isHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.DockerHostedRepository) bool {
+	if repoCR.Spec.ForProvider.Online != nil && repo.Online != *repoCR.Spec.ForProvider.Online {
 		return false
 	}
 
-	if cr.Spec.ForProvider.Storage != nil {
-		if repo.Storage.BlobStoreName != cr.Spec.ForProvider.Storage.BlobStoreName {
-			return false
-		}
-
-		if cr.Spec.ForProvider.Storage.WritePolicy != nil &&
-			string(repo.Storage.WritePolicy) != *cr.Spec.ForProvider.Storage.WritePolicy {
-			return false
-		}
+	if !h.isHostedStorageUpToDate(repoCR, repo) {
+		return false
 	}
 
-	if cr.Spec.ForProvider.Docker != nil {
-		if cr.Spec.ForProvider.Docker.ForceBasicAuth != nil &&
-			repo.ForceBasicAuth != *cr.Spec.ForProvider.Docker.ForceBasicAuth {
+	if !h.isHostedDockerConfigUpToDate(repoCR, repo) {
+		return false
+	}
+
+	return true
+}
+
+// isHostedStorageUpToDate checks if the storage fields are up to date.
+func (h *DockerHandler) isHostedStorageUpToDate(repoCR *v1alpha1.Repository, repo *repository.DockerHostedRepository) bool {
+	if repoCR.Spec.ForProvider.Storage != nil {
+		if repo.Storage.BlobStoreName != repoCR.Spec.ForProvider.Storage.BlobStoreName {
 			return false
 		}
 
-		if cr.Spec.ForProvider.Docker.V1Enabled != nil &&
-			repo.V1Enabled != *cr.Spec.ForProvider.Docker.V1Enabled {
+		if repoCR.Spec.ForProvider.Storage.WritePolicy != nil &&
+			string(repo.Storage.WritePolicy) != *repoCR.Spec.ForProvider.Storage.WritePolicy {
 			return false
 		}
 	}
@@ -151,13 +146,17 @@ func (h *DockerHandler) isHostedUpToDate(cr *v1alpha1.Repository, repo *reposito
 	return true
 }
 
-func (h *DockerHandler) isProxyUpToDate(cr *v1alpha1.Repository, repo *repository.DockerProxyRepository) bool {
-	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
-		return false
-	}
+// isHostedDockerConfigUpToDate checks if the Docker-specific fields are
+// up to date.
+func (h *DockerHandler) isHostedDockerConfigUpToDate(repoCR *v1alpha1.Repository, repo *repository.DockerHostedRepository) bool {
+	if repoCR.Spec.ForProvider.Docker != nil {
+		if repoCR.Spec.ForProvider.Docker.ForceBasicAuth != nil &&
+			repo.ForceBasicAuth != *repoCR.Spec.ForProvider.Docker.ForceBasicAuth {
+			return false
+		}
 
-	if cr.Spec.ForProvider.Proxy != nil {
-		if repo.RemoteURL != cr.Spec.ForProvider.Proxy.RemoteURL {
+		if repoCR.Spec.ForProvider.Docker.V1Enabled != nil &&
+			repo.V1Enabled != *repoCR.Spec.ForProvider.Docker.V1Enabled {
 			return false
 		}
 	}
@@ -165,13 +164,29 @@ func (h *DockerHandler) isProxyUpToDate(cr *v1alpha1.Repository, repo *repositor
 	return true
 }
 
-func (h *DockerHandler) isGroupUpToDate(cr *v1alpha1.Repository, repo *repository.DockerGroupRepository) bool {
-	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
+// isProxyUpToDate reports whether the proxy repository matches the CR spec.
+func (h *DockerHandler) isProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.DockerProxyRepository) bool {
+	if repoCR.Spec.ForProvider.Online != nil && repo.Online != *repoCR.Spec.ForProvider.Online {
 		return false
 	}
 
-	if cr.Spec.ForProvider.Group != nil {
-		if !utils.StringSlicesEqual(repo.Group.MemberNames, cr.Spec.ForProvider.Group.MemberNames) {
+	if repoCR.Spec.ForProvider.Proxy != nil {
+		if repo.RemoteURL != repoCR.Spec.ForProvider.Proxy.RemoteURL {
+			return false
+		}
+	}
+
+	return true
+}
+
+// isGroupUpToDate reports whether the group repository matches the CR spec.
+func (h *DockerHandler) isGroupUpToDate(repoCR *v1alpha1.Repository, repo *repository.DockerGroupRepository) bool {
+	if repoCR.Spec.ForProvider.Online != nil && repo.Online != *repoCR.Spec.ForProvider.Online {
+		return false
+	}
+
+	if repoCR.Spec.ForProvider.Group != nil {
+		if !utils.StringSlicesEqual(repo.Group.MemberNames, repoCR.Spec.ForProvider.Group.MemberNames) {
 			return false
 		}
 	}

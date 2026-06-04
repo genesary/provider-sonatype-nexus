@@ -12,7 +12,10 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/test/mocks"
 )
 
+// TestUserObserve tests the Observe method for users.
 func TestUserObserve(t *testing.T) {
+	t.Parallel()
+
 	activeStatus := "active"
 
 	tests := []struct {
@@ -131,6 +134,8 @@ func TestUserObserve(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -158,7 +163,10 @@ func TestUserObserve(t *testing.T) {
 	}
 }
 
+// TestUserDelete tests the Delete method for users.
 func TestUserDelete(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		cr        *v1alpha1.User
@@ -188,6 +196,8 @@ func TestUserDelete(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, mc *mocks.MockClient) {
+				t.Helper()
+
 				if len(mc.MockSecurity.DeleteUserCalls) != 1 {
 					t.Errorf("Expected 1 DeleteUser call, got %d", len(mc.MockSecurity.DeleteUserCalls))
 				}
@@ -245,6 +255,8 @@ func TestUserDelete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -266,7 +278,10 @@ func TestUserDelete(t *testing.T) {
 	}
 }
 
+// TestGenerateUser tests the generateUser function.
 func TestGenerateUser(t *testing.T) {
+	t.Parallel()
+
 	activeStatus := "active"
 	defaultSource := "default"
 
@@ -332,6 +347,8 @@ func TestGenerateUser(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := generateUser(tt.cr, tt.password)
 			if got.UserID != tt.want.UserID {
 				t.Errorf("generateUser() UserID = %v, want %v", got.UserID, tt.want.UserID)
@@ -364,7 +381,10 @@ func TestGenerateUser(t *testing.T) {
 	}
 }
 
+// TestIsUserUpToDate tests the isUserUpToDate function.
 func TestIsUserUpToDate(t *testing.T) {
+	t.Parallel()
+
 	activeStatus := "active"
 
 	tests := []struct {
@@ -443,6 +463,8 @@ func TestIsUserUpToDate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := isUserUpToDate(tt.cr, tt.user); got != tt.want {
 				t.Errorf("isUserUpToDate() = %v, want %v", got, tt.want)
 			}
@@ -450,7 +472,10 @@ func TestIsUserUpToDate(t *testing.T) {
 	}
 }
 
+// TestUserIsNotFound tests the isNotFound function for users.
 func TestUserIsNotFound(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		err  error
@@ -480,6 +505,8 @@ func TestUserIsNotFound(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := isNotFound(tt.err); got != tt.want {
 				t.Errorf("isNotFound() = %v, want %v", got, tt.want)
 			}

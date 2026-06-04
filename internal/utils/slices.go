@@ -4,23 +4,23 @@ import "sort"
 
 // StringSlicesEqual checks if two string slices contain the same elements.
 // Order does not matter - slices are sorted before comparison.
-func StringSlicesEqual(a, b []string) bool {
-	if len(a) != len(b) {
+func StringSlicesEqual(left, right []string) bool {
+	if len(left) != len(right) {
 		return false
 	}
 
 	// Make copies to avoid modifying the original slices
-	aCopy := make([]string, len(a))
-	bCopy := make([]string, len(b))
+	leftCopy := make([]string, len(left))
+	rightCopy := make([]string, len(right))
 
-	copy(aCopy, a)
-	copy(bCopy, b)
+	copy(leftCopy, left)
+	copy(rightCopy, right)
 
-	sort.Strings(aCopy)
-	sort.Strings(bCopy)
+	sort.Strings(leftCopy)
+	sort.Strings(rightCopy)
 
-	for i := range aCopy {
-		if aCopy[i] != bCopy[i] {
+	for i := range leftCopy {
+		if leftCopy[i] != rightCopy[i] {
 			return false
 		}
 	}
