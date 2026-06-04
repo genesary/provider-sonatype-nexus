@@ -99,13 +99,15 @@ type BlobStoreObservation struct {
 // BlobStoreSpec defines the desired state of BlobStore.
 type BlobStoreSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       BlobStoreParameters `json:"forProvider"`
+
+	ForProvider BlobStoreParameters `json:"forProvider"`
 }
 
 // BlobStoreStatus defines the observed state of BlobStore.
 type BlobStoreStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          BlobStoreObservation `json:"atProvider,omitempty"`
+
+	AtProvider BlobStoreObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -131,7 +133,8 @@ type BlobStore struct {
 type BlobStoreList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []BlobStore `json:"items"`
+
+	Items []BlobStore `json:"items"`
 }
 
 func init() {

@@ -28,13 +28,15 @@ type ContentSelectorObservation struct {
 // ContentSelectorSpec defines the desired state of ContentSelector.
 type ContentSelectorSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       ContentSelectorParameters `json:"forProvider"`
+
+	ForProvider ContentSelectorParameters `json:"forProvider"`
 }
 
 // ContentSelectorStatus defines the observed state of ContentSelector.
 type ContentSelectorStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          ContentSelectorObservation `json:"atProvider,omitempty"`
+
+	AtProvider ContentSelectorObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -60,7 +62,8 @@ type ContentSelector struct {
 type ContentSelectorList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ContentSelector `json:"items"`
+
+	Items []ContentSelector `json:"items"`
 }
 
 func init() {

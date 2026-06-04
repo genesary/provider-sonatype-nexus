@@ -122,6 +122,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 				Name: r.Name,
 			}
 		}
+
 		cr.Status.AtProvider.AvailableRealms = realmInfos
 	}
 
@@ -140,7 +141,8 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotSecurityRealm)
 	}
 
-	if err := e.client.Security().ActivateRealms(ctx, cr.Spec.ForProvider.ActiveRealms); err != nil {
+	err := e.client.Security().ActivateRealms(ctx, cr.Spec.ForProvider.ActiveRealms)
+	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errActivateRealms)
 	}
 
@@ -154,7 +156,8 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalUpdate{}, errors.New(errNotSecurityRealm)
 	}
 
-	if err := e.client.Security().ActivateRealms(ctx, cr.Spec.ForProvider.ActiveRealms); err != nil {
+	err := e.client.Security().ActivateRealms(ctx, cr.Spec.ForProvider.ActiveRealms)
+	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errActivateRealms)
 	}
 

@@ -40,13 +40,15 @@ type RoleObservation struct {
 // RoleSpec defines the desired state of Role.
 type RoleSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       RoleParameters `json:"forProvider"`
+
+	ForProvider RoleParameters `json:"forProvider"`
 }
 
 // RoleStatus defines the observed state of Role.
 type RoleStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          RoleObservation `json:"atProvider,omitempty"`
+
+	AtProvider RoleObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -72,7 +74,8 @@ type Role struct {
 type RoleList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Role `json:"items"`
+
+	Items []Role `json:"items"`
 }
 
 func init() {

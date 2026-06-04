@@ -34,6 +34,7 @@ func newTruststoreCR(pem string) *v1alpha1.SecuritySSLTruststore {
 			},
 		},
 	}
+
 	return cr
 }
 
@@ -59,6 +60,7 @@ func TestObserve(t *testing.T) {
 			cr: func() *v1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "cert-id-123")
+
 				return cr
 			}(),
 			mockSetup: func(mc *mocks.MockClient) {
@@ -82,6 +84,7 @@ func TestObserve(t *testing.T) {
 			cr: func() *v1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR("new-pem-content")
 				meta.SetExternalName(cr, "cert-id-123")
+
 				return cr
 			}(),
 			mockSetup: func(mc *mocks.MockClient) {
@@ -100,6 +103,7 @@ func TestObserve(t *testing.T) {
 			cr: func() *v1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "cert-id-deleted")
+
 				return cr
 			}(),
 			mockSetup: func(mc *mocks.MockClient) {
@@ -116,6 +120,7 @@ func TestObserve(t *testing.T) {
 			cr: func() *v1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "cert-id-123")
+
 				return cr
 			}(),
 			mockSetup: func(mc *mocks.MockClient) {
@@ -141,11 +146,14 @@ func TestObserve(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Observe() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if obs.ResourceExists != tt.wantExists {
 				t.Errorf("Observe() ResourceExists = %v, want %v", obs.ResourceExists, tt.wantExists)
 			}
+
 			if obs.ResourceUpToDate != tt.wantUpToDate {
 				t.Errorf("Observe() ResourceUpToDate = %v, want %v", obs.ResourceUpToDate, tt.wantUpToDate)
 			}
@@ -213,6 +221,7 @@ func TestCreate(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Create() error = %v, wantErr %v", err, tt.wantErr)
 			}
+
 			if !tt.wantErr {
 				externalName := meta.GetExternalName(tt.cr)
 				if externalName != "new-cert-id" {
@@ -235,6 +244,7 @@ func TestUpdate(t *testing.T) {
 			cr: func() *v1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "old-cert-id")
+
 				return cr
 			}(),
 			mockSetup: func(mc *mocks.MockClient) {
@@ -257,6 +267,7 @@ func TestUpdate(t *testing.T) {
 			cr: func() *v1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "old-cert-id")
+
 				return cr
 			}(),
 			mockSetup: func(mc *mocks.MockClient) {
@@ -300,6 +311,7 @@ func TestDelete(t *testing.T) {
 			cr: func() *v1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "cert-id-123")
+
 				return cr
 			}(),
 			mockSetup: func(mc *mocks.MockClient) {
@@ -314,6 +326,7 @@ func TestDelete(t *testing.T) {
 			cr: func() *v1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "cert-id-123")
+
 				return cr
 			}(),
 			mockSetup: func(mc *mocks.MockClient) {
@@ -334,6 +347,7 @@ func TestDelete(t *testing.T) {
 			cr: func() *v1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "cert-id-123")
+
 				return cr
 			}(),
 			mockSetup: func(mc *mocks.MockClient) {

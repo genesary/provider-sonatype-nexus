@@ -25,20 +25,24 @@ func (h *DockerHandler) Observe(ctx context.Context, client nexus.Client, name, 
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, h.isHostedUpToDate(cr, repo)
 	case "proxy":
 		repo, err := client.Repository().GetDockerProxy(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, h.isProxyUpToDate(cr, repo)
 	case "group":
 		repo, err := client.Repository().GetDockerGroup(ctx, name)
 		if err != nil || repo == nil {
 			return false, false
 		}
+
 		return true, h.isGroupUpToDate(cr, repo)
 	}
+
 	return false, false
 }
 
@@ -51,6 +55,7 @@ func (h *DockerHandler) Create(ctx context.Context, client nexus.Client, cr *v1a
 	case "group":
 		return client.Repository().CreateDockerGroup(ctx, h.generateGroup(cr))
 	}
+
 	return errors.Errorf("unsupported docker repository type: %s", repoType)
 }
 
@@ -63,6 +68,7 @@ func (h *DockerHandler) Update(ctx context.Context, client nexus.Client, name st
 	case "group":
 		return client.Repository().UpdateDockerGroup(ctx, name, h.generateGroup(cr))
 	}
+
 	return errors.Errorf("unsupported docker repository type: %s", repoType)
 }
 
@@ -75,6 +81,7 @@ func (h *DockerHandler) Delete(ctx context.Context, client nexus.Client, name, r
 	case "group":
 		return client.Repository().DeleteDockerGroup(ctx, name)
 	}
+
 	return errors.Errorf("unsupported docker repository type: %s", repoType)
 }
 
@@ -117,25 +124,30 @@ func (h *DockerHandler) isHostedUpToDate(cr *v1alpha1.Repository, repo *reposito
 	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Storage != nil {
 		if repo.Storage.BlobStoreName != cr.Spec.ForProvider.Storage.BlobStoreName {
 			return false
 		}
+
 		if cr.Spec.ForProvider.Storage.WritePolicy != nil &&
 			string(repo.Storage.WritePolicy) != *cr.Spec.ForProvider.Storage.WritePolicy {
 			return false
 		}
 	}
+
 	if cr.Spec.ForProvider.Docker != nil {
 		if cr.Spec.ForProvider.Docker.ForceBasicAuth != nil &&
-			repo.Docker.ForceBasicAuth != *cr.Spec.ForProvider.Docker.ForceBasicAuth {
+			repo.ForceBasicAuth != *cr.Spec.ForProvider.Docker.ForceBasicAuth {
 			return false
 		}
+
 		if cr.Spec.ForProvider.Docker.V1Enabled != nil &&
-			repo.Docker.V1Enabled != *cr.Spec.ForProvider.Docker.V1Enabled {
+			repo.V1Enabled != *cr.Spec.ForProvider.Docker.V1Enabled {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -143,11 +155,13 @@ func (h *DockerHandler) isProxyUpToDate(cr *v1alpha1.Repository, repo *repositor
 	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Proxy != nil {
-		if repo.Proxy.RemoteURL != cr.Spec.ForProvider.Proxy.RemoteURL {
+		if repo.RemoteURL != cr.Spec.ForProvider.Proxy.RemoteURL {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -155,10 +169,12 @@ func (h *DockerHandler) isGroupUpToDate(cr *v1alpha1.Repository, repo *repositor
 	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Group != nil {
 		if !utils.StringSlicesEqual(repo.Group.MemberNames, cr.Spec.ForProvider.Group.MemberNames) {
 			return false
 		}
 	}
+
 	return true
 }

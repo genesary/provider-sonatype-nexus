@@ -141,12 +141,15 @@ func TestUserObserve(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Observe() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if !tt.wantErr {
 				if obs.ResourceExists != tt.wantExists {
 					t.Errorf("Observe() ResourceExists = %v, want %v", obs.ResourceExists, tt.wantExists)
 				}
+
 				if obs.ResourceUpToDate != tt.wantUpToDate {
 					t.Errorf("Observe() ResourceUpToDate = %v, want %v", obs.ResourceUpToDate, tt.wantUpToDate)
 				}
@@ -188,6 +191,7 @@ func TestUserDelete(t *testing.T) {
 				if len(mc.MockSecurity.DeleteUserCalls) != 1 {
 					t.Errorf("Expected 1 DeleteUser call, got %d", len(mc.MockSecurity.DeleteUserCalls))
 				}
+
 				if mc.MockSecurity.DeleteUserCalls[0] != "testuser" {
 					t.Errorf("DeleteUser called with wrong ID: %s", mc.MockSecurity.DeleteUserCalls[0])
 				}
@@ -251,8 +255,10 @@ func TestUserDelete(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if tt.validate != nil && !tt.wantErr {
 				tt.validate(t, mc)
 			}
@@ -330,21 +336,27 @@ func TestGenerateUser(t *testing.T) {
 			if got.UserID != tt.want.UserID {
 				t.Errorf("generateUser() UserID = %v, want %v", got.UserID, tt.want.UserID)
 			}
+
 			if got.FirstName != tt.want.FirstName {
 				t.Errorf("generateUser() FirstName = %v, want %v", got.FirstName, tt.want.FirstName)
 			}
+
 			if got.LastName != tt.want.LastName {
 				t.Errorf("generateUser() LastName = %v, want %v", got.LastName, tt.want.LastName)
 			}
+
 			if got.EmailAddress != tt.want.EmailAddress {
 				t.Errorf("generateUser() EmailAddress = %v, want %v", got.EmailAddress, tt.want.EmailAddress)
 			}
+
 			if got.Password != tt.want.Password {
 				t.Errorf("generateUser() Password = %v, want %v", got.Password, tt.want.Password)
 			}
+
 			if got.Status != tt.want.Status {
 				t.Errorf("generateUser() Status = %v, want %v", got.Status, tt.want.Status)
 			}
+
 			if got.Source != tt.want.Source {
 				t.Errorf("generateUser() Source = %v, want %v", got.Source, tt.want.Source)
 			}

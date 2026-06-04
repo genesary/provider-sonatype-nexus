@@ -3,7 +3,7 @@
 package utils
 
 // Bool returns a pointer to the given bool value.
-// Usage: Bool(true) returns *true
+// Usage: Bool(true) returns *true.
 func Bool(b bool) *bool { return &b }
 
 // BoolValue safely dereferences a bool pointer.
@@ -12,6 +12,7 @@ func BoolValue(b *bool) bool {
 	if b == nil {
 		return false
 	}
+
 	return *b
 }
 
@@ -21,11 +22,12 @@ func BoolValueDefault(b *bool, defaultVal bool) bool {
 	if b == nil {
 		return defaultVal
 	}
+
 	return *b
 }
 
 // String returns a pointer to the given string value.
-// Usage: String("hello") returns *"hello"
+// Usage: String("hello") returns *"hello".
 func String(s string) *string { return &s }
 
 // StringValue safely dereferences a string pointer.
@@ -34,11 +36,12 @@ func StringValue(s *string) string {
 	if s == nil {
 		return ""
 	}
+
 	return *s
 }
 
 // Int32 returns a pointer to the given int32 value.
-// Usage: Int32(42) returns *42
+// Usage: Int32(42) returns *42.
 func Int32(i int32) *int32 { return &i }
 
 // Int32Value safely dereferences an int32 pointer.
@@ -47,6 +50,7 @@ func Int32Value(i *int32) int32 {
 	if i == nil {
 		return 0
 	}
+
 	return *i
 }
 
@@ -56,11 +60,12 @@ func Int32ValueDefault(i *int32, defaultVal int32) int32 {
 	if i == nil {
 		return defaultVal
 	}
+
 	return *i
 }
 
 // Int64 returns a pointer to the given int64 value.
-// Usage: Int64(42) returns *42
+// Usage: Int64(42) returns *42.
 func Int64(i int64) *int64 { return &i }
 
 // Int64Value safely dereferences an int64 pointer.
@@ -69,5 +74,6 @@ func Int64Value(i *int64) int64 {
 	if i == nil {
 		return 0
 	}
+
 	return *i
 }

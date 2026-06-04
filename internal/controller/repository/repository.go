@@ -59,6 +59,7 @@ func getResolvedPassword(ctx context.Context) string {
 	if v, ok := ctx.Value(resolvedPasswordKey).(string); ok {
 		return v
 	}
+
 	return ""
 }
 
@@ -184,6 +185,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	meta.SetExternalName(cr, cr.Spec.ForProvider.Name)
+
 	return managed.ExternalCreation{}, nil
 }
 
@@ -239,7 +241,8 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return errors.Errorf("unsupported format: %s", format)
 	}
 
-	if err := handler.Delete(ctx, e.client, name, repoType); err != nil && !isNotFound(err) {
+	err := handler.Delete(ctx, e.client, name, repoType)
+	if err != nil && !isNotFound(err) {
 		return errors.Wrap(err, errDeleteRepository)
 	}
 
@@ -257,6 +260,7 @@ func (e *external) resolveHTTPClientPassword(ctx context.Context, cr *v1alpha1.R
 	}
 
 	ref := cr.Spec.ForProvider.HTTPClient.Authentication.PasswordSecretRef
+
 	data, err := resource.ExtractSecret(ctx, e.kube, xpv1.CommonCredentialSelectors{
 		SecretRef: ref,
 	})
@@ -272,7 +276,9 @@ func isNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	msg := strings.ToLower(err.Error())
+
 	return strings.Contains(msg, "404") ||
 		strings.Contains(msg, "not found") ||
 		strings.Contains(msg, "does not exist")

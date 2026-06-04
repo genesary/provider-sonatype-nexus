@@ -113,6 +113,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		if isNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
+
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetPrivilege)
 	}
 
@@ -137,11 +138,13 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 		return managed.ExternalCreation{}, errors.New(errNotPrivilege)
 	}
 
-	if err := createPrivilege(ctx, e.client, cr); err != nil {
+	err := createPrivilege(ctx, e.client, cr)
+	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreatePrivilege)
 	}
 
 	meta.SetExternalName(cr, cr.Spec.ForProvider.Name)
+
 	return managed.ExternalCreation{}, nil
 }
 
@@ -157,7 +160,8 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		name = cr.Spec.ForProvider.Name
 	}
 
-	if err := updatePrivilege(ctx, e.client, name, cr); err != nil {
+	err := updatePrivilege(ctx, e.client, name, cr)
+	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdatePrivilege)
 	}
 
@@ -176,10 +180,12 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 		name = cr.Spec.ForProvider.Name
 	}
 
-	if err := e.client.Security().DeletePrivilege(ctx, name); err != nil {
+	err := e.client.Security().DeletePrivilege(ctx, name)
+	if err != nil {
 		if isNotFound(err) {
 			return nil
 		}
+
 		return errors.Wrap(err, errDeletePrivilege)
 	}
 
@@ -192,6 +198,7 @@ func toApplicationActions(actions []string) []security.SecurityPrivilegeApplicat
 	for i, a := range actions {
 		result[i] = security.SecurityPrivilegeApplicationActions(a)
 	}
+
 	return result
 }
 
@@ -201,6 +208,7 @@ func toRepositoryViewActions(actions []string) []security.SecurityPrivilegeRepos
 	for i, a := range actions {
 		result[i] = security.SecurityPrivilegeRepositoryViewActions(a)
 	}
+
 	return result
 }
 
@@ -210,6 +218,7 @@ func toRepositoryAdminActions(actions []string) []security.SecurityPrivilegeRepo
 	for i, a := range actions {
 		result[i] = security.SecurityPrivilegeRepositoryAdminActions(a)
 	}
+
 	return result
 }
 
@@ -219,6 +228,7 @@ func toRepositoryContentSelectorActions(actions []string) []security.SecurityPri
 	for i, a := range actions {
 		result[i] = security.SecurityPrivilegeRepositoryContentSelectorActions(a)
 	}
+
 	return result
 }
 
@@ -228,6 +238,7 @@ func toScriptActions(actions []string) []security.SecurityPrivilegeScriptActions
 	for i, a := range actions {
 		result[i] = security.SecurityPrivilegeScriptActions(a)
 	}
+
 	return result
 }
 
@@ -242,9 +253,11 @@ func createPrivilege(ctx context.Context, client nexus.Client, cr *v1alpha1.Priv
 		if cr.Spec.ForProvider.Description != nil {
 			p.Description = *cr.Spec.ForProvider.Description
 		}
+
 		if cr.Spec.ForProvider.Domain != nil {
 			p.Domain = *cr.Spec.ForProvider.Domain
 		}
+
 		return client.Security().CreatePrivilegeApplication(ctx, p)
 
 	case "repository-view":
@@ -255,12 +268,15 @@ func createPrivilege(ctx context.Context, client nexus.Client, cr *v1alpha1.Priv
 		if cr.Spec.ForProvider.Description != nil {
 			p.Description = *cr.Spec.ForProvider.Description
 		}
+
 		if cr.Spec.ForProvider.Format != nil {
 			p.Format = *cr.Spec.ForProvider.Format
 		}
+
 		if cr.Spec.ForProvider.Repository != nil {
 			p.Repository = *cr.Spec.ForProvider.Repository
 		}
+
 		return client.Security().CreatePrivilegeRepositoryView(ctx, p)
 
 	case "repository-admin":
@@ -271,12 +287,15 @@ func createPrivilege(ctx context.Context, client nexus.Client, cr *v1alpha1.Priv
 		if cr.Spec.ForProvider.Description != nil {
 			p.Description = *cr.Spec.ForProvider.Description
 		}
+
 		if cr.Spec.ForProvider.Format != nil {
 			p.Format = *cr.Spec.ForProvider.Format
 		}
+
 		if cr.Spec.ForProvider.Repository != nil {
 			p.Repository = *cr.Spec.ForProvider.Repository
 		}
+
 		return client.Security().CreatePrivilegeRepositoryAdmin(ctx, p)
 
 	case "repository-content-selector":
@@ -287,15 +306,19 @@ func createPrivilege(ctx context.Context, client nexus.Client, cr *v1alpha1.Priv
 		if cr.Spec.ForProvider.Description != nil {
 			p.Description = *cr.Spec.ForProvider.Description
 		}
+
 		if cr.Spec.ForProvider.Format != nil {
 			p.Format = *cr.Spec.ForProvider.Format
 		}
+
 		if cr.Spec.ForProvider.Repository != nil {
 			p.Repository = *cr.Spec.ForProvider.Repository
 		}
+
 		if cr.Spec.ForProvider.ContentSelector != nil {
 			p.ContentSelector = *cr.Spec.ForProvider.ContentSelector
 		}
+
 		return client.Security().CreatePrivilegeRepositoryContentSelector(ctx, p)
 
 	case "script":
@@ -306,9 +329,11 @@ func createPrivilege(ctx context.Context, client nexus.Client, cr *v1alpha1.Priv
 		if cr.Spec.ForProvider.Description != nil {
 			p.Description = *cr.Spec.ForProvider.Description
 		}
+
 		if cr.Spec.ForProvider.ScriptName != nil {
 			p.ScriptName = *cr.Spec.ForProvider.ScriptName
 		}
+
 		return client.Security().CreatePrivilegeScript(ctx, p)
 
 	case "wildcard":
@@ -318,9 +343,11 @@ func createPrivilege(ctx context.Context, client nexus.Client, cr *v1alpha1.Priv
 		if cr.Spec.ForProvider.Description != nil {
 			p.Description = *cr.Spec.ForProvider.Description
 		}
+
 		if cr.Spec.ForProvider.Pattern != nil {
 			p.Pattern = *cr.Spec.ForProvider.Pattern
 		}
+
 		return client.Security().CreatePrivilegeWildcard(ctx, p)
 
 	default:
@@ -339,9 +366,11 @@ func updatePrivilege(ctx context.Context, client nexus.Client, name string, cr *
 		if cr.Spec.ForProvider.Description != nil {
 			p.Description = *cr.Spec.ForProvider.Description
 		}
+
 		if cr.Spec.ForProvider.Domain != nil {
 			p.Domain = *cr.Spec.ForProvider.Domain
 		}
+
 		return client.Security().UpdatePrivilegeApplication(ctx, name, p)
 
 	case "repository-view":
@@ -352,12 +381,15 @@ func updatePrivilege(ctx context.Context, client nexus.Client, name string, cr *
 		if cr.Spec.ForProvider.Description != nil {
 			p.Description = *cr.Spec.ForProvider.Description
 		}
+
 		if cr.Spec.ForProvider.Format != nil {
 			p.Format = *cr.Spec.ForProvider.Format
 		}
+
 		if cr.Spec.ForProvider.Repository != nil {
 			p.Repository = *cr.Spec.ForProvider.Repository
 		}
+
 		return client.Security().UpdatePrivilegeRepositoryView(ctx, name, p)
 
 	case "repository-admin":
@@ -368,12 +400,15 @@ func updatePrivilege(ctx context.Context, client nexus.Client, name string, cr *
 		if cr.Spec.ForProvider.Description != nil {
 			p.Description = *cr.Spec.ForProvider.Description
 		}
+
 		if cr.Spec.ForProvider.Format != nil {
 			p.Format = *cr.Spec.ForProvider.Format
 		}
+
 		if cr.Spec.ForProvider.Repository != nil {
 			p.Repository = *cr.Spec.ForProvider.Repository
 		}
+
 		return client.Security().UpdatePrivilegeRepositoryAdmin(ctx, name, p)
 
 	case "repository-content-selector":
@@ -384,15 +419,19 @@ func updatePrivilege(ctx context.Context, client nexus.Client, name string, cr *
 		if cr.Spec.ForProvider.Description != nil {
 			p.Description = *cr.Spec.ForProvider.Description
 		}
+
 		if cr.Spec.ForProvider.Format != nil {
 			p.Format = *cr.Spec.ForProvider.Format
 		}
+
 		if cr.Spec.ForProvider.Repository != nil {
 			p.Repository = *cr.Spec.ForProvider.Repository
 		}
+
 		if cr.Spec.ForProvider.ContentSelector != nil {
 			p.ContentSelector = *cr.Spec.ForProvider.ContentSelector
 		}
+
 		return client.Security().UpdatePrivilegeRepositoryContentSelector(ctx, name, p)
 
 	case "script":
@@ -403,9 +442,11 @@ func updatePrivilege(ctx context.Context, client nexus.Client, name string, cr *
 		if cr.Spec.ForProvider.Description != nil {
 			p.Description = *cr.Spec.ForProvider.Description
 		}
+
 		if cr.Spec.ForProvider.ScriptName != nil {
 			p.ScriptName = *cr.Spec.ForProvider.ScriptName
 		}
+
 		return client.Security().UpdatePrivilegeScript(ctx, name, p)
 
 	case "wildcard":
@@ -415,9 +456,11 @@ func updatePrivilege(ctx context.Context, client nexus.Client, name string, cr *
 		if cr.Spec.ForProvider.Description != nil {
 			p.Description = *cr.Spec.ForProvider.Description
 		}
+
 		if cr.Spec.ForProvider.Pattern != nil {
 			p.Pattern = *cr.Spec.ForProvider.Pattern
 		}
+
 		return client.Security().UpdatePrivilegeWildcard(ctx, name, p)
 
 	default:
@@ -430,6 +473,7 @@ func isPrivilegeUpToDate(cr *v1alpha1.Privilege, priv *security.Privilege) bool 
 	if cr.Spec.ForProvider.Description != nil && *cr.Spec.ForProvider.Description != priv.Description {
 		return false
 	}
+
 	if !stringSlicesEqual(cr.Spec.ForProvider.Actions, priv.Actions) {
 		return false
 	}
@@ -442,11 +486,13 @@ func stringSlicesEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}
+
 	for i := range a {
 		if a[i] != b[i] {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -455,6 +501,7 @@ func isNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return strings.Contains(err.Error(), "404") ||
 		strings.Contains(err.Error(), "not found") ||
 		strings.Contains(strings.ToLower(err.Error()), "does not exist")

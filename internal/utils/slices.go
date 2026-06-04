@@ -12,6 +12,7 @@ func StringSlicesEqual(a, b []string) bool {
 	// Make copies to avoid modifying the original slices
 	aCopy := make([]string, len(a))
 	bCopy := make([]string, len(b))
+
 	copy(aCopy, a)
 	copy(bCopy, b)
 
@@ -23,5 +24,6 @@ func StringSlicesEqual(a, b []string) bool {
 			return false
 		}
 	}
+
 	return true
 }

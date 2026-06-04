@@ -149,6 +149,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errFindCert)
 	}
+
 	if added == nil {
 		return managed.ExternalCreation{}, errors.New(errFindCert)
 	}
@@ -168,7 +169,8 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	// Remove old certificate
 	oldID := meta.GetExternalName(cr)
 	if oldID != "" {
-		if err := e.client.SSL().RemoveCertificate(ctx, oldID); err != nil {
+		err := e.client.SSL().RemoveCertificate(ctx, oldID)
+		if err != nil {
 			if !isNotFound(err) {
 				return managed.ExternalUpdate{}, errors.Wrap(err, errRemoveCert)
 			}
@@ -189,6 +191,7 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errFindCert)
 	}
+
 	if added == nil {
 		return managed.ExternalUpdate{}, errors.New(errFindCert)
 	}
@@ -210,10 +213,12 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return nil
 	}
 
-	if err := e.client.SSL().RemoveCertificate(ctx, certID); err != nil {
+	err := e.client.SSL().RemoveCertificate(ctx, certID)
+	if err != nil {
 		if isNotFound(err) {
 			return nil
 		}
+
 		return errors.Wrap(err, errRemoveCert)
 	}
 
@@ -259,36 +264,47 @@ func certToObservation(cert *security.SSLCertificate) v1alpha1.SecuritySSLTrusts
 	if cert.Id != "" {
 		obs.ID = &cert.Id
 	}
+
 	if cert.Fingerprint != "" {
 		obs.Fingerprint = &cert.Fingerprint
 	}
+
 	if cert.SerialNumber != "" {
 		obs.SerialNumber = &cert.SerialNumber
 	}
+
 	if cert.IssuerCommonName != "" {
 		obs.IssuerCommonName = &cert.IssuerCommonName
 	}
+
 	if cert.IssuerOrganization != "" {
 		obs.IssuerOrganization = &cert.IssuerOrganization
 	}
+
 	if cert.IssuerOrganizationUnit != "" {
 		obs.IssuerOrganizationUnit = &cert.IssuerOrganizationUnit
 	}
+
 	if cert.SubjectCommonName != "" {
 		obs.SubjectCommonName = &cert.SubjectCommonName
 	}
+
 	if cert.SubjectOrganization != "" {
 		obs.SubjectOrganization = &cert.SubjectOrganization
 	}
+
 	if cert.SubjectOrganizationUnit != "" {
 		obs.SubjectOrganizationUnit = &cert.SubjectOrganizationUnit
 	}
+
 	if cert.IssuedOn != 0 {
 		obs.IssuedOn = &cert.IssuedOn
 	}
+
 	if cert.ExpiresOn != 0 {
 		obs.ExpiresOn = &cert.ExpiresOn
 	}
+
 	return obs
 }
 
@@ -302,6 +318,7 @@ func isNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return strings.Contains(err.Error(), "404") ||
 		strings.Contains(err.Error(), "not found") ||
 		strings.Contains(strings.ToLower(err.Error()), "does not exist")

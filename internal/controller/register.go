@@ -36,9 +36,11 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		user.Setup,
 		usertokenconfiguration.Setup,
 	} {
-		if err := setup(mgr, o); err != nil {
+		err := setup(mgr, o)
+		if err != nil {
 			return errors.Wrap(err, "cannot setup controller")
 		}
 	}
+
 	return nil
 }

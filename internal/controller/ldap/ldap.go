@@ -113,6 +113,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		if isNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
+
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetLDAP)
 	}
 
@@ -152,6 +153,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	meta.SetExternalName(cr, cr.Spec.ForProvider.Name)
+
 	return managed.ExternalCreation{}, nil
 }
 
@@ -191,10 +193,12 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 		name = cr.Spec.ForProvider.Name
 	}
 
-	if err := e.client.Security().DeleteLDAP(ctx, name); err != nil {
+	err := e.client.Security().DeleteLDAP(ctx, name)
+	if err != nil {
 		if isNotFound(err) {
 			return nil
 		}
+
 		return errors.Wrap(err, errDeleteLDAP)
 	}
 
@@ -223,69 +227,90 @@ func generateLDAP(ctx context.Context, kube client.Client, cr *v1alpha1.LDAP) (s
 		if err != nil {
 			return ldap, errors.Wrap(err, "cannot get auth password from secret")
 		}
+
 		ldap.AuthPassword = password
 	}
 
 	if cr.Spec.ForProvider.AuthRealm != nil {
 		ldap.AuthRealm = *cr.Spec.ForProvider.AuthRealm
 	}
+
 	if cr.Spec.ForProvider.ConnectionTimeoutSeconds != nil {
 		ldap.ConnectionTimeoutSeconds = *cr.Spec.ForProvider.ConnectionTimeoutSeconds
 	}
+
 	if cr.Spec.ForProvider.ConnectionRetryDelaySeconds != nil {
 		ldap.ConnectionRetryDelaySeconds = *cr.Spec.ForProvider.ConnectionRetryDelaySeconds
 	}
+
 	if cr.Spec.ForProvider.MaxIncidentCount != nil {
 		ldap.MaxIncidentCount = *cr.Spec.ForProvider.MaxIncidentCount
 	}
+
 	if cr.Spec.ForProvider.UseTrustStore != nil {
 		ldap.UseTrustStore = *cr.Spec.ForProvider.UseTrustStore
 	}
+
 	if cr.Spec.ForProvider.UserSubtree != nil {
 		ldap.UserSubtree = *cr.Spec.ForProvider.UserSubtree
 	}
+
 	if cr.Spec.ForProvider.UserObjectClass != nil {
 		ldap.UserObjectClass = *cr.Spec.ForProvider.UserObjectClass
 	}
+
 	if cr.Spec.ForProvider.UserIDAttribute != nil {
 		ldap.UserIDAttribute = *cr.Spec.ForProvider.UserIDAttribute
 	}
+
 	if cr.Spec.ForProvider.UserRealNameAttribute != nil {
 		ldap.UserRealNameAttribute = *cr.Spec.ForProvider.UserRealNameAttribute
 	}
+
 	if cr.Spec.ForProvider.UserEmailAddressAttribute != nil {
 		ldap.UserEmailAddressAttribute = *cr.Spec.ForProvider.UserEmailAddressAttribute
 	}
+
 	if cr.Spec.ForProvider.UserPasswordAttribute != nil {
 		ldap.UserPasswordAttribute = *cr.Spec.ForProvider.UserPasswordAttribute
 	}
+
 	if cr.Spec.ForProvider.UserMemberOfAttribute != nil {
 		ldap.UserMemberOfAttribute = *cr.Spec.ForProvider.UserMemberOfAttribute
 	}
+
 	if cr.Spec.ForProvider.UserLDAPFilter != nil {
 		ldap.UserLDAPFilter = *cr.Spec.ForProvider.UserLDAPFilter
 	}
+
 	if cr.Spec.ForProvider.LDAPGroupsAsRoles != nil {
 		ldap.LDAPGroupsAsRoles = *cr.Spec.ForProvider.LDAPGroupsAsRoles
 	}
+
 	if cr.Spec.ForProvider.GroupType != nil {
 		ldap.GroupType = *cr.Spec.ForProvider.GroupType
 	}
+
 	if cr.Spec.ForProvider.GroupBaseDN != nil {
 		ldap.GroupBaseDn = *cr.Spec.ForProvider.GroupBaseDN
 	}
+
 	if cr.Spec.ForProvider.GroupSubtree != nil {
 		ldap.GroupSubtree = *cr.Spec.ForProvider.GroupSubtree
 	}
+
 	if cr.Spec.ForProvider.GroupObjectClass != nil {
 		ldap.GroupObjectClass = *cr.Spec.ForProvider.GroupObjectClass
 	}
+
 	if cr.Spec.ForProvider.GroupIDAttribute != nil {
 		ldap.GroupIDAttribute = *cr.Spec.ForProvider.GroupIDAttribute
 	}
+
 	if cr.Spec.ForProvider.GroupMemberAttribute != nil {
 		ldap.GroupMemberAttribute = *cr.Spec.ForProvider.GroupMemberAttribute
 	}
+
 	if cr.Spec.ForProvider.GroupMemberFormat != nil {
 		ldap.GroupMemberFormat = *cr.Spec.ForProvider.GroupMemberFormat
 	}
@@ -298,18 +323,23 @@ func isLDAPUpToDate(cr *v1alpha1.LDAP, ldap *security.LDAP) bool {
 	if cr.Spec.ForProvider.Protocol != ldap.Protocol {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Host != ldap.Host {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Port != ldap.Port {
 		return false
 	}
+
 	if cr.Spec.ForProvider.SearchBase != ldap.SearchBase {
 		return false
 	}
+
 	if cr.Spec.ForProvider.AuthScheme != ldap.AuthSchema {
 		return false
 	}
+
 	if cr.Spec.ForProvider.UserBaseDN != ldap.UserBaseDN {
 		return false
 	}
@@ -322,6 +352,7 @@ func isNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return strings.Contains(err.Error(), "404") ||
 		strings.Contains(err.Error(), "not found") ||
 		strings.Contains(strings.ToLower(err.Error()), "does not exist")

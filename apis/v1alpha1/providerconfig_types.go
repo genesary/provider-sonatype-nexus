@@ -48,7 +48,8 @@ type ProviderConfig struct {
 type ProviderConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ProviderConfig `json:"items"`
+
+	Items []ProviderConfig `json:"items"`
 }
 
 // +kubebuilder:object:root=true
@@ -73,7 +74,8 @@ type ProviderConfigUsage struct {
 type ProviderConfigUsageList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ProviderConfigUsage `json:"items"`
+
+	Items []ProviderConfigUsage `json:"items"`
 }
 
 // GetUsers of this ProviderConfig.

@@ -153,13 +153,15 @@ type LDAPObservation struct {
 // LDAPSpec defines the desired state of LDAP.
 type LDAPSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       LDAPParameters `json:"forProvider"`
+
+	ForProvider LDAPParameters `json:"forProvider"`
 }
 
 // LDAPStatus defines the observed state of LDAP.
 type LDAPStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          LDAPObservation `json:"atProvider,omitempty"`
+
+	AtProvider LDAPObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -186,7 +188,8 @@ type LDAP struct {
 type LDAPList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []LDAP `json:"items"`
+
+	Items []LDAP `json:"items"`
 }
 
 func init() {

@@ -27,13 +27,15 @@ type AnonymousAccessObservation struct {
 // AnonymousAccessSpec defines the desired state of AnonymousAccess.
 type AnonymousAccessSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       AnonymousAccessParameters `json:"forProvider"`
+
+	ForProvider AnonymousAccessParameters `json:"forProvider"`
 }
 
 // AnonymousAccessStatus defines the observed state of AnonymousAccess.
 type AnonymousAccessStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          AnonymousAccessObservation `json:"atProvider,omitempty"`
+
+	AtProvider AnonymousAccessObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -60,7 +62,8 @@ type AnonymousAccess struct {
 type AnonymousAccessList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []AnonymousAccess `json:"items"`
+
+	Items []AnonymousAccess `json:"items"`
 }
 
 func init() {

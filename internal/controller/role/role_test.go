@@ -131,12 +131,15 @@ func TestRoleObserve(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Observe() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if !tt.wantErr {
 				if obs.ResourceExists != tt.wantExists {
 					t.Errorf("Observe() ResourceExists = %v, want %v", obs.ResourceExists, tt.wantExists)
 				}
+
 				if obs.ResourceUpToDate != tt.wantUpToDate {
 					t.Errorf("Observe() ResourceUpToDate = %v, want %v", obs.ResourceUpToDate, tt.wantUpToDate)
 				}
@@ -175,6 +178,7 @@ func TestRoleCreate(t *testing.T) {
 				if len(mc.MockSecurity.CreateRoleCalls) != 1 {
 					t.Errorf("Expected 1 CreateRole call, got %d", len(mc.MockSecurity.CreateRoleCalls))
 				}
+
 				if mc.MockSecurity.CreateRoleCalls[0].ID != "test-role" {
 					t.Errorf("CreateRole called with wrong ID: %s", mc.MockSecurity.CreateRoleCalls[0].ID)
 				}
@@ -212,8 +216,10 @@ func TestRoleCreate(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Create() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if tt.validate != nil && !tt.wantErr {
 				tt.validate(t, mc)
 			}
@@ -256,6 +262,7 @@ func TestRoleUpdate(t *testing.T) {
 				if len(mc.MockSecurity.UpdateRoleCalls) != 1 {
 					t.Errorf("Expected 1 UpdateRole call, got %d", len(mc.MockSecurity.UpdateRoleCalls))
 				}
+
 				if mc.MockSecurity.UpdateRoleCalls[0].ID != "test-role" {
 					t.Errorf("UpdateRole called with wrong ID: %s", mc.MockSecurity.UpdateRoleCalls[0].ID)
 				}
@@ -298,8 +305,10 @@ func TestRoleUpdate(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Update() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if tt.validate != nil && !tt.wantErr {
 				tt.validate(t, mc)
 			}
@@ -340,6 +349,7 @@ func TestRoleDelete(t *testing.T) {
 				if len(mc.MockSecurity.DeleteRoleCalls) != 1 {
 					t.Errorf("Expected 1 DeleteRole call, got %d", len(mc.MockSecurity.DeleteRoleCalls))
 				}
+
 				if mc.MockSecurity.DeleteRoleCalls[0] != "test-role" {
 					t.Errorf("DeleteRole called with wrong ID: %s", mc.MockSecurity.DeleteRoleCalls[0])
 				}
@@ -403,8 +413,10 @@ func TestRoleDelete(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if tt.validate != nil && !tt.wantErr {
 				tt.validate(t, mc)
 			}
@@ -466,9 +478,11 @@ func TestGenerateRole(t *testing.T) {
 			if got.ID != tt.want.ID {
 				t.Errorf("generateRole() ID = %v, want %v", got.ID, tt.want.ID)
 			}
+
 			if got.Name != tt.want.Name {
 				t.Errorf("generateRole() Name = %v, want %v", got.Name, tt.want.Name)
 			}
+
 			if got.Description != tt.want.Description {
 				t.Errorf("generateRole() Description = %v, want %v", got.Description, tt.want.Description)
 			}

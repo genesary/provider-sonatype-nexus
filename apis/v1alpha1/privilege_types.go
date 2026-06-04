@@ -63,13 +63,15 @@ type PrivilegeObservation struct {
 // PrivilegeSpec defines the desired state of Privilege.
 type PrivilegeSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       PrivilegeParameters `json:"forProvider"`
+
+	ForProvider PrivilegeParameters `json:"forProvider"`
 }
 
 // PrivilegeStatus defines the observed state of Privilege.
 type PrivilegeStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          PrivilegeObservation `json:"atProvider,omitempty"`
+
+	AtProvider PrivilegeObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -96,7 +98,8 @@ type Privilege struct {
 type PrivilegeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Privilege `json:"items"`
+
+	Items []Privilege `json:"items"`
 }
 
 func init() {

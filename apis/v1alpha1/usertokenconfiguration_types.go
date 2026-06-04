@@ -32,13 +32,15 @@ type UserTokenConfigurationObservation struct {
 // UserTokenConfigurationSpec defines the desired state of UserTokenConfiguration.
 type UserTokenConfigurationSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       UserTokenConfigurationParameters `json:"forProvider"`
+
+	ForProvider UserTokenConfigurationParameters `json:"forProvider"`
 }
 
 // UserTokenConfigurationStatus defines the observed state of UserTokenConfiguration.
 type UserTokenConfigurationStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          UserTokenConfigurationObservation `json:"atProvider,omitempty"`
+
+	AtProvider UserTokenConfigurationObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -65,7 +67,8 @@ type UserTokenConfiguration struct {
 type UserTokenConfigurationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []UserTokenConfiguration `json:"items"`
+
+	Items []UserTokenConfiguration `json:"items"`
 }
 
 func init() {

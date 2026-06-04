@@ -62,13 +62,15 @@ type SecuritySSLTruststoreObservation struct {
 // SecuritySSLTruststoreSpec defines the desired state of SecuritySSLTruststore.
 type SecuritySSLTruststoreSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       SecuritySSLTruststoreParameters `json:"forProvider"`
+
+	ForProvider SecuritySSLTruststoreParameters `json:"forProvider"`
 }
 
 // SecuritySSLTruststoreStatus defines the observed state of SecuritySSLTruststore.
 type SecuritySSLTruststoreStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          SecuritySSLTruststoreObservation `json:"atProvider,omitempty"`
+
+	AtProvider SecuritySSLTruststoreObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -96,7 +98,8 @@ type SecuritySSLTruststore struct {
 type SecuritySSLTruststoreList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []SecuritySSLTruststore `json:"items"`
+
+	Items []SecuritySSLTruststore `json:"items"`
 }
 
 func init() {

@@ -64,6 +64,7 @@ func main() {
 	}
 
 	log.Info("Starting controller manager")
+
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
 		log.Info("Cannot start controller manager", "error", err)
 		os.Exit(1)
@@ -74,6 +75,7 @@ func getEnvBool(key string, defaultVal bool) bool {
 	if val := os.Getenv(key); val != "" {
 		return val == "true" || val == "1"
 	}
+
 	return defaultVal
 }
 
@@ -83,19 +85,24 @@ func getEnvDuration(key string, defaultVal time.Duration) time.Duration {
 			return d
 		}
 	}
+
 	return defaultVal
 }
 
 func getEnvInt(key string, defaultVal int) int {
 	if val := os.Getenv(key); val != "" {
 		var i int
+
 		for _, c := range val {
 			if c < '0' || c > '9' {
 				return defaultVal
 			}
+
 			i = i*10 + int(c-'0')
 		}
+
 		return i
 	}
+
 	return defaultVal
 }

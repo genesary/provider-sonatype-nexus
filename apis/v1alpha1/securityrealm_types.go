@@ -40,13 +40,15 @@ type SecurityRealmObservation struct {
 // SecurityRealmSpec defines the desired state of SecurityRealm.
 type SecurityRealmSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       SecurityRealmParameters `json:"forProvider"`
+
+	ForProvider SecurityRealmParameters `json:"forProvider"`
 }
 
 // SecurityRealmStatus defines the observed state of SecurityRealm.
 type SecurityRealmStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          SecurityRealmObservation `json:"atProvider,omitempty"`
+
+	AtProvider SecurityRealmObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -72,7 +74,8 @@ type SecurityRealm struct {
 type SecurityRealmList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []SecurityRealm `json:"items"`
+
+	Items []SecurityRealm `json:"items"`
 }
 
 func init() {

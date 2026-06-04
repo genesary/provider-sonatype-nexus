@@ -30,7 +30,7 @@ var (
 
 // BlobStore type metadata.
 var (
-	BlobStoreKind             = reflect.TypeOf(BlobStore{}).Name()
+	BlobStoreKind             = reflect.TypeFor[BlobStore]().Name()
 	BlobStoreGroupKind        = schema.GroupKind{Group: Group, Kind: BlobStoreKind}.String()
 	BlobStoreKindAPIVersion   = BlobStoreKind + "." + SchemeGroupVersion.String()
 	BlobStoreGroupVersionKind = SchemeGroupVersion.WithKind(BlobStoreKind)
@@ -38,7 +38,7 @@ var (
 
 // Repository type metadata.
 var (
-	RepositoryKind             = reflect.TypeOf(Repository{}).Name()
+	RepositoryKind             = reflect.TypeFor[Repository]().Name()
 	RepositoryGroupKind        = schema.GroupKind{Group: Group, Kind: RepositoryKind}.String()
 	RepositoryKindAPIVersion   = RepositoryKind + "." + SchemeGroupVersion.String()
 	RepositoryGroupVersionKind = SchemeGroupVersion.WithKind(RepositoryKind)
@@ -46,7 +46,7 @@ var (
 
 // User type metadata.
 var (
-	UserKind             = reflect.TypeOf(User{}).Name()
+	UserKind             = reflect.TypeFor[User]().Name()
 	UserGroupKind        = schema.GroupKind{Group: Group, Kind: UserKind}.String()
 	UserKindAPIVersion   = UserKind + "." + SchemeGroupVersion.String()
 	UserGroupVersionKind = SchemeGroupVersion.WithKind(UserKind)
@@ -54,7 +54,7 @@ var (
 
 // Role type metadata.
 var (
-	RoleKind             = reflect.TypeOf(Role{}).Name()
+	RoleKind             = reflect.TypeFor[Role]().Name()
 	RoleGroupKind        = schema.GroupKind{Group: Group, Kind: RoleKind}.String()
 	RoleKindAPIVersion   = RoleKind + "." + SchemeGroupVersion.String()
 	RoleGroupVersionKind = SchemeGroupVersion.WithKind(RoleKind)
@@ -62,7 +62,7 @@ var (
 
 // SecurityRealm type metadata.
 var (
-	SecurityRealmKind             = reflect.TypeOf(SecurityRealm{}).Name()
+	SecurityRealmKind             = reflect.TypeFor[SecurityRealm]().Name()
 	SecurityRealmGroupKind        = schema.GroupKind{Group: Group, Kind: SecurityRealmKind}.String()
 	SecurityRealmKindAPIVersion   = SecurityRealmKind + "." + SchemeGroupVersion.String()
 	SecurityRealmGroupVersionKind = SchemeGroupVersion.WithKind(SecurityRealmKind)
@@ -70,7 +70,7 @@ var (
 
 // ContentSelector type metadata.
 var (
-	ContentSelectorKind             = reflect.TypeOf(ContentSelector{}).Name()
+	ContentSelectorKind             = reflect.TypeFor[ContentSelector]().Name()
 	ContentSelectorGroupKind        = schema.GroupKind{Group: Group, Kind: ContentSelectorKind}.String()
 	ContentSelectorKindAPIVersion   = ContentSelectorKind + "." + SchemeGroupVersion.String()
 	ContentSelectorGroupVersionKind = SchemeGroupVersion.WithKind(ContentSelectorKind)
@@ -78,7 +78,7 @@ var (
 
 // Privilege type metadata.
 var (
-	PrivilegeKind             = reflect.TypeOf(Privilege{}).Name()
+	PrivilegeKind             = reflect.TypeFor[Privilege]().Name()
 	PrivilegeGroupKind        = schema.GroupKind{Group: Group, Kind: PrivilegeKind}.String()
 	PrivilegeKindAPIVersion   = PrivilegeKind + "." + SchemeGroupVersion.String()
 	PrivilegeGroupVersionKind = SchemeGroupVersion.WithKind(PrivilegeKind)
@@ -86,7 +86,7 @@ var (
 
 // AnonymousAccess type metadata.
 var (
-	AnonymousAccessKind             = reflect.TypeOf(AnonymousAccess{}).Name()
+	AnonymousAccessKind             = reflect.TypeFor[AnonymousAccess]().Name()
 	AnonymousAccessGroupKind        = schema.GroupKind{Group: Group, Kind: AnonymousAccessKind}.String()
 	AnonymousAccessKindAPIVersion   = AnonymousAccessKind + "." + SchemeGroupVersion.String()
 	AnonymousAccessGroupVersionKind = SchemeGroupVersion.WithKind(AnonymousAccessKind)
@@ -94,7 +94,7 @@ var (
 
 // SAML type metadata.
 var (
-	SAMLKind             = reflect.TypeOf(SAML{}).Name()
+	SAMLKind             = reflect.TypeFor[SAML]().Name()
 	SAMLGroupKind        = schema.GroupKind{Group: Group, Kind: SAMLKind}.String()
 	SAMLKindAPIVersion   = SAMLKind + "." + SchemeGroupVersion.String()
 	SAMLGroupVersionKind = SchemeGroupVersion.WithKind(SAMLKind)
@@ -102,7 +102,7 @@ var (
 
 // LDAP type metadata.
 var (
-	LDAPKind             = reflect.TypeOf(LDAP{}).Name()
+	LDAPKind             = reflect.TypeFor[LDAP]().Name()
 	LDAPGroupKind        = schema.GroupKind{Group: Group, Kind: LDAPKind}.String()
 	LDAPKindAPIVersion   = LDAPKind + "." + SchemeGroupVersion.String()
 	LDAPGroupVersionKind = SchemeGroupVersion.WithKind(LDAPKind)
@@ -110,7 +110,7 @@ var (
 
 // UserTokenConfiguration type metadata.
 var (
-	UserTokenConfigurationKind             = reflect.TypeOf(UserTokenConfiguration{}).Name()
+	UserTokenConfigurationKind             = reflect.TypeFor[UserTokenConfiguration]().Name()
 	UserTokenConfigurationGroupKind        = schema.GroupKind{Group: Group, Kind: UserTokenConfigurationKind}.String()
 	UserTokenConfigurationKindAPIVersion   = UserTokenConfigurationKind + "." + SchemeGroupVersion.String()
 	UserTokenConfigurationGroupVersionKind = SchemeGroupVersion.WithKind(UserTokenConfigurationKind)
@@ -118,7 +118,7 @@ var (
 
 // SecuritySSLTruststore type metadata.
 var (
-	SecuritySSLTruststoreKind             = reflect.TypeOf(SecuritySSLTruststore{}).Name()
+	SecuritySSLTruststoreKind             = reflect.TypeFor[SecuritySSLTruststore]().Name()
 	SecuritySSLTruststoreGroupKind        = schema.GroupKind{Group: Group, Kind: SecuritySSLTruststoreKind}.String()
 	SecuritySSLTruststoreKindAPIVersion   = SecuritySSLTruststoreKind + "." + SchemeGroupVersion.String()
 	SecuritySSLTruststoreGroupVersionKind = SchemeGroupVersion.WithKind(SecuritySSLTruststoreKind)

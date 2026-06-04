@@ -128,7 +128,9 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	settings := generateAnonymousAccessSettings(cr)
-	if err := e.client.Security().UpdateAnonymousAccess(ctx, settings); err != nil {
+
+	err := e.client.Security().UpdateAnonymousAccess(ctx, settings)
+	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errUpdateAnonymous)
 	}
 
@@ -143,7 +145,9 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	settings := generateAnonymousAccessSettings(cr)
-	if err := e.client.Security().UpdateAnonymousAccess(ctx, settings); err != nil {
+
+	err := e.client.Security().UpdateAnonymousAccess(ctx, settings)
+	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateAnonymous)
 	}
 
@@ -171,11 +175,14 @@ func isAnonymousAccessUpToDate(cr *v1alpha1.AnonymousAccess, settings *security.
 	if cr.Spec.ForProvider.Enabled != settings.Enabled {
 		return false
 	}
+
 	if cr.Spec.ForProvider.UserID != settings.UserID {
 		return false
 	}
+
 	if cr.Spec.ForProvider.RealmName != settings.RealmName {
 		return false
 	}
+
 	return true
 }

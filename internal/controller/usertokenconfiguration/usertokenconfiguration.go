@@ -128,7 +128,9 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	config := generateUserTokenConfiguration(cr)
-	if err := e.client.Security().UpdateUserTokenConfiguration(ctx, config); err != nil {
+
+	err := e.client.Security().UpdateUserTokenConfiguration(ctx, config)
+	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errUpdateUserTokenConfig)
 	}
 
@@ -143,7 +145,9 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	config := generateUserTokenConfiguration(cr)
-	if err := e.client.Security().UpdateUserTokenConfiguration(ctx, config); err != nil {
+
+	err := e.client.Security().UpdateUserTokenConfiguration(ctx, config)
+	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateUserTokenConfig)
 	}
 
@@ -166,9 +170,11 @@ func generateUserTokenConfiguration(cr *v1alpha1.UserTokenConfiguration) securit
 	if cr.Spec.ForProvider.ProtectContent != nil {
 		config.ProtectContent = *cr.Spec.ForProvider.ProtectContent
 	}
+
 	if cr.Spec.ForProvider.ExpirationEnabled != nil {
 		config.ExpirationEnabled = *cr.Spec.ForProvider.ExpirationEnabled
 	}
+
 	if cr.Spec.ForProvider.ExpirationDays != nil {
 		config.ExpirationDays = int(*cr.Spec.ForProvider.ExpirationDays)
 	}
@@ -181,14 +187,18 @@ func isUserTokenConfigUpToDate(cr *v1alpha1.UserTokenConfiguration, config *secu
 	if cr.Spec.ForProvider.Enabled != config.Enabled {
 		return false
 	}
+
 	if cr.Spec.ForProvider.ProtectContent != nil && *cr.Spec.ForProvider.ProtectContent != config.ProtectContent {
 		return false
 	}
+
 	if cr.Spec.ForProvider.ExpirationEnabled != nil && *cr.Spec.ForProvider.ExpirationEnabled != config.ExpirationEnabled {
 		return false
 	}
+
 	if cr.Spec.ForProvider.ExpirationDays != nil && int(*cr.Spec.ForProvider.ExpirationDays) != config.ExpirationDays {
 		return false
 	}
+
 	return true
 }

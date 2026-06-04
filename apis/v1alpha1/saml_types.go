@@ -53,13 +53,15 @@ type SAMLObservation struct {
 // SAMLSpec defines the desired state of SAML.
 type SAMLSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       SAMLParameters `json:"forProvider"`
+
+	ForProvider SAMLParameters `json:"forProvider"`
 }
 
 // SAMLStatus defines the observed state of SAML.
 type SAMLStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          SAMLObservation `json:"atProvider,omitempty"`
+
+	AtProvider SAMLObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -85,7 +87,8 @@ type SAML struct {
 type SAMLList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []SAML `json:"items"`
+
+	Items []SAML `json:"items"`
 }
 
 func init() {

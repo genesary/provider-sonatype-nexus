@@ -410,6 +410,7 @@ func GetCredentialsFromSecret(ctx context.Context, kube kubeclient.Client, pc *v
 	}
 
 	secret := &corev1.Secret{}
+
 	err := kube.Get(ctx, types.NamespacedName{
 		Name:      pc.Spec.Credentials.SecretRef.Name,
 		Namespace: pc.Spec.Credentials.SecretRef.Namespace,
@@ -442,6 +443,7 @@ func GetSecretValue(ctx context.Context, kube kubeclient.Client, selector *xpv1.
 	}
 
 	secret := &corev1.Secret{}
+
 	err := kube.Get(ctx, types.NamespacedName{
 		Name:      selector.Name,
 		Namespace: selector.Namespace,
@@ -1670,8 +1672,10 @@ func (s *sslService) ListCertificates(ctx context.Context) ([]security.SSLCertif
 	if err != nil {
 		return nil, err
 	}
+
 	if certs == nil {
 		return nil, nil
 	}
+
 	return *certs, nil
 }

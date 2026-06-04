@@ -178,11 +178,14 @@ func TestObserve(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Observe() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if obs.ResourceExists != tt.wantExists {
 				t.Errorf("Observe() ResourceExists = %v, want %v", obs.ResourceExists, tt.wantExists)
 			}
+
 			if obs.ResourceUpToDate != tt.wantUpToDate {
 				t.Errorf("Observe() ResourceUpToDate = %v, want %v", obs.ResourceUpToDate, tt.wantUpToDate)
 			}
@@ -222,6 +225,7 @@ func TestCreate(t *testing.T) {
 				if len(mc.MockBlobStore.CreateFileCalls) != 1 {
 					t.Errorf("Expected 1 CreateFile call, got %d", len(mc.MockBlobStore.CreateFileCalls))
 				}
+
 				if mc.MockBlobStore.CreateFileCalls[0].Name != "test-file-blobstore" {
 					t.Errorf("CreateFile called with wrong name: %s", mc.MockBlobStore.CreateFileCalls[0].Name)
 				}
@@ -251,6 +255,7 @@ func TestCreate(t *testing.T) {
 				if len(mc.MockBlobStore.CreateS3Calls) != 1 {
 					t.Errorf("Expected 1 CreateS3 call, got %d", len(mc.MockBlobStore.CreateS3Calls))
 				}
+
 				if mc.MockBlobStore.CreateS3Calls[0].Name != "test-s3-blobstore" {
 					t.Errorf("CreateS3 called with wrong name: %s", mc.MockBlobStore.CreateS3Calls[0].Name)
 				}
@@ -288,8 +293,10 @@ func TestCreate(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Create() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if tt.validate != nil && !tt.wantErr {
 				tt.validate(t, mc)
 			}
@@ -404,8 +411,10 @@ func TestUpdate(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Update() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if tt.validate != nil && !tt.wantErr {
 				tt.validate(t, mc)
 			}
@@ -447,6 +456,7 @@ func TestDelete(t *testing.T) {
 				if len(mc.MockBlobStore.DeleteCalls) != 1 {
 					t.Errorf("Expected 1 Delete call, got %d", len(mc.MockBlobStore.DeleteCalls))
 				}
+
 				if mc.MockBlobStore.DeleteCalls[0] != "test-blobstore" {
 					t.Errorf("Delete called with wrong name: %s", mc.MockBlobStore.DeleteCalls[0])
 				}
@@ -512,8 +522,10 @@ func TestDelete(t *testing.T) {
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
+
 				return
 			}
+
 			if tt.validate != nil && !tt.wantErr {
 				tt.validate(t, mc)
 			}
@@ -633,9 +645,11 @@ func TestGenerateFileBlobStore(t *testing.T) {
 			if got.Name != tt.want.Name {
 				t.Errorf("generateFileBlobStore() Name = %v, want %v", got.Name, tt.want.Name)
 			}
+
 			if got.Path != tt.want.Path {
 				t.Errorf("generateFileBlobStore() Path = %v, want %v", got.Path, tt.want.Path)
 			}
+
 			if tt.want.SoftQuota != nil {
 				if got.SoftQuota == nil {
 					t.Error("generateFileBlobStore() SoftQuota is nil, want non-nil")
@@ -643,6 +657,7 @@ func TestGenerateFileBlobStore(t *testing.T) {
 					if got.SoftQuota.Type != tt.want.SoftQuota.Type {
 						t.Errorf("generateFileBlobStore() SoftQuota.Type = %v, want %v", got.SoftQuota.Type, tt.want.SoftQuota.Type)
 					}
+
 					if got.SoftQuota.Limit != tt.want.SoftQuota.Limit {
 						t.Errorf("generateFileBlobStore() SoftQuota.Limit = %v, want %v", got.SoftQuota.Limit, tt.want.SoftQuota.Limit)
 					}

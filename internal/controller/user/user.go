@@ -117,6 +117,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		if isNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
+
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetUser)
 	}
 
@@ -152,6 +153,7 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	meta.SetExternalName(cr, cr.Spec.ForProvider.UserID)
+
 	return managed.ExternalCreation{}, nil
 }
 
@@ -169,7 +171,9 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 
 	// Update user info (without password)
 	user := generateUser(cr, "")
-	if err := e.client.Security().UpdateUser(ctx, userID, user); err != nil {
+
+	err := e.client.Security().UpdateUser(ctx, userID, user)
+	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateUser)
 	}
 
@@ -179,8 +183,10 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 		if err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errGetPassword)
 		}
+
 		if password != "" {
-			if err := e.client.Security().ChangePassword(ctx, userID, password); err != nil {
+			err := e.client.Security().ChangePassword(ctx, userID, password)
+			if err != nil {
 				return managed.ExternalUpdate{}, errors.Wrap(err, errChangePassword)
 			}
 		}
@@ -201,10 +207,12 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 		userID = cr.Spec.ForProvider.UserID
 	}
 
-	if err := e.client.Security().DeleteUser(ctx, userID); err != nil {
+	err := e.client.Security().DeleteUser(ctx, userID)
+	if err != nil {
 		if isNotFound(err) {
 			return nil
 		}
+
 		return errors.Wrap(err, errDeleteUser)
 	}
 
@@ -218,6 +226,7 @@ func (e *external) getPassword(ctx context.Context, cr *v1alpha1.User) (string, 
 	}
 
 	secret := &corev1.Secret{}
+
 	err := e.kube.Get(ctx, types.NamespacedName{
 		Name:      cr.Spec.ForProvider.PasswordSecretRef.Name,
 		Namespace: cr.Spec.ForProvider.PasswordSecretRef.Namespace,
@@ -268,15 +277,19 @@ func isUserUpToDate(cr *v1alpha1.User, user *security.User) bool {
 	if cr.Spec.ForProvider.FirstName != user.FirstName {
 		return false
 	}
+
 	if cr.Spec.ForProvider.LastName != user.LastName {
 		return false
 	}
+
 	if cr.Spec.ForProvider.EmailAddress != user.EmailAddress {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Status != nil && *cr.Spec.ForProvider.Status != user.Status {
 		return false
 	}
+
 	if !stringSlicesEqual(cr.Spec.ForProvider.Roles, user.Roles) {
 		return false
 	}
@@ -289,11 +302,13 @@ func stringSlicesEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}
+
 	for i := range a {
 		if a[i] != b[i] {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -302,6 +317,7 @@ func isNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return strings.Contains(err.Error(), "404") ||
 		strings.Contains(err.Error(), "not found") ||
 		strings.Contains(strings.ToLower(err.Error()), "does not exist")

@@ -55,13 +55,15 @@ type UserObservation struct {
 // UserSpec defines the desired state of User.
 type UserSpec struct {
 	xpv1.ResourceSpec `json:",inline"`
-	ForProvider       UserParameters `json:"forProvider"`
+
+	ForProvider UserParameters `json:"forProvider"`
 }
 
 // UserStatus defines the observed state of User.
 type UserStatus struct {
 	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          UserObservation `json:"atProvider,omitempty"`
+
+	AtProvider UserObservation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -87,7 +89,8 @@ type User struct {
 type UserList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []User `json:"items"`
+
+	Items []User `json:"items"`
 }
 
 func init() {

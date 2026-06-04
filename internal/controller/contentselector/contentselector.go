@@ -112,6 +112,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		if isNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
+
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetContentSelector)
 	}
 
@@ -137,11 +138,14 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	cs := generateContentSelector(cr)
-	if err := e.client.Security().CreateContentSelector(ctx, cs); err != nil {
+
+	err := e.client.Security().CreateContentSelector(ctx, cs)
+	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateContentSelector)
 	}
 
 	meta.SetExternalName(cr, cr.Spec.ForProvider.Name)
+
 	return managed.ExternalCreation{}, nil
 }
 
@@ -158,7 +162,9 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	cs := generateContentSelector(cr)
-	if err := e.client.Security().UpdateContentSelector(ctx, name, cs); err != nil {
+
+	err := e.client.Security().UpdateContentSelector(ctx, name, cs)
+	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateContentSelector)
 	}
 
@@ -177,10 +183,12 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 		name = cr.Spec.ForProvider.Name
 	}
 
-	if err := e.client.Security().DeleteContentSelector(ctx, name); err != nil {
+	err := e.client.Security().DeleteContentSelector(ctx, name)
+	if err != nil {
 		if isNotFound(err) {
 			return nil
 		}
+
 		return errors.Wrap(err, errDeleteContentSelector)
 	}
 
@@ -206,9 +214,11 @@ func isContentSelectorUpToDate(cr *v1alpha1.ContentSelector, cs *security.Conten
 	if cr.Spec.ForProvider.Expression != cs.Expression {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Description != nil && *cr.Spec.ForProvider.Description != cs.Description {
 		return false
 	}
+
 	return true
 }
 
@@ -217,6 +227,7 @@ func isNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return strings.Contains(err.Error(), "404") ||
 		strings.Contains(err.Error(), "not found") ||
 		strings.Contains(strings.ToLower(err.Error()), "does not exist")

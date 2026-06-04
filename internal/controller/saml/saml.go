@@ -106,6 +106,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		if isNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
+
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetSAML)
 	}
 
@@ -131,7 +132,9 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	saml := generateSAML(cr)
-	if err := e.client.Security().ApplySAML(ctx, saml); err != nil {
+
+	err := e.client.Security().ApplySAML(ctx, saml)
+	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errApplySAML)
 	}
 
@@ -146,7 +149,9 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	saml := generateSAML(cr)
-	if err := e.client.Security().ApplySAML(ctx, saml); err != nil {
+
+	err := e.client.Security().ApplySAML(ctx, saml)
+	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errApplySAML)
 	}
 
@@ -160,10 +165,12 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 		return errors.New(errNotSAML)
 	}
 
-	if err := e.client.Security().DeleteSAML(ctx); err != nil {
+	err := e.client.Security().DeleteSAML(ctx)
+	if err != nil {
 		if isNotFound(err) {
 			return nil
 		}
+
 		return errors.Wrap(err, errDeleteSAML)
 	}
 
@@ -190,6 +197,7 @@ func generateSAML(cr *v1alpha1.SAML) security.SAML {
 // isSAMLUpToDate checks if SAML configuration is up to date.
 func isSAMLUpToDate(cr *v1alpha1.SAML, saml *security.SAML) bool {
 	desired := generateSAML(cr)
+
 	return reflect.DeepEqual(desired, *saml)
 }
 
@@ -198,6 +206,7 @@ func isNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return strings.Contains(err.Error(), "404") ||
 		strings.Contains(err.Error(), "not found") ||
 		strings.Contains(strings.ToLower(err.Error()), "does not exist")

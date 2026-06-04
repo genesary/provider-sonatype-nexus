@@ -13,7 +13,9 @@ func IsNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	msg := strings.ToLower(err.Error())
+
 	return strings.Contains(msg, "404") ||
 		strings.Contains(msg, "not found") ||
 		strings.Contains(msg, "does not exist")
@@ -25,7 +27,9 @@ func IsConflict(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	msg := strings.ToLower(err.Error())
+
 	return strings.Contains(msg, "409") ||
 		strings.Contains(msg, "conflict") ||
 		strings.Contains(msg, "already exists")

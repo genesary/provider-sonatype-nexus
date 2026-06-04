@@ -112,6 +112,7 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		if isNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
+
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetRole)
 	}
 
@@ -137,11 +138,14 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	role := generateRole(cr)
-	if err := e.client.Security().CreateRole(ctx, role); err != nil {
+
+	err := e.client.Security().CreateRole(ctx, role)
+	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateRole)
 	}
 
 	meta.SetExternalName(cr, cr.Spec.ForProvider.ID)
+
 	return managed.ExternalCreation{}, nil
 }
 
@@ -158,7 +162,9 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	}
 
 	role := generateRole(cr)
-	if err := e.client.Security().UpdateRole(ctx, roleID, role); err != nil {
+
+	err := e.client.Security().UpdateRole(ctx, roleID, role)
+	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateRole)
 	}
 
@@ -177,10 +183,12 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 		roleID = cr.Spec.ForProvider.ID
 	}
 
-	if err := e.client.Security().DeleteRole(ctx, roleID); err != nil {
+	err := e.client.Security().DeleteRole(ctx, roleID)
+	if err != nil {
 		if isNotFound(err) {
 			return nil
 		}
+
 		return errors.Wrap(err, errDeleteRole)
 	}
 
@@ -208,12 +216,15 @@ func isRoleUpToDate(cr *v1alpha1.Role, role *security.Role) bool {
 	if cr.Spec.ForProvider.Name != role.Name {
 		return false
 	}
+
 	if cr.Spec.ForProvider.Description != nil && *cr.Spec.ForProvider.Description != role.Description {
 		return false
 	}
+
 	if !stringSlicesEqual(cr.Spec.ForProvider.Privileges, role.Privileges) {
 		return false
 	}
+
 	if !stringSlicesEqual(cr.Spec.ForProvider.Roles, role.Roles) {
 		return false
 	}
@@ -226,11 +237,13 @@ func stringSlicesEqual(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}
+
 	for i := range a {
 		if a[i] != b[i] {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -239,6 +252,7 @@ func isNotFound(err error) bool {
 	if err == nil {
 		return false
 	}
+
 	return strings.Contains(err.Error(), "404") ||
 		strings.Contains(err.Error(), "not found") ||
 		strings.Contains(strings.ToLower(err.Error()), "does not exist")
