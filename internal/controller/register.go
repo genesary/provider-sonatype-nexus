@@ -8,6 +8,7 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/anonymousaccess"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/blobstore"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/config"
+	contentcleanuppolicy "github.com/genesary/provider-sonatype-nexus/internal/controller/content/cleanuppolicy"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/contentselector"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/ldap"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/privilege"
@@ -26,6 +27,7 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		anonymousaccess.Setup,
 		blobstore.Setup,
 		config.Setup,
+		contentcleanuppolicy.Setup,
 		contentselector.Setup,
 		ldap.Setup,
 		privilege.Setup,
