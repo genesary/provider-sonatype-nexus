@@ -29,6 +29,7 @@ spec:
     pem: |
 $(echo "$PEM" | sed 's/^/      /')
   providerConfigRef:
+    kind: ProviderConfig
     name: default
 EOF
 

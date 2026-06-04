@@ -18,4 +18,5 @@ spec:
     validateResponseSignature: true
     validateAssertionSignature: true
   providerConfigRef:
+    kind: ProviderConfig
     name: nexus-provider-config

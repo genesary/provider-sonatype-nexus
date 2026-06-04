@@ -10,4 +10,5 @@ spec:
     type: wildcard
     pattern: nexus:repository-view:*:*:read
   providerConfigRef:
+    kind: ProviderConfig
     name: default

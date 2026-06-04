@@ -9,4 +9,5 @@ spec:
     userId: anonymous
     realmName: NexusAuthorizingRealm
   providerConfigRef:
+    kind: ProviderConfig
     name: default

@@ -20,4 +20,5 @@ spec:
       strictContentTypeValidation: true
       writePolicy: ALLOW_ONCE  # ALLOW, ALLOW_ONCE, or DENY
   providerConfigRef:
+    kind: ProviderConfig
     name: default

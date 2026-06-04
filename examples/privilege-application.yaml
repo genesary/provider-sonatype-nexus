@@ -15,4 +15,5 @@ spec:
       - UPDATE
       - DELETE
   providerConfigRef:
+    kind: ProviderConfig
     name: nexus-provider-config

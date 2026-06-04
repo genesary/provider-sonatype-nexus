@@ -30,4 +30,5 @@ spec:
       namespace: crossplane-system
       key: password
   providerConfigRef:
+    kind: ProviderConfig
     name: default

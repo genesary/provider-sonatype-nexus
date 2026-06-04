@@ -17,4 +17,5 @@ spec:
       namespace: default
       key: password
   providerConfigRef:
+    kind: ProviderConfig
     name: default
