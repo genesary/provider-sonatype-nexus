@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -39,14 +39,14 @@ type RoleObservation struct {
 
 // RoleSpec defines the desired state of Role.
 type RoleSpec struct {
-	xpv1.ResourceSpec `json:",inline"`
+	xpv2.ManagedResourceSpec `json:",inline"`
 
 	ForProvider RoleParameters `json:"forProvider"`
 }
 
 // RoleStatus defines the observed state of Role.
 type RoleStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 
 	AtProvider RoleObservation `json:"atProvider,omitempty"`
 }

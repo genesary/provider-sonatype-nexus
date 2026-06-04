@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -35,7 +35,7 @@ type UserParameters struct {
 
 	// PasswordSecretRef is a reference to a secret containing the user password.
 	// +optional
-	PasswordSecretRef *xpv1.SecretKeySelector `json:"passwordSecretRef,omitempty"`
+	PasswordSecretRef *xpv2.SecretKeySelector `json:"passwordSecretRef,omitempty"`
 
 	// Source of the user (default is "default" for local users).
 	// +kubebuilder:default="default"
@@ -54,14 +54,14 @@ type UserObservation struct {
 
 // UserSpec defines the desired state of User.
 type UserSpec struct {
-	xpv1.ResourceSpec `json:",inline"`
+	xpv2.ManagedResourceSpec `json:",inline"`
 
 	ForProvider UserParameters `json:"forProvider"`
 }
 
 // UserStatus defines the observed state of User.
 type UserStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 
 	AtProvider UserObservation `json:"atProvider,omitempty"`
 }

@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -65,11 +65,11 @@ type S3Config struct {
 
 	// AccessKeyIDSecretRef is a reference to a secret containing the access key ID.
 	// +optional
-	AccessKeyIDSecretRef *xpv1.SecretKeySelector `json:"accessKeyIdSecretRef,omitempty"`
+	AccessKeyIDSecretRef *xpv2.SecretKeySelector `json:"accessKeyIdSecretRef,omitempty"`
 
 	// SecretAccessKeySecretRef is a reference to a secret containing the secret access key.
 	// +optional
-	SecretAccessKeySecretRef *xpv1.SecretKeySelector `json:"secretAccessKeySecretRef,omitempty"`
+	SecretAccessKeySecretRef *xpv2.SecretKeySelector `json:"secretAccessKeySecretRef,omitempty"`
 
 	// AssumeRole for S3 access.
 	// +optional
@@ -77,7 +77,7 @@ type S3Config struct {
 
 	// SessionToken for S3 access.
 	// +optional
-	SessionTokenSecretRef *xpv1.SecretKeySelector `json:"sessionTokenSecretRef,omitempty"`
+	SessionTokenSecretRef *xpv2.SecretKeySelector `json:"sessionTokenSecretRef,omitempty"`
 
 	// ForcePathStyle enables path-style access for S3.
 	// +optional
@@ -98,14 +98,14 @@ type BlobStoreObservation struct {
 
 // BlobStoreSpec defines the desired state of BlobStore.
 type BlobStoreSpec struct {
-	xpv1.ResourceSpec `json:",inline"`
+	xpv2.ManagedResourceSpec `json:",inline"`
 
 	ForProvider BlobStoreParameters `json:"forProvider"`
 }
 
 // BlobStoreStatus defines the observed state of BlobStore.
 type BlobStoreStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 
 	AtProvider BlobStoreObservation `json:"atProvider,omitempty"`
 }

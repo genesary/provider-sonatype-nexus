@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -31,14 +31,14 @@ type UserTokenConfigurationObservation struct {
 
 // UserTokenConfigurationSpec defines the desired state of UserTokenConfiguration.
 type UserTokenConfigurationSpec struct {
-	xpv1.ResourceSpec `json:",inline"`
+	xpv2.ManagedResourceSpec `json:",inline"`
 
 	ForProvider UserTokenConfigurationParameters `json:"forProvider"`
 }
 
 // UserTokenConfigurationStatus defines the observed state of UserTokenConfiguration.
 type UserTokenConfigurationStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 
 	AtProvider UserTokenConfigurationObservation `json:"atProvider,omitempty"`
 }

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/crossplane/crossplane-runtime/pkg/meta"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -367,7 +367,7 @@ func TestDelete(t *testing.T) {
 			}
 
 			e := &external{client: mc}
-			err := e.Delete(context.Background(), tt.cr)
+			_, err := e.Delete(context.Background(), tt.cr)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)

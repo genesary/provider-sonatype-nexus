@@ -17,13 +17,13 @@ import (
 	"context"
 	"strings"
 
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
-	"github.com/crossplane/crossplane-runtime/pkg/controller"
-	"github.com/crossplane/crossplane-runtime/pkg/event"
-	"github.com/crossplane/crossplane-runtime/pkg/meta"
-	"github.com/crossplane/crossplane-runtime/pkg/ratelimiter"
-	"github.com/crossplane/crossplane-runtime/pkg/reconciler/managed"
-	"github.com/crossplane/crossplane-runtime/pkg/resource"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -69,14 +69,13 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 
 	r := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.RepositoryGroupVersionKind),
-		managed.WithExternalConnecter(&connector{
+		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{}),
 		}),
 		managed.WithLogger(o.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(o.PollInterval),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))),
-		managed.WithConnectionPublishers(managed.NewAPISecretPublisher(mgr.GetClient(), mgr.GetScheme())))
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
@@ -86,25 +85,30 @@ func Setup(mgr ctrl.Manager, o controller.Options) error {
 		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnecter.
+// connector implements managed.ExternalConnector.
 type connector struct {
 	kube  client.Client
-	usage resource.Tracker
+	usage *resource.ProviderConfigUsageTracker
 }
 
 // Connect produces an ExternalClient for the given managed resource.
 func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	cr, ok := mg.(*v1alpha1.Repository)
+	_, ok := mg.(*v1alpha1.Repository)
 	if !ok {
 		return nil, errors.New(errNotRepository)
 	}
 
-	if err := c.usage.Track(ctx, mg); err != nil {
+	modernMG, ok := mg.(resource.ModernManaged)
+	if !ok {
+		return nil, errors.New("managed resource is not a ModernManaged")
+	}
+
+	if err := c.usage.Track(ctx, modernMG); err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
 	pc := &v1alpha1.ProviderConfig{}
-	if err := c.kube.Get(ctx, client.ObjectKey{Name: cr.GetProviderConfigReference().Name}, pc); err != nil {
+	if err := c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, pc); err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
@@ -222,10 +226,10 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 }
 
 // Delete the external resource.
-func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
+func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
 	cr, ok := mg.(*v1alpha1.Repository)
 	if !ok {
-		return errors.New(errNotRepository)
+		return managed.ExternalDelete{}, errors.New(errNotRepository)
 	}
 
 	name := meta.GetExternalName(cr)
@@ -238,14 +242,19 @@ func (e *external) Delete(ctx context.Context, mg resource.Managed) error {
 
 	handler := GetHandler(format)
 	if handler == nil {
-		return errors.Errorf("unsupported format: %s", format)
+		return managed.ExternalDelete{}, errors.Errorf("unsupported format: %s", format)
 	}
 
 	err := handler.Delete(ctx, e.client, name, repoType)
 	if err != nil && !isNotFound(err) {
-		return errors.Wrap(err, errDeleteRepository)
+		return managed.ExternalDelete{}, errors.Wrap(err, errDeleteRepository)
 	}
 
+	return managed.ExternalDelete{}, nil
+}
+
+// Disconnect from the provider.
+func (e *external) Disconnect(ctx context.Context) error {
 	return nil
 }
 
@@ -261,7 +270,7 @@ func (e *external) resolveHTTPClientPassword(ctx context.Context, cr *v1alpha1.R
 
 	ref := cr.Spec.ForProvider.HTTPClient.Authentication.PasswordSecretRef
 
-	data, err := resource.ExtractSecret(ctx, e.kube, xpv1.CommonCredentialSelectors{
+	data, err := resource.ExtractSecret(ctx, e.kube, xpv2.CommonCredentialSelectors{
 		SecretRef: ref,
 	})
 	if err != nil {

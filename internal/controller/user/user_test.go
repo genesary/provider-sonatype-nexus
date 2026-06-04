@@ -251,7 +251,7 @@ func TestUserDelete(t *testing.T) {
 			}
 
 			e := &external{client: mc, kube: nil}
-			err := e.Delete(context.Background(), tt.cr)
+			_, err := e.Delete(context.Background(), tt.cr)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)

@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-	xpv1 "github.com/crossplane/crossplane-runtime/apis/common/v1"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -41,7 +41,7 @@ type LDAPParameters struct {
 
 	// AuthPasswordSecretRef is a reference to a secret containing the auth password.
 	// +optional
-	AuthPasswordSecretRef *xpv1.SecretKeySelector `json:"authPasswordSecretRef,omitempty"`
+	AuthPasswordSecretRef *xpv2.SecretKeySelector `json:"authPasswordSecretRef,omitempty"`
 
 	// AuthRealm is the SASL realm for DIGEST-MD5/CRAM-MD5 authentication.
 	// +optional
@@ -152,14 +152,14 @@ type LDAPObservation struct {
 
 // LDAPSpec defines the desired state of LDAP.
 type LDAPSpec struct {
-	xpv1.ResourceSpec `json:",inline"`
+	xpv2.ManagedResourceSpec `json:",inline"`
 
 	ForProvider LDAPParameters `json:"forProvider"`
 }
 
 // LDAPStatus defines the observed state of LDAP.
 type LDAPStatus struct {
-	xpv1.ResourceStatus `json:",inline"`
+	xpv2.ManagedResourceStatus `json:",inline"`
 
 	AtProvider LDAPObservation `json:"atProvider,omitempty"`
 }
