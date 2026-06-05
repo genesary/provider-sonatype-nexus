@@ -62,8 +62,9 @@ spec:
             description: SecuritySSLTruststoreSpec defines the desired state of SecuritySSLTruststore.
             properties:
               forProvider:
-                description: SecuritySSLTruststoreParameters defines the desired state
-                  of a truststore certificate.
+                description: |-
+                  SecuritySSLTruststoreParameters defines the desired state of a
+                  truststore certificate.
                 properties:
                   pem:
                     description: Pem is the certificate in PEM format to add to the
@@ -131,12 +132,14 @@ spec:
             - forProvider
             type: object
           status:
-            description: SecuritySSLTruststoreStatus defines the observed state of
+            description: |-
+              SecuritySSLTruststoreStatus defines the observed state of
               SecuritySSLTruststore.
             properties:
               atProvider:
-                description: SecuritySSLTruststoreObservation represents the observed
-                  state of a truststore certificate.
+                description: |-
+                  SecuritySSLTruststoreObservation represents the observed state of a
+                  truststore certificate.
                 properties:
                   expiresOn:
                     description: ExpiresOn is the timestamp when the certificate expires

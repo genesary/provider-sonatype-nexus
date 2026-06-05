@@ -288,8 +288,9 @@ spec:
             description: LDAPStatus defines the observed state of LDAP.
             properties:
               atProvider:
-                description: LDAPObservation represents the observed state of an LDAP
-                  server configuration.
+                description: |-
+                  LDAPObservation represents the observed state of an LDAP server
+                  configuration.
                 properties:
                   id:
                     description: ID is the internal LDAP server ID.

@@ -33,7 +33,8 @@ spec:
       openAPIV3Schema:
         description: |-
           SecurityRealm is the Schema for the securityrealms API.
-          This is a singleton resource that configures which security realms are active.
+          This is a singleton resource that configures which security realms
+          are active.
         properties:
           apiVersion:
             description: |-

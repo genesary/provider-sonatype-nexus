@@ -56,11 +56,14 @@ spec:
           metadata:
             type: object
           spec:
-            description: UserTokenConfigurationSpec defines the desired state of UserTokenConfiguration.
+            description: |-
+              UserTokenConfigurationSpec defines the desired state of
+              UserTokenConfiguration.
             properties:
               forProvider:
-                description: UserTokenConfigurationParameters defines the desired
-                  state of UserTokenConfiguration.
+                description: |-
+                  UserTokenConfigurationParameters defines the desired state of
+                  UserTokenConfiguration.
                 properties:
                   enabled:
                     description: Enabled determines if user tokens are enabled.
@@ -141,12 +144,14 @@ spec:
             - forProvider
             type: object
           status:
-            description: UserTokenConfigurationStatus defines the observed state of
+            description: |-
+              UserTokenConfigurationStatus defines the observed state of
               UserTokenConfiguration.
             properties:
               atProvider:
-                description: UserTokenConfigurationObservation represents the observed
-                  state of UserTokenConfiguration.
+                description: |-
+                  UserTokenConfigurationObservation represents the observed state of
+                  UserTokenConfiguration.
                 type: object
               conditions:
                 description: Conditions of the resource.
