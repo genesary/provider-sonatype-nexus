@@ -40,14 +40,6 @@ var (
 	RepositoryGroupVersionKind = SchemeGroupVersion.WithKind(RepositoryKind)
 )
 
-// User type metadata.
-var (
-	UserKind             = reflect.TypeFor[User]().Name()
-	UserGroupKind        = schema.GroupKind{Group: Group, Kind: UserKind}.String()
-	UserKindAPIVersion   = UserKind + "." + SchemeGroupVersion.String()
-	UserGroupVersionKind = SchemeGroupVersion.WithKind(UserKind)
-)
-
 // Privilege type metadata.
 var (
 	PrivilegeKind             = reflect.TypeFor[Privilege]().Name()

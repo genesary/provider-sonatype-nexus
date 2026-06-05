@@ -55,3 +55,11 @@ var (
 	SecurityRealmKindAPIVersion   = SecurityRealmKind + "." + SchemeGroupVersion.String()
 	SecurityRealmGroupVersionKind = SchemeGroupVersion.WithKind(SecurityRealmKind)
 )
+
+// User type metadata.
+var (
+	UserKind             = reflect.TypeFor[User]().Name()
+	UserGroupKind        = schema.GroupKind{Group: APIGroup, Kind: UserKind}.String()
+	UserKindAPIVersion   = UserKind + "." + SchemeGroupVersion.String()
+	UserGroupVersionKind = SchemeGroupVersion.WithKind(UserKind)
+)

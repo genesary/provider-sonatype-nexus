@@ -33,7 +33,7 @@ type UserParameters struct {
 	// +optional
 	Roles []string `json:"roles,omitempty"`
 
-	// PasswordSecretRef is a reference to a secret containing the user password.
+	// PasswordSecretRef is a reference to a secret with the user password.
 	// +optional
 	PasswordSecretRef *xpv2.SecretKeySelector `json:"passwordSecretRef,omitempty"`
 
@@ -43,7 +43,7 @@ type UserParameters struct {
 	Source *string `json:"source,omitempty"`
 }
 
-// UserObservation represents the observed state of a User.
+// UserObservation is the observed state of a User.
 type UserObservation struct {
 	// ReadOnly indicates if the user is read-only.
 	ReadOnly *bool `json:"readOnly,omitempty"`
@@ -93,7 +93,7 @@ type UserList struct {
 	Items []User `json:"items"`
 }
 
-// init registers this type with the SchemeBuilder.
+// init registers the User types with the scheme.
 func init() {
 	SchemeBuilder.Register(&User{}, &UserList{})
 }

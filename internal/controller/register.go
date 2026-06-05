@@ -12,13 +12,13 @@ import (
 	iamanonymousaccess "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/anonymousaccess"
 	iamrole "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/role"
 	iamsecurityrealm "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/securityrealm"
+	iamuser "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/user"
 	iamutc "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/usertokenconfiguration"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/ldap"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/privilege"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/repository"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/saml"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/securityssltruststore"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/user"
 )
 
 // Setup creates all Nexus controllers and adds them to the supplied manager.
@@ -29,15 +29,15 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		contentcleanuppolicy.Setup,
 		contentcontentselector.Setup,
 		iamanonymousaccess.Setup,
+		iamrole.Setup,
 		iamsecurityrealm.Setup,
+		iamuser.Setup,
 		iamutc.Setup,
 		ldap.Setup,
 		privilege.Setup,
 		repository.Setup,
-		iamrole.Setup,
 		saml.Setup,
 		securityssltruststore.Setup,
-		user.Setup,
 	} {
 		err := setup(mgr, opts)
 		if err != nil {

@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: users.nexus.crossplane.io
+  name: users.iam.nexus.crossplane.io
 spec:
-  group: nexus.crossplane.io
+  group: iam.nexus.crossplane.io
   names:
     categories:
     - crossplane
@@ -69,7 +69,7 @@ spec:
                     description: LastName of the user.
                     type: string
                   passwordSecretRef:
-                    description: PasswordSecretRef is a reference to a secret containing
+                    description: PasswordSecretRef is a reference to a secret with
                       the user password.
                     properties:
                       key:
@@ -176,7 +176,7 @@ spec:
             description: UserStatus defines the observed state of User.
             properties:
               atProvider:
-                description: UserObservation represents the observed state of a User.
+                description: UserObservation is the observed state of a User.
                 properties:
                   externalRoles:
                     description: ExternalRoles are roles from external sources.
