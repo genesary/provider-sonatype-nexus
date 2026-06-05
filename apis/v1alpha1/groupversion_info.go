@@ -40,14 +40,6 @@ var (
 	RepositoryGroupVersionKind = SchemeGroupVersion.WithKind(RepositoryKind)
 )
 
-// SAML type metadata.
-var (
-	SAMLKind             = reflect.TypeFor[SAML]().Name()
-	SAMLGroupKind        = schema.GroupKind{Group: Group, Kind: SAMLKind}.String()
-	SAMLKindAPIVersion   = SAMLKind + "." + SchemeGroupVersion.String()
-	SAMLGroupVersionKind = SchemeGroupVersion.WithKind(SAMLKind)
-)
-
 // SecuritySSLTruststore type metadata.
 var (
 	SecuritySSLTruststoreKind             = reflect.TypeFor[SecuritySSLTruststore]().Name()

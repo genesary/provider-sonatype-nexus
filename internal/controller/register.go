@@ -13,11 +13,11 @@ import (
 	iamldap "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/ldap"
 	iamprivilege "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/privilege"
 	iamrole "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/role"
+	iamsaml "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/saml"
 	iamsecurityrealm "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/securityrealm"
 	iamuser "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/user"
 	iamutc "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/usertokenconfiguration"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/repository"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/saml"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/securityssltruststore"
 )
 
@@ -32,11 +32,11 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		iamldap.Setup,
 		iamprivilege.Setup,
 		iamrole.Setup,
+		iamsaml.Setup,
 		iamsecurityrealm.Setup,
 		iamuser.Setup,
 		iamutc.Setup,
 		repository.Setup,
-		saml.Setup,
 		securityssltruststore.Setup,
 	} {
 		err := setup(mgr, opts)

@@ -79,3 +79,11 @@ var (
 	LDAPKindAPIVersion   = LDAPKind + "." + SchemeGroupVersion.String()
 	LDAPGroupVersionKind = SchemeGroupVersion.WithKind(LDAPKind)
 )
+
+// SAML type metadata.
+var (
+	SAMLKind             = reflect.TypeFor[SAML]().Name()
+	SAMLGroupKind        = schema.GroupKind{Group: APIGroup, Kind: SAMLKind}.String()
+	SAMLKindAPIVersion   = SAMLKind + "." + SchemeGroupVersion.String()
+	SAMLGroupVersionKind = SchemeGroupVersion.WithKind(SAMLKind)
+)
