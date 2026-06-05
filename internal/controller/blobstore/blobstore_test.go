@@ -12,7 +12,10 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/test/mocks"
 )
 
+// TestObserve tests the Observe method.
 func TestObserve(t *testing.T) {
+	t.Parallel()
+
 	testPath := "/data/blobs/test"
 
 	tests := []struct {
@@ -168,6 +171,8 @@ func TestObserve(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -193,7 +198,10 @@ func TestObserve(t *testing.T) {
 	}
 }
 
+// TestCreate tests the Create method.
 func TestCreate(t *testing.T) {
+	t.Parallel()
+
 	testPath := "/data/blobs/test"
 
 	tests := []struct {
@@ -222,6 +230,8 @@ func TestCreate(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, mc *mocks.MockClient) {
+				t.Helper()
+
 				if len(mc.MockBlobStore.CreateFileCalls) != 1 {
 					t.Errorf("Expected 1 CreateFile call, got %d", len(mc.MockBlobStore.CreateFileCalls))
 				}
@@ -252,6 +262,8 @@ func TestCreate(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, mc *mocks.MockClient) {
+				t.Helper()
+
 				if len(mc.MockBlobStore.CreateS3Calls) != 1 {
 					t.Errorf("Expected 1 CreateS3 call, got %d", len(mc.MockBlobStore.CreateS3Calls))
 				}
@@ -283,6 +295,8 @@ func TestCreate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -304,7 +318,10 @@ func TestCreate(t *testing.T) {
 	}
 }
 
+// TestUpdate tests the Update method.
 func TestUpdate(t *testing.T) {
+	t.Parallel()
+
 	testPath := "/data/blobs/test"
 
 	tests := []struct {
@@ -338,6 +355,8 @@ func TestUpdate(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, mc *mocks.MockClient) {
+				t.Helper()
+
 				if len(mc.MockBlobStore.UpdateFileCalls) != 1 {
 					t.Errorf("Expected 1 UpdateFile call, got %d", len(mc.MockBlobStore.UpdateFileCalls))
 				}
@@ -369,6 +388,8 @@ func TestUpdate(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, mc *mocks.MockClient) {
+				t.Helper()
+
 				if len(mc.MockBlobStore.UpdateS3Calls) != 1 {
 					t.Errorf("Expected 1 UpdateS3 call, got %d", len(mc.MockBlobStore.UpdateS3Calls))
 				}
@@ -401,6 +422,8 @@ func TestUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -422,7 +445,10 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+// TestDelete tests the Delete method.
 func TestDelete(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		cr        *v1alpha1.BlobStore
@@ -453,6 +479,8 @@ func TestDelete(t *testing.T) {
 			},
 			wantErr: false,
 			validate: func(t *testing.T, mc *mocks.MockClient) {
+				t.Helper()
+
 				if len(mc.MockBlobStore.DeleteCalls) != 1 {
 					t.Errorf("Expected 1 Delete call, got %d", len(mc.MockBlobStore.DeleteCalls))
 				}
@@ -512,6 +540,8 @@ func TestDelete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -533,7 +563,10 @@ func TestDelete(t *testing.T) {
 	}
 }
 
+// TestIsNotFound tests the isNotFound function.
 func TestIsNotFound(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		err  error
@@ -568,6 +601,8 @@ func TestIsNotFound(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := isNotFound(tt.err); got != tt.want {
 				t.Errorf("isNotFound() = %v, want %v", got, tt.want)
 			}
@@ -575,7 +610,10 @@ func TestIsNotFound(t *testing.T) {
 	}
 }
 
+// TestGenerateFileBlobStore tests the generateFileBlobStore function.
 func TestGenerateFileBlobStore(t *testing.T) {
+	t.Parallel()
+
 	testPath := "/data/blobs/test"
 	quotaType := "spaceRemainingQuota"
 	quotaLimit := int64(1000000)
@@ -641,6 +679,8 @@ func TestGenerateFileBlobStore(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := generateFileBlobStore(tt.cr)
 			if got.Name != tt.want.Name {
 				t.Errorf("generateFileBlobStore() Name = %v, want %v", got.Name, tt.want.Name)
@@ -650,18 +690,22 @@ func TestGenerateFileBlobStore(t *testing.T) {
 				t.Errorf("generateFileBlobStore() Path = %v, want %v", got.Path, tt.want.Path)
 			}
 
-			if tt.want.SoftQuota != nil {
-				if got.SoftQuota == nil {
-					t.Error("generateFileBlobStore() SoftQuota is nil, want non-nil")
-				} else {
-					if got.SoftQuota.Type != tt.want.SoftQuota.Type {
-						t.Errorf("generateFileBlobStore() SoftQuota.Type = %v, want %v", got.SoftQuota.Type, tt.want.SoftQuota.Type)
-					}
+			if tt.want.SoftQuota == nil {
+				return
+			}
 
-					if got.SoftQuota.Limit != tt.want.SoftQuota.Limit {
-						t.Errorf("generateFileBlobStore() SoftQuota.Limit = %v, want %v", got.SoftQuota.Limit, tt.want.SoftQuota.Limit)
-					}
-				}
+			if got.SoftQuota == nil {
+				t.Error("generateFileBlobStore() SoftQuota is nil, want non-nil")
+
+				return
+			}
+
+			if got.SoftQuota.Type != tt.want.SoftQuota.Type {
+				t.Errorf("generateFileBlobStore() SoftQuota.Type = %v, want %v", got.SoftQuota.Type, tt.want.SoftQuota.Type)
+			}
+
+			if got.SoftQuota.Limit != tt.want.SoftQuota.Limit {
+				t.Errorf("generateFileBlobStore() SoftQuota.Limit = %v, want %v", got.SoftQuota.Limit, tt.want.SoftQuota.Limit)
 			}
 		})
 	}

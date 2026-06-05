@@ -93,6 +93,7 @@ type UserList struct {
 	Items []User `json:"items"`
 }
 
+// init registers this type with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&User{}, &UserList{})
 }

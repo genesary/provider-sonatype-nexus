@@ -91,6 +91,7 @@ type SAMLList struct {
 	Items []SAML `json:"items"`
 }
 
+// init registers this type with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&SAML{}, &SAMLList{})
 }

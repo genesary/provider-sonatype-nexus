@@ -13,6 +13,7 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/test/mocks"
 )
 
+// testPem is a test PEM certificate.
 const testPem = `-----BEGIN CERTIFICATE-----
 MIIBkTCB+wIJALRiMLAh0ERXMA0GCSqGSIb3DQEBBQUAMBExDzANBgNVBAMMBnRl
 c3RDQTAYHDI1MDEwMTAwMDAwMFoYDzIwNTAwMTAxMDAwMDAwWjARMQ8wDQYDVQQD
@@ -22,6 +23,7 @@ L1JohBCR0MNMIyBjR0FNBHiPl0BoO/Iu2k0U4MAlr7KCi/ByMLBmsAy0JwPfJbm
 DQEBBQUAA0EAxSPMb7r3v4fhfW6oSaqJN8JgRJAJBfBNOsNhLZYMaO5YoKWXYhGA
 -----END CERTIFICATE-----`
 
+// newTruststoreCR creates a new SecuritySSLTruststore CR for testing.
 func newTruststoreCR(pem string) *v1alpha1.SecuritySSLTruststore {
 	cr := &v1alpha1.SecuritySSLTruststore{
 		ObjectMeta: metav1.ObjectMeta{
@@ -38,7 +40,10 @@ func newTruststoreCR(pem string) *v1alpha1.SecuritySSLTruststore {
 	return cr
 }
 
+// TestObserve tests the Observe method.
 func TestObserve(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name         string
 		cr           *v1alpha1.SecuritySSLTruststore
@@ -136,6 +141,8 @@ func TestObserve(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -161,7 +168,10 @@ func TestObserve(t *testing.T) {
 	}
 }
 
+// TestCreate tests the Create method.
 func TestCreate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		cr        *v1alpha1.SecuritySSLTruststore
@@ -210,6 +220,8 @@ func TestCreate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -232,7 +244,10 @@ func TestCreate(t *testing.T) {
 	}
 }
 
+// TestUpdate tests the Update method.
 func TestUpdate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		cr        *v1alpha1.SecuritySSLTruststore
@@ -284,6 +299,8 @@ func TestUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -299,7 +316,10 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+// TestDelete tests the Delete method.
 func TestDelete(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		cr        *v1alpha1.SecuritySSLTruststore
@@ -361,6 +381,8 @@ func TestDelete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)

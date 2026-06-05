@@ -12,7 +12,10 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/test/mocks"
 )
 
+// TestRepositoryObserve tests the Observe method for repositories.
 func TestRepositoryObserve(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name         string
 		cr           *v1alpha1.Repository
@@ -202,6 +205,8 @@ func TestRepositoryObserve(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -229,7 +234,10 @@ func TestRepositoryObserve(t *testing.T) {
 	}
 }
 
+// TestRepositoryCreate tests the Create method for repositories.
 func TestRepositoryCreate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		cr        *v1alpha1.Repository
@@ -394,6 +402,8 @@ func TestRepositoryCreate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -409,7 +419,10 @@ func TestRepositoryCreate(t *testing.T) {
 	}
 }
 
+// TestRepositoryUpdate tests the Update method for repositories.
 func TestRepositoryUpdate(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		cr        *v1alpha1.Repository
@@ -495,6 +508,8 @@ func TestRepositoryUpdate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -510,7 +525,10 @@ func TestRepositoryUpdate(t *testing.T) {
 	}
 }
 
+// TestRepositoryDelete tests the Delete method for repositories.
 func TestRepositoryDelete(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		cr        *v1alpha1.Repository
@@ -617,6 +635,8 @@ func TestRepositoryDelete(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			mc := mocks.NewMockClient()
 			if tt.mockSetup != nil {
 				tt.mockSetup(mc)
@@ -632,7 +652,10 @@ func TestRepositoryDelete(t *testing.T) {
 	}
 }
 
+// TestRepositoryIsNotFound tests the isNotFound function for repositories.
 func TestRepositoryIsNotFound(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		err  error
@@ -667,6 +690,8 @@ func TestRepositoryIsNotFound(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := isNotFound(tt.err); got != tt.want {
 				t.Errorf("isNotFound() = %v, want %v", got, tt.want)
 			}
@@ -674,7 +699,10 @@ func TestRepositoryIsNotFound(t *testing.T) {
 	}
 }
 
+// TestStringSlicesEqual tests the stringSlicesEqual function.
 func TestStringSlicesEqual(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name string
 		a    []string
@@ -715,6 +743,8 @@ func TestStringSlicesEqual(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			if got := stringSlicesEqual(tt.a, tt.b); got != tt.want {
 				t.Errorf("stringSlicesEqual() = %v, want %v", got, tt.want)
 			}

@@ -14,132 +14,127 @@ import (
 // MavenHandler handles Maven repository operations.
 type MavenHandler struct{}
 
+// SupportedTypes returns the repository types supported by MavenHandler.
 func (h *MavenHandler) SupportedTypes() []string {
-	return []string{"hosted", "proxy", "group"}
+	return []string{repoTypeHosted, repoTypeProxy, repoTypeGroup}
 }
 
-func (h *MavenHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, cr *v1alpha1.Repository) (bool, bool) {
+// Observe checks whether the Maven repository exists and is up to date.
+func (h *MavenHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
-	case "hosted":
-		repo, err := client.Repository().GetMavenHosted(ctx, name)
-		if err != nil || repo == nil {
-			return false, false
-		}
-
-		return true, h.isHostedUpToDate(cr, repo)
-	case "proxy":
-		repo, err := client.Repository().GetMavenProxy(ctx, name)
-		if err != nil || repo == nil {
-			return false, false
-		}
-
-		return true, h.isProxyUpToDate(cr, repo)
-	case "group":
-		repo, err := client.Repository().GetMavenGroup(ctx, name)
-		if err != nil || repo == nil {
-			return false, false
-		}
-
-		return true, h.isGroupUpToDate(cr, repo)
+	case repoTypeHosted:
+		return observeRepo(ctx, name, client.Repository().GetMavenHosted, h.isHostedUpToDate, repoCR)
+	case repoTypeProxy:
+		return observeRepo(ctx, name, client.Repository().GetMavenProxy, h.isProxyUpToDate, repoCR)
+	case repoTypeGroup:
+		return observeRepo(ctx, name, client.Repository().GetMavenGroup, h.isGroupUpToDate, repoCR)
 	}
 
 	return false, false
 }
 
-func (h *MavenHandler) Create(ctx context.Context, client nexus.Client, cr *v1alpha1.Repository, repoType string) error {
+// Create creates a new Maven repository of the given type.
+func (h *MavenHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
 	switch repoType {
-	case "hosted":
-		return client.Repository().CreateMavenHosted(ctx, h.generateHosted(cr))
-	case "proxy":
-		return client.Repository().CreateMavenProxy(ctx, h.generateProxy(ctx, cr))
-	case "group":
-		return client.Repository().CreateMavenGroup(ctx, h.generateGroup(cr))
+	case repoTypeHosted:
+		return client.Repository().CreateMavenHosted(ctx, h.generateHosted(repoCR))
+	case repoTypeProxy:
+		return client.Repository().CreateMavenProxy(ctx, h.generateProxy(ctx, repoCR))
+	case repoTypeGroup:
+		return client.Repository().CreateMavenGroup(ctx, h.generateGroup(repoCR))
 	}
 
 	return errors.Errorf("unsupported maven repository type: %s", repoType)
 }
 
-func (h *MavenHandler) Update(ctx context.Context, client nexus.Client, name string, cr *v1alpha1.Repository, repoType string) error {
+// Update updates an existing Maven repository of the given type.
+func (h *MavenHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
 	switch repoType {
-	case "hosted":
-		return client.Repository().UpdateMavenHosted(ctx, name, h.generateHosted(cr))
-	case "proxy":
-		return client.Repository().UpdateMavenProxy(ctx, name, h.generateProxy(ctx, cr))
-	case "group":
-		return client.Repository().UpdateMavenGroup(ctx, name, h.generateGroup(cr))
+	case repoTypeHosted:
+		return client.Repository().UpdateMavenHosted(ctx, name, h.generateHosted(repoCR))
+	case repoTypeProxy:
+		return client.Repository().UpdateMavenProxy(ctx, name, h.generateProxy(ctx, repoCR))
+	case repoTypeGroup:
+		return client.Repository().UpdateMavenGroup(ctx, name, h.generateGroup(repoCR))
 	}
 
 	return errors.Errorf("unsupported maven repository type: %s", repoType)
 }
 
+// Delete removes a Maven repository of the given type.
 func (h *MavenHandler) Delete(ctx context.Context, client nexus.Client, name, repoType string) error {
 	switch repoType {
-	case "hosted":
+	case repoTypeHosted:
 		return client.Repository().DeleteMavenHosted(ctx, name)
-	case "proxy":
+	case repoTypeProxy:
 		return client.Repository().DeleteMavenProxy(ctx, name)
-	case "group":
+	case repoTypeGroup:
 		return client.Repository().DeleteMavenGroup(ctx, name)
 	}
 
 	return errors.Errorf("unsupported maven repository type: %s", repoType)
 }
 
-func (h *MavenHandler) generateHosted(cr *v1alpha1.Repository) repository.MavenHostedRepository {
+// generateHosted builds a MavenHostedRepository from the CR spec.
+func (h *MavenHandler) generateHosted(repoCR *v1alpha1.Repository) repository.MavenHostedRepository {
 	return repository.MavenHostedRepository{
-		Name:    cr.Spec.ForProvider.Name,
-		Online:  getOnline(cr),
-		Storage: generateHostedStorage(cr),
-		Maven:   generateMavenConfig(cr),
-		Cleanup: generateCleanup(cr),
+		Name:    repoCR.Spec.ForProvider.Name,
+		Online:  getOnline(repoCR),
+		Storage: generateHostedStorage(repoCR),
+		Maven:   generateMavenConfig(repoCR),
+		Cleanup: generateCleanup(repoCR),
 	}
 }
 
-func (h *MavenHandler) generateProxy(ctx context.Context, cr *v1alpha1.Repository) repository.MavenProxyRepository {
+// generateProxy builds a MavenProxyRepository from the CR spec.
+func (h *MavenHandler) generateProxy(ctx context.Context, repoCR *v1alpha1.Repository) repository.MavenProxyRepository {
 	return repository.MavenProxyRepository{
-		Name:          cr.Spec.ForProvider.Name,
-		Online:        getOnline(cr),
-		Storage:       generateProxyStorage(cr),
-		Maven:         generateMavenConfig(cr),
-		Proxy:         generateProxyConfig(cr),
-		NegativeCache: generateNegativeCache(cr),
-		HTTPClient:    generateHTTPClientWithPreemptiveAuth(ctx, cr),
+		Name:          repoCR.Spec.ForProvider.Name,
+		Online:        getOnline(repoCR),
+		Storage:       generateProxyStorage(repoCR),
+		Maven:         generateMavenConfig(repoCR),
+		Proxy:         generateProxyConfig(repoCR),
+		NegativeCache: generateNegativeCache(repoCR),
+		HTTPClient:    generateHTTPClientWithPreemptiveAuth(ctx, repoCR),
 	}
 }
 
-func (h *MavenHandler) generateGroup(cr *v1alpha1.Repository) repository.MavenGroupRepository {
+// generateGroup builds a MavenGroupRepository from the CR spec.
+func (h *MavenHandler) generateGroup(repoCR *v1alpha1.Repository) repository.MavenGroupRepository {
 	return repository.MavenGroupRepository{
-		Name:    cr.Spec.ForProvider.Name,
-		Online:  getOnline(cr),
-		Storage: generateProxyStorage(cr),
-		Group:   generateGroupConfig(cr),
+		Name:    repoCR.Spec.ForProvider.Name,
+		Online:  getOnline(repoCR),
+		Storage: generateProxyStorage(repoCR),
+		Group:   generateGroupConfig(repoCR),
 	}
 }
 
-func (h *MavenHandler) isHostedUpToDate(cr *v1alpha1.Repository, repo *repository.MavenHostedRepository) bool {
-	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
+// isHostedUpToDate reports whether the hosted repository matches the CR spec.
+func (h *MavenHandler) isHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.MavenHostedRepository) bool {
+	if repoCR.Spec.ForProvider.Online != nil && repo.Online != *repoCR.Spec.ForProvider.Online {
 		return false
 	}
 
-	if cr.Spec.ForProvider.Storage != nil {
-		if repo.Storage.BlobStoreName != cr.Spec.ForProvider.Storage.BlobStoreName {
-			return false
-		}
-
-		if cr.Spec.ForProvider.Storage.WritePolicy != nil && repo.Storage.WritePolicy != nil &&
-			string(*repo.Storage.WritePolicy) != *cr.Spec.ForProvider.Storage.WritePolicy {
-			return false
-		}
+	if !h.isHostedStorageUpToDate(repoCR, repo) {
+		return false
 	}
 
-	if cr.Spec.ForProvider.Maven != nil {
-		if cr.Spec.ForProvider.Maven.VersionPolicy != nil &&
-			string(repo.VersionPolicy) != *cr.Spec.ForProvider.Maven.VersionPolicy {
+	if !h.isHostedMavenConfigUpToDate(repoCR, repo) {
+		return false
+	}
+
+	return true
+}
+
+// isHostedStorageUpToDate checks if the storage fields are up to date.
+func (h *MavenHandler) isHostedStorageUpToDate(repoCR *v1alpha1.Repository, repo *repository.MavenHostedRepository) bool {
+	if repoCR.Spec.ForProvider.Storage != nil {
+		if repo.Storage.BlobStoreName != repoCR.Spec.ForProvider.Storage.BlobStoreName {
 			return false
 		}
 
-		if cr.Spec.ForProvider.Maven.LayoutPolicy != nil &&
-			string(repo.LayoutPolicy) != *cr.Spec.ForProvider.Maven.LayoutPolicy {
+		if repoCR.Spec.ForProvider.Storage.WritePolicy != nil && repo.Storage.WritePolicy != nil &&
+			string(*repo.Storage.WritePolicy) != *repoCR.Spec.ForProvider.Storage.WritePolicy {
 			return false
 		}
 	}
@@ -147,31 +142,16 @@ func (h *MavenHandler) isHostedUpToDate(cr *v1alpha1.Repository, repo *repositor
 	return true
 }
 
-func (h *MavenHandler) isProxyUpToDate(cr *v1alpha1.Repository, repo *repository.MavenProxyRepository) bool {
-	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
-		return false
-	}
-
-	if cr.Spec.ForProvider.Storage != nil {
-		if repo.BlobStoreName != cr.Spec.ForProvider.Storage.BlobStoreName {
-			return false
-		}
-	}
-
-	if cr.Spec.ForProvider.Proxy != nil {
-		if repo.RemoteURL != cr.Spec.ForProvider.Proxy.RemoteURL {
-			return false
-		}
-	}
-
-	if cr.Spec.ForProvider.Maven != nil {
-		if cr.Spec.ForProvider.Maven.VersionPolicy != nil &&
-			string(repo.VersionPolicy) != *cr.Spec.ForProvider.Maven.VersionPolicy {
+// isMavenConfigUpToDate checks if Maven version/layout policy fields match.
+func (h *MavenHandler) isMavenConfigUpToDate(repoCR *v1alpha1.Repository, versionPolicy, layoutPolicy string) bool {
+	if repoCR.Spec.ForProvider.Maven != nil {
+		if repoCR.Spec.ForProvider.Maven.VersionPolicy != nil &&
+			versionPolicy != *repoCR.Spec.ForProvider.Maven.VersionPolicy {
 			return false
 		}
 
-		if cr.Spec.ForProvider.Maven.LayoutPolicy != nil &&
-			string(repo.LayoutPolicy) != *cr.Spec.ForProvider.Maven.LayoutPolicy {
+		if repoCR.Spec.ForProvider.Maven.LayoutPolicy != nil &&
+			layoutPolicy != *repoCR.Spec.ForProvider.Maven.LayoutPolicy {
 			return false
 		}
 	}
@@ -179,13 +159,70 @@ func (h *MavenHandler) isProxyUpToDate(cr *v1alpha1.Repository, repo *repository
 	return true
 }
 
-func (h *MavenHandler) isGroupUpToDate(cr *v1alpha1.Repository, repo *repository.MavenGroupRepository) bool {
-	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
+// isHostedMavenConfigUpToDate checks if the Maven-specific fields are
+// up to date for a hosted repository.
+func (h *MavenHandler) isHostedMavenConfigUpToDate(repoCR *v1alpha1.Repository, repo *repository.MavenHostedRepository) bool {
+	return h.isMavenConfigUpToDate(repoCR, string(repo.VersionPolicy), string(repo.LayoutPolicy))
+}
+
+// isProxyUpToDate reports whether the proxy repository matches the CR spec.
+func (h *MavenHandler) isProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.MavenProxyRepository) bool {
+	if repoCR.Spec.ForProvider.Online != nil && repo.Online != *repoCR.Spec.ForProvider.Online {
 		return false
 	}
 
-	if cr.Spec.ForProvider.Group != nil {
-		if !utils.StringSlicesEqual(repo.MemberNames, cr.Spec.ForProvider.Group.MemberNames) {
+	if !h.isProxyStorageUpToDate(repoCR, repo) {
+		return false
+	}
+
+	if !h.isProxyRemoteURLUpToDate(repoCR, repo) {
+		return false
+	}
+
+	if !h.isProxyMavenConfigUpToDate(repoCR, repo) {
+		return false
+	}
+
+	return true
+}
+
+// isProxyStorageUpToDate checks if the storage fields are up to date for a
+// proxy repository.
+func (h *MavenHandler) isProxyStorageUpToDate(repoCR *v1alpha1.Repository, repo *repository.MavenProxyRepository) bool {
+	if repoCR.Spec.ForProvider.Storage != nil {
+		if repo.BlobStoreName != repoCR.Spec.ForProvider.Storage.BlobStoreName {
+			return false
+		}
+	}
+
+	return true
+}
+
+// isProxyRemoteURLUpToDate checks if the remote URL is up to date.
+func (h *MavenHandler) isProxyRemoteURLUpToDate(repoCR *v1alpha1.Repository, repo *repository.MavenProxyRepository) bool {
+	if repoCR.Spec.ForProvider.Proxy != nil {
+		if repo.RemoteURL != repoCR.Spec.ForProvider.Proxy.RemoteURL {
+			return false
+		}
+	}
+
+	return true
+}
+
+// isProxyMavenConfigUpToDate checks if the Maven-specific fields are up to
+// date for a proxy repository.
+func (h *MavenHandler) isProxyMavenConfigUpToDate(repoCR *v1alpha1.Repository, repo *repository.MavenProxyRepository) bool {
+	return h.isMavenConfigUpToDate(repoCR, string(repo.VersionPolicy), string(repo.LayoutPolicy))
+}
+
+// isGroupUpToDate reports whether the group repository matches the CR spec.
+func (h *MavenHandler) isGroupUpToDate(repoCR *v1alpha1.Repository, repo *repository.MavenGroupRepository) bool {
+	if repoCR.Spec.ForProvider.Online != nil && repo.Online != *repoCR.Spec.ForProvider.Online {
+		return false
+	}
+
+	if repoCR.Spec.ForProvider.Group != nil {
+		if !utils.StringSlicesEqual(repo.MemberNames, repoCR.Spec.ForProvider.Group.MemberNames) {
 			return false
 		}
 	}

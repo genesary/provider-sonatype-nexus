@@ -78,6 +78,7 @@ type RoleList struct {
 	Items []Role `json:"items"`
 }
 
+// init registers this type with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&Role{}, &RoleList{})
 }

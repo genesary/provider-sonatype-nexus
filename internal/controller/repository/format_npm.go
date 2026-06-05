@@ -14,132 +14,118 @@ import (
 // NpmHandler handles npm repository operations.
 type NpmHandler struct{}
 
+// SupportedTypes returns the repository types supported by NpmHandler.
 func (h *NpmHandler) SupportedTypes() []string {
-	return []string{"hosted", "proxy", "group"}
+	return []string{repoTypeHosted, repoTypeProxy, repoTypeGroup}
 }
 
-func (h *NpmHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, cr *v1alpha1.Repository) (bool, bool) {
+// Observe checks whether the npm repository exists and is up to date.
+func (h *NpmHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
-	case "hosted":
-		repo, err := client.Repository().GetNpmHosted(ctx, name)
-		if err != nil || repo == nil {
-			return false, false
-		}
-
-		return true, h.isHostedUpToDate(cr, repo)
-	case "proxy":
-		repo, err := client.Repository().GetNpmProxy(ctx, name)
-		if err != nil || repo == nil {
-			return false, false
-		}
-
-		return true, h.isProxyUpToDate(cr, repo)
-	case "group":
-		repo, err := client.Repository().GetNpmGroup(ctx, name)
-		if err != nil || repo == nil {
-			return false, false
-		}
-
-		return true, h.isGroupUpToDate(cr, repo)
+	case repoTypeHosted:
+		return observeRepo(ctx, name, client.Repository().GetNpmHosted, h.isHostedUpToDate, repoCR)
+	case repoTypeProxy:
+		return observeRepo(ctx, name, client.Repository().GetNpmProxy, h.isProxyUpToDate, repoCR)
+	case repoTypeGroup:
+		return observeRepo(ctx, name, client.Repository().GetNpmGroup, h.isGroupUpToDate, repoCR)
 	}
 
 	return false, false
 }
 
-func (h *NpmHandler) Create(ctx context.Context, client nexus.Client, cr *v1alpha1.Repository, repoType string) error {
+// Create creates a new npm repository of the given type.
+func (h *NpmHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
 	switch repoType {
-	case "hosted":
-		return client.Repository().CreateNpmHosted(ctx, h.generateHosted(cr))
-	case "proxy":
-		return client.Repository().CreateNpmProxy(ctx, h.generateProxy(ctx, cr))
-	case "group":
-		return client.Repository().CreateNpmGroup(ctx, h.generateGroup(cr))
+	case repoTypeHosted:
+		return client.Repository().CreateNpmHosted(ctx, h.generateHosted(repoCR))
+	case repoTypeProxy:
+		return client.Repository().CreateNpmProxy(ctx, h.generateProxy(ctx, repoCR))
+	case repoTypeGroup:
+		return client.Repository().CreateNpmGroup(ctx, h.generateGroup(repoCR))
 	}
 
 	return errors.Errorf("unsupported npm repository type: %s", repoType)
 }
 
-func (h *NpmHandler) Update(ctx context.Context, client nexus.Client, name string, cr *v1alpha1.Repository, repoType string) error {
+// Update updates an existing npm repository of the given type.
+func (h *NpmHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
 	switch repoType {
-	case "hosted":
-		return client.Repository().UpdateNpmHosted(ctx, name, h.generateHosted(cr))
-	case "proxy":
-		return client.Repository().UpdateNpmProxy(ctx, name, h.generateProxy(ctx, cr))
-	case "group":
-		return client.Repository().UpdateNpmGroup(ctx, name, h.generateGroup(cr))
+	case repoTypeHosted:
+		return client.Repository().UpdateNpmHosted(ctx, name, h.generateHosted(repoCR))
+	case repoTypeProxy:
+		return client.Repository().UpdateNpmProxy(ctx, name, h.generateProxy(ctx, repoCR))
+	case repoTypeGroup:
+		return client.Repository().UpdateNpmGroup(ctx, name, h.generateGroup(repoCR))
 	}
 
 	return errors.Errorf("unsupported npm repository type: %s", repoType)
 }
 
+// Delete removes an npm repository of the given type.
 func (h *NpmHandler) Delete(ctx context.Context, client nexus.Client, name, repoType string) error {
 	switch repoType {
-	case "hosted":
+	case repoTypeHosted:
 		return client.Repository().DeleteNpmHosted(ctx, name)
-	case "proxy":
+	case repoTypeProxy:
 		return client.Repository().DeleteNpmProxy(ctx, name)
-	case "group":
+	case repoTypeGroup:
 		return client.Repository().DeleteNpmGroup(ctx, name)
 	}
 
 	return errors.Errorf("unsupported npm repository type: %s", repoType)
 }
 
-func (h *NpmHandler) generateHosted(cr *v1alpha1.Repository) repository.NpmHostedRepository {
+// generateHosted builds a NpmHostedRepository from the CR spec.
+func (h *NpmHandler) generateHosted(repoCR *v1alpha1.Repository) repository.NpmHostedRepository {
 	return repository.NpmHostedRepository{
-		Name:    cr.Spec.ForProvider.Name,
-		Online:  getOnline(cr),
-		Storage: generateHostedStorage(cr),
-		Cleanup: generateCleanup(cr),
+		Name:    repoCR.Spec.ForProvider.Name,
+		Online:  getOnline(repoCR),
+		Storage: generateHostedStorage(repoCR),
+		Cleanup: generateCleanup(repoCR),
 	}
 }
 
-func (h *NpmHandler) generateProxy(ctx context.Context, cr *v1alpha1.Repository) repository.NpmProxyRepository {
+// generateProxy builds a NpmProxyRepository from the CR spec.
+func (h *NpmHandler) generateProxy(ctx context.Context, repoCR *v1alpha1.Repository) repository.NpmProxyRepository {
 	return repository.NpmProxyRepository{
-		Name:          cr.Spec.ForProvider.Name,
-		Online:        getOnline(cr),
-		Storage:       generateProxyStorage(cr),
-		Proxy:         generateProxyConfig(cr),
-		NegativeCache: generateNegativeCache(cr),
-		HTTPClient:    generateHTTPClient(ctx, cr),
+		Name:          repoCR.Spec.ForProvider.Name,
+		Online:        getOnline(repoCR),
+		Storage:       generateProxyStorage(repoCR),
+		Proxy:         generateProxyConfig(repoCR),
+		NegativeCache: generateNegativeCache(repoCR),
+		HTTPClient:    generateHTTPClient(ctx, repoCR),
 	}
 }
 
-func (h *NpmHandler) generateGroup(cr *v1alpha1.Repository) repository.NpmGroupRepository {
+// generateGroup builds a NpmGroupRepository from the CR spec.
+func (h *NpmHandler) generateGroup(repoCR *v1alpha1.Repository) repository.NpmGroupRepository {
 	return repository.NpmGroupRepository{
-		Name:    cr.Spec.ForProvider.Name,
-		Online:  getOnline(cr),
-		Storage: generateProxyStorage(cr),
-		Group:   generateGroupDeployConfig(cr),
+		Name:    repoCR.Spec.ForProvider.Name,
+		Online:  getOnline(repoCR),
+		Storage: generateProxyStorage(repoCR),
+		Group:   generateGroupDeployConfig(repoCR),
 	}
 }
 
-func (h *NpmHandler) isHostedUpToDate(cr *v1alpha1.Repository, repo *repository.NpmHostedRepository) bool {
-	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
-		return false
-	}
-
-	if cr.Spec.ForProvider.Storage != nil {
-		if repo.Storage.BlobStoreName != cr.Spec.ForProvider.Storage.BlobStoreName {
-			return false
-		}
-
-		if cr.Spec.ForProvider.Storage.WritePolicy != nil && repo.Storage.WritePolicy != nil &&
-			string(*repo.Storage.WritePolicy) != *cr.Spec.ForProvider.Storage.WritePolicy {
-			return false
-		}
-	}
-
-	return true
+// isHostedUpToDate reports whether the npm hosted repository matches the
+// CR spec.
+func (h *NpmHandler) isHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.NpmHostedRepository) bool {
+	return isSimpleHostedUpToDate(
+		repoCR,
+		repo.Online,
+		repo.Storage.BlobStoreName,
+		repo.Storage.WritePolicy,
+	)
 }
 
-func (h *NpmHandler) isProxyUpToDate(cr *v1alpha1.Repository, repo *repository.NpmProxyRepository) bool {
-	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
+// isProxyUpToDate reports whether the proxy repository matches the CR spec.
+func (h *NpmHandler) isProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.NpmProxyRepository) bool {
+	if repoCR.Spec.ForProvider.Online != nil && repo.Online != *repoCR.Spec.ForProvider.Online {
 		return false
 	}
 
-	if cr.Spec.ForProvider.Proxy != nil {
-		if repo.RemoteURL != cr.Spec.ForProvider.Proxy.RemoteURL {
+	if repoCR.Spec.ForProvider.Proxy != nil {
+		if repo.RemoteURL != repoCR.Spec.ForProvider.Proxy.RemoteURL {
 			return false
 		}
 	}
@@ -147,13 +133,14 @@ func (h *NpmHandler) isProxyUpToDate(cr *v1alpha1.Repository, repo *repository.N
 	return true
 }
 
-func (h *NpmHandler) isGroupUpToDate(cr *v1alpha1.Repository, repo *repository.NpmGroupRepository) bool {
-	if cr.Spec.ForProvider.Online != nil && repo.Online != *cr.Spec.ForProvider.Online {
+// isGroupUpToDate reports whether the group repository matches the CR spec.
+func (h *NpmHandler) isGroupUpToDate(repoCR *v1alpha1.Repository, repo *repository.NpmGroupRepository) bool {
+	if repoCR.Spec.ForProvider.Online != nil && repo.Online != *repoCR.Spec.ForProvider.Online {
 		return false
 	}
 
-	if cr.Spec.ForProvider.Group != nil {
-		if !utils.StringSlicesEqual(repo.Group.MemberNames, cr.Spec.ForProvider.Group.MemberNames) {
+	if repoCR.Spec.ForProvider.Group != nil {
+		if !utils.StringSlicesEqual(repo.Group.MemberNames, repoCR.Spec.ForProvider.Group.MemberNames) {
 			return false
 		}
 	}

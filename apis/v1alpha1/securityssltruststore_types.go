@@ -5,14 +5,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// SecuritySSLTruststoreParameters defines the desired state of a truststore certificate.
+// SecuritySSLTruststoreParameters defines the desired state of a
+// truststore certificate.
 type SecuritySSLTruststoreParameters struct {
 	// Pem is the certificate in PEM format to add to the Nexus truststore.
 	// +kubebuilder:validation:Required
 	Pem string `json:"pem"`
 }
 
-// SecuritySSLTruststoreObservation represents the observed state of a truststore certificate.
+// SecuritySSLTruststoreObservation represents the observed state of a
+// truststore certificate.
 type SecuritySSLTruststoreObservation struct {
 	// ID is the certificate identifier in Nexus.
 	// +optional
@@ -66,7 +68,8 @@ type SecuritySSLTruststoreSpec struct {
 	ForProvider SecuritySSLTruststoreParameters `json:"forProvider"`
 }
 
-// SecuritySSLTruststoreStatus defines the observed state of SecuritySSLTruststore.
+// SecuritySSLTruststoreStatus defines the observed state of
+// SecuritySSLTruststore.
 type SecuritySSLTruststoreStatus struct {
 	xpv2.ManagedResourceStatus `json:",inline"`
 
@@ -102,6 +105,7 @@ type SecuritySSLTruststoreList struct {
 	Items []SecuritySSLTruststore `json:"items"`
 }
 
+// init registers this type with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&SecuritySSLTruststore{}, &SecuritySSLTruststoreList{})
 }

@@ -137,6 +137,7 @@ type BlobStoreList struct {
 	Items []BlobStore `json:"items"`
 }
 
+// init registers this type with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&BlobStore{}, &BlobStoreList{})
 }

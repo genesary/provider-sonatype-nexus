@@ -144,7 +144,8 @@ type LDAPParameters struct {
 	GroupMemberFormat *string `json:"groupMemberFormat,omitempty"`
 }
 
-// LDAPObservation represents the observed state of an LDAP server configuration.
+// LDAPObservation represents the observed state of an LDAP server
+// configuration.
 type LDAPObservation struct {
 	// ID is the internal LDAP server ID.
 	ID *string `json:"id,omitempty"`
@@ -192,6 +193,7 @@ type LDAPList struct {
 	Items []LDAP `json:"items"`
 }
 
+// init registers this type with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&LDAP{}, &LDAPList{})
 }

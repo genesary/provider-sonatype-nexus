@@ -9,7 +9,8 @@ import (
 
 // FormatHandler defines the operations for a specific repository format.
 // Each format (maven, docker, npm, etc.) implements this interface.
-// This pattern simplifies the main controller and makes it easy to add new formats.
+// This pattern simplifies the main controller and makes it easy to add new
+// formats.
 type FormatHandler interface {
 	// Observe checks if the repository exists and if it matches the desired state.
 	// Returns (exists, upToDate) where:

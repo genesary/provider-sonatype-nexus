@@ -102,6 +102,7 @@ type PrivilegeList struct {
 	Items []Privilege `json:"items"`
 }
 
+// init registers this type with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&Privilege{}, &PrivilegeList{})
 }

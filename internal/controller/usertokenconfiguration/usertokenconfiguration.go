@@ -1,4 +1,5 @@
-// Package usertokenconfiguration contains the controller for UserTokenConfiguration resources.
+// Package usertokenconfiguration contains the controller for
+// UserTokenConfiguration resources.
 package usertokenconfiguration
 
 import (
@@ -19,35 +20,45 @@ import (
 )
 
 const (
-	errNotUserTokenConfig    = "managed resource is not a UserTokenConfiguration custom resource"
-	errTrackPCUsage          = "cannot track ProviderConfig usage"
-	errGetPC                 = "cannot get ProviderConfig"
-	errGetCreds              = "cannot get credentials"
-	errNewClient             = "cannot create new Nexus client"
-	errGetUserTokenConfig    = "cannot get user token configuration from Nexus"
+	// errNotUserTokenConfig is returned when the managed resource is not
+	// a UserTokenConfiguration.
+	errNotUserTokenConfig = "managed resource is not a UserTokenConfiguration custom resource"
+	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
+	errTrackPCUsage = "cannot track ProviderConfig usage"
+	// errGetPC is returned when retrieving the ProviderConfig fails.
+	errGetPC = "cannot get ProviderConfig"
+	// errGetCreds is returned when retrieving credentials fails.
+	errGetCreds = "cannot get credentials"
+	// errNewClient is returned when creating the Nexus client fails.
+	errNewClient = "cannot create new Nexus client"
+	// errGetUserTokenConfig is returned when retrieving user token configuration
+	// fails.
+	errGetUserTokenConfig = "cannot get user token configuration from Nexus"
+	// errUpdateUserTokenConfig is returned when updating user token configuration
+	// fails.
 	errUpdateUserTokenConfig = "cannot update user token configuration in Nexus"
 )
 
-// Setup adds a controller that reconciles UserTokenConfiguration managed resources.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+// Setup creates a controller for UserTokenConfiguration resources.
+func Setup(mgr ctrl.Manager, opts controller.Options) error {
 	name := managed.ControllerName(v1alpha1.UserTokenConfigurationGroupKind)
 
-	r := managed.NewReconciler(mgr,
+	rec := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.UserTokenConfigurationGroupVersionKind),
 		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{}),
 		}),
-		managed.WithLogger(o.Logger.WithValues("controller", name)),
-		managed.WithPollInterval(o.PollInterval),
+		managed.WithLogger(opts.Logger.WithValues("controller", name)),
+		managed.WithPollInterval(opts.PollInterval),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		WithOptions(o.ForControllerRuntime()).
+		WithOptions(opts.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1alpha1.UserTokenConfiguration{}).
-		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
+		Complete(ratelimiter.NewReconciler(name, rec, opts.GlobalRateLimiter))
 }
 
 // connector implements managed.ExternalConnector.
@@ -56,38 +67,41 @@ type connector struct {
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	_, ok := mg.(*v1alpha1.UserTokenConfiguration)
-	if !ok {
+// Connect creates an ExternalClient for the UserTokenConfiguration controller.
+func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
+	_, isUserTokenConfig := managedRes.(*v1alpha1.UserTokenConfiguration)
+	if !isUserTokenConfig {
 		return nil, errors.New(errNotUserTokenConfig)
 	}
 
-	modernMG, ok := mg.(resource.ModernManaged)
-	if !ok {
+	modernMG, isModern := managedRes.(resource.ModernManaged)
+	if !isModern {
 		return nil, errors.New("managed resource is not a ModernManaged")
 	}
 
-	if err := c.usage.Track(ctx, modernMG); err != nil {
+	err := c.usage.Track(ctx, modernMG)
+	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	pc := &v1alpha1.ProviderConfig{}
-	if err := c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, pc); err != nil {
+	provConfig := &v1alpha1.ProviderConfig{}
+
+	err = c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, provConfig)
+	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
-	creds, err := nexus.GetCredentialsFromSecret(ctx, c.kube, pc)
+	creds, err := nexus.GetCredentialsFromSecret(ctx, c.kube, provConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetCreds)
 	}
 
-	nc, err := nexus.NewClient(creds)
+	nexusClient, err := nexus.NewClient(creds)
 	if err != nil {
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{client: nc}, nil
+	return &external{client: nexusClient}, nil
 }
 
 // external implements managed.ExternalClient.
@@ -95,17 +109,18 @@ type external struct {
 	client nexus.Client
 }
 
-// Observe the external resource.
-func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := mg.(*v1alpha1.UserTokenConfiguration)
-	if !ok {
+// Observe checks if the UserTokenConfiguration resource exists and is
+// up-to-date.
+func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
+	userTokenCfg, isUserTokenConfig := managedRes.(*v1alpha1.UserTokenConfiguration)
+	if !isUserTokenConfig {
 		return managed.ExternalObservation{}, errors.New(errNotUserTokenConfig)
 	}
 
 	// UserTokenConfiguration is a singleton in Nexus (cannot be truly deleted).
 	// When the CR is being deleted, report the resource as absent so the
 	// managed reconciler can remove the finalizer and complete deletion.
-	if cr.GetDeletionTimestamp() != nil {
+	if userTokenCfg.GetDeletionTimestamp() != nil {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -114,9 +129,9 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetUserTokenConfig)
 	}
 
-	cr.SetConditions(v1alpha1.Available())
+	userTokenCfg.SetConditions(v1alpha1.Available())
 
-	upToDate := isUserTokenConfigUpToDate(cr, config)
+	upToDate := isUserTokenConfigUpToDate(userTokenCfg, config)
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
@@ -124,14 +139,14 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}, nil
 }
 
-// Create the external resource.
-func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1alpha1.UserTokenConfiguration)
-	if !ok {
+// Create creates a new UserTokenConfiguration resource.
+func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
+	userTokenCfg, isUserTokenConfig := managedRes.(*v1alpha1.UserTokenConfiguration)
+	if !isUserTokenConfig {
 		return managed.ExternalCreation{}, errors.New(errNotUserTokenConfig)
 	}
 
-	config := generateUserTokenConfiguration(cr)
+	config := generateUserTokenConfiguration(userTokenCfg)
 
 	err := e.client.Security().UpdateUserTokenConfiguration(ctx, config)
 	if err != nil {
@@ -141,14 +156,14 @@ func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalCreation{}, nil
 }
 
-// Update the external resource.
-func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1alpha1.UserTokenConfiguration)
-	if !ok {
+// Update modifies an existing UserTokenConfiguration resource.
+func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
+	userTokenCfg, isUserTokenConfig := managedRes.(*v1alpha1.UserTokenConfiguration)
+	if !isUserTokenConfig {
 		return managed.ExternalUpdate{}, errors.New(errNotUserTokenConfig)
 	}
 
-	config := generateUserTokenConfiguration(cr)
+	config := generateUserTokenConfiguration(userTokenCfg)
 
 	err := e.client.Security().UpdateUserTokenConfiguration(ctx, config)
 	if err != nil {
@@ -158,54 +173,60 @@ func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.Ext
 	return managed.ExternalUpdate{}, nil
 }
 
-// Delete the external resource.
-func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
+// Delete removes an existing UserTokenConfiguration resource.
+func (e *external) Delete(_ context.Context, _ resource.Managed) (managed.ExternalDelete, error) {
 	// UserTokenConfiguration is a singleton; we don't delete it
 	// Optionally could disable tokens on delete
 	return managed.ExternalDelete{}, nil
 }
 
 // Disconnect from the provider.
-func (e *external) Disconnect(ctx context.Context) error {
+func (e *external) Disconnect(_ context.Context) error {
 	return nil
 }
 
 // generateUserTokenConfiguration generates configuration from the CR spec.
-func generateUserTokenConfiguration(cr *v1alpha1.UserTokenConfiguration) security.UserTokenConfiguration {
+func generateUserTokenConfiguration(userTokenCfg *v1alpha1.UserTokenConfiguration) security.UserTokenConfiguration {
 	config := security.UserTokenConfiguration{
-		Enabled: cr.Spec.ForProvider.Enabled,
+		Enabled: userTokenCfg.Spec.ForProvider.Enabled,
 	}
 
-	if cr.Spec.ForProvider.ProtectContent != nil {
-		config.ProtectContent = *cr.Spec.ForProvider.ProtectContent
+	if userTokenCfg.Spec.ForProvider.ProtectContent != nil {
+		config.ProtectContent = *userTokenCfg.Spec.ForProvider.ProtectContent
 	}
 
-	if cr.Spec.ForProvider.ExpirationEnabled != nil {
-		config.ExpirationEnabled = *cr.Spec.ForProvider.ExpirationEnabled
+	if userTokenCfg.Spec.ForProvider.ExpirationEnabled != nil {
+		config.ExpirationEnabled = *userTokenCfg.Spec.ForProvider.ExpirationEnabled
 	}
 
-	if cr.Spec.ForProvider.ExpirationDays != nil {
-		config.ExpirationDays = int(*cr.Spec.ForProvider.ExpirationDays)
+	if userTokenCfg.Spec.ForProvider.ExpirationDays != nil {
+		config.ExpirationDays = int(*userTokenCfg.Spec.ForProvider.ExpirationDays)
 	}
 
 	return config
 }
 
 // isUserTokenConfigUpToDate checks if UserTokenConfiguration is up to date.
-func isUserTokenConfigUpToDate(cr *v1alpha1.UserTokenConfiguration, config *security.UserTokenConfiguration) bool {
-	if cr.Spec.ForProvider.Enabled != config.Enabled {
+func isUserTokenConfigUpToDate(
+	userTokenCfg *v1alpha1.UserTokenConfiguration,
+	config *security.UserTokenConfiguration,
+) bool {
+	if userTokenCfg.Spec.ForProvider.Enabled != config.Enabled {
 		return false
 	}
 
-	if cr.Spec.ForProvider.ProtectContent != nil && *cr.Spec.ForProvider.ProtectContent != config.ProtectContent {
+	if userTokenCfg.Spec.ForProvider.ProtectContent != nil &&
+		*userTokenCfg.Spec.ForProvider.ProtectContent != config.ProtectContent {
 		return false
 	}
 
-	if cr.Spec.ForProvider.ExpirationEnabled != nil && *cr.Spec.ForProvider.ExpirationEnabled != config.ExpirationEnabled {
+	if userTokenCfg.Spec.ForProvider.ExpirationEnabled != nil &&
+		*userTokenCfg.Spec.ForProvider.ExpirationEnabled != config.ExpirationEnabled {
 		return false
 	}
 
-	if cr.Spec.ForProvider.ExpirationDays != nil && int(*cr.Spec.ForProvider.ExpirationDays) != config.ExpirationDays {
+	if userTokenCfg.Spec.ForProvider.ExpirationDays != nil &&
+		int(*userTokenCfg.Spec.ForProvider.ExpirationDays) != config.ExpirationDays {
 		return false
 	}
 

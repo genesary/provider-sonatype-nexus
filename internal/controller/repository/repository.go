@@ -5,7 +5,7 @@
 //   - repository.go: Main controller logic (this file)
 //   - handler.go: FormatHandler interface and registry
 //   - formats/: Format-specific handlers (maven, docker, npm, etc.)
-//   - shared.go: Shared configuration generators (kept for compatibility, will be removed)
+//   - shared.go: Shared configuration generators (will be removed)
 //
 // To add a new repository format:
 //  1. Create a new handler in formats/<format>.go
@@ -33,20 +33,33 @@ import (
 )
 
 const (
-	errNotRepository    = "managed resource is not a Repository custom resource"
-	errTrackPCUsage     = "cannot track ProviderConfig usage"
-	errGetPC            = "cannot get ProviderConfig"
-	errGetCreds         = "cannot get credentials"
-	errNewClient        = "cannot create new Nexus client"
+	// errNotRepository is returned when the managed resource is not a Repository.
+	errNotRepository = "managed resource is not a Repository custom resource"
+	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
+	errTrackPCUsage = "cannot track ProviderConfig usage"
+	// errGetPC is returned when getting the ProviderConfig fails.
+	errGetPC = "cannot get ProviderConfig"
+	// errGetCreds is returned when getting credentials fails.
+	errGetCreds = "cannot get credentials"
+	// errNewClient is returned when creating the Nexus client fails.
+	errNewClient = "cannot create new Nexus client"
+	// errCreateRepository is returned when creating the repository in Nexus fails.
 	errCreateRepository = "cannot create repository in Nexus"
+	// errUpdateRepository is returned when updating the repository in Nexus fails.
 	errUpdateRepository = "cannot update repository in Nexus"
+	// errDeleteRepository is returned when deleting the repository from
+	// Nexus fails.
 	errDeleteRepository = "cannot delete repository from Nexus"
-	errResolvePassword  = "cannot resolve password from secret"
+	// errResolvePassword is returned when resolving the password from a
+	// secret fails.
+	errResolvePassword = "cannot resolve password from secret"
 )
 
 // contextKey is used for passing resolved values through context.
 type contextKey string
 
+// resolvedPasswordKey is the context key used to store the resolved HTTP
+// client password.
 const resolvedPasswordKey contextKey = "resolvedHTTPClientPassword"
 
 // withResolvedPassword stores a resolved password in the context.
@@ -56,33 +69,33 @@ func withResolvedPassword(ctx context.Context, password string) context.Context 
 
 // getResolvedPassword retrieves the resolved password from the context.
 func getResolvedPassword(ctx context.Context) string {
-	if v, ok := ctx.Value(resolvedPasswordKey).(string); ok {
-		return v
+	if val, isString := ctx.Value(resolvedPasswordKey).(string); isString {
+		return val
 	}
 
 	return ""
 }
 
-// Setup adds a controller that reconciles Repository managed resources.
-func Setup(mgr ctrl.Manager, o controller.Options) error {
+// Setup creates a controller for Repository resources.
+func Setup(mgr ctrl.Manager, opts controller.Options) error {
 	name := managed.ControllerName(v1alpha1.RepositoryGroupKind)
 
-	r := managed.NewReconciler(mgr,
+	rec := managed.NewReconciler(mgr,
 		resource.ManagedKind(v1alpha1.RepositoryGroupVersionKind),
 		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{}),
 		}),
-		managed.WithLogger(o.Logger.WithValues("controller", name)),
-		managed.WithPollInterval(o.PollInterval),
+		managed.WithLogger(opts.Logger.WithValues("controller", name)),
+		managed.WithPollInterval(opts.PollInterval),
 		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
-		WithOptions(o.ForControllerRuntime()).
+		WithOptions(opts.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
 		For(&v1alpha1.Repository{}).
-		Complete(ratelimiter.NewReconciler(name, r, o.GlobalRateLimiter))
+		Complete(ratelimiter.NewReconciler(name, rec, opts.GlobalRateLimiter))
 }
 
 // connector implements managed.ExternalConnector.
@@ -91,28 +104,31 @@ type connector struct {
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, mg resource.Managed) (managed.ExternalClient, error) {
-	_, ok := mg.(*v1alpha1.Repository)
-	if !ok {
+// Connect creates an ExternalClient for the Repository controller.
+func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
+	_, isRepo := managedRes.(*v1alpha1.Repository)
+	if !isRepo {
 		return nil, errors.New(errNotRepository)
 	}
 
-	modernMG, ok := mg.(resource.ModernManaged)
-	if !ok {
+	modernMG, isModern := managedRes.(resource.ModernManaged)
+	if !isModern {
 		return nil, errors.New("managed resource is not a ModernManaged")
 	}
 
-	if err := c.usage.Track(ctx, modernMG); err != nil {
+	err := c.usage.Track(ctx, modernMG)
+	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	pc := &v1alpha1.ProviderConfig{}
-	if err := c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, pc); err != nil {
+	providerConfig := &v1alpha1.ProviderConfig{}
+
+	err = c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, providerConfig)
+	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
-	creds, err := nexus.GetCredentialsFromSecret(ctx, c.kube, pc)
+	creds, err := nexus.GetCredentialsFromSecret(ctx, c.kube, providerConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetCreds)
 	}
@@ -131,32 +147,32 @@ type external struct {
 	kube   client.Client
 }
 
-// Observe the external resource.
-func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := mg.(*v1alpha1.Repository)
-	if !ok {
+// Observe checks if the Repository resource exists and is up-to-date.
+func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
+	repoCR, isRepo := managedRes.(*v1alpha1.Repository)
+	if !isRepo {
 		return managed.ExternalObservation{}, errors.New(errNotRepository)
 	}
 
-	name := meta.GetExternalName(cr)
+	name := meta.GetExternalName(repoCR)
 	if name == "" {
-		name = cr.Spec.ForProvider.Name
+		name = repoCR.Spec.ForProvider.Name
 	}
 
-	format := cr.Spec.ForProvider.Format
-	repoType := cr.Spec.ForProvider.Type
+	format := repoCR.Spec.ForProvider.Format
+	repoType := repoCR.Spec.ForProvider.Type
 
 	handler := GetHandler(format)
 	if handler == nil {
 		return managed.ExternalObservation{}, errors.Errorf("unsupported format: %s", format)
 	}
 
-	exists, upToDate := handler.Observe(ctx, e.client, name, repoType, cr)
+	exists, upToDate := handler.Observe(ctx, e.client, name, repoType, repoCR)
 	if !exists {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	cr.SetConditions(v1alpha1.Available())
+	repoCR.SetConditions(v1alpha1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
@@ -164,81 +180,87 @@ func (e *external) Observe(ctx context.Context, mg resource.Managed) (managed.Ex
 	}, nil
 }
 
-// Create the external resource.
-func (e *external) Create(ctx context.Context, mg resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := mg.(*v1alpha1.Repository)
-	if !ok {
+// Create creates a new Repository resource.
+func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
+	repoCR, isRepo := managedRes.(*v1alpha1.Repository)
+	if !isRepo {
 		return managed.ExternalCreation{}, errors.New(errNotRepository)
 	}
 
-	format := cr.Spec.ForProvider.Format
-	repoType := cr.Spec.ForProvider.Type
+	format := repoCR.Spec.ForProvider.Format
+	repoType := repoCR.Spec.ForProvider.Type
 
 	handler := GetHandler(format)
 	if handler == nil {
 		return managed.ExternalCreation{}, errors.Errorf("unsupported format: %s", format)
 	}
 
-	ctx, err := e.resolveHTTPClientPassword(ctx, cr)
+	password, err := e.resolveHTTPClientPassword(ctx, repoCR)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errResolvePassword)
 	}
 
-	if err := handler.Create(ctx, e.client, cr, repoType); err != nil {
+	enrichedCtx := withResolvedPassword(ctx, password)
+
+	err = handler.Create(enrichedCtx, e.client, repoCR, repoType)
+	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateRepository)
 	}
 
-	meta.SetExternalName(cr, cr.Spec.ForProvider.Name)
+	meta.SetExternalName(repoCR, repoCR.Spec.ForProvider.Name)
 
 	return managed.ExternalCreation{}, nil
 }
 
-// Update the external resource.
-func (e *external) Update(ctx context.Context, mg resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := mg.(*v1alpha1.Repository)
-	if !ok {
+// Update modifies an existing Repository resource.
+func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
+	repoCR, isRepo := managedRes.(*v1alpha1.Repository)
+	if !isRepo {
 		return managed.ExternalUpdate{}, errors.New(errNotRepository)
 	}
 
-	name := meta.GetExternalName(cr)
+	name := meta.GetExternalName(repoCR)
 	if name == "" {
-		name = cr.Spec.ForProvider.Name
+		name = repoCR.Spec.ForProvider.Name
 	}
 
-	format := cr.Spec.ForProvider.Format
-	repoType := cr.Spec.ForProvider.Type
+	format := repoCR.Spec.ForProvider.Format
+	repoType := repoCR.Spec.ForProvider.Type
 
 	handler := GetHandler(format)
 	if handler == nil {
 		return managed.ExternalUpdate{}, errors.Errorf("unsupported format: %s", format)
 	}
 
-	ctx, err := e.resolveHTTPClientPassword(ctx, cr)
+	password, err := e.resolveHTTPClientPassword(ctx, repoCR)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errResolvePassword)
 	}
 
-	if err := handler.Update(ctx, e.client, name, cr, repoType); err != nil {
+	enrichedCtx := withResolvedPassword(ctx, password)
+
+	err = handler.Update(enrichedCtx, e.client, name, repoCR, repoType)
+	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateRepository)
 	}
 
 	return managed.ExternalUpdate{}, nil
 }
 
-// Delete the external resource.
-func (e *external) Delete(ctx context.Context, mg resource.Managed) (managed.ExternalDelete, error) {
-	cr, ok := mg.(*v1alpha1.Repository)
-	if !ok {
+// Delete removes an existing Repository resource.
+func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
+	repoCR, isRepo := managedRes.(*v1alpha1.Repository)
+	if !isRepo {
 		return managed.ExternalDelete{}, errors.New(errNotRepository)
 	}
 
-	name := meta.GetExternalName(cr)
+	name := meta.GetExternalName(repoCR)
 	if name == "" {
-		name = cr.Spec.ForProvider.Name
+		name = repoCR.Spec.ForProvider.Name
 	}
 
-	format := cr.Spec.ForProvider.Format
-	repoType := cr.Spec.ForProvider.Type
+	format := repoCR.Spec.ForProvider.Format
+	repoType := repoCR.Spec.ForProvider.Type
 
 	handler := GetHandler(format)
 	if handler == nil {
@@ -259,25 +281,25 @@ func (e *external) Disconnect(ctx context.Context) error {
 }
 
 // resolveHTTPClientPassword resolves the password from a Kubernetes secret if
-// httpClient.authentication.passwordSecretRef is configured. The resolved password
-// is stored in the context for use by shared HTTP client generation functions.
-func (e *external) resolveHTTPClientPassword(ctx context.Context, cr *v1alpha1.Repository) (context.Context, error) {
-	if cr.Spec.ForProvider.HTTPClient == nil ||
-		cr.Spec.ForProvider.HTTPClient.Authentication == nil ||
-		cr.Spec.ForProvider.HTTPClient.Authentication.PasswordSecretRef == nil {
-		return ctx, nil
+// httpClient.authentication.passwordSecretRef is configured. The resolved
+// password is returned for use by shared HTTP client generation functions.
+func (e *external) resolveHTTPClientPassword(ctx context.Context, repoCR *v1alpha1.Repository) (string, error) {
+	if repoCR.Spec.ForProvider.HTTPClient == nil ||
+		repoCR.Spec.ForProvider.HTTPClient.Authentication == nil ||
+		repoCR.Spec.ForProvider.HTTPClient.Authentication.PasswordSecretRef == nil {
+		return "", nil
 	}
 
-	ref := cr.Spec.ForProvider.HTTPClient.Authentication.PasswordSecretRef
+	ref := repoCR.Spec.ForProvider.HTTPClient.Authentication.PasswordSecretRef
 
 	data, err := resource.ExtractSecret(ctx, e.kube, xpv2.CommonCredentialSelectors{
 		SecretRef: ref,
 	})
 	if err != nil {
-		return ctx, err
+		return "", err
 	}
 
-	return withResolvedPassword(ctx, string(data)), nil
+	return string(data), nil
 }
 
 // isNotFound checks if an error indicates a resource was not found.

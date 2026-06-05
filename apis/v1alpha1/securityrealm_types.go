@@ -59,7 +59,8 @@ type SecurityRealmStatus struct {
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,nexus}
 
 // SecurityRealm is the Schema for the securityrealms API.
-// This is a singleton resource that configures which security realms are active.
+// This is a singleton resource that configures which security realms
+// are active.
 type SecurityRealm struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -78,6 +79,7 @@ type SecurityRealmList struct {
 	Items []SecurityRealm `json:"items"`
 }
 
+// init registers this type with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&SecurityRealm{}, &SecurityRealmList{})
 }
