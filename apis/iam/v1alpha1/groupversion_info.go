@@ -40,6 +40,14 @@ var (
 	UserTokenConfigurationGroupVersionKind = SchemeGroupVersion.WithKind(UserTokenConfigurationKind)
 )
 
+// Role type metadata.
+var (
+	RoleKind             = reflect.TypeFor[Role]().Name()
+	RoleGroupKind        = schema.GroupKind{Group: APIGroup, Kind: RoleKind}.String()
+	RoleKindAPIVersion   = RoleKind + "." + SchemeGroupVersion.String()
+	RoleGroupVersionKind = SchemeGroupVersion.WithKind(RoleKind)
+)
+
 // SecurityRealm type metadata.
 var (
 	SecurityRealmKind             = reflect.TypeFor[SecurityRealm]().Name()

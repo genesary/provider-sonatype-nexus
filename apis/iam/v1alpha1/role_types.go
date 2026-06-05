@@ -28,7 +28,7 @@ type RoleParameters struct {
 	Roles []string `json:"roles,omitempty"`
 }
 
-// RoleObservation represents the observed state of a Role.
+// RoleObservation is the observed state of a Role.
 type RoleObservation struct {
 	// Source of the role.
 	Source *string `json:"source,omitempty"`
@@ -78,7 +78,7 @@ type RoleList struct {
 	Items []Role `json:"items"`
 }
 
-// init registers this type with the SchemeBuilder.
+// init registers the Role types with the scheme.
 func init() {
 	SchemeBuilder.Register(&Role{}, &RoleList{})
 }

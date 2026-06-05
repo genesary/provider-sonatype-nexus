@@ -48,14 +48,6 @@ var (
 	UserGroupVersionKind = SchemeGroupVersion.WithKind(UserKind)
 )
 
-// Role type metadata.
-var (
-	RoleKind             = reflect.TypeFor[Role]().Name()
-	RoleGroupKind        = schema.GroupKind{Group: Group, Kind: RoleKind}.String()
-	RoleKindAPIVersion   = RoleKind + "." + SchemeGroupVersion.String()
-	RoleGroupVersionKind = SchemeGroupVersion.WithKind(RoleKind)
-)
-
 // Privilege type metadata.
 var (
 	PrivilegeKind             = reflect.TypeFor[Privilege]().Name()
