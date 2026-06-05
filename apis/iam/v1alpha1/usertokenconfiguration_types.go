@@ -5,8 +5,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// UserTokenConfigurationParameters defines the desired state of
-// UserTokenConfiguration.
+// UserTokenConfigurationParameters defines the desired state.
 type UserTokenConfigurationParameters struct {
 	// Enabled determines if user tokens are enabled.
 	// +kubebuilder:validation:Required
@@ -26,21 +25,17 @@ type UserTokenConfigurationParameters struct {
 	ExpirationDays *int32 `json:"expirationDays,omitempty"`
 }
 
-// UserTokenConfigurationObservation represents the observed state of
-// UserTokenConfiguration.
-type UserTokenConfigurationObservation struct {
-}
+// UserTokenConfigurationObservation is the observed state.
+type UserTokenConfigurationObservation struct{}
 
-// UserTokenConfigurationSpec defines the desired state of
-// UserTokenConfiguration.
+// UserTokenConfigurationSpec defines the desired state.
 type UserTokenConfigurationSpec struct {
 	xpv2.ManagedResourceSpec `json:",inline"`
 
 	ForProvider UserTokenConfigurationParameters `json:"forProvider"`
 }
 
-// UserTokenConfigurationStatus defines the observed state of
-// UserTokenConfiguration.
+// UserTokenConfigurationStatus defines the observed state.
 type UserTokenConfigurationStatus struct {
 	xpv2.ManagedResourceStatus `json:",inline"`
 
@@ -55,8 +50,8 @@ type UserTokenConfigurationStatus struct {
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,nexus}
 
-// UserTokenConfiguration is the Schema for the usertokenconfigurations API.
-// This is a singleton resource that configures user token settings.
+// UserTokenConfiguration configures user token settings.
+// This is a singleton resource managing Nexus user token configuration.
 type UserTokenConfiguration struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -75,7 +70,7 @@ type UserTokenConfigurationList struct {
 	Items []UserTokenConfiguration `json:"items"`
 }
 
-// init registers this type with the SchemeBuilder.
+// init registers the UserTokenConfiguration types with the scheme.
 func init() {
 	SchemeBuilder.Register(&UserTokenConfiguration{}, &UserTokenConfigurationList{})
 }

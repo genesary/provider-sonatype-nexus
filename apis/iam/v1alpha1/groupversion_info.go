@@ -32,6 +32,14 @@ var (
 	AnonymousAccessGroupVersionKind = SchemeGroupVersion.WithKind(AnonymousAccessKind)
 )
 
+// UserTokenConfiguration type metadata.
+var (
+	UserTokenConfigurationKind             = reflect.TypeFor[UserTokenConfiguration]().Name()
+	UserTokenConfigurationGroupKind        = schema.GroupKind{Group: APIGroup, Kind: UserTokenConfigurationKind}.String()
+	UserTokenConfigurationKindAPIVersion   = UserTokenConfigurationKind + "." + SchemeGroupVersion.String()
+	UserTokenConfigurationGroupVersionKind = SchemeGroupVersion.WithKind(UserTokenConfigurationKind)
+)
+
 // SecurityRealm type metadata.
 var (
 	SecurityRealmKind             = reflect.TypeFor[SecurityRealm]().Name()

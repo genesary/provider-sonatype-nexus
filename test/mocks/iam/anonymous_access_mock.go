@@ -1,3 +1,4 @@
+//nolint:dupl // mock files have structurally similar but distinct types
 package iam
 
 import (

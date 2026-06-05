@@ -80,14 +80,6 @@ var (
 	LDAPGroupVersionKind = SchemeGroupVersion.WithKind(LDAPKind)
 )
 
-// UserTokenConfiguration type metadata.
-var (
-	UserTokenConfigurationKind             = reflect.TypeFor[UserTokenConfiguration]().Name()
-	UserTokenConfigurationGroupKind        = schema.GroupKind{Group: Group, Kind: UserTokenConfigurationKind}.String()
-	UserTokenConfigurationKindAPIVersion   = UserTokenConfigurationKind + "." + SchemeGroupVersion.String()
-	UserTokenConfigurationGroupVersionKind = SchemeGroupVersion.WithKind(UserTokenConfigurationKind)
-)
-
 // SecuritySSLTruststore type metadata.
 var (
 	SecuritySSLTruststoreKind             = reflect.TypeFor[SecuritySSLTruststore]().Name()
