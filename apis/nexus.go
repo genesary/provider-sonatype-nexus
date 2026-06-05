@@ -5,6 +5,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
+	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 )
 
@@ -14,6 +15,7 @@ func init() {
 	AddToSchemes = append(AddToSchemes,
 		v1alpha1.AddToScheme,
 		contentv1alpha1.AddToScheme,
+		iamv1alpha1.AddToScheme,
 	)
 }
 

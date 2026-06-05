@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: securityrealms.nexus.crossplane.io
+  name: securityrealms.iam.nexus.crossplane.io
 spec:
-  group: nexus.crossplane.io
+  group: iam.nexus.crossplane.io
   names:
     categories:
     - crossplane
@@ -141,8 +141,7 @@ spec:
             description: SecurityRealmStatus defines the observed state of SecurityRealm.
             properties:
               atProvider:
-                description: SecurityRealmObservation represents the observed state
-                  of SecurityRealm.
+                description: SecurityRealmObservation is the observed state of SecurityRealm.
                 properties:
                   availableRealms:
                     description: AvailableRealms lists all available realms in the

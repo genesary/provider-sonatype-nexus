@@ -56,14 +56,6 @@ var (
 	RoleGroupVersionKind = SchemeGroupVersion.WithKind(RoleKind)
 )
 
-// SecurityRealm type metadata.
-var (
-	SecurityRealmKind             = reflect.TypeFor[SecurityRealm]().Name()
-	SecurityRealmGroupKind        = schema.GroupKind{Group: Group, Kind: SecurityRealmKind}.String()
-	SecurityRealmKindAPIVersion   = SecurityRealmKind + "." + SchemeGroupVersion.String()
-	SecurityRealmGroupVersionKind = SchemeGroupVersion.WithKind(SecurityRealmKind)
-)
-
 // Privilege type metadata.
 var (
 	PrivilegeKind             = reflect.TypeFor[Privilege]().Name()

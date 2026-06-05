@@ -26,12 +26,11 @@ type SecurityRealmParameters struct {
 type RealmInfo struct {
 	// ID of the realm.
 	ID string `json:"id"`
-
 	// Name of the realm.
 	Name string `json:"name"`
 }
 
-// SecurityRealmObservation represents the observed state of SecurityRealm.
+// SecurityRealmObservation is the observed state of SecurityRealm.
 type SecurityRealmObservation struct {
 	// AvailableRealms lists all available realms in the system.
 	AvailableRealms []RealmInfo `json:"availableRealms,omitempty"`
@@ -79,7 +78,7 @@ type SecurityRealmList struct {
 	Items []SecurityRealm `json:"items"`
 }
 
-// init registers this type with the SchemeBuilder.
+// init registers the SecurityRealm types with the scheme.
 func init() {
 	SchemeBuilder.Register(&SecurityRealm{}, &SecurityRealmList{})
 }

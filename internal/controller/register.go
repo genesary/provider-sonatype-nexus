@@ -10,12 +10,12 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/config"
 	contentcleanuppolicy "github.com/genesary/provider-sonatype-nexus/internal/controller/content/cleanuppolicy"
 	contentcontentselector "github.com/genesary/provider-sonatype-nexus/internal/controller/content/contentselector"
+	iamsecurityrealm "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/securityrealm"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/ldap"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/privilege"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/repository"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/role"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/saml"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/securityrealm"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/securityssltruststore"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/user"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/usertokenconfiguration"
@@ -34,7 +34,7 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		repository.Setup,
 		role.Setup,
 		saml.Setup,
-		securityrealm.Setup,
+		iamsecurityrealm.Setup,
 		securityssltruststore.Setup,
 		user.Setup,
 		usertokenconfiguration.Setup,
