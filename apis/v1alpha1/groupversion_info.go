@@ -40,14 +40,6 @@ var (
 	RepositoryGroupVersionKind = SchemeGroupVersion.WithKind(RepositoryKind)
 )
 
-// SecuritySSLTruststore type metadata.
-var (
-	SecuritySSLTruststoreKind             = reflect.TypeFor[SecuritySSLTruststore]().Name()
-	SecuritySSLTruststoreGroupKind        = schema.GroupKind{Group: Group, Kind: SecuritySSLTruststoreKind}.String()
-	SecuritySSLTruststoreKindAPIVersion   = SecuritySSLTruststoreKind + "." + SchemeGroupVersion.String()
-	SecuritySSLTruststoreGroupVersionKind = SchemeGroupVersion.WithKind(SecuritySSLTruststoreKind)
-)
-
 // ProviderConfig type metadata.
 var (
 	ProviderConfigKind             = reflect.TypeFor[ProviderConfig]().Name()

@@ -52,16 +52,19 @@ type SecuritySSLTruststoreObservation struct {
 	// +optional
 	SubjectOrganizationUnit *string `json:"subjectOrganizationUnit,omitempty"`
 
-	// IssuedOn is the timestamp when the certificate was issued (epoch millis).
+	// IssuedOn is the timestamp when the certificate was issued (epoch
+	// millis).
 	// +optional
 	IssuedOn *int64 `json:"issuedOn,omitempty"`
 
-	// ExpiresOn is the timestamp when the certificate expires (epoch millis).
+	// ExpiresOn is the timestamp when the certificate expires (epoch
+	// millis).
 	// +optional
 	ExpiresOn *int64 `json:"expiresOn,omitempty"`
 }
 
-// SecuritySSLTruststoreSpec defines the desired state of SecuritySSLTruststore.
+// SecuritySSLTruststoreSpec defines the desired state of
+// SecuritySSLTruststore.
 type SecuritySSLTruststoreSpec struct {
 	xpv2.ManagedResourceSpec `json:",inline"`
 

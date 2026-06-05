@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: securityssltruststores.nexus.crossplane.io
+  name: securityssltruststores.iam.nexus.crossplane.io
 spec:
-  group: nexus.crossplane.io
+  group: iam.nexus.crossplane.io
   names:
     categories:
     - crossplane
@@ -59,7 +59,9 @@ spec:
           metadata:
             type: object
           spec:
-            description: SecuritySSLTruststoreSpec defines the desired state of SecuritySSLTruststore.
+            description: |-
+              SecuritySSLTruststoreSpec defines the desired state of
+              SecuritySSLTruststore.
             properties:
               forProvider:
                 description: |-
@@ -142,8 +144,9 @@ spec:
                   truststore certificate.
                 properties:
                   expiresOn:
-                    description: ExpiresOn is the timestamp when the certificate expires
-                      (epoch millis).
+                    description: |-
+                      ExpiresOn is the timestamp when the certificate expires (epoch
+                      millis).
                     format: int64
                     type: integer
                   fingerprint:
@@ -153,8 +156,9 @@ spec:
                     description: ID is the certificate identifier in Nexus.
                     type: string
                   issuedOn:
-                    description: IssuedOn is the timestamp when the certificate was
-                      issued (epoch millis).
+                    description: |-
+                      IssuedOn is the timestamp when the certificate was issued (epoch
+                      millis).
                     format: int64
                     type: integer
                   issuerCommonName:

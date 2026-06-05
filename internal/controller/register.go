@@ -15,10 +15,10 @@ import (
 	iamrole "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/role"
 	iamsaml "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/saml"
 	iamsecurityrealm "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/securityrealm"
+	iamssltruststore "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/securityssltruststore"
 	iamuser "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/user"
 	iamutc "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/usertokenconfiguration"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/repository"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/securityssltruststore"
 )
 
 // Setup creates all Nexus controllers and adds them to the supplied manager.
@@ -34,10 +34,10 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		iamrole.Setup,
 		iamsaml.Setup,
 		iamsecurityrealm.Setup,
+		iamssltruststore.Setup,
 		iamuser.Setup,
 		iamutc.Setup,
 		repository.Setup,
-		securityssltruststore.Setup,
 	} {
 		err := setup(mgr, opts)
 		if err != nil {

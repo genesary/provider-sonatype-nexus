@@ -87,3 +87,11 @@ var (
 	SAMLKindAPIVersion   = SAMLKind + "." + SchemeGroupVersion.String()
 	SAMLGroupVersionKind = SchemeGroupVersion.WithKind(SAMLKind)
 )
+
+// SecuritySSLTruststore type metadata.
+var (
+	SecuritySSLTruststoreKind             = reflect.TypeFor[SecuritySSLTruststore]().Name()
+	SecuritySSLTruststoreGroupKind        = schema.GroupKind{Group: APIGroup, Kind: SecuritySSLTruststoreKind}.String()
+	SecuritySSLTruststoreKindAPIVersion   = SecuritySSLTruststoreKind + "." + SchemeGroupVersion.String()
+	SecuritySSLTruststoreGroupVersionKind = SchemeGroupVersion.WithKind(SecuritySSLTruststoreKind)
+)
