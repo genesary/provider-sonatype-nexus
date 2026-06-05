@@ -64,14 +64,6 @@ var (
 	SecurityRealmGroupVersionKind = SchemeGroupVersion.WithKind(SecurityRealmKind)
 )
 
-// ContentSelector type metadata.
-var (
-	ContentSelectorKind             = reflect.TypeFor[ContentSelector]().Name()
-	ContentSelectorGroupKind        = schema.GroupKind{Group: Group, Kind: ContentSelectorKind}.String()
-	ContentSelectorKindAPIVersion   = ContentSelectorKind + "." + SchemeGroupVersion.String()
-	ContentSelectorGroupVersionKind = SchemeGroupVersion.WithKind(ContentSelectorKind)
-)
-
 // Privilege type metadata.
 var (
 	PrivilegeKind             = reflect.TypeFor[Privilege]().Name()

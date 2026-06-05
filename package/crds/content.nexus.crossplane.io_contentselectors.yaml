@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: contentselectors.nexus.crossplane.io
+  name: contentselectors.content.nexus.crossplane.io
 spec:
-  group: nexus.crossplane.io
+  group: content.nexus.crossplane.io
   names:
     categories:
     - crossplane
@@ -64,9 +64,8 @@ spec:
                     description: Description of the content selector.
                     type: string
                   expression:
-                    description: |-
-                      Expression is the CSEL (Content Selector Expression Language) expression
-                      used to select content.
+                    description: Expression is the CSEL expression used to select
+                      content.
                     type: string
                   name:
                     description: Name of the content selector.
@@ -137,9 +136,18 @@ spec:
             description: ContentSelectorStatus defines the observed state of ContentSelector.
             properties:
               atProvider:
-                description: |-
-                  ContentSelectorObservation represents the observed state of a
+                description: ContentSelectorObservation is the observed state of a
                   ContentSelector.
+                properties:
+                  description:
+                    description: Description of the content selector.
+                    type: string
+                  expression:
+                    description: Expression is the CSEL expression.
+                    type: string
+                  name:
+                    description: Name of the content selector.
+                    type: string
                 type: object
               conditions:
                 description: Conditions of the resource.

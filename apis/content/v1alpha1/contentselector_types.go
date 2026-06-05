@@ -15,15 +15,19 @@ type ContentSelectorParameters struct {
 	// +optional
 	Description *string `json:"description,omitempty"`
 
-	// Expression is the CSEL (Content Selector Expression Language) expression
-	// used to select content.
+	// Expression is the CSEL expression used to select content.
 	// +kubebuilder:validation:Required
 	Expression string `json:"expression"`
 }
 
-// ContentSelectorObservation represents the observed state of a
-// ContentSelector.
+// ContentSelectorObservation is the observed state of a ContentSelector.
 type ContentSelectorObservation struct {
+	// Name of the content selector.
+	Name string `json:"name,omitempty"`
+	// Description of the content selector.
+	Description string `json:"description,omitempty"`
+	// Expression is the CSEL expression.
+	Expression string `json:"expression,omitempty"`
 }
 
 // ContentSelectorSpec defines the desired state of ContentSelector.
@@ -67,7 +71,7 @@ type ContentSelectorList struct {
 	Items []ContentSelector `json:"items"`
 }
 
-// init registers this type with the SchemeBuilder.
+// init registers the ContentSelector types with the scheme.
 func init() {
 	SchemeBuilder.Register(&ContentSelector{}, &ContentSelectorList{})
 }
