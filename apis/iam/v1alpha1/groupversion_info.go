@@ -71,3 +71,11 @@ var (
 	UserKindAPIVersion   = UserKind + "." + SchemeGroupVersion.String()
 	UserGroupVersionKind = SchemeGroupVersion.WithKind(UserKind)
 )
+
+// LDAP type metadata.
+var (
+	LDAPKind             = reflect.TypeFor[LDAP]().Name()
+	LDAPGroupKind        = schema.GroupKind{Group: APIGroup, Kind: LDAPKind}.String()
+	LDAPKindAPIVersion   = LDAPKind + "." + SchemeGroupVersion.String()
+	LDAPGroupVersionKind = SchemeGroupVersion.WithKind(LDAPKind)
+)

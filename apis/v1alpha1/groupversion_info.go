@@ -48,14 +48,6 @@ var (
 	SAMLGroupVersionKind = SchemeGroupVersion.WithKind(SAMLKind)
 )
 
-// LDAP type metadata.
-var (
-	LDAPKind             = reflect.TypeFor[LDAP]().Name()
-	LDAPGroupKind        = schema.GroupKind{Group: Group, Kind: LDAPKind}.String()
-	LDAPKindAPIVersion   = LDAPKind + "." + SchemeGroupVersion.String()
-	LDAPGroupVersionKind = SchemeGroupVersion.WithKind(LDAPKind)
-)
-
 // SecuritySSLTruststore type metadata.
 var (
 	SecuritySSLTruststoreKind             = reflect.TypeFor[SecuritySSLTruststore]().Name()

@@ -39,7 +39,8 @@ type LDAPParameters struct {
 	// +optional
 	AuthUsername *string `json:"authUsername,omitempty"`
 
-	// AuthPasswordSecretRef is a reference to a secret containing the auth password.
+	// AuthPasswordSecretRef is a reference to a secret containing the auth
+	// password.
 	// +optional
 	AuthPasswordSecretRef *xpv2.SecretKeySelector `json:"authPasswordSecretRef,omitempty"`
 
@@ -70,7 +71,8 @@ type LDAPParameters struct {
 	// +kubebuilder:validation:Required
 	UserBaseDN string `json:"userBaseDn"`
 
-	// UserSubtree determines if users are located in structures below the user base DN.
+	// UserSubtree determines if users are located in structures below the
+	// user base DN.
 	// +optional
 	UserSubtree *bool `json:"userSubtree,omitempty"`
 
@@ -98,7 +100,8 @@ type LDAPParameters struct {
 	// +optional
 	UserPasswordAttribute *string `json:"userPasswordAttribute,omitempty"`
 
-	// UserMemberOfAttribute is the attribute storing group DNs in user objects.
+	// UserMemberOfAttribute is the attribute storing group DNs in user
+	// objects.
 	// +optional
 	UserMemberOfAttribute *string `json:"userMemberOfAttribute,omitempty"`
 
@@ -106,7 +109,8 @@ type LDAPParameters struct {
 	// +optional
 	UserLDAPFilter *string `json:"userLdapFilter,omitempty"`
 
-	// LDAPGroupsAsRoles determines if LDAP groups should be used as Nexus roles.
+	// LDAPGroupsAsRoles determines if LDAP groups should be used as Nexus
+	// roles.
 	// +optional
 	LDAPGroupsAsRoles *bool `json:"ldapGroupsAsRoles,omitempty"`
 
@@ -119,7 +123,8 @@ type LDAPParameters struct {
 	// +optional
 	GroupBaseDN *string `json:"groupBaseDn,omitempty"`
 
-	// GroupSubtree determines if groups are located in structures below the group base DN.
+	// GroupSubtree determines if groups are located in structures below the
+	// group base DN.
 	// +optional
 	GroupSubtree *bool `json:"groupSubtree,omitempty"`
 
@@ -133,12 +138,14 @@ type LDAPParameters struct {
 	// +optional
 	GroupIDAttribute *string `json:"groupIdAttribute,omitempty"`
 
-	// GroupMemberAttribute is the attribute containing group member usernames.
+	// GroupMemberAttribute is the attribute containing group member
+	// usernames.
 	// +kubebuilder:default="uniqueMember"
 	// +optional
 	GroupMemberAttribute *string `json:"groupMemberAttribute,omitempty"`
 
-	// GroupMemberFormat is the format of user IDs in the group member attribute.
+	// GroupMemberFormat is the format of user IDs in the group member
+	// attribute.
 	// +kubebuilder:default="uid=${username},ou=people,dc=example,dc=com"
 	// +optional
 	GroupMemberFormat *string `json:"groupMemberFormat,omitempty"`

@@ -1,3 +1,4 @@
+//nolint:dupl // mock structs share structural shape by design
 package iam
 
 import (
