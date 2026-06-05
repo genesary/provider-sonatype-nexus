@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: anonymousaccesses.nexus.crossplane.io
+  name: anonymousaccesses.iam.nexus.crossplane.io
 spec:
-  group: nexus.crossplane.io
+  group: iam.nexus.crossplane.io
   names:
     categories:
     - crossplane
@@ -35,8 +35,8 @@ spec:
     schema:
       openAPIV3Schema:
         description: |-
-          AnonymousAccess is the Schema for the anonymousaccesses API.
-          This is a singleton resource that configures anonymous access settings.
+          AnonymousAccess configures anonymous access settings.
+          This is a singleton resource managing Nexus anonymous access.
         properties:
           apiVersion:
             description: |-
@@ -139,8 +139,8 @@ spec:
             description: AnonymousAccessStatus defines the observed state of AnonymousAccess.
             properties:
               atProvider:
-                description: AnonymousAccessObservation represents the observed state
-                  of AnonymousAccess.
+                description: AnonymousAccessObservation is the observed state of an
+                  AnonymousAccess.
                 type: object
               conditions:
                 description: Conditions of the resource.

@@ -64,14 +64,6 @@ var (
 	PrivilegeGroupVersionKind = SchemeGroupVersion.WithKind(PrivilegeKind)
 )
 
-// AnonymousAccess type metadata.
-var (
-	AnonymousAccessKind             = reflect.TypeFor[AnonymousAccess]().Name()
-	AnonymousAccessGroupKind        = schema.GroupKind{Group: Group, Kind: AnonymousAccessKind}.String()
-	AnonymousAccessKindAPIVersion   = AnonymousAccessKind + "." + SchemeGroupVersion.String()
-	AnonymousAccessGroupVersionKind = SchemeGroupVersion.WithKind(AnonymousAccessKind)
-)
-
 // SAML type metadata.
 var (
 	SAMLKind             = reflect.TypeFor[SAML]().Name()

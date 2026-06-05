@@ -5,11 +5,11 @@ import (
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/anonymousaccess"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/blobstore"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/config"
 	contentcleanuppolicy "github.com/genesary/provider-sonatype-nexus/internal/controller/content/cleanuppolicy"
 	contentcontentselector "github.com/genesary/provider-sonatype-nexus/internal/controller/content/contentselector"
+	iamanonymousaccess "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/anonymousaccess"
 	iamsecurityrealm "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/securityrealm"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/ldap"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/privilege"
@@ -24,7 +24,7 @@ import (
 // Setup creates all Nexus controllers and adds them to the supplied manager.
 func Setup(mgr ctrl.Manager, opts controller.Options) error {
 	for _, setup := range []func(ctrl.Manager, controller.Options) error{
-		anonymousaccess.Setup,
+		iamanonymousaccess.Setup,
 		blobstore.Setup,
 		config.Setup,
 		contentcleanuppolicy.Setup,

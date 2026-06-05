@@ -20,9 +20,8 @@ type AnonymousAccessParameters struct {
 	RealmName string `json:"realmName"`
 }
 
-// AnonymousAccessObservation represents the observed state of AnonymousAccess.
-type AnonymousAccessObservation struct {
-}
+// AnonymousAccessObservation is the observed state of an AnonymousAccess.
+type AnonymousAccessObservation struct{}
 
 // AnonymousAccessSpec defines the desired state of AnonymousAccess.
 type AnonymousAccessSpec struct {
@@ -46,8 +45,8 @@ type AnonymousAccessStatus struct {
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,nexus}
 
-// AnonymousAccess is the Schema for the anonymousaccesses API.
-// This is a singleton resource that configures anonymous access settings.
+// AnonymousAccess configures anonymous access settings.
+// This is a singleton resource managing Nexus anonymous access.
 type AnonymousAccess struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -66,7 +65,7 @@ type AnonymousAccessList struct {
 	Items []AnonymousAccess `json:"items"`
 }
 
-// init registers this type with the SchemeBuilder.
+// init registers the AnonymousAccess types with the scheme.
 func init() {
 	SchemeBuilder.Register(&AnonymousAccess{}, &AnonymousAccessList{})
 }

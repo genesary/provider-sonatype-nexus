@@ -24,6 +24,14 @@ var (
 	AddToScheme = SchemeBuilder.AddToScheme
 )
 
+// AnonymousAccess type metadata.
+var (
+	AnonymousAccessKind             = reflect.TypeFor[AnonymousAccess]().Name()
+	AnonymousAccessGroupKind        = schema.GroupKind{Group: APIGroup, Kind: AnonymousAccessKind}.String()
+	AnonymousAccessKindAPIVersion   = AnonymousAccessKind + "." + SchemeGroupVersion.String()
+	AnonymousAccessGroupVersionKind = SchemeGroupVersion.WithKind(AnonymousAccessKind)
+)
+
 // SecurityRealm type metadata.
 var (
 	SecurityRealmKind             = reflect.TypeFor[SecurityRealm]().Name()
