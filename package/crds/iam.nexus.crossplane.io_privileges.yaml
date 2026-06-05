@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: privileges.nexus.crossplane.io
+  name: privileges.iam.nexus.crossplane.io
 spec:
-  group: nexus.crossplane.io
+  group: iam.nexus.crossplane.io
   names:
     categories:
     - crossplane
@@ -94,8 +94,9 @@ spec:
                     description: Pattern for wildcard type privilege.
                     type: string
                   repository:
-                    description: Repository name for repository type privileges. Use
-                      * for all repositories.
+                    description: |-
+                      Repository name for repository type privileges.
+                      Use * for all repositories.
                     type: string
                   scriptName:
                     description: ScriptName for script type privilege.

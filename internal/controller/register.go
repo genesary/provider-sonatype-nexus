@@ -10,12 +10,12 @@ import (
 	contentcleanuppolicy "github.com/genesary/provider-sonatype-nexus/internal/controller/content/cleanuppolicy"
 	contentcontentselector "github.com/genesary/provider-sonatype-nexus/internal/controller/content/contentselector"
 	iamanonymousaccess "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/anonymousaccess"
+	iamprivilege "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/privilege"
 	iamrole "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/role"
 	iamsecurityrealm "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/securityrealm"
 	iamuser "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/user"
 	iamutc "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/usertokenconfiguration"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/ldap"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/privilege"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/repository"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/saml"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/securityssltruststore"
@@ -29,12 +29,12 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		contentcleanuppolicy.Setup,
 		contentcontentselector.Setup,
 		iamanonymousaccess.Setup,
+		iamprivilege.Setup,
 		iamrole.Setup,
 		iamsecurityrealm.Setup,
 		iamuser.Setup,
 		iamutc.Setup,
 		ldap.Setup,
-		privilege.Setup,
 		repository.Setup,
 		saml.Setup,
 		securityssltruststore.Setup,

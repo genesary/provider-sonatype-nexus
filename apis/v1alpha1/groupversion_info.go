@@ -40,14 +40,6 @@ var (
 	RepositoryGroupVersionKind = SchemeGroupVersion.WithKind(RepositoryKind)
 )
 
-// Privilege type metadata.
-var (
-	PrivilegeKind             = reflect.TypeFor[Privilege]().Name()
-	PrivilegeGroupKind        = schema.GroupKind{Group: Group, Kind: PrivilegeKind}.String()
-	PrivilegeKindAPIVersion   = PrivilegeKind + "." + SchemeGroupVersion.String()
-	PrivilegeGroupVersionKind = SchemeGroupVersion.WithKind(PrivilegeKind)
-)
-
 // SAML type metadata.
 var (
 	SAMLKind             = reflect.TypeFor[SAML]().Name()

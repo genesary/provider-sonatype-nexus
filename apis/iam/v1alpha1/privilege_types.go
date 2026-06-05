@@ -37,7 +37,8 @@ type PrivilegeParameters struct {
 	// +optional
 	Format *string `json:"format,omitempty"`
 
-	// Repository name for repository type privileges. Use * for all repositories.
+	// Repository name for repository type privileges.
+	// Use * for all repositories.
 	// +optional
 	Repository *string `json:"repository,omitempty"`
 
@@ -102,7 +103,7 @@ type PrivilegeList struct {
 	Items []Privilege `json:"items"`
 }
 
-// init registers this type with the SchemeBuilder.
+// init registers the Privilege types with the scheme.
 func init() {
 	SchemeBuilder.Register(&Privilege{}, &PrivilegeList{})
 }
