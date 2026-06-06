@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
@@ -16,13 +16,13 @@ type FormatHandler interface {
 	// Returns (exists, upToDate) where:
 	//   - exists: true if the repository exists in Nexus
 	//   - upToDate: true if the existing repository matches the desired spec
-	Observe(ctx context.Context, client nexus.Client, name string, repoType string, cr *v1alpha1.Repository) (exists bool, upToDate bool)
+	Observe(ctx context.Context, client nexus.Client, name string, repoType string, cr *repositoryv1alpha1.Repository) (exists bool, upToDate bool)
 
 	// Create creates a new repository in Nexus.
-	Create(ctx context.Context, client nexus.Client, cr *v1alpha1.Repository, repoType string) error
+	Create(ctx context.Context, client nexus.Client, cr *repositoryv1alpha1.Repository, repoType string) error
 
 	// Update updates an existing repository in Nexus.
-	Update(ctx context.Context, client nexus.Client, name string, cr *v1alpha1.Repository, repoType string) error
+	Update(ctx context.Context, client nexus.Client, name string, cr *repositoryv1alpha1.Repository, repoType string) error
 
 	// Delete deletes a repository from Nexus.
 	Delete(ctx context.Context, client nexus.Client, name string, repoType string) error

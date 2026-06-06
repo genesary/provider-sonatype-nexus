@@ -8,7 +8,7 @@ import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/test/mocks"
 )
 
@@ -18,7 +18,7 @@ func TestRepositoryObserve(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		cr           *v1alpha1.Repository
+		cr           *repositoryv1alpha1.Repository
 		mockSetup    func(*mocks.MockClient)
 		wantExists   bool
 		wantUpToDate bool
@@ -26,10 +26,10 @@ func TestRepositoryObserve(t *testing.T) {
 	}{
 		{
 			name: "MavenHostedNotFound",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "maven-releases"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-releases",
 						Format: "maven2",
 						Type:   "hosted",
@@ -47,10 +47,10 @@ func TestRepositoryObserve(t *testing.T) {
 		},
 		{
 			name: "MavenHostedExistsAndUpToDate",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "maven-releases"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-releases",
 						Format: "maven2",
 						Type:   "hosted",
@@ -75,14 +75,14 @@ func TestRepositoryObserve(t *testing.T) {
 		},
 		{
 			name: "MavenProxyNotFound",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "maven-central"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-central",
 						Format: "maven2",
 						Type:   "proxy",
-						Proxy: &v1alpha1.ProxyConfig{
+						Proxy: &repositoryv1alpha1.ProxyConfig{
 							RemoteURL: "https://repo1.maven.org/maven2/",
 						},
 					},
@@ -99,14 +99,14 @@ func TestRepositoryObserve(t *testing.T) {
 		},
 		{
 			name: "MavenGroupNotFound",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "maven-public"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-public",
 						Format: "maven2",
 						Type:   "group",
-						Group: &v1alpha1.GroupConfig{
+						Group: &repositoryv1alpha1.GroupConfig{
 							MemberNames: []string{"maven-releases", "maven-central"},
 						},
 					},
@@ -123,10 +123,10 @@ func TestRepositoryObserve(t *testing.T) {
 		},
 		{
 			name: "DockerHostedNotFound",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "docker-hosted"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "docker-hosted",
 						Format: "docker",
 						Type:   "hosted",
@@ -144,10 +144,10 @@ func TestRepositoryObserve(t *testing.T) {
 		},
 		{
 			name: "NpmHostedNotFound",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "npm-hosted"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "npm-hosted",
 						Format: "npm",
 						Type:   "hosted",
@@ -165,10 +165,10 @@ func TestRepositoryObserve(t *testing.T) {
 		},
 		{
 			name: "RawHostedNotFound",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "raw-hosted"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "raw-hosted",
 						Format: "raw",
 						Type:   "hosted",
@@ -186,10 +186,10 @@ func TestRepositoryObserve(t *testing.T) {
 		},
 		{
 			name: "UnsupportedFormat",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "unsupported-repo"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "unsupported-repo",
 						Format: "unsupported",
 						Type:   "hosted",
@@ -240,16 +240,16 @@ func TestRepositoryCreate(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		cr        *v1alpha1.Repository
+		cr        *repositoryv1alpha1.Repository
 		mockSetup func(*mocks.MockClient)
 		wantErr   bool
 	}{
 		{
 			name: "CreateMavenHosted",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "maven-releases"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-releases",
 						Format: "maven2",
 						Type:   "hosted",
@@ -265,14 +265,14 @@ func TestRepositoryCreate(t *testing.T) {
 		},
 		{
 			name: "CreateMavenProxy",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "maven-central"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-central",
 						Format: "maven2",
 						Type:   "proxy",
-						Proxy: &v1alpha1.ProxyConfig{
+						Proxy: &repositoryv1alpha1.ProxyConfig{
 							RemoteURL: "https://repo1.maven.org/maven2/",
 						},
 					},
@@ -287,14 +287,14 @@ func TestRepositoryCreate(t *testing.T) {
 		},
 		{
 			name: "CreateMavenGroup",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "maven-public"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-public",
 						Format: "maven2",
 						Type:   "group",
-						Group: &v1alpha1.GroupConfig{
+						Group: &repositoryv1alpha1.GroupConfig{
 							MemberNames: []string{"maven-releases"},
 						},
 					},
@@ -309,10 +309,10 @@ func TestRepositoryCreate(t *testing.T) {
 		},
 		{
 			name: "CreateDockerHosted",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "docker-hosted"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "docker-hosted",
 						Format: "docker",
 						Type:   "hosted",
@@ -328,10 +328,10 @@ func TestRepositoryCreate(t *testing.T) {
 		},
 		{
 			name: "CreateNpmHosted",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "npm-hosted"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "npm-hosted",
 						Format: "npm",
 						Type:   "hosted",
@@ -347,10 +347,10 @@ func TestRepositoryCreate(t *testing.T) {
 		},
 		{
 			name: "CreateRawHosted",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "raw-hosted"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "raw-hosted",
 						Format: "raw",
 						Type:   "hosted",
@@ -366,10 +366,10 @@ func TestRepositoryCreate(t *testing.T) {
 		},
 		{
 			name: "CreateError",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "maven-releases"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-releases",
 						Format: "maven2",
 						Type:   "hosted",
@@ -385,10 +385,10 @@ func TestRepositoryCreate(t *testing.T) {
 		},
 		{
 			name: "UnsupportedFormat",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{Name: "unsupported-repo"},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "unsupported-repo",
 						Format: "unsupported",
 						Type:   "hosted",
@@ -425,21 +425,21 @@ func TestRepositoryUpdate(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		cr        *v1alpha1.Repository
+		cr        *repositoryv1alpha1.Repository
 		mockSetup func(*mocks.MockClient)
 		wantErr   bool
 	}{
 		{
 			name: "UpdateMavenHosted",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "maven-releases",
 					Annotations: map[string]string{
 						"crossplane.io/external-name": "maven-releases",
 					},
 				},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-releases",
 						Format: "maven2",
 						Type:   "hosted",
@@ -455,19 +455,19 @@ func TestRepositoryUpdate(t *testing.T) {
 		},
 		{
 			name: "UpdateMavenProxy",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "maven-central",
 					Annotations: map[string]string{
 						"crossplane.io/external-name": "maven-central",
 					},
 				},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-central",
 						Format: "maven2",
 						Type:   "proxy",
-						Proxy: &v1alpha1.ProxyConfig{
+						Proxy: &repositoryv1alpha1.ProxyConfig{
 							RemoteURL: "https://repo1.maven.org/maven2/",
 						},
 					},
@@ -482,15 +482,15 @@ func TestRepositoryUpdate(t *testing.T) {
 		},
 		{
 			name: "UpdateError",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "maven-releases",
 					Annotations: map[string]string{
 						"crossplane.io/external-name": "maven-releases",
 					},
 				},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-releases",
 						Format: "maven2",
 						Type:   "hosted",
@@ -531,21 +531,21 @@ func TestRepositoryDelete(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		cr        *v1alpha1.Repository
+		cr        *repositoryv1alpha1.Repository
 		mockSetup func(*mocks.MockClient)
 		wantErr   bool
 	}{
 		{
 			name: "DeleteMavenHosted",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "maven-releases",
 					Annotations: map[string]string{
 						"crossplane.io/external-name": "maven-releases",
 					},
 				},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-releases",
 						Format: "maven2",
 						Type:   "hosted",
@@ -561,15 +561,15 @@ func TestRepositoryDelete(t *testing.T) {
 		},
 		{
 			name: "DeleteMavenProxy",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "maven-central",
 					Annotations: map[string]string{
 						"crossplane.io/external-name": "maven-central",
 					},
 				},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-central",
 						Format: "maven2",
 						Type:   "proxy",
@@ -585,15 +585,15 @@ func TestRepositoryDelete(t *testing.T) {
 		},
 		{
 			name: "DeleteNotFound",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "maven-releases",
 					Annotations: map[string]string{
 						"crossplane.io/external-name": "maven-releases",
 					},
 				},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-releases",
 						Format: "maven2",
 						Type:   "hosted",
@@ -609,15 +609,15 @@ func TestRepositoryDelete(t *testing.T) {
 		},
 		{
 			name: "DeleteError",
-			cr: &v1alpha1.Repository{
+			cr: &repositoryv1alpha1.Repository{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "maven-releases",
 					Annotations: map[string]string{
 						"crossplane.io/external-name": "maven-releases",
 					},
 				},
-				Spec: v1alpha1.RepositorySpec{
-					ForProvider: v1alpha1.RepositoryParameters{
+				Spec: repositoryv1alpha1.RepositorySpec{
+					ForProvider: repositoryv1alpha1.RepositoryParameters{
 						Name:   "maven-releases",
 						Format: "maven2",
 						Type:   "hosted",

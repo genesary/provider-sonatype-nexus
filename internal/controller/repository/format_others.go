@@ -13,7 +13,7 @@ import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 	"github.com/pkg/errors"
 
-	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	"github.com/genesary/provider-sonatype-nexus/internal/utils"
 )
@@ -27,7 +27,7 @@ func (h *NugetHandler) SupportedTypes() []string {
 }
 
 // Observe checks whether the NuGet repository exists and is up to date.
-func (h *NugetHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *NugetHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
 	case repoTypeHosted:
 		return observeRepo(ctx, name, client.Repository().GetNugetHosted, isNugetHostedUpToDate, repoCR)
@@ -41,7 +41,7 @@ func (h *NugetHandler) Observe(ctx context.Context, client nexus.Client, name, r
 }
 
 // Create creates a new NuGet repository of the given type.
-func (h *NugetHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *NugetHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().CreateNugetHosted(ctx, repository.NugetHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)})
@@ -66,7 +66,7 @@ func (h *NugetHandler) Create(ctx context.Context, client nexus.Client, repoCR *
 }
 
 // Update updates an existing NuGet repository of the given type.
-func (h *NugetHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *NugetHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().UpdateNugetHosted(ctx, name, repository.NugetHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)})
@@ -113,7 +113,7 @@ func (h *PypiHandler) SupportedTypes() []string {
 }
 
 // Observe checks whether the PyPI repository exists and is up to date.
-func (h *PypiHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *PypiHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
 	case repoTypeHosted:
 		return observeRepo(ctx, name, client.Repository().GetPypiHosted, isPypiHostedUpToDate, repoCR)
@@ -127,7 +127,7 @@ func (h *PypiHandler) Observe(ctx context.Context, client nexus.Client, name, re
 }
 
 // Create creates a new PyPI repository of the given type.
-func (h *PypiHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *PypiHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().CreatePypiHosted(ctx, h.generateHosted(repoCR))
@@ -141,7 +141,7 @@ func (h *PypiHandler) Create(ctx context.Context, client nexus.Client, repoCR *v
 }
 
 // Update updates an existing PyPI repository of the given type.
-func (h *PypiHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *PypiHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().UpdatePypiHosted(ctx, name, h.generateHosted(repoCR))
@@ -169,17 +169,17 @@ func (h *PypiHandler) Delete(ctx context.Context, client nexus.Client, name, rep
 }
 
 // generateHosted builds a PypiHostedRepository from the CR spec.
-func (h *PypiHandler) generateHosted(repoCR *v1alpha1.Repository) repository.PypiHostedRepository {
+func (h *PypiHandler) generateHosted(repoCR *repositoryv1alpha1.Repository) repository.PypiHostedRepository {
 	return repository.PypiHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)}
 }
 
 // generateProxy builds a PypiProxyRepository from the CR spec.
-func (h *PypiHandler) generateProxy(ctx context.Context, repoCR *v1alpha1.Repository) repository.PypiProxyRepository {
+func (h *PypiHandler) generateProxy(ctx context.Context, repoCR *repositoryv1alpha1.Repository) repository.PypiProxyRepository {
 	return repository.PypiProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)}
 }
 
 // generateGroup builds a PypiGroupRepository from the CR spec.
-func (h *PypiHandler) generateGroup(repoCR *v1alpha1.Repository) repository.PypiGroupRepository {
+func (h *PypiHandler) generateGroup(repoCR *repositoryv1alpha1.Repository) repository.PypiGroupRepository {
 	return repository.PypiGroupRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Group: generateGroupConfig(repoCR)}
 }
 
@@ -192,7 +192,7 @@ func (h *RubygemsHandler) SupportedTypes() []string {
 }
 
 // Observe checks whether the RubyGems repository exists and is up to date.
-func (h *RubygemsHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *RubygemsHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
 	case repoTypeHosted:
 		return observeRepo(ctx, name, client.Repository().GetRubygemsHosted, isRubygemsHostedUpToDate, repoCR)
@@ -206,7 +206,7 @@ func (h *RubygemsHandler) Observe(ctx context.Context, client nexus.Client, name
 }
 
 // Create creates a new RubyGems repository of the given type.
-func (h *RubygemsHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *RubygemsHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().CreateRubygemsHosted(ctx, h.generateHosted(repoCR))
@@ -220,7 +220,7 @@ func (h *RubygemsHandler) Create(ctx context.Context, client nexus.Client, repoC
 }
 
 // Update updates an existing RubyGems repository of the given type.
-func (h *RubygemsHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *RubygemsHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().UpdateRubygemsHosted(ctx, name, h.generateHosted(repoCR))
@@ -248,17 +248,17 @@ func (h *RubygemsHandler) Delete(ctx context.Context, client nexus.Client, name,
 }
 
 // generateHosted builds a RubyGemsHostedRepository from the CR spec.
-func (h *RubygemsHandler) generateHosted(repoCR *v1alpha1.Repository) repository.RubyGemsHostedRepository {
+func (h *RubygemsHandler) generateHosted(repoCR *repositoryv1alpha1.Repository) repository.RubyGemsHostedRepository {
 	return repository.RubyGemsHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)}
 }
 
 // generateProxy builds a RubyGemsProxyRepository from the CR spec.
-func (h *RubygemsHandler) generateProxy(ctx context.Context, repoCR *v1alpha1.Repository) repository.RubyGemsProxyRepository {
+func (h *RubygemsHandler) generateProxy(ctx context.Context, repoCR *repositoryv1alpha1.Repository) repository.RubyGemsProxyRepository {
 	return repository.RubyGemsProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)}
 }
 
 // generateGroup builds a RubyGemsGroupRepository from the CR spec.
-func (h *RubygemsHandler) generateGroup(repoCR *v1alpha1.Repository) repository.RubyGemsGroupRepository {
+func (h *RubygemsHandler) generateGroup(repoCR *repositoryv1alpha1.Repository) repository.RubyGemsGroupRepository {
 	return repository.RubyGemsGroupRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Group: generateGroupConfig(repoCR)}
 }
 
@@ -271,7 +271,7 @@ func (h *YumHandler) SupportedTypes() []string {
 }
 
 // Observe checks whether the Yum repository exists and is up to date.
-func (h *YumHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *YumHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
 	case repoTypeHosted:
 		return observeRepo(ctx, name, client.Repository().GetYumHosted, isYumHostedUpToDate, repoCR)
@@ -285,7 +285,7 @@ func (h *YumHandler) Observe(ctx context.Context, client nexus.Client, name, rep
 }
 
 // Create creates a new Yum repository of the given type.
-func (h *YumHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *YumHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		repo := repository.YumHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)}
@@ -311,7 +311,7 @@ func (h *YumHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1
 }
 
 // Update updates an existing Yum repository of the given type.
-func (h *YumHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *YumHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		repo := repository.YumHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)}
@@ -359,7 +359,7 @@ func (h *RHandler) SupportedTypes() []string {
 }
 
 // Observe checks whether the R repository exists and is up to date.
-func (h *RHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *RHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
 	case repoTypeHosted:
 		return observeRepo(ctx, name, client.Repository().GetRHosted, isRHostedUpToDate, repoCR)
@@ -373,7 +373,7 @@ func (h *RHandler) Observe(ctx context.Context, client nexus.Client, name, repoT
 }
 
 // Create creates a new R repository of the given type.
-func (h *RHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *RHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().CreateRHosted(ctx, h.generateHosted(repoCR))
@@ -387,7 +387,7 @@ func (h *RHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1al
 }
 
 // Update updates an existing R repository of the given type.
-func (h *RHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *RHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().UpdateRHosted(ctx, name, h.generateHosted(repoCR))
@@ -415,17 +415,17 @@ func (h *RHandler) Delete(ctx context.Context, client nexus.Client, name, repoTy
 }
 
 // generateHosted builds a RHostedRepository from the CR spec.
-func (h *RHandler) generateHosted(repoCR *v1alpha1.Repository) repository.RHostedRepository {
+func (h *RHandler) generateHosted(repoCR *repositoryv1alpha1.Repository) repository.RHostedRepository {
 	return repository.RHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)}
 }
 
 // generateProxy builds a RProxyRepository from the CR spec.
-func (h *RHandler) generateProxy(ctx context.Context, repoCR *v1alpha1.Repository) repository.RProxyRepository {
+func (h *RHandler) generateProxy(ctx context.Context, repoCR *repositoryv1alpha1.Repository) repository.RProxyRepository {
 	return repository.RProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)}
 }
 
 // generateGroup builds a RGroupRepository from the CR spec.
-func (h *RHandler) generateGroup(repoCR *v1alpha1.Repository) repository.RGroupRepository {
+func (h *RHandler) generateGroup(repoCR *repositoryv1alpha1.Repository) repository.RGroupRepository {
 	return repository.RGroupRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Group: generateGroupConfig(repoCR)}
 }
 
@@ -438,7 +438,7 @@ func (h *CargoHandler) SupportedTypes() []string {
 }
 
 // Observe checks whether the Cargo repository exists and is up to date.
-func (h *CargoHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *CargoHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
 	case repoTypeHosted:
 		return observeRepo(ctx, name, client.Repository().GetCargoHosted, isCargoHostedUpToDate, repoCR)
@@ -452,7 +452,7 @@ func (h *CargoHandler) Observe(ctx context.Context, client nexus.Client, name, r
 }
 
 // Create creates a new Cargo repository of the given type.
-func (h *CargoHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *CargoHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().CreateCargoHosted(ctx, h.generateHosted(repoCR))
@@ -466,7 +466,7 @@ func (h *CargoHandler) Create(ctx context.Context, client nexus.Client, repoCR *
 }
 
 // Update updates an existing Cargo repository of the given type.
-func (h *CargoHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *CargoHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().UpdateCargoHosted(ctx, name, h.generateHosted(repoCR))
@@ -494,17 +494,17 @@ func (h *CargoHandler) Delete(ctx context.Context, client nexus.Client, name, re
 }
 
 // generateHosted builds a CargoHostedRepository from the CR spec.
-func (h *CargoHandler) generateHosted(repoCR *v1alpha1.Repository) repository.CargoHostedRepository {
+func (h *CargoHandler) generateHosted(repoCR *repositoryv1alpha1.Repository) repository.CargoHostedRepository {
 	return repository.CargoHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)}
 }
 
 // generateProxy builds a CargoProxyRepository from the CR spec.
-func (h *CargoHandler) generateProxy(ctx context.Context, repoCR *v1alpha1.Repository) repository.CargoProxyRepository {
+func (h *CargoHandler) generateProxy(ctx context.Context, repoCR *repositoryv1alpha1.Repository) repository.CargoProxyRepository {
 	return repository.CargoProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)}
 }
 
 // generateGroup builds a CargoGroupRepository from the CR spec.
-func (h *CargoHandler) generateGroup(repoCR *v1alpha1.Repository) repository.CargoGroupRepository {
+func (h *CargoHandler) generateGroup(repoCR *repositoryv1alpha1.Repository) repository.CargoGroupRepository {
 	return repository.CargoGroupRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Group: generateGroupConfig(repoCR)}
 }
 
@@ -517,7 +517,7 @@ func (h *BowerHandler) SupportedTypes() []string {
 }
 
 // Observe checks whether the Bower repository exists and is up to date.
-func (h *BowerHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *BowerHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
 	case repoTypeHosted:
 		return observeRepo(ctx, name, client.Repository().GetBowerHosted, isBowerHostedUpToDate, repoCR)
@@ -531,7 +531,7 @@ func (h *BowerHandler) Observe(ctx context.Context, client nexus.Client, name, r
 }
 
 // Create creates a new Bower repository of the given type.
-func (h *BowerHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *BowerHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().CreateBowerHosted(ctx, repository.BowerHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)})
@@ -550,7 +550,7 @@ func (h *BowerHandler) Create(ctx context.Context, client nexus.Client, repoCR *
 }
 
 // Update updates an existing Bower repository of the given type.
-func (h *BowerHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *BowerHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().UpdateBowerHosted(ctx, name, repository.BowerHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)})
@@ -589,7 +589,7 @@ type AptHandler struct{}
 func (h *AptHandler) SupportedTypes() []string { return []string{repoTypeHosted, repoTypeProxy} }
 
 // Observe checks whether the APT repository exists and is up to date.
-func (h *AptHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *AptHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
 	case repoTypeHosted:
 		return observeRepo(ctx, name, client.Repository().GetAptHosted, isAptHostedUpToDate, repoCR)
@@ -601,7 +601,7 @@ func (h *AptHandler) Observe(ctx context.Context, client nexus.Client, name, rep
 }
 
 // Create creates a new APT repository of the given type.
-func (h *AptHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *AptHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		repo := repository.AptHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)}
@@ -633,7 +633,7 @@ func (h *AptHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1
 }
 
 // Update updates an existing APT repository of the given type.
-func (h *AptHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *AptHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		repo := repository.AptHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)}
@@ -683,7 +683,7 @@ type HelmHandler struct{}
 func (h *HelmHandler) SupportedTypes() []string { return []string{repoTypeHosted, repoTypeProxy} }
 
 // Observe checks whether the Helm repository exists and is up to date.
-func (h *HelmHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *HelmHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
 	case repoTypeHosted:
 		return observeRepo(ctx, name, client.Repository().GetHelmHosted, isHelmHostedUpToDate, repoCR)
@@ -695,7 +695,7 @@ func (h *HelmHandler) Observe(ctx context.Context, client nexus.Client, name, re
 }
 
 // Create creates a new Helm repository of the given type.
-func (h *HelmHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *HelmHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().CreateHelmHosted(ctx, repository.HelmHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)})
@@ -707,7 +707,7 @@ func (h *HelmHandler) Create(ctx context.Context, client nexus.Client, repoCR *v
 }
 
 // Update updates an existing Helm repository of the given type.
-func (h *HelmHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *HelmHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().UpdateHelmHosted(ctx, name, repository.HelmHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)})
@@ -737,7 +737,7 @@ type GoHandler struct{}
 func (h *GoHandler) SupportedTypes() []string { return []string{repoTypeProxy, repoTypeGroup} }
 
 // Observe checks whether the Go repository exists and is up to date.
-func (h *GoHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *GoHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
 	case repoTypeProxy:
 		return observeRepo(ctx, name, client.Repository().GetGoProxy, isGoProxyUpToDate, repoCR)
@@ -749,7 +749,7 @@ func (h *GoHandler) Observe(ctx context.Context, client nexus.Client, name, repo
 }
 
 // Create creates a new Go repository of the given type.
-func (h *GoHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *GoHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeProxy:
 		return client.Repository().CreateGoProxy(ctx, repository.GoProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)})
@@ -761,7 +761,7 @@ func (h *GoHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1a
 }
 
 // Update updates an existing Go repository of the given type.
-func (h *GoHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *GoHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeProxy:
 		return client.Repository().UpdateGoProxy(ctx, name, repository.GoProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)})
@@ -791,7 +791,7 @@ type GitLfsHandler struct{}
 func (h *GitLfsHandler) SupportedTypes() []string { return []string{repoTypeHosted} }
 
 // Observe checks whether the GitLFS repository exists and is up to date.
-func (h *GitLfsHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *GitLfsHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	if repoType == repoTypeHosted {
 		return observeRepo(ctx, name, client.Repository().GetGitLfsHosted, isGitLfsHostedUpToDate, repoCR)
 	}
@@ -800,7 +800,7 @@ func (h *GitLfsHandler) Observe(ctx context.Context, client nexus.Client, name, 
 }
 
 // Create creates a new GitLFS repository of the given type.
-func (h *GitLfsHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *GitLfsHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	if repoType == repoTypeHosted {
 		return client.Repository().CreateGitLfsHosted(ctx, repository.GitLfsHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)})
 	}
@@ -809,7 +809,7 @@ func (h *GitLfsHandler) Create(ctx context.Context, client nexus.Client, repoCR 
 }
 
 // Update updates an existing GitLFS repository of the given type.
-func (h *GitLfsHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *GitLfsHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	if repoType == repoTypeHosted {
 		return client.Repository().UpdateGitLfsHosted(ctx, name, repository.GitLfsHostedRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateHostedStorage(repoCR), Cleanup: generateCleanup(repoCR)})
 	}
@@ -833,7 +833,7 @@ type CocoapodsHandler struct{}
 func (h *CocoapodsHandler) SupportedTypes() []string { return []string{repoTypeProxy} }
 
 // Observe checks whether the Cocoapods repository exists and is up to date.
-func (h *CocoapodsHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *CocoapodsHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	if repoType == repoTypeProxy {
 		return observeRepo(ctx, name, client.Repository().GetCocoapodsProxy, isCocoapodsProxyUpToDate, repoCR)
 	}
@@ -842,7 +842,7 @@ func (h *CocoapodsHandler) Observe(ctx context.Context, client nexus.Client, nam
 }
 
 // Create creates a new Cocoapods repository of the given type.
-func (h *CocoapodsHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *CocoapodsHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	if repoType == repoTypeProxy {
 		return client.Repository().CreateCocoapodsProxy(ctx, repository.CocoapodsProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)})
 	}
@@ -851,7 +851,7 @@ func (h *CocoapodsHandler) Create(ctx context.Context, client nexus.Client, repo
 }
 
 // Update updates an existing Cocoapods repository of the given type.
-func (h *CocoapodsHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *CocoapodsHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	if repoType == repoTypeProxy {
 		return client.Repository().UpdateCocoapodsProxy(ctx, name, repository.CocoapodsProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)})
 	}
@@ -875,7 +875,7 @@ type ConanHandler struct{}
 func (h *ConanHandler) SupportedTypes() []string { return []string{repoTypeProxy} }
 
 // Observe checks whether the Conan repository exists and is up to date.
-func (h *ConanHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *ConanHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	if repoType == repoTypeProxy {
 		return observeRepo(ctx, name, client.Repository().GetConanProxy, isConanProxyUpToDate, repoCR)
 	}
@@ -884,7 +884,7 @@ func (h *ConanHandler) Observe(ctx context.Context, client nexus.Client, name, r
 }
 
 // Create creates a new Conan repository of the given type.
-func (h *ConanHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *ConanHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	if repoType == repoTypeProxy {
 		return client.Repository().CreateConanProxy(ctx, repository.ConanProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)})
 	}
@@ -893,7 +893,7 @@ func (h *ConanHandler) Create(ctx context.Context, client nexus.Client, repoCR *
 }
 
 // Update updates an existing Conan repository of the given type.
-func (h *ConanHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *ConanHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	if repoType == repoTypeProxy {
 		return client.Repository().UpdateConanProxy(ctx, name, repository.ConanProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)})
 	}
@@ -917,7 +917,7 @@ type CondaHandler struct{}
 func (h *CondaHandler) SupportedTypes() []string { return []string{repoTypeProxy} }
 
 // Observe checks whether the Conda repository exists and is up to date.
-func (h *CondaHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *CondaHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	if repoType == repoTypeProxy {
 		return observeRepo(ctx, name, client.Repository().GetCondaProxy, isCondaProxyUpToDate, repoCR)
 	}
@@ -926,7 +926,7 @@ func (h *CondaHandler) Observe(ctx context.Context, client nexus.Client, name, r
 }
 
 // Create creates a new Conda repository of the given type.
-func (h *CondaHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *CondaHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	if repoType == repoTypeProxy {
 		return client.Repository().CreateCondaProxy(ctx, repository.CondaProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)})
 	}
@@ -935,7 +935,7 @@ func (h *CondaHandler) Create(ctx context.Context, client nexus.Client, repoCR *
 }
 
 // Update updates an existing Conda repository of the given type.
-func (h *CondaHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *CondaHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	if repoType == repoTypeProxy {
 		return client.Repository().UpdateCondaProxy(ctx, name, repository.CondaProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)})
 	}
@@ -953,165 +953,165 @@ func (h *CondaHandler) Delete(ctx context.Context, client nexus.Client, name, re
 }
 
 // isNugetHostedUpToDate checks if a Nuget hosted repository is up to date.
-func isNugetHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.NugetHostedRepository) bool {
+func isNugetHostedUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.NugetHostedRepository) bool {
 	return isBasicHostedUpToDate(repoCR, repo.Name, repo.Online)
 }
 
 // isNugetProxyUpToDate checks if a Nuget proxy repository is up to date.
-func isNugetProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.NugetProxyRepository) bool {
+func isNugetProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.NugetProxyRepository) bool {
 	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
 }
 
 // isNugetGroupUpToDate checks if a Nuget group repository is up to date.
-func isNugetGroupUpToDate(repoCR *v1alpha1.Repository, repo *repository.NugetGroupRepository) bool {
+func isNugetGroupUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.NugetGroupRepository) bool {
 	return isBasicGroupUpToDate(repoCR, repo.Name, repo.Online, repo.MemberNames)
 }
 
 // isPypiHostedUpToDate checks if a Pypi hosted repository is up to date.
-func isPypiHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.PypiHostedRepository) bool {
+func isPypiHostedUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.PypiHostedRepository) bool {
 	return isBasicHostedUpToDate(repoCR, repo.Name, repo.Online)
 }
 
 // isPypiProxyUpToDate checks if a Pypi proxy repository is up to date.
-func isPypiProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.PypiProxyRepository) bool {
+func isPypiProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.PypiProxyRepository) bool {
 	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
 }
 
 // isPypiGroupUpToDate checks if a Pypi group repository is up to date.
-func isPypiGroupUpToDate(repoCR *v1alpha1.Repository, repo *repository.PypiGroupRepository) bool {
+func isPypiGroupUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.PypiGroupRepository) bool {
 	return isBasicGroupUpToDate(repoCR, repo.Name, repo.Online, repo.MemberNames)
 }
 
 // isRubygemsHostedUpToDate checks if a Rubygems hosted repository is up
 // to date.
-func isRubygemsHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.RubyGemsHostedRepository) bool {
+func isRubygemsHostedUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.RubyGemsHostedRepository) bool {
 	return isBasicHostedUpToDate(repoCR, repo.Name, repo.Online)
 }
 
 // isRubygemsProxyUpToDate checks if a Rubygems proxy repository is up to date.
-func isRubygemsProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.RubyGemsProxyRepository) bool {
+func isRubygemsProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.RubyGemsProxyRepository) bool {
 	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
 }
 
 // isRubygemsGroupUpToDate checks if a Rubygems group repository is up to date.
-func isRubygemsGroupUpToDate(repoCR *v1alpha1.Repository, repo *repository.RubyGemsGroupRepository) bool {
+func isRubygemsGroupUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.RubyGemsGroupRepository) bool {
 	return isBasicGroupUpToDate(repoCR, repo.Name, repo.Online, repo.MemberNames)
 }
 
 // isYumHostedUpToDate checks if a Yum hosted repository is up to date.
-func isYumHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.YumHostedRepository) bool {
+func isYumHostedUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.YumHostedRepository) bool {
 	return isBasicHostedUpToDate(repoCR, repo.Name, repo.Online)
 }
 
 // isYumProxyUpToDate checks if a Yum proxy repository is up to date.
-func isYumProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.YumProxyRepository) bool {
+func isYumProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.YumProxyRepository) bool {
 	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
 }
 
 // isYumGroupUpToDate checks if a Yum group repository is up to date.
-func isYumGroupUpToDate(repoCR *v1alpha1.Repository, repo *repository.YumGroupRepository) bool {
+func isYumGroupUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.YumGroupRepository) bool {
 	return isBasicGroupUpToDate(repoCR, repo.Name, repo.Online, repo.MemberNames)
 }
 
 // isRHostedUpToDate checks if a R hosted repository is up to date.
-func isRHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.RHostedRepository) bool {
+func isRHostedUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.RHostedRepository) bool {
 	return isBasicHostedUpToDate(repoCR, repo.Name, repo.Online)
 }
 
 // isRProxyUpToDate checks if a R proxy repository is up to date.
-func isRProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.RProxyRepository) bool {
+func isRProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.RProxyRepository) bool {
 	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
 }
 
 // isRGroupUpToDate checks if a R group repository is up to date.
-func isRGroupUpToDate(repoCR *v1alpha1.Repository, repo *repository.RGroupRepository) bool {
+func isRGroupUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.RGroupRepository) bool {
 	return isBasicGroupUpToDate(repoCR, repo.Name, repo.Online, repo.MemberNames)
 }
 
 // isCargoHostedUpToDate checks if a Cargo hosted repository is up to date.
-func isCargoHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.CargoHostedRepository) bool {
+func isCargoHostedUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.CargoHostedRepository) bool {
 	return isBasicHostedUpToDate(repoCR, repo.Name, repo.Online)
 }
 
 // isCargoProxyUpToDate checks if a Cargo proxy repository is up to date.
-func isCargoProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.CargoProxyRepository) bool {
+func isCargoProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.CargoProxyRepository) bool {
 	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
 }
 
 // isCargoGroupUpToDate checks if a Cargo group repository is up to date.
-func isCargoGroupUpToDate(repoCR *v1alpha1.Repository, repo *repository.CargoGroupRepository) bool {
+func isCargoGroupUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.CargoGroupRepository) bool {
 	return isBasicGroupUpToDate(repoCR, repo.Name, repo.Online, repo.MemberNames)
 }
 
 // isBowerHostedUpToDate checks if a Bower hosted repository is up to date.
-func isBowerHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.BowerHostedRepository) bool {
+func isBowerHostedUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.BowerHostedRepository) bool {
 	return isBasicHostedUpToDate(repoCR, repo.Name, repo.Online)
 }
 
 // isBowerProxyUpToDate checks if a Bower proxy repository is up to date.
-func isBowerProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.BowerProxyRepository) bool {
+func isBowerProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.BowerProxyRepository) bool {
 	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
 }
 
 // isBowerGroupUpToDate checks if a Bower group repository is up to date.
-func isBowerGroupUpToDate(repoCR *v1alpha1.Repository, repo *repository.BowerGroupRepository) bool {
+func isBowerGroupUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.BowerGroupRepository) bool {
 	return isBasicGroupUpToDate(repoCR, repo.Name, repo.Online, repo.MemberNames)
 }
 
 // isAptHostedUpToDate checks if a Apt hosted repository is up to date.
-func isAptHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.AptHostedRepository) bool {
+func isAptHostedUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.AptHostedRepository) bool {
 	return isBasicHostedUpToDate(repoCR, repo.Name, repo.Online)
 }
 
 // isAptProxyUpToDate checks if a Apt proxy repository is up to date.
-func isAptProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.AptProxyRepository) bool {
+func isAptProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.AptProxyRepository) bool {
 	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
 }
 
 // isHelmHostedUpToDate checks if a Helm hosted repository is up to date.
-func isHelmHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.HelmHostedRepository) bool {
+func isHelmHostedUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.HelmHostedRepository) bool {
 	return isBasicHostedUpToDate(repoCR, repo.Name, repo.Online)
 }
 
 // isHelmProxyUpToDate checks if a Helm proxy repository is up to date.
-func isHelmProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.HelmProxyRepository) bool {
+func isHelmProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.HelmProxyRepository) bool {
 	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
 }
 
 // isGoProxyUpToDate checks if a Go proxy repository is up to date.
-func isGoProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.GoProxyRepository) bool {
+func isGoProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.GoProxyRepository) bool {
 	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
 }
 
 // isGoGroupUpToDate checks if a Go group repository is up to date.
-func isGoGroupUpToDate(repoCR *v1alpha1.Repository, repo *repository.GoGroupRepository) bool {
+func isGoGroupUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.GoGroupRepository) bool {
 	return isBasicGroupUpToDate(repoCR, repo.Name, repo.Online, repo.MemberNames)
 }
 
 // isGitLfsHostedUpToDate checks if a GitLfs hosted repository is up to date.
-func isGitLfsHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.GitLfsHostedRepository) bool {
+func isGitLfsHostedUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.GitLfsHostedRepository) bool {
 	return isBasicHostedUpToDate(repoCR, repo.Name, repo.Online)
 }
 
 // isCocoapodsProxyUpToDate checks if a Cocoapods proxy repository is up
 // to date.
-func isCocoapodsProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.CocoapodsProxyRepository) bool {
+func isCocoapodsProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.CocoapodsProxyRepository) bool {
 	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
 }
 
 // isConanProxyUpToDate checks if a Conan proxy repository is up to date.
-func isConanProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.ConanProxyRepository) bool {
+func isConanProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.ConanProxyRepository) bool {
 	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
 }
 
 // isCondaProxyUpToDate checks if a Conda proxy repository is up to date.
-func isCondaProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.CondaProxyRepository) bool {
+func isCondaProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.CondaProxyRepository) bool {
 	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
 }
 
 // isBasicHostedUpToDate checks if a basic hosted repository is up to date
 // by comparing the name and online status with the desired state from cr.
-func isBasicHostedUpToDate(repoCR *v1alpha1.Repository, name string, online bool) bool {
+func isBasicHostedUpToDate(repoCR *repositoryv1alpha1.Repository, name string, online bool) bool {
 	if repoCR.Spec.ForProvider.Name != name {
 		return false
 	}
@@ -1125,7 +1125,7 @@ func isBasicHostedUpToDate(repoCR *v1alpha1.Repository, name string, online bool
 
 // isBasicProxyUpToDate checks if a basic proxy repository is up to date by
 // comparing name, online status, and remote URL with the desired state from cr.
-func isBasicProxyUpToDate(repoCR *v1alpha1.Repository, name string, online bool, remoteURL string) bool {
+func isBasicProxyUpToDate(repoCR *repositoryv1alpha1.Repository, name string, online bool, remoteURL string) bool {
 	if repoCR.Spec.ForProvider.Name != name {
 		return false
 	}
@@ -1143,7 +1143,7 @@ func isBasicProxyUpToDate(repoCR *v1alpha1.Repository, name string, online bool,
 
 // isBasicGroupUpToDate checks if a basic group repository is up to date by
 // comparing name, online status, and member names with the desired state.
-func isBasicGroupUpToDate(repoCR *v1alpha1.Repository, name string, online bool, memberNames []string) bool {
+func isBasicGroupUpToDate(repoCR *repositoryv1alpha1.Repository, name string, online bool, memberNames []string) bool {
 	if repoCR.Spec.ForProvider.Name != name {
 		return false
 	}

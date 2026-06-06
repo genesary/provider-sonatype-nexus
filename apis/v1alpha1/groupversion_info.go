@@ -32,14 +32,6 @@ var (
 	BlobStoreGroupVersionKind = SchemeGroupVersion.WithKind(BlobStoreKind)
 )
 
-// Repository type metadata.
-var (
-	RepositoryKind             = reflect.TypeFor[Repository]().Name()
-	RepositoryGroupKind        = schema.GroupKind{Group: Group, Kind: RepositoryKind}.String()
-	RepositoryKindAPIVersion   = RepositoryKind + "." + SchemeGroupVersion.String()
-	RepositoryGroupVersionKind = SchemeGroupVersion.WithKind(RepositoryKind)
-)
-
 // ProviderConfig type metadata.
 var (
 	ProviderConfigKind             = reflect.TypeFor[ProviderConfig]().Name()

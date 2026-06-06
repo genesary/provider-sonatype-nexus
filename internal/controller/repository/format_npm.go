@@ -6,7 +6,7 @@ import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 	"github.com/pkg/errors"
 
-	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	"github.com/genesary/provider-sonatype-nexus/internal/utils"
 )
@@ -20,7 +20,7 @@ func (h *NpmHandler) SupportedTypes() []string {
 }
 
 // Observe checks whether the npm repository exists and is up to date.
-func (h *NpmHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *v1alpha1.Repository) (exists, upToDate bool) {
+func (h *NpmHandler) Observe(ctx context.Context, client nexus.Client, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
 	switch repoType {
 	case repoTypeHosted:
 		return observeRepo(ctx, name, client.Repository().GetNpmHosted, h.isHostedUpToDate, repoCR)
@@ -34,7 +34,7 @@ func (h *NpmHandler) Observe(ctx context.Context, client nexus.Client, name, rep
 }
 
 // Create creates a new npm repository of the given type.
-func (h *NpmHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *NpmHandler) Create(ctx context.Context, client nexus.Client, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().CreateNpmHosted(ctx, h.generateHosted(repoCR))
@@ -48,7 +48,7 @@ func (h *NpmHandler) Create(ctx context.Context, client nexus.Client, repoCR *v1
 }
 
 // Update updates an existing npm repository of the given type.
-func (h *NpmHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *v1alpha1.Repository, repoType string) error {
+func (h *NpmHandler) Update(ctx context.Context, client nexus.Client, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
 	switch repoType {
 	case repoTypeHosted:
 		return client.Repository().UpdateNpmHosted(ctx, name, h.generateHosted(repoCR))
@@ -76,7 +76,7 @@ func (h *NpmHandler) Delete(ctx context.Context, client nexus.Client, name, repo
 }
 
 // generateHosted builds a NpmHostedRepository from the CR spec.
-func (h *NpmHandler) generateHosted(repoCR *v1alpha1.Repository) repository.NpmHostedRepository {
+func (h *NpmHandler) generateHosted(repoCR *repositoryv1alpha1.Repository) repository.NpmHostedRepository {
 	return repository.NpmHostedRepository{
 		Name:    repoCR.Spec.ForProvider.Name,
 		Online:  getOnline(repoCR),
@@ -86,7 +86,7 @@ func (h *NpmHandler) generateHosted(repoCR *v1alpha1.Repository) repository.NpmH
 }
 
 // generateProxy builds a NpmProxyRepository from the CR spec.
-func (h *NpmHandler) generateProxy(ctx context.Context, repoCR *v1alpha1.Repository) repository.NpmProxyRepository {
+func (h *NpmHandler) generateProxy(ctx context.Context, repoCR *repositoryv1alpha1.Repository) repository.NpmProxyRepository {
 	return repository.NpmProxyRepository{
 		Name:          repoCR.Spec.ForProvider.Name,
 		Online:        getOnline(repoCR),
@@ -98,7 +98,7 @@ func (h *NpmHandler) generateProxy(ctx context.Context, repoCR *v1alpha1.Reposit
 }
 
 // generateGroup builds a NpmGroupRepository from the CR spec.
-func (h *NpmHandler) generateGroup(repoCR *v1alpha1.Repository) repository.NpmGroupRepository {
+func (h *NpmHandler) generateGroup(repoCR *repositoryv1alpha1.Repository) repository.NpmGroupRepository {
 	return repository.NpmGroupRepository{
 		Name:    repoCR.Spec.ForProvider.Name,
 		Online:  getOnline(repoCR),
@@ -109,7 +109,7 @@ func (h *NpmHandler) generateGroup(repoCR *v1alpha1.Repository) repository.NpmGr
 
 // isHostedUpToDate reports whether the npm hosted repository matches the
 // CR spec.
-func (h *NpmHandler) isHostedUpToDate(repoCR *v1alpha1.Repository, repo *repository.NpmHostedRepository) bool {
+func (h *NpmHandler) isHostedUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.NpmHostedRepository) bool {
 	return isSimpleHostedUpToDate(
 		repoCR,
 		repo.Online,
@@ -119,7 +119,7 @@ func (h *NpmHandler) isHostedUpToDate(repoCR *v1alpha1.Repository, repo *reposit
 }
 
 // isProxyUpToDate reports whether the proxy repository matches the CR spec.
-func (h *NpmHandler) isProxyUpToDate(repoCR *v1alpha1.Repository, repo *repository.NpmProxyRepository) bool {
+func (h *NpmHandler) isProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.NpmProxyRepository) bool {
 	if repoCR.Spec.ForProvider.Online != nil && repo.Online != *repoCR.Spec.ForProvider.Online {
 		return false
 	}
@@ -134,7 +134,7 @@ func (h *NpmHandler) isProxyUpToDate(repoCR *v1alpha1.Repository, repo *reposito
 }
 
 // isGroupUpToDate reports whether the group repository matches the CR spec.
-func (h *NpmHandler) isGroupUpToDate(repoCR *v1alpha1.Repository, repo *repository.NpmGroupRepository) bool {
+func (h *NpmHandler) isGroupUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.NpmGroupRepository) bool {
 	if repoCR.Spec.ForProvider.Online != nil && repo.Online != *repoCR.Spec.ForProvider.Online {
 		return false
 	}

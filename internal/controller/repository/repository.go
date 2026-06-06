@@ -28,7 +28,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
+	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
@@ -76,13 +77,13 @@ func getResolvedPassword(ctx context.Context) string {
 
 // Setup creates a controller for Repository resources.
 func Setup(mgr ctrl.Manager, opts controller.Options) error {
-	name := managed.ControllerName(v1alpha1.RepositoryGroupKind)
+	name := managed.ControllerName(repositoryv1alpha1.RepositoryGroupKind)
 
 	rec := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1alpha1.RepositoryGroupVersionKind),
+		resource.ManagedKind(repositoryv1alpha1.RepositoryGroupVersionKind),
 		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
-			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{}),
+			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
 		managed.WithLogger(opts.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(opts.PollInterval),
@@ -92,7 +93,7 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		Named(name).
 		WithOptions(opts.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
-		For(&v1alpha1.Repository{}).
+		For(&repositoryv1alpha1.Repository{}).
 		Complete(ratelimiter.NewReconciler(name, rec, opts.GlobalRateLimiter))
 }
 
@@ -104,7 +105,7 @@ type connector struct {
 
 // Connect creates an ExternalClient for the Repository controller.
 func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isRepo := managedRes.(*v1alpha1.Repository)
+	_, isRepo := managedRes.(*repositoryv1alpha1.Repository)
 	if !isRepo {
 		return nil, errors.New(errNotRepository)
 	}
@@ -140,7 +141,7 @@ type external struct {
 
 // Observe checks if the Repository resource exists and is up-to-date.
 func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	repoCR, isRepo := managedRes.(*v1alpha1.Repository)
+	repoCR, isRepo := managedRes.(*repositoryv1alpha1.Repository)
 	if !isRepo {
 		return managed.ExternalObservation{}, errors.New(errNotRepository)
 	}
@@ -163,7 +164,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	repoCR.SetConditions(v1alpha1.Available())
+	repoCR.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
@@ -173,7 +174,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 // Create creates a new Repository resource.
 func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	repoCR, isRepo := managedRes.(*v1alpha1.Repository)
+	repoCR, isRepo := managedRes.(*repositoryv1alpha1.Repository)
 	if !isRepo {
 		return managed.ExternalCreation{}, errors.New(errNotRepository)
 	}
@@ -205,7 +206,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 // Update modifies an existing Repository resource.
 func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	repoCR, isRepo := managedRes.(*v1alpha1.Repository)
+	repoCR, isRepo := managedRes.(*repositoryv1alpha1.Repository)
 	if !isRepo {
 		return managed.ExternalUpdate{}, errors.New(errNotRepository)
 	}
@@ -240,7 +241,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 // Delete removes an existing Repository resource.
 func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	repoCR, isRepo := managedRes.(*v1alpha1.Repository)
+	repoCR, isRepo := managedRes.(*repositoryv1alpha1.Repository)
 	if !isRepo {
 		return managed.ExternalDelete{}, errors.New(errNotRepository)
 	}
@@ -274,7 +275,7 @@ func (e *external) Disconnect(ctx context.Context) error {
 // resolveHTTPClientPassword resolves the password from a Kubernetes secret if
 // httpClient.authentication.passwordSecretRef is configured. The resolved
 // password is returned for use by shared HTTP client generation functions.
-func (e *external) resolveHTTPClientPassword(ctx context.Context, repoCR *v1alpha1.Repository) (string, error) {
+func (e *external) resolveHTTPClientPassword(ctx context.Context, repoCR *repositoryv1alpha1.Repository) (string, error) {
 	if repoCR.Spec.ForProvider.HTTPClient == nil ||
 		repoCR.Spec.ForProvider.HTTPClient.Authentication == nil ||
 		repoCR.Spec.ForProvider.HTTPClient.Authentication.PasswordSecretRef == nil {
