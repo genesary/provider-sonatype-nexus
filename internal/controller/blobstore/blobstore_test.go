@@ -8,7 +8,7 @@ import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/test/mocks"
 )
 
@@ -20,7 +20,7 @@ func TestObserve(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		cr           *v1alpha1.BlobStore
+		cr           *repositoryv1alpha1.BlobStore
 		mockSetup    func(*mocks.MockClient)
 		wantExists   bool
 		wantUpToDate bool
@@ -28,10 +28,10 @@ func TestObserve(t *testing.T) {
 	}{
 		{
 			name: "FileNotFound",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-blobstore"},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-blobstore",
 						Type: "File",
 					},
@@ -48,10 +48,10 @@ func TestObserve(t *testing.T) {
 		},
 		{
 			name: "FileExistsAndUpToDate",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-blobstore"},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-blobstore",
 						Type: "File",
 						Path: &testPath,
@@ -72,10 +72,10 @@ func TestObserve(t *testing.T) {
 		},
 		{
 			name: "FileExistsButOutdated",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-blobstore"},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-blobstore",
 						Type: "File",
 						Path: &testPath,
@@ -96,13 +96,13 @@ func TestObserve(t *testing.T) {
 		},
 		{
 			name: "S3NotFound",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-s3-blobstore"},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-s3-blobstore",
 						Type: "S3",
-						S3Config: &v1alpha1.S3Config{
+						S3Config: &repositoryv1alpha1.S3Config{
 							Bucket: "test-bucket",
 						},
 					},
@@ -119,13 +119,13 @@ func TestObserve(t *testing.T) {
 		},
 		{
 			name: "S3ExistsAndUpToDate",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-s3-blobstore"},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-s3-blobstore",
 						Type: "S3",
-						S3Config: &v1alpha1.S3Config{
+						S3Config: &repositoryv1alpha1.S3Config{
 							Bucket: "test-bucket",
 						},
 					},
@@ -149,10 +149,10 @@ func TestObserve(t *testing.T) {
 		},
 		{
 			name: "GetFileError",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-blobstore"},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-blobstore",
 						Type: "File",
 					},
@@ -206,17 +206,17 @@ func TestCreate(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		cr        *v1alpha1.BlobStore
+		cr        *repositoryv1alpha1.BlobStore
 		mockSetup func(*mocks.MockClient)
 		wantErr   bool
 		validate  func(*testing.T, *mocks.MockClient)
 	}{
 		{
 			name: "CreateFileBlobStore",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-file-blobstore"},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-file-blobstore",
 						Type: "File",
 						Path: &testPath,
@@ -243,13 +243,13 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "CreateS3BlobStore",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-s3-blobstore"},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-s3-blobstore",
 						Type: "S3",
-						S3Config: &v1alpha1.S3Config{
+						S3Config: &repositoryv1alpha1.S3Config{
 							Bucket: "my-bucket",
 						},
 					},
@@ -275,10 +275,10 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "CreateFileBlobStoreError",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{Name: "test-file-blobstore"},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-file-blobstore",
 						Type: "File",
 					},
@@ -326,22 +326,22 @@ func TestUpdate(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		cr        *v1alpha1.BlobStore
+		cr        *repositoryv1alpha1.BlobStore
 		mockSetup func(*mocks.MockClient)
 		wantErr   bool
 		validate  func(*testing.T, *mocks.MockClient)
 	}{
 		{
 			name: "UpdateFileBlobStore",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-file-blobstore",
 					Annotations: map[string]string{
 						"crossplane.io/external-name": "test-file-blobstore",
 					},
 				},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-file-blobstore",
 						Type: "File",
 						Path: &testPath,
@@ -364,18 +364,18 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "UpdateS3BlobStore",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-s3-blobstore",
 					Annotations: map[string]string{
 						"crossplane.io/external-name": "test-s3-blobstore",
 					},
 				},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-s3-blobstore",
 						Type: "S3",
-						S3Config: &v1alpha1.S3Config{
+						S3Config: &repositoryv1alpha1.S3Config{
 							Bucket: "my-bucket",
 						},
 					},
@@ -397,15 +397,15 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "UpdateFileBlobStoreError",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-file-blobstore",
 					Annotations: map[string]string{
 						"crossplane.io/external-name": "test-file-blobstore",
 					},
 				},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-file-blobstore",
 						Type: "File",
 					},
@@ -451,22 +451,22 @@ func TestDelete(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		cr        *v1alpha1.BlobStore
+		cr        *repositoryv1alpha1.BlobStore
 		mockSetup func(*mocks.MockClient)
 		wantErr   bool
 		validate  func(*testing.T, *mocks.MockClient)
 	}{
 		{
 			name: "DeleteBlobStoreSuccess",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-blobstore",
 					Annotations: map[string]string{
 						"crossplane.io/external-name": "test-blobstore",
 					},
 				},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-blobstore",
 						Type: "File",
 					},
@@ -492,15 +492,15 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name: "DeleteBlobStoreNotFound",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-blobstore",
 					Annotations: map[string]string{
 						"crossplane.io/external-name": "test-blobstore",
 					},
 				},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-blobstore",
 						Type: "File",
 					},
@@ -515,15 +515,15 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name: "DeleteBlobStoreError",
-			cr: &v1alpha1.BlobStore{
+			cr: &repositoryv1alpha1.BlobStore{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "test-blobstore",
 					Annotations: map[string]string{
 						"crossplane.io/external-name": "test-blobstore",
 					},
 				},
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-blobstore",
 						Type: "File",
 					},
@@ -620,14 +620,14 @@ func TestGenerateFileBlobStore(t *testing.T) {
 
 	tests := []struct {
 		name string
-		cr   *v1alpha1.BlobStore
+		cr   *repositoryv1alpha1.BlobStore
 		want *blobstore.File
 	}{
 		{
 			name: "BasicFileBlobStore",
-			cr: &v1alpha1.BlobStore{
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+			cr: &repositoryv1alpha1.BlobStore{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-blobstore",
 						Type: "File",
 					},
@@ -639,9 +639,9 @@ func TestGenerateFileBlobStore(t *testing.T) {
 		},
 		{
 			name: "FileBlobStoreWithPath",
-			cr: &v1alpha1.BlobStore{
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+			cr: &repositoryv1alpha1.BlobStore{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-blobstore",
 						Type: "File",
 						Path: &testPath,
@@ -655,12 +655,12 @@ func TestGenerateFileBlobStore(t *testing.T) {
 		},
 		{
 			name: "FileBlobStoreWithQuota",
-			cr: &v1alpha1.BlobStore{
-				Spec: v1alpha1.BlobStoreSpec{
-					ForProvider: v1alpha1.BlobStoreParameters{
+			cr: &repositoryv1alpha1.BlobStore{
+				Spec: repositoryv1alpha1.BlobStoreSpec{
+					ForProvider: repositoryv1alpha1.BlobStoreParameters{
 						Name: "test-blobstore",
 						Type: "File",
-						SoftQuota: &v1alpha1.SoftQuota{
+						SoftQuota: &repositoryv1alpha1.SoftQuota{
 							Type:  &quotaType,
 							Limit: &quotaLimit,
 						},

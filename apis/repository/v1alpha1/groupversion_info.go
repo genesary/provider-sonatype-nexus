@@ -24,6 +24,14 @@ var (
 	AddToScheme = SchemeBuilder.AddToScheme
 )
 
+// BlobStore type metadata.
+var (
+	BlobStoreKind             = reflect.TypeFor[BlobStore]().Name()
+	BlobStoreGroupKind        = schema.GroupKind{Group: APIGroup, Kind: BlobStoreKind}.String()
+	BlobStoreKindAPIVersion   = BlobStoreKind + "." + SchemeGroupVersion.String()
+	BlobStoreGroupVersionKind = SchemeGroupVersion.WithKind(BlobStoreKind)
+)
+
 // Repository type metadata.
 var (
 	RepositoryKind             = reflect.TypeFor[Repository]().Name()

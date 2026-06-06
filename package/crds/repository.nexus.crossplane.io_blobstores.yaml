@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: blobstores.nexus.crossplane.io
+  name: blobstores.repository.nexus.crossplane.io
 spec:
-  group: nexus.crossplane.io
+  group: repository.nexus.crossplane.io
   names:
     categories:
     - crossplane

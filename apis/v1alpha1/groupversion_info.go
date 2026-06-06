@@ -24,14 +24,6 @@ var (
 	AddToScheme = SchemeBuilder.AddToScheme
 )
 
-// BlobStore type metadata.
-var (
-	BlobStoreKind             = reflect.TypeFor[BlobStore]().Name()
-	BlobStoreGroupKind        = schema.GroupKind{Group: Group, Kind: BlobStoreKind}.String()
-	BlobStoreKindAPIVersion   = BlobStoreKind + "." + SchemeGroupVersion.String()
-	BlobStoreGroupVersionKind = SchemeGroupVersion.WithKind(BlobStoreKind)
-)
-
 // ProviderConfig type metadata.
 var (
 	ProviderConfigKind             = reflect.TypeFor[ProviderConfig]().Name()
