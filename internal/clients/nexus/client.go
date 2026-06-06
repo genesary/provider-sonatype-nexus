@@ -39,6 +39,7 @@ type SSLService interface {
 // CleanupPolicyService provides methods for managing cleanup policies.
 type CleanupPolicyService interface {
 	GetCleanupPolicy(ctx context.Context, name string) (*cleanuppolicies.CleanupPolicy, error)
+	ListCleanupPolicies(ctx context.Context) ([]*cleanuppolicies.CleanupPolicy, error)
 	CreateCleanupPolicy(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error
 	UpdateCleanupPolicy(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error
 	DeleteCleanupPolicy(ctx context.Context, name string) error
@@ -554,6 +555,11 @@ func (c *nexusClientWrapper) SSL() SSLService {
 // GetCleanupPolicy gets a cleanup policy by name.
 func (s *cleanupPolicyService) GetCleanupPolicy(ctx context.Context, name string) (*cleanuppolicies.CleanupPolicy, error) {
 	return s.client.CleanupPolicy.Get(name)
+}
+
+// ListCleanupPolicies lists all cleanup policies.
+func (s *cleanupPolicyService) ListCleanupPolicies(ctx context.Context) ([]*cleanuppolicies.CleanupPolicy, error) {
+	return s.client.CleanupPolicy.List()
 }
 
 // CreateCleanupPolicy creates a new cleanup policy.

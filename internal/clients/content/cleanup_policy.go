@@ -19,6 +19,39 @@ type CleanupPolicyClient interface {
 	DeleteCleanupPolicy(ctx context.Context, name string) error
 }
 
+// withListFallback wraps nexus.CleanupPolicyService and overrides GetCleanupPolicy
+// to fall back to a list-and-filter search when the per-name GET returns 404.
+// Some Nexus deployments serve cleanup policies only through the list endpoint.
+type withListFallback struct {
+	nexus.CleanupPolicyService
+}
+
+// GetCleanupPolicy tries the individual GET endpoint first; on a not-found
+// error it lists all policies and returns the one whose name matches.
+func (w *withListFallback) GetCleanupPolicy(ctx context.Context, name string) (*cleanuppolicies.CleanupPolicy, error) {
+	policy, err := w.CleanupPolicyService.GetCleanupPolicy(ctx, name)
+	if err == nil {
+		return policy, nil
+	}
+
+	if !IsNotFound(err) {
+		return nil, err
+	}
+
+	all, listErr := w.CleanupPolicyService.ListCleanupPolicies(ctx)
+	if listErr != nil {
+		return nil, err
+	}
+
+	for _, p := range all {
+		if p != nil && p.Name == name {
+			return p, nil
+		}
+	}
+
+	return nil, err
+}
+
 // NewCleanupPolicyClient creates a CleanupPolicyClient from credentials.
 func NewCleanupPolicyClient(creds nexus.Credentials) (CleanupPolicyClient, error) {
 	nexusClient, err := nexus.NewClient(creds)
@@ -26,7 +59,7 @@ func NewCleanupPolicyClient(creds nexus.Credentials) (CleanupPolicyClient, error
 		return nil, err
 	}
 
-	return nexusClient.CleanupPolicy(), nil
+	return &withListFallback{nexusClient.CleanupPolicy()}, nil
 }
 
 // GenerateCleanupPolicy builds a Nexus CleanupPolicy object from a CR spec.

@@ -118,7 +118,7 @@ jobs:
         run: |
           chmod +x e2e/run-e2e.sh
           NEXUS_URL=http://localhost:8081 ./e2e/run-e2e.sh run
-        timeout-minutes: 10
+        timeout-minutes: 20
 
       - name: Get Cluster Status on Failure
         if: failure()

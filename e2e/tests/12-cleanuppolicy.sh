@@ -19,11 +19,12 @@ sleep 5
 
 for i in {1..30}; do
     status=$(kubectl get cleanuppolicy e2e-test-cleanup-policy -n default -o jsonpath='{.status.conditions[?(@.type=="Synced")].status}' 2>/dev/null || echo "Unknown")
+    reason=$(kubectl get cleanuppolicy e2e-test-cleanup-policy -n default -o jsonpath='{.status.conditions[?(@.type=="Synced")].reason}' 2>/dev/null || echo "")
     if [ "$status" = "True" ]; then
         echo "CleanupPolicy is synced!"
         break
     fi
-    echo "Waiting for CleanupPolicy to sync... ($i/30)"
+    echo "Waiting for CleanupPolicy to sync... ($i/30) [status=$status reason=$reason]"
     sleep 2
 done
 
@@ -45,11 +46,12 @@ sleep 5
 
 for i in {1..15}; do
     status=$(kubectl get cleanuppolicy e2e-test-cleanup-policy -n default -o jsonpath='{.status.conditions[?(@.type=="Synced")].status}' 2>/dev/null || echo "Unknown")
+    reason=$(kubectl get cleanuppolicy e2e-test-cleanup-policy -n default -o jsonpath='{.status.conditions[?(@.type=="Synced")].reason}' 2>/dev/null || echo "")
     if [ "$status" = "True" ]; then
         echo "CleanupPolicy update synced!"
         break
     fi
-    echo "Waiting for CleanupPolicy update to sync... ($i/15)"
+    echo "Waiting for CleanupPolicy update to sync... ($i/15) [status=$status reason=$reason]"
     sleep 2
 done
 
