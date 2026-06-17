@@ -67,11 +67,11 @@ func (m *MockClient) SSL() nexus.SSLService {
 // MockCleanupPolicyService is a mock implementation of
 // nexus.CleanupPolicyService.
 type MockCleanupPolicyService struct {
-	GetCleanupPolicyFn     func(ctx context.Context, name string) (*cleanuppolicies.CleanupPolicy, error)
-	ListCleanupPoliciesFn  func(ctx context.Context) ([]*cleanuppolicies.CleanupPolicy, error)
-	CreateCleanupPolicyFn  func(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error
-	UpdateCleanupPolicyFn  func(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error
-	DeleteCleanupPolicyFn  func(ctx context.Context, name string) error
+	GetCleanupPolicyFn    func(ctx context.Context, name string) (*cleanuppolicies.CleanupPolicy, error)
+	ListCleanupPoliciesFn func(ctx context.Context) ([]*cleanuppolicies.CleanupPolicy, error)
+	CreateCleanupPolicyFn func(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error
+	UpdateCleanupPolicyFn func(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error
+	DeleteCleanupPolicyFn func(ctx context.Context, name string) error
 
 	GetCleanupPolicyCalls    []string
 	CreateCleanupPolicyCalls []*cleanuppolicies.CleanupPolicy

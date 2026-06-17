@@ -19,8 +19,9 @@ type CleanupPolicyClient interface {
 	DeleteCleanupPolicy(ctx context.Context, name string) error
 }
 
-// withListFallback wraps nexus.CleanupPolicyService and overrides GetCleanupPolicy
-// to fall back to a list-and-filter search when the per-name GET returns 404.
+// withListFallback wraps nexus.CleanupPolicyService and overrides
+// GetCleanupPolicy to fall back to a list-and-filter search when
+// the per-name GET returns 404.
 // Some Nexus deployments serve cleanup policies only through the list endpoint.
 type withListFallback struct {
 	nexus.CleanupPolicyService
@@ -38,7 +39,7 @@ func (w *withListFallback) GetCleanupPolicy(ctx context.Context, name string) (*
 		return nil, err
 	}
 
-	all, listErr := w.CleanupPolicyService.ListCleanupPolicies(ctx)
+	all, listErr := w.ListCleanupPolicies(ctx)
 	if listErr != nil {
 		return nil, err
 	}
