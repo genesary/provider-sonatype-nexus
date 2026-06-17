@@ -27,8 +27,6 @@ const (
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
 	errGetPC = "cannot get ProviderConfig"
-	// errGetCreds is returned when retrieving credentials fails.
-	errGetCreds = "cannot get credentials"
 	// errNewClient is returned when creating the Nexus client fails.
 	errNewClient = "cannot create new Nexus client"
 	// errGetRole is returned when retrieving a Role fails.
@@ -86,16 +84,9 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	provConfig := &v1alpha1.ProviderConfig{}
-
-	err = c.kube.Get(ctx, client.ObjectKey{Name: modernMG.GetProviderConfigReference().Name}, provConfig)
+	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
-	}
-
-	creds, err := nexus.GetCredentialsFromSecret(ctx, c.kube, provConfig)
-	if err != nil {
-		return nil, errors.Wrap(err, errGetCreds)
 	}
 
 	nexusClient, err := nexus.NewClient(creds)
