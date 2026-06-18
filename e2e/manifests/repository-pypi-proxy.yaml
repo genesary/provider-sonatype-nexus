@@ -1,4 +1,4 @@
-apiVersion: nexus.crossplane.io/v1alpha1
+apiVersion: repository.nexus.crossplane.io/v1alpha1
 kind: Repository
 metadata:
   name: e2e-test-pypi-proxy

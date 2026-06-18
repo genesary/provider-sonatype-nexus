@@ -20,7 +20,7 @@ fi
 
 # Create the manifest dynamically
 cat > /tmp/e2e-ssl-truststore.yaml <<EOF
-apiVersion: nexus.crossplane.io/v1alpha1
+apiVersion: iam.nexus.crossplane.io/v1alpha1
 kind: SecuritySSLTruststore
 metadata:
   name: e2e-test-ssl-cert
