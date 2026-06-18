@@ -144,7 +144,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsUserUpToDate(userRes, observed),
+		ResourceUpToDate: iamclient.IsUserUpToDate(userRes),
 	}, nil
 }
 

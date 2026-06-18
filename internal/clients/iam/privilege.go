@@ -108,18 +108,22 @@ func GeneratePrivilegeObservation(observed *security.Privilege) iamv1alpha1.Priv
 	}
 
 	return iamv1alpha1.PrivilegeObservation{
-		ReadOnly: &observed.ReadOnly,
+		ReadOnly:    &observed.ReadOnly,
+		Description: observed.Description,
+		Actions:     observed.Actions,
 	}
 }
 
-// IsPrivilegeUpToDate reports whether the CR matches the observed Privilege.
-func IsPrivilegeUpToDate(privCR *iamv1alpha1.Privilege, observed *security.Privilege) bool {
+// IsPrivilegeUpToDate reports whether the CR spec matches observed.
+func IsPrivilegeUpToDate(privCR *iamv1alpha1.Privilege) bool {
+	obs := privCR.Status.AtProvider
+
 	if privCR.Spec.ForProvider.Description != nil &&
-		*privCR.Spec.ForProvider.Description != observed.Description {
+		*privCR.Spec.ForProvider.Description != obs.Description {
 		return false
 	}
 
-	if !helpers.AreStringSlicesEqual(privCR.Spec.ForProvider.Actions, observed.Actions) {
+	if !helpers.AreStringSlicesEqual(privCR.Spec.ForProvider.Actions, obs.Actions) {
 		return false
 	}
 

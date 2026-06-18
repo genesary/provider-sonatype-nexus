@@ -123,13 +123,15 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 	}
 }
 
-// observeBlobStoreByType is a generic helper for observing a blob store
-// using a typed getter function and an up-to-date checker.
-func observeBlobStoreByType[T any](
+// observeTypedBlobStore fetches a typed blob store, populates
+// observation, and returns whether the resource is up to date.
+func observeTypedBlobStore[T any](
 	ctx context.Context,
 	blobStore *repositoryv1alpha1.BlobStore,
+	ext *external,
 	getter func(context.Context, string) (*T, error),
-	checker func(*repositoryv1alpha1.BlobStore, *T) bool,
+	populate func(*repositoryv1alpha1.BlobStore, *T),
+	checker func(*repositoryv1alpha1.BlobStore) bool,
 ) (managed.ExternalObservation, error) {
 	name := meta.GetExternalName(blobStore)
 	if name == "" {
@@ -150,8 +152,13 @@ func observeBlobStoreByType[T any](
 	}
 
 	blobStore.SetConditions(nexusv1alpha1.Available())
+	populate(blobStore, result)
+	ext.populateBlobStoreStats(ctx, blobStore)
 
-	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: checker(blobStore, result)}, nil
+	return managed.ExternalObservation{
+		ResourceExists:   true,
+		ResourceUpToDate: checker(blobStore),
+	}, nil
 }
 
 // Create creates a new BlobStore resource.
@@ -262,29 +269,15 @@ func (e *external) Disconnect(ctx context.Context) error {
 
 // observeFileBlobStore handles Observe for File-type blob stores.
 func (e *external) observeFileBlobStore(ctx context.Context, blobStore *repositoryv1alpha1.BlobStore) (managed.ExternalObservation, error) {
-	obs, err := observeBlobStoreByType(ctx, blobStore, e.client.BlobStore().GetFile, isFileBlobStoreUpToDate)
-	if err != nil || !obs.ResourceExists {
-		return obs, err
-	}
-
-	e.populateBlobStoreStats(ctx, blobStore)
-
-	return obs, nil
+	return observeTypedBlobStore(ctx, blobStore, e, e.client.BlobStore().GetFile, populateFileBlobStoreObservation, isFileBlobStoreUpToDate)
 }
 
 // observeS3BlobStore handles Observe for S3-type blob stores.
 func (e *external) observeS3BlobStore(ctx context.Context, blobStore *repositoryv1alpha1.BlobStore) (managed.ExternalObservation, error) {
-	obs, err := observeBlobStoreByType(ctx, blobStore, e.client.BlobStore().GetS3, isS3BlobStoreUpToDate)
-	if err != nil || !obs.ResourceExists {
-		return obs, err
-	}
-
-	e.populateBlobStoreStats(ctx, blobStore)
-
-	return obs, nil
+	return observeTypedBlobStore(ctx, blobStore, e, e.client.BlobStore().GetS3, populateS3BlobStoreObservation, isS3BlobStoreUpToDate)
 }
 
-// populateBlobStoreStats fetches stats for blobStore from the list endpoint and
+// populateBlobStoreStats fetches stats from the list endpoint and
 // populates Status.AtProvider. Errors are silently ignored — stats are
 // best-effort and should not block reconciliation.
 func (e *external) populateBlobStoreStats(ctx context.Context, blobStore *repositoryv1alpha1.BlobStore) {
@@ -307,11 +300,9 @@ func (e *external) populateBlobStoreStats(ctx context.Context, blobStore *reposi
 		total := int64(generic.TotalSizeInBytes)
 		count := int64(generic.BlobCount)
 
-		blobStore.Status.AtProvider = repositoryv1alpha1.BlobStoreObservation{
-			AvailableSpaceInBytes: &available,
-			TotalSizeInBytes:      &total,
-			BlobCount:             &count,
-		}
+		blobStore.Status.AtProvider.AvailableSpaceInBytes = &available
+		blobStore.Status.AtProvider.TotalSizeInBytes = &total
+		blobStore.Status.AtProvider.BlobCount = &count
 
 		break
 	}
@@ -380,80 +371,113 @@ func generateS3BlobStore(blobStoreCR *repositoryv1alpha1.BlobStore) *blobstore.S
 	return s3BlobStore
 }
 
-// isFileBlobStoreUpToDate checks if a File blob store is up to date.
-func isFileBlobStoreUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore, fileBlobStore *blobstore.File) bool {
-	if blobStoreCR.Spec.ForProvider.Path != nil && fileBlobStore.Path != *blobStoreCR.Spec.ForProvider.Path {
-		return false
+// populateFileBlobStoreObservation copies File blob store config
+// fields into the observation for IsUpToDate comparison.
+func populateFileBlobStoreObservation(blobStore *repositoryv1alpha1.BlobStore, fileBlobStore *blobstore.File) {
+	if fileBlobStore.Path != "" {
+		path := fileBlobStore.Path
+		blobStore.Status.AtProvider.Path = &path
 	}
 
-	if blobStoreCR.Spec.ForProvider.SoftQuota != nil {
-		if fileBlobStore.SoftQuota == nil {
-			return false
-		}
-
-		if blobStoreCR.Spec.ForProvider.SoftQuota.Type != nil && fileBlobStore.SoftQuota.Type != *blobStoreCR.Spec.ForProvider.SoftQuota.Type {
-			return false
-		}
-
-		if blobStoreCR.Spec.ForProvider.SoftQuota.Limit != nil && fileBlobStore.SoftQuota.Limit != *blobStoreCR.Spec.ForProvider.SoftQuota.Limit {
-			return false
-		}
+	if fileBlobStore.SoftQuota != nil {
+		quotaType := fileBlobStore.SoftQuota.Type
+		quotaLimit := fileBlobStore.SoftQuota.Limit
+		blobStore.Status.AtProvider.SoftQuotaType = &quotaType
+		blobStore.Status.AtProvider.SoftQuotaLimit = &quotaLimit
 	}
-
-	return true
 }
 
-// isS3BlobStoreUpToDate checks if an S3 blob store is up to date.
-func isS3BlobStoreUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore, s3BlobStore *blobstore.S3) bool {
-	if !isS3SoftQuotaUpToDate(blobStoreCR, s3BlobStore) {
-		return false
+// populateS3BlobStoreObservation copies S3 blob store config fields into
+// the observation so that IsUpToDate can compare spec to observation.
+func populateS3BlobStoreObservation(blobStore *repositoryv1alpha1.BlobStore, s3BlobStore *blobstore.S3) {
+	if s3BlobStore.SoftQuota != nil {
+		quotaType := s3BlobStore.SoftQuota.Type
+		quotaLimit := s3BlobStore.SoftQuota.Limit
+		blobStore.Status.AtProvider.SoftQuotaType = &quotaType
+		blobStore.Status.AtProvider.SoftQuotaLimit = &quotaLimit
 	}
 
-	if !isS3BucketConfigUpToDate(blobStoreCR, s3BlobStore) {
-		return false
+	bucketName := s3BlobStore.BucketConfiguration.Bucket.Name
+	if bucketName != "" {
+		blobStore.Status.AtProvider.BucketName = &bucketName
 	}
 
-	return true
+	bucketRegion := s3BlobStore.BucketConfiguration.Bucket.Region
+	if bucketRegion != "" {
+		blobStore.Status.AtProvider.BucketRegion = &bucketRegion
+	}
+
+	bucketPrefix := s3BlobStore.BucketConfiguration.Bucket.Prefix
+	if bucketPrefix != "" {
+		blobStore.Status.AtProvider.BucketPrefix = &bucketPrefix
+	}
 }
 
-// isS3SoftQuotaUpToDate checks if the S3 blob store soft quota is up to date.
-func isS3SoftQuotaUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore, s3BlobStore *blobstore.S3) bool {
+// isFileBlobStoreUpToDate checks if a File blob store matches observed.
+func isFileBlobStoreUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore) bool {
+	obs := blobStoreCR.Status.AtProvider
+
+	if blobStoreCR.Spec.ForProvider.Path != nil {
+		if obs.Path == nil || *blobStoreCR.Spec.ForProvider.Path != *obs.Path {
+			return false
+		}
+	}
+
+	return isSoftQuotaUpToDate(blobStoreCR)
+}
+
+// isS3BlobStoreUpToDate checks if an S3 blob store matches observed.
+func isS3BlobStoreUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore) bool {
+	return isSoftQuotaUpToDate(blobStoreCR) && isS3BucketConfigUpToDate(blobStoreCR)
+}
+
+// isSoftQuotaUpToDate checks if a blob store soft quota spec matches.
+func isSoftQuotaUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore) bool {
 	if blobStoreCR.Spec.ForProvider.SoftQuota == nil {
 		return true
 	}
 
-	if s3BlobStore.SoftQuota == nil {
+	obs := blobStoreCR.Status.AtProvider
+
+	if obs.SoftQuotaType == nil || obs.SoftQuotaLimit == nil {
 		return false
 	}
 
-	if blobStoreCR.Spec.ForProvider.SoftQuota.Type != nil && s3BlobStore.SoftQuota.Type != *blobStoreCR.Spec.ForProvider.SoftQuota.Type {
+	if blobStoreCR.Spec.ForProvider.SoftQuota.Type != nil &&
+		*blobStoreCR.Spec.ForProvider.SoftQuota.Type != *obs.SoftQuotaType {
 		return false
 	}
 
-	if blobStoreCR.Spec.ForProvider.SoftQuota.Limit != nil && s3BlobStore.SoftQuota.Limit != *blobStoreCR.Spec.ForProvider.SoftQuota.Limit {
+	if blobStoreCR.Spec.ForProvider.SoftQuota.Limit != nil &&
+		*blobStoreCR.Spec.ForProvider.SoftQuota.Limit != *obs.SoftQuotaLimit {
 		return false
 	}
 
 	return true
 }
 
-// isS3BucketConfigUpToDate checks if the S3 blob store bucket
-// configuration is up to date.
-func isS3BucketConfigUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore, s3BlobStore *blobstore.S3) bool {
+// isS3BucketConfigUpToDate checks if S3 blob store bucket config matches.
+func isS3BucketConfigUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore) bool {
 	if blobStoreCR.Spec.ForProvider.S3Config == nil {
 		return true
 	}
 
-	if s3BlobStore.BucketConfiguration.Bucket.Name != blobStoreCR.Spec.ForProvider.S3Config.Bucket {
+	obs := blobStoreCR.Status.AtProvider
+
+	if obs.BucketName == nil || *obs.BucketName != blobStoreCR.Spec.ForProvider.S3Config.Bucket {
 		return false
 	}
 
-	if blobStoreCR.Spec.ForProvider.S3Config.Region != nil && s3BlobStore.BucketConfiguration.Bucket.Region != *blobStoreCR.Spec.ForProvider.S3Config.Region {
-		return false
+	if blobStoreCR.Spec.ForProvider.S3Config.Region != nil {
+		if obs.BucketRegion == nil || *obs.BucketRegion != *blobStoreCR.Spec.ForProvider.S3Config.Region {
+			return false
+		}
 	}
 
-	if blobStoreCR.Spec.ForProvider.S3Config.Prefix != nil && s3BlobStore.BucketConfiguration.Bucket.Prefix != *blobStoreCR.Spec.ForProvider.S3Config.Prefix {
-		return false
+	if blobStoreCR.Spec.ForProvider.S3Config.Prefix != nil {
+		if obs.BucketPrefix == nil || *obs.BucketPrefix != *blobStoreCR.Spec.ForProvider.S3Config.Prefix {
+			return false
+		}
 	}
 
 	return true

@@ -54,7 +54,14 @@ func GenerateLDAPObservation(observed *security.LDAP) iamv1alpha1.LDAPObservatio
 		return iamv1alpha1.LDAPObservation{}
 	}
 
-	obs := iamv1alpha1.LDAPObservation{}
+	obs := iamv1alpha1.LDAPObservation{
+		Protocol:   observed.Protocol,
+		Host:       observed.Host,
+		Port:       observed.Port,
+		SearchBase: observed.SearchBase,
+		AuthScheme: observed.AuthSchema,
+		UserBaseDN: observed.UserBaseDN,
+	}
 
 	if observed.ID != "" {
 		obs.ID = &observed.ID
@@ -63,29 +70,31 @@ func GenerateLDAPObservation(observed *security.LDAP) iamv1alpha1.LDAPObservatio
 	return obs
 }
 
-// IsLDAPUpToDate reports whether the CR matches the observed LDAP config.
-func IsLDAPUpToDate(ldapCR *iamv1alpha1.LDAP, observed *security.LDAP) bool {
-	if ldapCR.Spec.ForProvider.Protocol != observed.Protocol {
+// IsLDAPUpToDate reports whether the CR spec matches the observed LDAP config.
+func IsLDAPUpToDate(ldapCR *iamv1alpha1.LDAP) bool {
+	obs := ldapCR.Status.AtProvider
+
+	if ldapCR.Spec.ForProvider.Protocol != obs.Protocol {
 		return false
 	}
 
-	if ldapCR.Spec.ForProvider.Host != observed.Host {
+	if ldapCR.Spec.ForProvider.Host != obs.Host {
 		return false
 	}
 
-	if ldapCR.Spec.ForProvider.Port != observed.Port {
+	if ldapCR.Spec.ForProvider.Port != obs.Port {
 		return false
 	}
 
-	if ldapCR.Spec.ForProvider.SearchBase != observed.SearchBase {
+	if ldapCR.Spec.ForProvider.SearchBase != obs.SearchBase {
 		return false
 	}
 
-	if ldapCR.Spec.ForProvider.AuthScheme != observed.AuthSchema {
+	if ldapCR.Spec.ForProvider.AuthScheme != obs.AuthScheme {
 		return false
 	}
 
-	if ldapCR.Spec.ForProvider.UserBaseDN != observed.UserBaseDN {
+	if ldapCR.Spec.ForProvider.UserBaseDN != obs.UserBaseDN {
 		return false
 	}
 

@@ -35,6 +35,18 @@ type RoleObservation struct {
 
 	// ReadOnly indicates if the role is read-only.
 	ReadOnly *bool `json:"readOnly,omitempty"`
+
+	// Name is the observed role name.
+	Name string `json:"name,omitempty"`
+
+	// Description is the observed role description.
+	Description string `json:"description,omitempty"`
+
+	// Privileges are the observed assigned privileges.
+	Privileges []string `json:"privileges,omitempty"`
+
+	// Roles are the observed contained roles.
+	Roles []string `json:"roles,omitempty"`
 }
 
 // RoleSpec defines the desired state of Role.

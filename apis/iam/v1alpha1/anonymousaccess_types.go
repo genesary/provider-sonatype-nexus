@@ -21,7 +21,14 @@ type AnonymousAccessParameters struct {
 }
 
 // AnonymousAccessObservation is the observed state of an AnonymousAccess.
-type AnonymousAccessObservation struct{}
+type AnonymousAccessObservation struct {
+	// Enabled is the observed enabled state.
+	Enabled bool `json:"enabled,omitempty"`
+	// UserID is the observed anonymous user ID.
+	UserID string `json:"userId,omitempty"`
+	// RealmName is the observed authentication realm.
+	RealmName string `json:"realmName,omitempty"`
+}
 
 // AnonymousAccessSpec defines the desired state of AnonymousAccess.
 type AnonymousAccessSpec struct {

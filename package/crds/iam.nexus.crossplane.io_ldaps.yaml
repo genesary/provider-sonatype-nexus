@@ -299,8 +299,27 @@ spec:
                   LDAPObservation represents the observed state of an LDAP server
                   configuration.
                 properties:
+                  authScheme:
+                    description: AuthScheme is the observed authentication scheme.
+                    type: string
+                  host:
+                    description: Host is the observed LDAP server hostname.
+                    type: string
                   id:
                     description: ID is the internal LDAP server ID.
+                    type: string
+                  port:
+                    description: Port is the observed LDAP server port.
+                    format: int32
+                    type: integer
+                  protocol:
+                    description: Protocol is the observed connection protocol.
+                    type: string
+                  searchBase:
+                    description: SearchBase is the observed LDAP search base DN.
+                    type: string
+                  userBaseDn:
+                    description: UserBaseDN is the observed user base DN.
                     type: string
                 type: object
               conditions:

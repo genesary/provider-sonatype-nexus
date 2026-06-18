@@ -28,15 +28,14 @@ func NewSecurityRealmClient(creds nexus.Credentials) (SecurityRealmClient, error
 	return nexusClient.Security(), nil
 }
 
-// IsSecurityRealmUpToDate reports whether the CR matches observed realms.
-func IsSecurityRealmUpToDate(cr *iamv1alpha1.SecurityRealm, activeRealms []string) bool {
-	return reflect.DeepEqual(cr.Spec.ForProvider.ActiveRealms, activeRealms)
-}
-
 // GenerateSecurityRealmObservation returns the observed realm state.
-func GenerateSecurityRealmObservation(availableRealms []security.Realm) iamv1alpha1.SecurityRealmObservation {
+func GenerateSecurityRealmObservation(availableRealms []security.Realm, activeRealms []string) iamv1alpha1.SecurityRealmObservation {
+	obs := iamv1alpha1.SecurityRealmObservation{
+		ActiveRealms: activeRealms,
+	}
+
 	if availableRealms == nil {
-		return iamv1alpha1.SecurityRealmObservation{}
+		return obs
 	}
 
 	realmInfos := make([]iamv1alpha1.RealmInfo, len(availableRealms))
@@ -47,5 +46,12 @@ func GenerateSecurityRealmObservation(availableRealms []security.Realm) iamv1alp
 		}
 	}
 
-	return iamv1alpha1.SecurityRealmObservation{AvailableRealms: realmInfos}
+	obs.AvailableRealms = realmInfos
+
+	return obs
+}
+
+// IsSecurityRealmUpToDate reports whether the CR spec matches observed.
+func IsSecurityRealmUpToDate(cr *iamv1alpha1.SecurityRealm) bool {
+	return reflect.DeepEqual(cr.Spec.ForProvider.ActiveRealms, cr.Status.AtProvider.ActiveRealms)
 }

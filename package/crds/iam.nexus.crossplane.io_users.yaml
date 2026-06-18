@@ -178,14 +178,31 @@ spec:
               atProvider:
                 description: UserObservation is the observed state of a User.
                 properties:
+                  emailAddress:
+                    description: EmailAddress is the observed email address.
+                    type: string
                   externalRoles:
                     description: ExternalRoles are roles from external sources.
                     items:
                       type: string
                     type: array
+                  firstName:
+                    description: FirstName is the observed first name.
+                    type: string
+                  lastName:
+                    description: LastName is the observed last name.
+                    type: string
                   readOnly:
                     description: ReadOnly indicates if the user is read-only.
                     type: boolean
+                  roles:
+                    description: Roles are the observed assigned roles.
+                    items:
+                      type: string
+                    type: array
+                  status:
+                    description: Status is the observed account status.
+                    type: string
                 type: object
               conditions:
                 description: Conditions of the resource.

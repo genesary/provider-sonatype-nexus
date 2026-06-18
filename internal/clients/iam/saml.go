@@ -43,9 +43,44 @@ func GenerateSAML(samlCR *iamv1alpha1.SAML) security.SAML {
 	}
 }
 
-// IsSAMLUpToDate reports whether the CR matches the observed SAML config.
-func IsSAMLUpToDate(samlCR *iamv1alpha1.SAML, observed *security.SAML) bool {
-	desired := GenerateSAML(samlCR)
+// GenerateSAMLObservation converts an observed SAML to an observation struct.
+func GenerateSAMLObservation(observed *security.SAML) iamv1alpha1.SAMLObservation {
+	if observed == nil {
+		return iamv1alpha1.SAMLObservation{}
+	}
 
-	return reflect.DeepEqual(desired, *observed)
+	return iamv1alpha1.SAMLObservation{
+		IdpMetadata:                observed.IdpMetadata,
+		EntityId:                   observed.EntityId,
+		UsernameAttribute:          observed.UsernameAttribute,
+		FirstNameAttribute:         observed.FirstNameAttribute,
+		LastNameAttribute:          observed.LastNameAttribute,
+		EmailAttribute:             observed.EmailAttribute,
+		GroupsAttribute:            observed.GroupsAttribute,
+		ValidateResponseSignature:  observed.ValidateResponseSignature,
+		ValidateAssertionSignature: observed.ValidateAssertionSignature,
+	}
+}
+
+// samlObservationToSAML converts a SAMLObservation back to the API type.
+func samlObservationToSAML(obs iamv1alpha1.SAMLObservation) security.SAML {
+	return security.SAML{
+		IdpMetadata:                obs.IdpMetadata,
+		EntityId:                   obs.EntityId,
+		UsernameAttribute:          obs.UsernameAttribute,
+		FirstNameAttribute:         obs.FirstNameAttribute,
+		LastNameAttribute:          obs.LastNameAttribute,
+		EmailAttribute:             obs.EmailAttribute,
+		GroupsAttribute:            obs.GroupsAttribute,
+		ValidateResponseSignature:  obs.ValidateResponseSignature,
+		ValidateAssertionSignature: obs.ValidateAssertionSignature,
+	}
+}
+
+// IsSAMLUpToDate reports whether the CR spec matches the observed SAML config.
+func IsSAMLUpToDate(samlCR *iamv1alpha1.SAML) bool {
+	desired := GenerateSAML(samlCR)
+	observed := samlObservationToSAML(samlCR.Status.AtProvider)
+
+	return reflect.DeepEqual(desired, observed)
 }

@@ -28,14 +28,16 @@ func NewSSLTruststoreClient(creds nexus.Credentials) (SSLTruststoreClient, error
 	return nexusClient.SSL(), nil
 }
 
-// IsCertUpToDate reports whether the CR PEM matches the observed certificate.
-func IsCertUpToDate(cr *iamv1alpha1.SecuritySSLTruststore, cert *security.SSLCertificate) bool {
-	return strings.TrimSpace(cr.Spec.ForProvider.Pem) == strings.TrimSpace(cert.Pem)
+// IsCertUpToDate reports whether the CR spec PEM matches observed.
+func IsCertUpToDate(cr *iamv1alpha1.SecuritySSLTruststore) bool {
+	return strings.TrimSpace(cr.Spec.ForProvider.Pem) == strings.TrimSpace(cr.Status.AtProvider.Pem)
 }
 
 // CertToObservation converts an SSLCertificate to an observation struct.
 func CertToObservation(cert *security.SSLCertificate) iamv1alpha1.SecuritySSLTruststoreObservation {
-	obs := iamv1alpha1.SecuritySSLTruststoreObservation{}
+	obs := iamv1alpha1.SecuritySSLTruststoreObservation{
+		Pem: cert.Pem,
+	}
 
 	setCertBasicFields(&obs, cert)
 	setCertIssuerFields(&obs, cert)

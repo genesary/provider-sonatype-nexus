@@ -164,6 +164,37 @@ spec:
               atProvider:
                 description: SAMLObservation represents the observed state of SAML
                   configuration.
+                properties:
+                  emailAttribute:
+                    description: EmailAttribute is the observed email attribute.
+                    type: string
+                  entityId:
+                    description: EntityId is the observed SAML entity ID.
+                    type: string
+                  firstNameAttribute:
+                    description: FirstNameAttribute is the observed first name attribute.
+                    type: string
+                  groupsAttribute:
+                    description: GroupsAttribute is the observed groups attribute.
+                    type: string
+                  idpMetadata:
+                    description: IdpMetadata is the observed Identity Provider metadata
+                      XML.
+                    type: string
+                  lastNameAttribute:
+                    description: LastNameAttribute is the observed last name attribute.
+                    type: string
+                  usernameAttribute:
+                    description: UsernameAttribute is the observed username attribute.
+                    type: string
+                  validateAssertionSignature:
+                    description: ValidateAssertionSignature is the observed assertion
+                      signature validation flag.
+                    type: boolean
+                  validateResponseSignature:
+                    description: ValidateResponseSignature is the observed response
+                      signature validation flag.
+                    type: boolean
                 type: object
               conditions:
                 description: Conditions of the resource.

@@ -51,26 +51,37 @@ func GenerateRole(roleRes *iamv1alpha1.Role) security.Role {
 // the readOnly or source fields returned by the Nexus REST API, so
 // RoleObservation.Source and RoleObservation.ReadOnly remain nil until
 // the upstream library is updated.
-func GenerateRoleObservation(_ *security.Role) iamv1alpha1.RoleObservation {
-	return iamv1alpha1.RoleObservation{}
+func GenerateRoleObservation(observed *security.Role) iamv1alpha1.RoleObservation {
+	if observed == nil {
+		return iamv1alpha1.RoleObservation{}
+	}
+
+	return iamv1alpha1.RoleObservation{
+		Name:        observed.Name,
+		Description: observed.Description,
+		Privileges:  observed.Privileges,
+		Roles:       observed.Roles,
+	}
 }
 
-// IsRoleUpToDate reports whether the CR matches the observed Role.
-func IsRoleUpToDate(roleRes *iamv1alpha1.Role, observed *security.Role) bool {
-	if roleRes.Spec.ForProvider.Name != observed.Name {
+// IsRoleUpToDate reports whether the CR spec matches the observed Role.
+func IsRoleUpToDate(roleRes *iamv1alpha1.Role) bool {
+	obs := roleRes.Status.AtProvider
+
+	if roleRes.Spec.ForProvider.Name != obs.Name {
 		return false
 	}
 
 	if roleRes.Spec.ForProvider.Description != nil &&
-		*roleRes.Spec.ForProvider.Description != observed.Description {
+		*roleRes.Spec.ForProvider.Description != obs.Description {
 		return false
 	}
 
-	if !helpers.AreStringSlicesEqual(roleRes.Spec.ForProvider.Privileges, observed.Privileges) {
+	if !helpers.AreStringSlicesEqual(roleRes.Spec.ForProvider.Privileges, obs.Privileges) {
 		return false
 	}
 
-	if !helpers.AreStringSlicesEqual(roleRes.Spec.ForProvider.Roles, observed.Roles) {
+	if !helpers.AreStringSlicesEqual(roleRes.Spec.ForProvider.Roles, obs.Roles) {
 		return false
 	}
 

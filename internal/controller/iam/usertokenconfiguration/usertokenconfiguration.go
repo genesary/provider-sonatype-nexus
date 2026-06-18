@@ -115,11 +115,12 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetUserTokenConfig)
 	}
 
+	userTokenCfg.Status.AtProvider = iamclient.GenerateUserTokenConfigObservation(config)
 	userTokenCfg.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsUserTokenConfigUpToDate(userTokenCfg, config),
+		ResourceUpToDate: iamclient.IsUserTokenConfigUpToDate(userTokenCfg),
 	}, nil
 }
 

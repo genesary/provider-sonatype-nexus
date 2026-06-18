@@ -137,7 +137,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsLDAPUpToDate(ldapCR, observed),
+		ResourceUpToDate: iamclient.IsLDAPUpToDate(ldapCR),
 	}, nil
 }
 

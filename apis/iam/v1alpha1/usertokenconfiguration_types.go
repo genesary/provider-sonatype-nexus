@@ -26,7 +26,16 @@ type UserTokenConfigurationParameters struct {
 }
 
 // UserTokenConfigurationObservation is the observed state.
-type UserTokenConfigurationObservation struct{}
+type UserTokenConfigurationObservation struct {
+	// Enabled is the observed enabled state.
+	Enabled bool `json:"enabled,omitempty"`
+	// ProtectContent is the observed protect content setting.
+	ProtectContent bool `json:"protectContent,omitempty"`
+	// ExpirationEnabled is the observed expiration enabled state.
+	ExpirationEnabled bool `json:"expirationEnabled,omitempty"`
+	// ExpirationDays is the observed expiration days.
+	ExpirationDays int `json:"expirationDays,omitempty"`
+}
 
 // UserTokenConfigurationSpec defines the desired state.
 type UserTokenConfigurationSpec struct {

@@ -141,6 +141,16 @@ spec:
               atProvider:
                 description: AnonymousAccessObservation is the observed state of an
                   AnonymousAccess.
+                properties:
+                  enabled:
+                    description: Enabled is the observed enabled state.
+                    type: boolean
+                  realmName:
+                    description: RealmName is the observed authentication realm.
+                    type: string
+                  userId:
+                    description: UserID is the observed anonymous user ID.
+                    type: string
                 type: object
               conditions:
                 description: Conditions of the resource.

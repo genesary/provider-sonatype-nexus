@@ -48,6 +48,24 @@ type SAMLParameters struct {
 
 // SAMLObservation represents the observed state of SAML configuration.
 type SAMLObservation struct {
+	// IdpMetadata is the observed Identity Provider metadata XML.
+	IdpMetadata string `json:"idpMetadata,omitempty"`
+	// EntityId is the observed SAML entity ID.
+	EntityId string `json:"entityId,omitempty"`
+	// UsernameAttribute is the observed username attribute.
+	UsernameAttribute string `json:"usernameAttribute,omitempty"`
+	// FirstNameAttribute is the observed first name attribute.
+	FirstNameAttribute *string `json:"firstNameAttribute,omitempty"`
+	// LastNameAttribute is the observed last name attribute.
+	LastNameAttribute *string `json:"lastNameAttribute,omitempty"`
+	// EmailAttribute is the observed email attribute.
+	EmailAttribute *string `json:"emailAttribute,omitempty"`
+	// GroupsAttribute is the observed groups attribute.
+	GroupsAttribute *string `json:"groupsAttribute,omitempty"`
+	// ValidateResponseSignature is the observed response signature validation flag.
+	ValidateResponseSignature *bool `json:"validateResponseSignature,omitempty"`
+	// ValidateAssertionSignature is the observed assertion signature validation flag.
+	ValidateAssertionSignature *bool `json:"validateAssertionSignature,omitempty"`
 }
 
 // SAMLSpec defines the desired state of SAML.

@@ -133,7 +133,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsPrivilegeUpToDate(privRes, observed),
+		ResourceUpToDate: iamclient.IsPrivilegeUpToDate(privRes),
 	}, nil
 }
 

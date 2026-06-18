@@ -145,6 +145,20 @@ spec:
             properties:
               atProvider:
                 description: UserTokenConfigurationObservation is the observed state.
+                properties:
+                  enabled:
+                    description: Enabled is the observed enabled state.
+                    type: boolean
+                  expirationDays:
+                    description: ExpirationDays is the observed expiration days.
+                    type: integer
+                  expirationEnabled:
+                    description: ExpirationEnabled is the observed expiration enabled
+                      state.
+                    type: boolean
+                  protectContent:
+                    description: ProtectContent is the observed protect content setting.
+                    type: boolean
                 type: object
               conditions:
                 description: Conditions of the resource.

@@ -119,11 +119,12 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
+	samlCR.Status.AtProvider = iamclient.GenerateSAMLObservation(observed)
 	samlCR.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsSAMLUpToDate(samlCR, observed),
+		ResourceUpToDate: iamclient.IsSAMLUpToDate(samlCR),
 	}, nil
 }
 

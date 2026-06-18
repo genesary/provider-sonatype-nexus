@@ -180,6 +180,14 @@ spec:
                 description: PrivilegeObservation represents the observed state of
                   a Privilege.
                 properties:
+                  actions:
+                    description: Actions are the observed allowed actions.
+                    items:
+                      type: string
+                    type: array
+                  description:
+                    description: Description is the observed privilege description.
+                    type: string
                   readOnly:
                     description: ReadOnly indicates if the privilege is read-only
                       (built-in).

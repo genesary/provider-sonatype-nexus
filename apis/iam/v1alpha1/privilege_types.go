@@ -59,6 +59,10 @@ type PrivilegeParameters struct {
 type PrivilegeObservation struct {
 	// ReadOnly indicates if the privilege is read-only (built-in).
 	ReadOnly *bool `json:"readOnly,omitempty"`
+	// Description is the observed privilege description.
+	Description string `json:"description,omitempty"`
+	// Actions are the observed allowed actions.
+	Actions []string `json:"actions,omitempty"`
 }
 
 // PrivilegeSpec defines the desired state of Privilege.

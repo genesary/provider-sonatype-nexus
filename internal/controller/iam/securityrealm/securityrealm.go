@@ -116,12 +116,12 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 	}
 
 	availableRealms, _ := e.client.ListAvailableRealms(ctx)
-	securityRealm.Status.AtProvider = iamclient.GenerateSecurityRealmObservation(availableRealms)
+	securityRealm.Status.AtProvider = iamclient.GenerateSecurityRealmObservation(availableRealms, activeRealms)
 	securityRealm.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsSecurityRealmUpToDate(securityRealm, activeRealms),
+		ResourceUpToDate: iamclient.IsSecurityRealmUpToDate(securityRealm),
 	}, nil
 }
 

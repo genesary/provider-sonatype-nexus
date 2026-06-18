@@ -246,6 +246,29 @@ spec:
                     description: BlobCount is the number of blobs in the store.
                     format: int64
                     type: integer
+                  bucketName:
+                    description: BucketName is the observed S3 bucket name (S3 type
+                      only).
+                    type: string
+                  bucketPrefix:
+                    description: BucketPrefix is the observed S3 bucket prefix (S3
+                      type only).
+                    type: string
+                  bucketRegion:
+                    description: BucketRegion is the observed S3 bucket region (S3
+                      type only).
+                    type: string
+                  path:
+                    description: Path is the observed filesystem path (File type only).
+                    type: string
+                  softQuotaLimit:
+                    description: SoftQuotaLimit is the observed soft quota limit in
+                      bytes.
+                    format: int64
+                    type: integer
+                  softQuotaType:
+                    description: SoftQuotaType is the observed soft quota type.
+                    type: string
                   totalSizeInBytes:
                     description: TotalSizeInBytes is the total size in bytes.
                     format: int64

@@ -171,6 +171,9 @@ spec:
                     description: IssuerOrganizationUnit is the issuer organizational
                       unit.
                     type: string
+                  pem:
+                    description: Pem is the observed certificate in PEM format.
+                    type: string
                   serialNumber:
                     description: SerialNumber is the certificate serial number.
                     type: string

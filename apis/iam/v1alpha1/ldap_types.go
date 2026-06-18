@@ -156,6 +156,18 @@ type LDAPParameters struct {
 type LDAPObservation struct {
 	// ID is the internal LDAP server ID.
 	ID *string `json:"id,omitempty"`
+	// Protocol is the observed connection protocol.
+	Protocol string `json:"protocol,omitempty"`
+	// Host is the observed LDAP server hostname.
+	Host string `json:"host,omitempty"`
+	// Port is the observed LDAP server port.
+	Port int32 `json:"port,omitempty"`
+	// SearchBase is the observed LDAP search base DN.
+	SearchBase string `json:"searchBase,omitempty"`
+	// AuthScheme is the observed authentication scheme.
+	AuthScheme string `json:"authScheme,omitempty"`
+	// UserBaseDN is the observed user base DN.
+	UserBaseDN string `json:"userBaseDn,omitempty"`
 }
 
 // LDAPSpec defines the desired state of LDAP.

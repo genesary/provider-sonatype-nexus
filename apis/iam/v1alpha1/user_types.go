@@ -50,6 +50,21 @@ type UserObservation struct {
 
 	// ExternalRoles are roles from external sources.
 	ExternalRoles []string `json:"externalRoles,omitempty"`
+
+	// FirstName is the observed first name.
+	FirstName string `json:"firstName,omitempty"`
+
+	// LastName is the observed last name.
+	LastName string `json:"lastName,omitempty"`
+
+	// EmailAddress is the observed email address.
+	EmailAddress string `json:"emailAddress,omitempty"`
+
+	// Status is the observed account status.
+	Status string `json:"status,omitempty"`
+
+	// Roles are the observed assigned roles.
+	Roles []string `json:"roles,omitempty"`
 }
 
 // UserSpec defines the desired state of User.

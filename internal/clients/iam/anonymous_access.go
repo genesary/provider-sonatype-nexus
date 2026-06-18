@@ -35,20 +35,32 @@ func GenerateAnonymousAccessSettings(cr *iamv1alpha1.AnonymousAccess) security.A
 	}
 }
 
-// IsAnonymousAccessUpToDate reports whether the CR matches the observed state.
-func IsAnonymousAccessUpToDate(
-	anonAccess *iamv1alpha1.AnonymousAccess,
-	observed *security.AnonymousAccessSettings,
-) bool {
-	if anonAccess.Spec.ForProvider.Enabled != observed.Enabled {
+// GenerateAnonymousAccessObservation returns the observed state.
+func GenerateAnonymousAccessObservation(settings *security.AnonymousAccessSettings) iamv1alpha1.AnonymousAccessObservation {
+	if settings == nil {
+		return iamv1alpha1.AnonymousAccessObservation{}
+	}
+
+	return iamv1alpha1.AnonymousAccessObservation{
+		Enabled:   settings.Enabled,
+		UserID:    settings.UserID,
+		RealmName: settings.RealmName,
+	}
+}
+
+// IsAnonymousAccessUpToDate reports whether the CR spec matches observed.
+func IsAnonymousAccessUpToDate(anonAccess *iamv1alpha1.AnonymousAccess) bool {
+	obs := anonAccess.Status.AtProvider
+
+	if anonAccess.Spec.ForProvider.Enabled != obs.Enabled {
 		return false
 	}
 
-	if anonAccess.Spec.ForProvider.UserID != observed.UserID {
+	if anonAccess.Spec.ForProvider.UserID != obs.UserID {
 		return false
 	}
 
-	if anonAccess.Spec.ForProvider.RealmName != observed.RealmName {
+	if anonAccess.Spec.ForProvider.RealmName != obs.RealmName {
 		return false
 	}
 
