@@ -4,6 +4,27 @@ set -e
 NEXUS_URL="${NEXUS_URL:-http://localhost:8081}"
 TIMEOUT="${TIMEOUT:-300}"
 
+echo "=== Waiting for Kubernetes API server ==="
+
+start_time=$(date +%s)
+while true; do
+    current_time=$(date +%s)
+    elapsed=$((current_time - start_time))
+
+    if [ $elapsed -gt $TIMEOUT ]; then
+        echo "ERROR: Timeout waiting for Kubernetes API server"
+        exit 1
+    fi
+
+    if kubectl cluster-info &>/dev/null; then
+        echo "Kubernetes API server is ready!"
+        break
+    fi
+
+    echo "Waiting for Kubernetes API server... (${elapsed}s/${TIMEOUT}s)"
+    sleep 5
+done
+
 echo "=== Waiting for Nexus to be ready ==="
 
 start_time=$(date +%s)
