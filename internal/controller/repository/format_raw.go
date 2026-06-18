@@ -8,7 +8,7 @@ import (
 
 	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/genesary/provider-sonatype-nexus/internal/utils"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 // RawHandler handles Raw repository operations.
@@ -140,7 +140,7 @@ func (h *RawHandler) isGroupUpToDate(repoCR *repositoryv1alpha1.Repository, repo
 	}
 
 	if repoCR.Spec.ForProvider.Group != nil {
-		if !utils.StringSlicesEqual(repo.MemberNames, repoCR.Spec.ForProvider.Group.MemberNames) {
+		if !helpers.AreStringSlicesEqual(repo.MemberNames, repoCR.Spec.ForProvider.Group.MemberNames) {
 			return false
 		}
 	}

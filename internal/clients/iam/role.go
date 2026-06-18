@@ -9,6 +9,7 @@ import (
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 // RoleClient manages Nexus roles.
@@ -56,11 +57,11 @@ func IsRoleUpToDate(roleRes *iamv1alpha1.Role, observed *security.Role) bool {
 		return false
 	}
 
-	if !StringSlicesEqual(roleRes.Spec.ForProvider.Privileges, observed.Privileges) {
+	if !helpers.AreStringSlicesEqual(roleRes.Spec.ForProvider.Privileges, observed.Privileges) {
 		return false
 	}
 
-	if !StringSlicesEqual(roleRes.Spec.ForProvider.Roles, observed.Roles) {
+	if !helpers.AreStringSlicesEqual(roleRes.Spec.ForProvider.Roles, observed.Roles) {
 		return false
 	}
 
@@ -76,19 +77,4 @@ func IsNotFound(err error) bool {
 	return strings.Contains(err.Error(), "404") ||
 		strings.Contains(err.Error(), "not found") ||
 		strings.Contains(strings.ToLower(err.Error()), "does not exist")
-}
-
-// StringSlicesEqual reports whether two string slices are equal.
-func StringSlicesEqual(sliceA, sliceB []string) bool {
-	if len(sliceA) != len(sliceB) {
-		return false
-	}
-
-	for idx := range sliceA {
-		if sliceA[idx] != sliceB[idx] {
-			return false
-		}
-	}
-
-	return true
 }

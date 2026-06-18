@@ -8,6 +8,7 @@ import (
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -107,7 +108,7 @@ func IsPrivilegeUpToDate(privCR *iamv1alpha1.Privilege, observed *security.Privi
 		return false
 	}
 
-	if !StringSlicesEqual(privCR.Spec.ForProvider.Actions, observed.Actions) {
+	if !helpers.AreStringSlicesEqual(privCR.Spec.ForProvider.Actions, observed.Actions) {
 		return false
 	}
 

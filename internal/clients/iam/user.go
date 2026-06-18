@@ -8,6 +8,7 @@ import (
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 // UserClient manages Nexus users.
@@ -72,7 +73,7 @@ func IsUserUpToDate(userRes *iamv1alpha1.User, observed *security.User) bool {
 		return false
 	}
 
-	if !StringSlicesEqual(userRes.Spec.ForProvider.Roles, observed.Roles) {
+	if !helpers.AreStringSlicesEqual(userRes.Spec.ForProvider.Roles, observed.Roles) {
 		return false
 	}
 

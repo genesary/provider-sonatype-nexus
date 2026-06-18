@@ -9,6 +9,7 @@ import (
 
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 // CleanupPolicyClient defines the interface for cleanup policy operations.
@@ -100,8 +101,8 @@ func IsCleanupPolicyUpToDate(cr *contentv1alpha1.CleanupPolicy, observed *cleanu
 		return false
 	}
 
-	return isReleaseTypeEqual(params.CriteriaReleaseType, observed.CriteriaReleaseType) &&
-		isRetainEqual(params.Retain, observed.Retain)
+	return helpers.IsComparablePtrEqualComparablePtr(params.CriteriaReleaseType, (*string)(observed.CriteriaReleaseType)) &&
+		helpers.IsComparablePtrEqualComparable(params.Retain, observed.Retain)
 }
 
 // GenerateCleanupPolicyObservation returns the observed policy state.
@@ -154,57 +155,8 @@ func IsNotFound(err error) bool {
 
 // areCriteriaFieldsEqual checks string/int pointer criteria fields equality.
 func areCriteriaFieldsEqual(params contentv1alpha1.CleanupPolicyParameters, observed *cleanuppolicies.CleanupPolicy) bool {
-	return stringPtrEqual(params.Notes, observed.Notes) &&
-		intPtrEqual(params.CriteriaLastBlobUpdated, observed.CriteriaLastBlobUpdated) &&
-		intPtrEqual(params.CriteriaLastDownloaded, observed.CriteriaLastDownloaded) &&
-		stringPtrEqual(params.CriteriaAssetRegex, observed.CriteriaAssetRegex)
-}
-
-// isReleaseTypeEqual compares the desired and observed release type values.
-func isReleaseTypeEqual(desired *string, observed *cleanuppolicies.CriteriaReleaseType) bool {
-	if desired == nil {
-		return observed == nil
-	}
-
-	if observed == nil {
-		return false
-	}
-
-	return string(*observed) == *desired
-}
-
-// isRetainEqual compares the desired and observed retain values.
-func isRetainEqual(desired *int, observedRetain int) bool {
-	desiredVal := 0
-	if desired != nil {
-		desiredVal = *desired
-	}
-
-	return observedRetain == desiredVal
-}
-
-// stringPtrEqual returns true when both are nil or point to equal values.
-func stringPtrEqual(first, second *string) bool {
-	if first == nil && second == nil {
-		return true
-	}
-
-	if first == nil || second == nil {
-		return false
-	}
-
-	return *first == *second
-}
-
-// intPtrEqual returns true when both are nil or point to equal values.
-func intPtrEqual(first, second *int) bool {
-	if first == nil && second == nil {
-		return true
-	}
-
-	if first == nil || second == nil {
-		return false
-	}
-
-	return *first == *second
+	return helpers.IsComparablePtrEqualComparablePtr(params.Notes, observed.Notes) &&
+		helpers.IsComparablePtrEqualComparablePtr(params.CriteriaLastBlobUpdated, observed.CriteriaLastBlobUpdated) &&
+		helpers.IsComparablePtrEqualComparablePtr(params.CriteriaLastDownloaded, observed.CriteriaLastDownloaded) &&
+		helpers.IsComparablePtrEqualComparablePtr(params.CriteriaAssetRegex, observed.CriteriaAssetRegex)
 }
