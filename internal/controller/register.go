@@ -11,6 +11,7 @@ import (
 	contentcontentselector "github.com/genesary/provider-sonatype-nexus/internal/controller/content/contentselector"
 	iamanonymousaccess "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/anonymousaccess"
 	iamldap "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/ldap"
+	iamlicense "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/license"
 	iamprivilege "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/privilege"
 	iamrole "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/role"
 	iamsaml "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/saml"
@@ -29,6 +30,7 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		contentcleanuppolicy.Setup,
 		contentcontentselector.Setup,
 		iamanonymousaccess.Setup,
+		iamlicense.Setup,
 		iamldap.Setup,
 		iamprivilege.Setup,
 		iamrole.Setup,

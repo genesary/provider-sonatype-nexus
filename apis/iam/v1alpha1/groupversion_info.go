@@ -95,3 +95,11 @@ var (
 	SecuritySSLTruststoreKindAPIVersion   = SecuritySSLTruststoreKind + "." + SchemeGroupVersion.String()
 	SecuritySSLTruststoreGroupVersionKind = SchemeGroupVersion.WithKind(SecuritySSLTruststoreKind)
 )
+
+// License type metadata.
+var (
+	LicenseKind             = reflect.TypeFor[License]().Name()
+	LicenseGroupKind        = schema.GroupKind{Group: APIGroup, Kind: LicenseKind}.String()
+	LicenseKindAPIVersion   = LicenseKind + "." + SchemeGroupVersion.String()
+	LicenseGroupVersionKind = SchemeGroupVersion.WithKind(LicenseKind)
+)
