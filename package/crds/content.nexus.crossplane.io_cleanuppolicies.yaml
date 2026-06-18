@@ -115,8 +115,12 @@ spec:
                       Name is the unique identifier for this cleanup policy.
                       Only letters, digits, underscores(_), hyphens(-), and dots(.) are allowed
                       and may not start with underscore or dot.
+                      WARNING: This field is immutable.
                     minLength: 1
                     type: string
+                    x-kubernetes-validations:
+                    - message: Name is immutable.
+                      rule: self == oldSelf
                   notes:
                     description: Notes are details about this cleanup policy.
                     type: string

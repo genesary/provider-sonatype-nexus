@@ -10,8 +10,10 @@ type CleanupPolicyParameters struct {
 	// Name is the unique identifier for this cleanup policy.
 	// Only letters, digits, underscores(_), hyphens(-), and dots(.) are allowed
 	// and may not start with underscore or dot.
+	// WARNING: This field is immutable.
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Name is immutable."
 	Name string `json:"name"`
 
 	// Format is the repository format this policy applies to.
