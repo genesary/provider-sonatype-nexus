@@ -4,7 +4,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.21.0
-  name: providerconfigusages.nexus.crossplane.io
+  name: clusterproviderconfigusages.nexus.crossplane.io
 spec:
   group: nexus.crossplane.io
   names:
@@ -12,11 +12,11 @@ spec:
     - crossplane
     - provider
     - nexus
-    kind: ProviderConfigUsage
-    listKind: ProviderConfigUsageList
-    plural: providerconfigusages
-    singular: providerconfigusage
-  scope: Namespaced
+    kind: ClusterProviderConfigUsage
+    listKind: ClusterProviderConfigUsageList
+    plural: clusterproviderconfigusages
+    singular: clusterproviderconfigusage
+  scope: Cluster
   versions:
   - additionalPrinterColumns:
     - jsonPath: .metadata.creationTimestamp
@@ -34,7 +34,9 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ProviderConfigUsage indicates that a resource is using a ProviderConfig.
+        description: |-
+          ClusterProviderConfigUsage indicates that a resource is using
+          a ClusterProviderConfig.
         properties:
           apiVersion:
             description: |-

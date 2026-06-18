@@ -119,3 +119,35 @@ var (
 	SecuritySSLTruststoreKindAPIVersion   = SecuritySSLTruststoreKind + "." + SchemeGroupVersion.String()
 	SecuritySSLTruststoreGroupVersionKind = SchemeGroupVersion.WithKind(SecuritySSLTruststoreKind)
 )
+
+// ProviderConfig type metadata.
+var (
+	ProviderConfigKind             = reflect.TypeFor[ProviderConfig]().Name()
+	ProviderConfigGroupKind        = schema.GroupKind{Group: Group, Kind: ProviderConfigKind}.String()
+	ProviderConfigGroupVersionKind = SchemeGroupVersion.WithKind(ProviderConfigKind)
+)
+
+// ProviderConfigUsage type metadata.
+var (
+	ProviderConfigUsageKind             = reflect.TypeFor[ProviderConfigUsage]().Name()
+	ProviderConfigUsageGroupVersionKind = SchemeGroupVersion.WithKind(ProviderConfigUsageKind)
+
+	ProviderConfigUsageListKind             = reflect.TypeFor[ProviderConfigUsageList]().Name()
+	ProviderConfigUsageListGroupVersionKind = SchemeGroupVersion.WithKind(ProviderConfigUsageListKind)
+)
+
+// ClusterProviderConfig type metadata.
+var (
+	ClusterProviderConfigKind             = reflect.TypeFor[ClusterProviderConfig]().Name()
+	ClusterProviderConfigGroupKind        = schema.GroupKind{Group: Group, Kind: ClusterProviderConfigKind}.String()
+	ClusterProviderConfigGroupVersionKind = SchemeGroupVersion.WithKind(ClusterProviderConfigKind)
+)
+
+// ClusterProviderConfigUsage type metadata.
+var (
+	ClusterProviderConfigUsageKind             = reflect.TypeFor[ClusterProviderConfigUsage]().Name()
+	ClusterProviderConfigUsageGroupVersionKind = SchemeGroupVersion.WithKind(ClusterProviderConfigUsageKind)
+
+	ClusterProviderConfigUsageListKind             = reflect.TypeFor[ClusterProviderConfigUsageList]().Name()
+	ClusterProviderConfigUsageListGroupVersionKind = SchemeGroupVersion.WithKind(ClusterProviderConfigUsageListKind)
+)

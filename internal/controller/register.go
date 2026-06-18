@@ -7,6 +7,7 @@ import (
 
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/anonymousaccess"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/blobstore"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/config"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/contentselector"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/ldap"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/privilege"
@@ -21,10 +22,10 @@ import (
 
 // Setup creates all Nexus controllers and adds them to the supplied manager.
 func Setup(mgr ctrl.Manager, opts controller.Options) error {
-	// List of all controller setup functions
 	for _, setup := range []func(ctrl.Manager, controller.Options) error{
 		anonymousaccess.Setup,
 		blobstore.Setup,
+		config.Setup,
 		contentselector.Setup,
 		ldap.Setup,
 		privilege.Setup,

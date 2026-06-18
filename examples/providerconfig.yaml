@@ -15,9 +15,23 @@ stringData:
       "insecure": false
     }
 ---
-# ProviderConfig that references the credentials secret
+# Namespace-scoped ProviderConfig
 apiVersion: nexus.crossplane.io/v1alpha1
 kind: ProviderConfig
+metadata:
+  name: default
+  namespace: crossplane-system
+spec:
+  credentials:
+    source: Secret
+    secretRef:
+      name: nexus-credentials
+      namespace: crossplane-system
+      key: credentials
+---
+# Cluster-scoped ProviderConfig
+apiVersion: nexus.crossplane.io/v1alpha1
+kind: ClusterProviderConfig
 metadata:
   name: default
 spec:

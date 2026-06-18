@@ -398,32 +398,68 @@ func NewClient(creds Credentials) (Client, error) {
 	return &nexusClientWrapper{client: nc}, nil
 }
 
-// GetCredentialsFromSecret extracts Nexus credentials from a
-// Kubernetes secret.
-func GetCredentialsFromSecret(ctx context.Context, kube kubeclient.Client, providerConfig *v1alpha1.ProviderConfig) (Credentials, error) {
+// clusterProviderConfigKind is the Kind name for ClusterProviderConfig.
+const clusterProviderConfigKind = "ClusterProviderConfig"
+
+// GetCredentials resolves the ProviderConfig or ClusterProviderConfig
+// referenced by mg and extracts Nexus credentials from the referenced secret.
+// It dispatches on providerConfigRef.Kind: ClusterProviderConfig is looked up
+// cluster-wide; ProviderConfig (or empty) is looked up in mg's namespace.
+func GetCredentials(ctx context.Context, kube kubeclient.Client, managed interface {
+	GetNamespace() string
+	GetProviderConfigReference() *xpv2.ProviderConfigReference
+}) (Credentials, error) {
+	ref := managed.GetProviderConfigReference()
+	if ref == nil {
+		return Credentials{}, errors.New("providerConfigRef is not set")
+	}
+
+	if ref.Kind == clusterProviderConfigKind {
+		cpc := &v1alpha1.ClusterProviderConfig{}
+
+		err := kube.Get(ctx, types.NamespacedName{Name: ref.Name}, cpc)
+		if err != nil {
+			return Credentials{}, errors.Wrap(err, "cannot get ClusterProviderConfig")
+		}
+
+		return GetCredentialsFromSpec(ctx, kube, cpc.Spec)
+	}
+
+	providerConfig := &v1alpha1.ProviderConfig{}
+
+	err := kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: managed.GetNamespace()}, providerConfig)
+	if err != nil {
+		return Credentials{}, errors.Wrap(err, "cannot get ProviderConfig")
+	}
+
+	return GetCredentialsFromSpec(ctx, kube, providerConfig.Spec)
+}
+
+// GetCredentialsFromSpec extracts Nexus credentials from a ProviderConfigSpec.
+func GetCredentialsFromSpec(ctx context.Context, kube kubeclient.Client, spec v1alpha1.ProviderConfigSpec) (Credentials, error) {
 	var creds Credentials
 
-	if providerConfig.Spec.Credentials.Source != "Secret" {
+	if spec.Credentials.Source != "Secret" {
 		return creds, errors.New("only Secret source is supported")
 	}
 
-	if providerConfig.Spec.Credentials.SecretRef == nil {
+	if spec.Credentials.SecretRef == nil {
 		return creds, errors.New("secretRef is required when source is Secret")
 	}
 
 	secret := &corev1.Secret{}
 
 	err := kube.Get(ctx, types.NamespacedName{
-		Name:      providerConfig.Spec.Credentials.SecretRef.Name,
-		Namespace: providerConfig.Spec.Credentials.SecretRef.Namespace,
+		Name:      spec.Credentials.SecretRef.Name,
+		Namespace: spec.Credentials.SecretRef.Namespace,
 	}, secret)
 	if err != nil {
 		return creds, errors.Wrap(err, "failed to get credentials secret")
 	}
 
 	key := "credentials"
-	if providerConfig.Spec.Credentials.SecretRef.Key != "" {
-		key = providerConfig.Spec.Credentials.SecretRef.Key
+	if spec.Credentials.SecretRef.Key != "" {
+		key = spec.Credentials.SecretRef.Key
 	}
 
 	data, ok := secret.Data[key]
@@ -431,12 +467,21 @@ func GetCredentialsFromSecret(ctx context.Context, kube kubeclient.Client, provi
 		return creds, errors.Errorf("secret does not contain key %q", key)
 	}
 
-	jsonErr := json.Unmarshal(data, &creds)
-	if jsonErr != nil {
-		return creds, errors.Wrap(jsonErr, "failed to unmarshal credentials")
+	err = json.Unmarshal(data, &creds)
+	if err != nil {
+		return creds, errors.Wrap(err, "failed to unmarshal credentials")
 	}
 
 	return creds, nil
+}
+
+// GetCredentialsFromSecret extracts Nexus credentials from a
+// Kubernetes secret.
+//
+// Deprecated: Use GetCredentials which correctly handles both
+// ProviderConfig (namespace-scoped) and ClusterProviderConfig (cluster-scoped).
+func GetCredentialsFromSecret(ctx context.Context, kube kubeclient.Client, providerConfig *v1alpha1.ProviderConfig) (Credentials, error) {
+	return GetCredentialsFromSpec(ctx, kube, providerConfig.Spec)
 }
 
 // GetSecretValue retrieves a value from a Kubernetes secret using a
