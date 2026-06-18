@@ -13,15 +13,18 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 )
 
-// Setup adds controllers that reconcile ProviderConfigs by accounting for their current usage.
+// Setup adds controllers that reconcile ProviderConfigs by
+// accounting for their current usage.
 func Setup(mgr ctrl.Manager, opts controller.Options) error {
-	if err := setupNamespacedProviderConfig(mgr, opts); err != nil {
+	err := setupNamespacedProviderConfig(mgr, opts)
+	if err != nil {
 		return err
 	}
 
 	return setupClusterProviderConfig(mgr, opts)
 }
 
+// setupNamespacedProviderConfig sets up the ProviderConfig controller.
 func setupNamespacedProviderConfig(mgr ctrl.Manager, opts controller.Options) error {
 	return setupProviderConfig(
 		mgr,
@@ -37,6 +40,7 @@ func setupNamespacedProviderConfig(mgr ctrl.Manager, opts controller.Options) er
 	)
 }
 
+// setupClusterProviderConfig sets up the ClusterProviderConfig controller.
 func setupClusterProviderConfig(mgr ctrl.Manager, opts controller.Options) error {
 	return setupProviderConfig(
 		mgr,
@@ -52,6 +56,7 @@ func setupClusterProviderConfig(mgr ctrl.Manager, opts controller.Options) error
 	)
 }
 
+// setupProviderConfig wires up a providerconfig controller and reconciler.
 func setupProviderConfig(
 	mgr ctrl.Manager,
 	opts controller.Options,

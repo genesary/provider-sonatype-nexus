@@ -86,7 +86,8 @@ type ProviderConfigUsageList struct {
 // +kubebuilder:printcolumn:name="SECRET-NAME",type="string",JSONPath=".spec.credentials.secretRef.name",priority=1
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,provider,nexus}
 
-// ClusterProviderConfig is the Schema for the cluster-scoped providerconfigs API.
+// ClusterProviderConfig is the Schema for the cluster-scoped
+// providerconfigs API.
 type ClusterProviderConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -113,7 +114,8 @@ type ClusterProviderConfigList struct {
 // +kubebuilder:printcolumn:name="RESOURCE-NAME",type="string",JSONPath=".resourceRef.name"
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,provider,nexus}
 
-// ClusterProviderConfigUsage indicates that a resource is using a ClusterProviderConfig.
+// ClusterProviderConfigUsage indicates that a resource is using
+// a ClusterProviderConfig.
 type ClusterProviderConfigUsage struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

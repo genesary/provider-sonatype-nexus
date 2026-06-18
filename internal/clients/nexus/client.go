@@ -398,36 +398,41 @@ func NewClient(creds Credentials) (Client, error) {
 	return &nexusClientWrapper{client: nc}, nil
 }
 
+// clusterProviderConfigKind is the Kind name for ClusterProviderConfig.
 const clusterProviderConfigKind = "ClusterProviderConfig"
 
 // GetCredentials resolves the ProviderConfig or ClusterProviderConfig
 // referenced by mg and extracts Nexus credentials from the referenced secret.
 // It dispatches on providerConfigRef.Kind: ClusterProviderConfig is looked up
 // cluster-wide; ProviderConfig (or empty) is looked up in mg's namespace.
-func GetCredentials(ctx context.Context, kube kubeclient.Client, mg interface {
+func GetCredentials(ctx context.Context, kube kubeclient.Client, managed interface {
 	GetNamespace() string
 	GetProviderConfigReference() *xpv2.ProviderConfigReference
 }) (Credentials, error) {
-	ref := mg.GetProviderConfigReference()
+	ref := managed.GetProviderConfigReference()
 	if ref == nil {
 		return Credentials{}, errors.New("providerConfigRef is not set")
 	}
 
 	if ref.Kind == clusterProviderConfigKind {
 		cpc := &v1alpha1.ClusterProviderConfig{}
-		if err := kube.Get(ctx, types.NamespacedName{Name: ref.Name}, cpc); err != nil {
+
+		err := kube.Get(ctx, types.NamespacedName{Name: ref.Name}, cpc)
+		if err != nil {
 			return Credentials{}, errors.Wrap(err, "cannot get ClusterProviderConfig")
 		}
 
 		return GetCredentialsFromSpec(ctx, kube, cpc.Spec)
 	}
 
-	pc := &v1alpha1.ProviderConfig{}
-	if err := kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: mg.GetNamespace()}, pc); err != nil {
+	providerConfig := &v1alpha1.ProviderConfig{}
+
+	err := kube.Get(ctx, types.NamespacedName{Name: ref.Name, Namespace: managed.GetNamespace()}, providerConfig)
+	if err != nil {
 		return Credentials{}, errors.Wrap(err, "cannot get ProviderConfig")
 	}
 
-	return GetCredentialsFromSpec(ctx, kube, pc.Spec)
+	return GetCredentialsFromSpec(ctx, kube, providerConfig.Spec)
 }
 
 // GetCredentialsFromSpec extracts Nexus credentials from a ProviderConfigSpec.
@@ -462,7 +467,8 @@ func GetCredentialsFromSpec(ctx context.Context, kube kubeclient.Client, spec v1
 		return creds, errors.Errorf("secret does not contain key %q", key)
 	}
 
-	if err := json.Unmarshal(data, &creds); err != nil {
+	err = json.Unmarshal(data, &creds)
+	if err != nil {
 		return creds, errors.Wrap(err, "failed to unmarshal credentials")
 	}
 

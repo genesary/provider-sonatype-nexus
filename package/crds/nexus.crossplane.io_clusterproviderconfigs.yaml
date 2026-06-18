@@ -29,8 +29,9 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: ClusterProviderConfig is the Schema for the cluster-scoped providerconfigs
-          API.
+        description: |-
+          ClusterProviderConfig is the Schema for the cluster-scoped
+          providerconfigs API.
         properties:
           apiVersion:
             description: |-
