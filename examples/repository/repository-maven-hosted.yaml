@@ -1,6 +1,6 @@
 ---
 # Maven2 hosted repository example
-apiVersion: nexus.crossplane.io/v1alpha1
+apiVersion: repository.nexus.crossplane.io/v1alpha1
 kind: Repository
 metadata:
   name: maven-releases

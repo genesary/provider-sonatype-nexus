@@ -1,6 +1,6 @@
 ---
 # S3-based BlobStore example
-apiVersion: nexus.crossplane.io/v1alpha1
+apiVersion: repository.nexus.crossplane.io/v1alpha1
 kind: BlobStore
 metadata:
   name: my-s3-blobstore

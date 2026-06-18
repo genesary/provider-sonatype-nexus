@@ -1,6 +1,6 @@
 ---
 # Nexus Role example
-apiVersion: nexus.crossplane.io/v1alpha1
+apiVersion: iam.nexus.crossplane.io/v1alpha1
 kind: Role
 metadata:
   name: developer-role
@@ -21,7 +21,7 @@ spec:
     name: default
 ---
 # Nexus Admin Role example with nested roles
-apiVersion: nexus.crossplane.io/v1alpha1
+apiVersion: iam.nexus.crossplane.io/v1alpha1
 kind: Role
 metadata:
   name: team-admin-role

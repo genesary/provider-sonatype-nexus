@@ -12,5 +12,5 @@ spec:
     criteriaLastDownloaded: 30
     criteriaReleaseType: RELEASES
   providerConfigRef:
-    name: default
     kind: ProviderConfig
+    name: default

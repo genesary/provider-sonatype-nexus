@@ -1,4 +1,4 @@
-apiVersion: nexus.crossplane.io/v1alpha1
+apiVersion: iam.nexus.crossplane.io/v1alpha1
 kind: Privilege
 metadata:
   name: all-maven-read
@@ -11,4 +11,4 @@ spec:
     pattern: nexus:repository-view:maven2:*:read
   providerConfigRef:
     kind: ProviderConfig
-    name: nexus-provider-config
+    name: default

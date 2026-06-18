@@ -10,7 +10,7 @@ stringData:
   password: "securePassword123!"
 ---
 # Nexus User example
-apiVersion: nexus.crossplane.io/v1alpha1
+apiVersion: iam.nexus.crossplane.io/v1alpha1
 kind: User
 metadata:
   name: developer-user

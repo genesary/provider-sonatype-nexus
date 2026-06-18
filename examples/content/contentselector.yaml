@@ -1,4 +1,4 @@
-apiVersion: nexus.crossplane.io/v1alpha1
+apiVersion: content.nexus.crossplane.io/v1alpha1
 kind: ContentSelector
 metadata:
   name: maven-releases
@@ -10,4 +10,4 @@ spec:
     expression: format == "maven2" and path =^ "/releases/"
   providerConfigRef:
     kind: ProviderConfig
-    name: nexus-provider-config
+    name: default

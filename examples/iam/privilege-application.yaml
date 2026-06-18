@@ -1,4 +1,4 @@
-apiVersion: nexus.crossplane.io/v1alpha1
+apiVersion: iam.nexus.crossplane.io/v1alpha1
 kind: Privilege
 metadata:
   name: app-analytics-all
@@ -16,4 +16,4 @@ spec:
       - DELETE
   providerConfigRef:
     kind: ProviderConfig
-    name: nexus-provider-config
+    name: default

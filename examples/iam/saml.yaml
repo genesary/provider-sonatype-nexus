@@ -1,4 +1,4 @@
-apiVersion: nexus.crossplane.io/v1alpha1
+apiVersion: iam.nexus.crossplane.io/v1alpha1
 kind: SAML
 metadata:
   name: saml-config
@@ -19,4 +19,4 @@ spec:
     validateAssertionSignature: true
   providerConfigRef:
     kind: ProviderConfig
-    name: nexus-provider-config
+    name: default

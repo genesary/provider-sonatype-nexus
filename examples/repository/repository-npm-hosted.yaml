@@ -1,21 +1,16 @@
 ---
-# Docker hosted repository example
-apiVersion: nexus.crossplane.io/v1alpha1
+# NPM hosted repository example
+apiVersion: repository.nexus.crossplane.io/v1alpha1
 kind: Repository
 metadata:
-  name: docker-hosted
+  name: npm-hosted
   namespace: default
 spec:
   forProvider:
-    name: docker-hosted
-    format: docker
+    name: npm-hosted
+    format: npm
     type: hosted
     online: true
-    docker:
-      httpPort: 8082
-      httpsPort: 8083
-      forceBasicAuth: true
-      v1Enabled: false
     storage:
       blobStoreName: default
       strictContentTypeValidation: true
