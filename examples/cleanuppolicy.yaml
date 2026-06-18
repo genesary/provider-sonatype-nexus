@@ -13,3 +13,4 @@ spec:
     criteriaReleaseType: RELEASES
   providerConfigRef:
     name: default
+    kind: ProviderConfig
