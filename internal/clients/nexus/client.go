@@ -10,6 +10,7 @@ import (
 	"github.com/datadrivers/go-nexus-client/nexus3"
 	"github.com/datadrivers/go-nexus-client/nexus3/pkg/client"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
+	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 	"github.com/pkg/errors"
@@ -35,9 +36,19 @@ type SSLService interface {
 	ListCertificates(ctx context.Context) ([]security.SSLCertificate, error)
 }
 
+// CleanupPolicyService provides methods for managing cleanup policies.
+type CleanupPolicyService interface {
+	GetCleanupPolicy(ctx context.Context, name string) (*cleanuppolicies.CleanupPolicy, error)
+	ListCleanupPolicies(ctx context.Context) ([]*cleanuppolicies.CleanupPolicy, error)
+	CreateCleanupPolicy(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error
+	UpdateCleanupPolicy(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error
+	DeleteCleanupPolicy(ctx context.Context, name string) error
+}
+
 // Client is an interface for interacting with the Nexus API.
 type Client interface {
 	BlobStore() BlobStoreService
+	CleanupPolicy() CleanupPolicyService
 	Repository() RepositoryService
 	Security() SecurityService
 	SSL() SSLService
@@ -381,6 +392,11 @@ type sslService struct {
 	client *nexus3.NexusClient
 }
 
+// cleanupPolicyService implements CleanupPolicyService.
+type cleanupPolicyService struct {
+	client *nexus3.NexusClient
+}
+
 // NewClient creates a new Nexus client from the provided credentials.
 func NewClient(creds Credentials) (Client, error) {
 	cfg := client.Config{
@@ -514,6 +530,11 @@ func (c *nexusClientWrapper) BlobStore() BlobStoreService {
 	return &blobStoreService{client: c.client}
 }
 
+// CleanupPolicy returns the CleanupPolicyService.
+func (c *nexusClientWrapper) CleanupPolicy() CleanupPolicyService {
+	return &cleanupPolicyService{client: c.client}
+}
+
 // Repository returns the RepositoryService.
 func (c *nexusClientWrapper) Repository() RepositoryService {
 	return &repositoryService{client: c.client}
@@ -527,6 +548,33 @@ func (c *nexusClientWrapper) Security() SecurityService {
 // SSL returns the SSLService.
 func (c *nexusClientWrapper) SSL() SSLService {
 	return &sslService{client: c.client}
+}
+
+// CleanupPolicyService implementations
+
+// GetCleanupPolicy gets a cleanup policy by name.
+func (s *cleanupPolicyService) GetCleanupPolicy(ctx context.Context, name string) (*cleanuppolicies.CleanupPolicy, error) {
+	return s.client.CleanupPolicy.Get(name)
+}
+
+// ListCleanupPolicies lists all cleanup policies.
+func (s *cleanupPolicyService) ListCleanupPolicies(ctx context.Context) ([]*cleanuppolicies.CleanupPolicy, error) {
+	return s.client.CleanupPolicy.List()
+}
+
+// CreateCleanupPolicy creates a new cleanup policy.
+func (s *cleanupPolicyService) CreateCleanupPolicy(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error {
+	return s.client.CleanupPolicy.Create(policy)
+}
+
+// UpdateCleanupPolicy updates an existing cleanup policy.
+func (s *cleanupPolicyService) UpdateCleanupPolicy(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error {
+	return s.client.CleanupPolicy.Update(policy)
+}
+
+// DeleteCleanupPolicy deletes a cleanup policy by name.
+func (s *cleanupPolicyService) DeleteCleanupPolicy(ctx context.Context, name string) error {
+	return s.client.CleanupPolicy.Delete(name)
 }
 
 // BlobStoreService implementations

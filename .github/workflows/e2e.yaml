@@ -83,6 +83,12 @@ jobs:
           node_image: kindest/node:v1.31.4@sha256:2cb39f7295fe7eafee0842b1052a599a4fb0f8bcf3f83d96c7f4864c357c6c30
           wait: 300s
 
+      - name: Export Kubeconfig
+        run: |
+          echo "KUBECONFIG=$HOME/.kube/config" >> $GITHUB_ENV
+          kubectl cluster-info
+          kubectl get nodes
+
       - name: Install Crossplane
         run: |
           helm repo add crossplane-stable https://charts.crossplane.io/stable
@@ -118,7 +124,7 @@ jobs:
         run: |
           chmod +x e2e/run-e2e.sh
           NEXUS_URL=http://localhost:8081 ./e2e/run-e2e.sh run
-        timeout-minutes: 10
+        timeout-minutes: 20
 
       - name: Get Cluster Status on Failure
         if: failure()
@@ -127,11 +133,11 @@ jobs:
           kubectl get providers.pkg.crossplane.io -o wide 2>/dev/null || true
           kubectl get providers.pkg.crossplane.io provider-sonatype-nexus -o yaml 2>/dev/null || true
           echo "=== Pods ==="
-          kubectl get pods -A
+          kubectl get pods -A 2>/dev/null || echo "kubectl unavailable — API server may be down"
           echo "=== Provider Logs ==="
           kubectl logs -n crossplane-system -l pkg.crossplane.io/revision --tail=100 2>/dev/null || echo "Provider logs not available"
           echo "=== Events ==="
-          kubectl get events -A --sort-by='.lastTimestamp' | tail -50 || true
+          kubectl get events -A --sort-by='.lastTimestamp' 2>/dev/null | tail -50 || true
 
       - name: Cleanup
         if: always()

@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
+	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 
@@ -20,25 +21,32 @@ var _ nexus.Client = &MockClient{}
 
 // MockClient is a mock implementation of nexus.Client.
 type MockClient struct {
-	MockBlobStore  *MockBlobStoreService
-	MockRepository *MockRepositoryService
-	MockSecurity   *MockSecurityService
-	MockSSL        *MockSSLService
+	MockBlobStore     *MockBlobStoreService
+	MockCleanupPolicy *MockCleanupPolicyService
+	MockRepository    *MockRepositoryService
+	MockSecurity      *MockSecurityService
+	MockSSL           *MockSSLService
 }
 
 // NewMockClient creates a new MockClient with default mocks.
 func NewMockClient() *MockClient {
 	return &MockClient{
-		MockBlobStore:  &MockBlobStoreService{},
-		MockRepository: &MockRepositoryService{},
-		MockSecurity:   &MockSecurityService{},
-		MockSSL:        &MockSSLService{},
+		MockBlobStore:     &MockBlobStoreService{},
+		MockCleanupPolicy: &MockCleanupPolicyService{},
+		MockRepository:    &MockRepositoryService{},
+		MockSecurity:      &MockSecurityService{},
+		MockSSL:           &MockSSLService{},
 	}
 }
 
 // BlobStore returns the mock blob store service.
 func (m *MockClient) BlobStore() nexus.BlobStoreService {
 	return m.MockBlobStore
+}
+
+// CleanupPolicy returns the mock cleanup policy service.
+func (m *MockClient) CleanupPolicy() nexus.CleanupPolicyService {
+	return m.MockCleanupPolicy
 }
 
 // Repository returns the mock repository service.
@@ -54,6 +62,70 @@ func (m *MockClient) Security() nexus.SecurityService {
 // SSL returns the mock SSL service.
 func (m *MockClient) SSL() nexus.SSLService {
 	return m.MockSSL
+}
+
+// MockCleanupPolicyService is a mock implementation of
+// nexus.CleanupPolicyService.
+type MockCleanupPolicyService struct {
+	GetCleanupPolicyFn    func(ctx context.Context, name string) (*cleanuppolicies.CleanupPolicy, error)
+	ListCleanupPoliciesFn func(ctx context.Context) ([]*cleanuppolicies.CleanupPolicy, error)
+	CreateCleanupPolicyFn func(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error
+	UpdateCleanupPolicyFn func(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error
+	DeleteCleanupPolicyFn func(ctx context.Context, name string) error
+
+	GetCleanupPolicyCalls    []string
+	CreateCleanupPolicyCalls []*cleanuppolicies.CleanupPolicy
+	UpdateCleanupPolicyCalls []*cleanuppolicies.CleanupPolicy
+	DeleteCleanupPolicyCalls []string
+}
+
+// GetCleanupPolicy mock implementation.
+func (m *MockCleanupPolicyService) GetCleanupPolicy(ctx context.Context, name string) (*cleanuppolicies.CleanupPolicy, error) {
+	m.GetCleanupPolicyCalls = append(m.GetCleanupPolicyCalls, name)
+	if m.GetCleanupPolicyFn != nil {
+		return m.GetCleanupPolicyFn(ctx, name)
+	}
+	//nolint:nilnil // intentionally testing nil policy with nil error case
+	return nil, nil
+}
+
+// ListCleanupPolicies mock implementation.
+func (m *MockCleanupPolicyService) ListCleanupPolicies(ctx context.Context) ([]*cleanuppolicies.CleanupPolicy, error) {
+	if m.ListCleanupPoliciesFn != nil {
+		return m.ListCleanupPoliciesFn(ctx)
+	}
+
+	return nil, nil
+}
+
+// CreateCleanupPolicy mock implementation.
+func (m *MockCleanupPolicyService) CreateCleanupPolicy(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error {
+	m.CreateCleanupPolicyCalls = append(m.CreateCleanupPolicyCalls, policy)
+	if m.CreateCleanupPolicyFn != nil {
+		return m.CreateCleanupPolicyFn(ctx, policy)
+	}
+
+	return nil
+}
+
+// UpdateCleanupPolicy mock implementation.
+func (m *MockCleanupPolicyService) UpdateCleanupPolicy(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error {
+	m.UpdateCleanupPolicyCalls = append(m.UpdateCleanupPolicyCalls, policy)
+	if m.UpdateCleanupPolicyFn != nil {
+		return m.UpdateCleanupPolicyFn(ctx, policy)
+	}
+
+	return nil
+}
+
+// DeleteCleanupPolicy mock implementation.
+func (m *MockCleanupPolicyService) DeleteCleanupPolicy(ctx context.Context, name string) error {
+	m.DeleteCleanupPolicyCalls = append(m.DeleteCleanupPolicyCalls, name)
+	if m.DeleteCleanupPolicyFn != nil {
+		return m.DeleteCleanupPolicyFn(ctx, name)
+	}
+
+	return nil
 }
 
 // MockBlobStoreService is a mock implementation of nexus.BlobStoreService.

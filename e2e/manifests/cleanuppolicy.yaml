@@ -1,0 +1,17 @@
+---
+apiVersion: content.nexus.crossplane.io/v1alpha1
+kind: CleanupPolicy
+metadata:
+  name: e2e-test-cleanup-policy
+  namespace: default
+spec:
+  forProvider:
+    name: e2e-test-cleanup-policy
+    format: maven2
+    notes: "E2E test cleanup policy"
+    criteriaLastBlobUpdated: 30
+    criteriaLastDownloaded: 60
+    criteriaReleaseType: RELEASES
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default
