@@ -1,0 +1,12 @@
+apiVersion: iam.nexus.crossplane.io/v1alpha1
+kind: AnonymousAccess
+metadata:
+  name: anonymous-settings
+spec:
+  forProvider:
+    enabled: true
+    userId: anonymous
+    realmName: NexusAuthorizingRealm
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

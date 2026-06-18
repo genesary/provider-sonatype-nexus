@@ -31,3 +31,11 @@ var (
 	CleanupPolicyKindAPIVersion   = CleanupPolicyKind + "." + SchemeGroupVersion.String()
 	CleanupPolicyGroupVersionKind = SchemeGroupVersion.WithKind(CleanupPolicyKind)
 )
+
+// ContentSelector type metadata.
+var (
+	ContentSelectorKind             = reflect.TypeFor[ContentSelector]().Name()
+	ContentSelectorGroupKind        = schema.GroupKind{Group: APIGroup, Kind: ContentSelectorKind}.String()
+	ContentSelectorKindAPIVersion   = ContentSelectorKind + "." + SchemeGroupVersion.String()
+	ContentSelectorGroupVersionKind = SchemeGroupVersion.WithKind(ContentSelectorKind)
+)

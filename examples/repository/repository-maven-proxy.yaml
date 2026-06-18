@@ -1,0 +1,33 @@
+---
+# Maven2 proxy repository example (proxying Maven Central)
+apiVersion: repository.nexus.crossplane.io/v1alpha1
+kind: Repository
+metadata:
+  name: maven-central-proxy
+  namespace: default
+spec:
+  forProvider:
+    name: maven-central-proxy
+    format: maven2
+    type: proxy
+    online: true
+    maven:
+      versionPolicy: RELEASE
+      layoutPolicy: PERMISSIVE
+      contentDisposition: ATTACHMENT
+    proxy:
+      remoteUrl: https://repo1.maven.org/maven2/
+      contentMaxAge: 1440     # minutes
+      metadataMaxAge: 1440    # minutes
+    negativeCache:
+      enabled: true
+      timeToLive: 1440        # minutes
+    httpClient:
+      blocked: false
+      autoBlock: true
+    storage:
+      blobStoreName: default
+      strictContentTypeValidation: true
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

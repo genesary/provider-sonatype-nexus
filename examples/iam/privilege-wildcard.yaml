@@ -1,0 +1,14 @@
+apiVersion: iam.nexus.crossplane.io/v1alpha1
+kind: Privilege
+metadata:
+  name: all-maven-read
+  namespace: default
+spec:
+  forProvider:
+    name: all-maven-read
+    description: "Read all Maven repositories"
+    type: wildcard
+    pattern: nexus:repository-view:maven2:*:read
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

@@ -16,7 +16,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
+	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
@@ -44,13 +45,13 @@ const (
 
 // Setup creates a controller for BlobStore resources.
 func Setup(mgr ctrl.Manager, opts controller.Options) error {
-	name := managed.ControllerName(v1alpha1.BlobStoreGroupKind)
+	name := managed.ControllerName(repositoryv1alpha1.BlobStoreGroupKind)
 
 	rec := managed.NewReconciler(mgr,
-		resource.ManagedKind(v1alpha1.BlobStoreGroupVersionKind),
+		resource.ManagedKind(repositoryv1alpha1.BlobStoreGroupVersionKind),
 		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
-			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &v1alpha1.ProviderConfigUsage{}),
+			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
 		managed.WithLogger(opts.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(opts.PollInterval),
@@ -60,7 +61,7 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		Named(name).
 		WithOptions(opts.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
-		For(&v1alpha1.BlobStore{}).
+		For(&repositoryv1alpha1.BlobStore{}).
 		Complete(ratelimiter.NewReconciler(name, rec, opts.GlobalRateLimiter))
 }
 
@@ -72,7 +73,7 @@ type connector struct {
 
 // Connect creates an ExternalClient for the BlobStore controller.
 func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isBlobStore := managedRes.(*v1alpha1.BlobStore)
+	_, isBlobStore := managedRes.(*repositoryv1alpha1.BlobStore)
 	if !isBlobStore {
 		return nil, errors.New(errNotBlobStore)
 	}
@@ -107,7 +108,7 @@ type external struct {
 
 // Observe checks if the BlobStore resource exists and is up-to-date.
 func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	blobStore, isBlobStore := managedRes.(*v1alpha1.BlobStore)
+	blobStore, isBlobStore := managedRes.(*repositoryv1alpha1.BlobStore)
 	if !isBlobStore {
 		return managed.ExternalObservation{}, errors.New(errNotBlobStore)
 	}
@@ -126,9 +127,9 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 // using a typed getter function and an up-to-date checker.
 func observeBlobStoreByType[T any](
 	ctx context.Context,
-	blobStore *v1alpha1.BlobStore,
+	blobStore *repositoryv1alpha1.BlobStore,
 	getter func(context.Context, string) (*T, error),
-	checker func(*v1alpha1.BlobStore, *T) bool,
+	checker func(*repositoryv1alpha1.BlobStore, *T) bool,
 ) (managed.ExternalObservation, error) {
 	name := meta.GetExternalName(blobStore)
 	if name == "" {
@@ -148,14 +149,14 @@ func observeBlobStoreByType[T any](
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	blobStore.SetConditions(v1alpha1.Available())
+	blobStore.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: checker(blobStore, result)}, nil
 }
 
 // Create creates a new BlobStore resource.
 func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	blobStore, isBlobStore := managedRes.(*v1alpha1.BlobStore)
+	blobStore, isBlobStore := managedRes.(*repositoryv1alpha1.BlobStore)
 	if !isBlobStore {
 		return managed.ExternalCreation{}, errors.New(errNotBlobStore)
 	}
@@ -192,7 +193,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 // Update modifies an existing BlobStore resource.
 func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	blobStore, isBlobStore := managedRes.(*v1alpha1.BlobStore)
+	blobStore, isBlobStore := managedRes.(*repositoryv1alpha1.BlobStore)
 	if !isBlobStore {
 		return managed.ExternalUpdate{}, errors.New(errNotBlobStore)
 	}
@@ -232,7 +233,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 // Delete removes an existing BlobStore resource.
 func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	blobStore, isBlobStore := managedRes.(*v1alpha1.BlobStore)
+	blobStore, isBlobStore := managedRes.(*repositoryv1alpha1.BlobStore)
 	if !isBlobStore {
 		return managed.ExternalDelete{}, errors.New(errNotBlobStore)
 	}
@@ -260,17 +261,17 @@ func (e *external) Disconnect(ctx context.Context) error {
 }
 
 // observeFileBlobStore handles Observe for File-type blob stores.
-func (e *external) observeFileBlobStore(ctx context.Context, blobStore *v1alpha1.BlobStore) (managed.ExternalObservation, error) {
+func (e *external) observeFileBlobStore(ctx context.Context, blobStore *repositoryv1alpha1.BlobStore) (managed.ExternalObservation, error) {
 	return observeBlobStoreByType(ctx, blobStore, e.client.BlobStore().GetFile, isFileBlobStoreUpToDate)
 }
 
 // observeS3BlobStore handles Observe for S3-type blob stores.
-func (e *external) observeS3BlobStore(ctx context.Context, blobStore *v1alpha1.BlobStore) (managed.ExternalObservation, error) {
+func (e *external) observeS3BlobStore(ctx context.Context, blobStore *repositoryv1alpha1.BlobStore) (managed.ExternalObservation, error) {
 	return observeBlobStoreByType(ctx, blobStore, e.client.BlobStore().GetS3, isS3BlobStoreUpToDate)
 }
 
 // generateFileBlobStore generates a File blob store from the CR spec.
-func generateFileBlobStore(blobStoreCR *v1alpha1.BlobStore) *blobstore.File {
+func generateFileBlobStore(blobStoreCR *repositoryv1alpha1.BlobStore) *blobstore.File {
 	fileBlobStore := &blobstore.File{
 		Name: blobStoreCR.Spec.ForProvider.Name,
 	}
@@ -294,7 +295,7 @@ func generateFileBlobStore(blobStoreCR *v1alpha1.BlobStore) *blobstore.File {
 }
 
 // generateS3BlobStore generates an S3 blob store from the CR spec.
-func generateS3BlobStore(blobStoreCR *v1alpha1.BlobStore) *blobstore.S3 {
+func generateS3BlobStore(blobStoreCR *repositoryv1alpha1.BlobStore) *blobstore.S3 {
 	s3BlobStore := &blobstore.S3{
 		Name: blobStoreCR.Spec.ForProvider.Name,
 	}
@@ -333,7 +334,7 @@ func generateS3BlobStore(blobStoreCR *v1alpha1.BlobStore) *blobstore.S3 {
 }
 
 // isFileBlobStoreUpToDate checks if a File blob store is up to date.
-func isFileBlobStoreUpToDate(blobStoreCR *v1alpha1.BlobStore, fileBlobStore *blobstore.File) bool {
+func isFileBlobStoreUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore, fileBlobStore *blobstore.File) bool {
 	if blobStoreCR.Spec.ForProvider.Path != nil && fileBlobStore.Path != *blobStoreCR.Spec.ForProvider.Path {
 		return false
 	}
@@ -356,7 +357,7 @@ func isFileBlobStoreUpToDate(blobStoreCR *v1alpha1.BlobStore, fileBlobStore *blo
 }
 
 // isS3BlobStoreUpToDate checks if an S3 blob store is up to date.
-func isS3BlobStoreUpToDate(blobStoreCR *v1alpha1.BlobStore, s3BlobStore *blobstore.S3) bool {
+func isS3BlobStoreUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore, s3BlobStore *blobstore.S3) bool {
 	if !isS3SoftQuotaUpToDate(blobStoreCR, s3BlobStore) {
 		return false
 	}
@@ -369,7 +370,7 @@ func isS3BlobStoreUpToDate(blobStoreCR *v1alpha1.BlobStore, s3BlobStore *blobsto
 }
 
 // isS3SoftQuotaUpToDate checks if the S3 blob store soft quota is up to date.
-func isS3SoftQuotaUpToDate(blobStoreCR *v1alpha1.BlobStore, s3BlobStore *blobstore.S3) bool {
+func isS3SoftQuotaUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore, s3BlobStore *blobstore.S3) bool {
 	if blobStoreCR.Spec.ForProvider.SoftQuota == nil {
 		return true
 	}
@@ -391,7 +392,7 @@ func isS3SoftQuotaUpToDate(blobStoreCR *v1alpha1.BlobStore, s3BlobStore *blobsto
 
 // isS3BucketConfigUpToDate checks if the S3 blob store bucket
 // configuration is up to date.
-func isS3BucketConfigUpToDate(blobStoreCR *v1alpha1.BlobStore, s3BlobStore *blobstore.S3) bool {
+func isS3BucketConfigUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore, s3BlobStore *blobstore.S3) bool {
 	if blobStoreCR.Spec.ForProvider.S3Config == nil {
 		return true
 	}

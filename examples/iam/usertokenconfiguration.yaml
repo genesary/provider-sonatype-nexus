@@ -1,0 +1,13 @@
+apiVersion: iam.nexus.crossplane.io/v1alpha1
+kind: UserTokenConfiguration
+metadata:
+  name: user-tokens
+spec:
+  forProvider:
+    enabled: true
+    protectContent: false
+    expirationEnabled: true
+    expirationDays: 30
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

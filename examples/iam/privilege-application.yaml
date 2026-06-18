@@ -1,0 +1,19 @@
+apiVersion: iam.nexus.crossplane.io/v1alpha1
+kind: Privilege
+metadata:
+  name: app-analytics-all
+  namespace: default
+spec:
+  forProvider:
+    name: app-analytics-all
+    description: "Full access to analytics"
+    type: application
+    domain: analytics
+    actions:
+      - CREATE
+      - READ
+      - UPDATE
+      - DELETE
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

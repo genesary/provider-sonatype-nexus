@@ -6,7 +6,7 @@ import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 	"k8s.io/utils/ptr"
 
-	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
 )
 
 // Shared configuration generators used by all format handlers.
@@ -34,8 +34,8 @@ func observeRepo[T any](
 	ctx context.Context,
 	name string,
 	getter func(ctx context.Context, name string) (*T, error),
-	checker func(repoCR *v1alpha1.Repository, repo *T) bool,
-	repoCR *v1alpha1.Repository,
+	checker func(repoCR *repositoryv1alpha1.Repository, repo *T) bool,
+	repoCR *repositoryv1alpha1.Repository,
 ) (exists, upToDate bool) {
 	repo, err := getter(ctx, name)
 	if err != nil || repo == nil {
@@ -46,12 +46,12 @@ func observeRepo[T any](
 }
 
 // getOnline returns the online status, defaulting to true if not specified.
-func getOnline(repo *v1alpha1.Repository) bool {
+func getOnline(repo *repositoryv1alpha1.Repository) bool {
 	return ptr.Deref(repo.Spec.ForProvider.Online, true)
 }
 
 // generateCleanup converts cleanup policy configuration.
-func generateCleanup(repo *v1alpha1.Repository) *repository.Cleanup {
+func generateCleanup(repo *repositoryv1alpha1.Repository) *repository.Cleanup {
 	if repo.Spec.ForProvider.Cleanup != nil && len(repo.Spec.ForProvider.Cleanup.PolicyNames) > 0 {
 		return &repository.Cleanup{
 			PolicyNames: repo.Spec.ForProvider.Cleanup.PolicyNames,
@@ -63,7 +63,7 @@ func generateCleanup(repo *v1alpha1.Repository) *repository.Cleanup {
 
 // generateHostedStorage converts storage configuration for hosted
 // repositories.
-func generateHostedStorage(repo *v1alpha1.Repository) repository.HostedStorage {
+func generateHostedStorage(repo *repositoryv1alpha1.Repository) repository.HostedStorage {
 	defaultWritePolicy := repository.StorageWritePolicyAllow
 	storage := repository.HostedStorage{
 		BlobStoreName:               defaultBlobStoreName,
@@ -88,7 +88,7 @@ func generateHostedStorage(repo *v1alpha1.Repository) repository.HostedStorage {
 
 // generateDockerHostedStorage converts storage configuration for Docker
 // hosted repositories.
-func generateDockerHostedStorage(repo *v1alpha1.Repository) repository.DockerHostedStorage {
+func generateDockerHostedStorage(repo *repositoryv1alpha1.Repository) repository.DockerHostedStorage {
 	storage := repository.DockerHostedStorage{
 		BlobStoreName:               defaultBlobStoreName,
 		StrictContentTypeValidation: true,
@@ -111,7 +111,7 @@ func generateDockerHostedStorage(repo *v1alpha1.Repository) repository.DockerHos
 
 // generateProxyStorage converts storage configuration for proxy and group
 // repositories.
-func generateProxyStorage(repo *v1alpha1.Repository) repository.Storage {
+func generateProxyStorage(repo *repositoryv1alpha1.Repository) repository.Storage {
 	storage := repository.Storage{
 		BlobStoreName:               defaultBlobStoreName,
 		StrictContentTypeValidation: true,
@@ -128,7 +128,7 @@ func generateProxyStorage(repo *v1alpha1.Repository) repository.Storage {
 }
 
 // generateProxyConfig converts proxy configuration.
-func generateProxyConfig(repo *v1alpha1.Repository) repository.Proxy {
+func generateProxyConfig(repo *repositoryv1alpha1.Repository) repository.Proxy {
 	proxy := repository.Proxy{
 		ContentMaxAge:  defaultContentMaxAge,
 		MetadataMaxAge: defaultMetadataMaxAge,
@@ -149,7 +149,7 @@ func generateProxyConfig(repo *v1alpha1.Repository) repository.Proxy {
 }
 
 // generateNegativeCache converts negative cache configuration.
-func generateNegativeCache(repo *v1alpha1.Repository) repository.NegativeCache {
+func generateNegativeCache(repo *repositoryv1alpha1.Repository) repository.NegativeCache {
 	negCache := repository.NegativeCache{
 		Enabled: true,
 		TTL:     defaultNegativeCacheTTL,
@@ -177,7 +177,7 @@ type httpClientBaseFields struct {
 }
 
 // extractHTTPClientBase extracts common HTTPClient fields from the CR spec.
-func extractHTTPClientBase(repo *v1alpha1.Repository) httpClientBaseFields {
+func extractHTTPClientBase(repo *repositoryv1alpha1.Repository) httpClientBaseFields {
 	base := httpClientBaseFields{blocked: false, autoBlock: true}
 
 	if repo.Spec.ForProvider.HTTPClient != nil {
@@ -198,7 +198,7 @@ func extractHTTPClientBase(repo *v1alpha1.Repository) httpClientBaseFields {
 }
 
 // generateHTTPClient converts HTTP client configuration.
-func generateHTTPClient(ctx context.Context, repo *v1alpha1.Repository) repository.HTTPClient {
+func generateHTTPClient(ctx context.Context, repo *repositoryv1alpha1.Repository) repository.HTTPClient {
 	base := extractHTTPClientBase(repo)
 	httpClient := repository.HTTPClient{
 		Blocked:    base.blocked,
@@ -215,7 +215,7 @@ func generateHTTPClient(ctx context.Context, repo *v1alpha1.Repository) reposito
 
 // generateHTTPClientWithPreemptiveAuth converts HTTP client configuration
 // with preemptive auth.
-func generateHTTPClientWithPreemptiveAuth(ctx context.Context, repo *v1alpha1.Repository) repository.HTTPClientWithPreemptiveAuth {
+func generateHTTPClientWithPreemptiveAuth(ctx context.Context, repo *repositoryv1alpha1.Repository) repository.HTTPClientWithPreemptiveAuth {
 	base := extractHTTPClientBase(repo)
 	httpClient := repository.HTTPClientWithPreemptiveAuth{
 		Blocked:    base.blocked,
@@ -231,7 +231,7 @@ func generateHTTPClientWithPreemptiveAuth(ctx context.Context, repo *v1alpha1.Re
 }
 
 // generateHTTPClientConnection converts connection configuration.
-func generateHTTPClientConnection(conn *v1alpha1.HTTPClientConnection) *repository.HTTPClientConnection {
+func generateHTTPClientConnection(conn *repositoryv1alpha1.HTTPClientConnection) *repository.HTTPClientConnection {
 	repoConn := &repository.HTTPClientConnection{}
 
 	if conn.Retries != nil {
@@ -265,7 +265,7 @@ type authBaseFields struct {
 }
 
 // extractAuthBase extracts common authentication fields from the spec.
-func extractAuthBase(ctx context.Context, auth *v1alpha1.HTTPClientAuthentication) authBaseFields {
+func extractAuthBase(ctx context.Context, auth *repositoryv1alpha1.HTTPClientAuthentication) authBaseFields {
 	fields := authBaseFields{password: getResolvedPassword(ctx)}
 	if auth.Type != nil {
 		fields.authType = repository.HTTPClientAuthenticationType(*auth.Type)
@@ -287,7 +287,7 @@ func extractAuthBase(ctx context.Context, auth *v1alpha1.HTTPClientAuthenticatio
 }
 
 // generateHTTPClientAuth converts authentication configuration.
-func generateHTTPClientAuth(ctx context.Context, auth *v1alpha1.HTTPClientAuthentication) *repository.HTTPClientAuthentication {
+func generateHTTPClientAuth(ctx context.Context, auth *repositoryv1alpha1.HTTPClientAuthentication) *repository.HTTPClientAuthentication {
 	fields := extractAuthBase(ctx, auth)
 
 	return &repository.HTTPClientAuthentication{
@@ -301,7 +301,7 @@ func generateHTTPClientAuth(ctx context.Context, auth *v1alpha1.HTTPClientAuthen
 
 // generateHTTPClientAuthWithPreemptive converts authentication configuration
 // with preemptive support.
-func generateHTTPClientAuthWithPreemptive(ctx context.Context, auth *v1alpha1.HTTPClientAuthentication) *repository.HTTPClientAuthenticationWithPreemptive {
+func generateHTTPClientAuthWithPreemptive(ctx context.Context, auth *repositoryv1alpha1.HTTPClientAuthentication) *repository.HTTPClientAuthenticationWithPreemptive {
 	fields := extractAuthBase(ctx, auth)
 
 	return &repository.HTTPClientAuthenticationWithPreemptive{
@@ -314,7 +314,7 @@ func generateHTTPClientAuthWithPreemptive(ctx context.Context, auth *v1alpha1.HT
 }
 
 // generateGroupConfig converts group configuration.
-func generateGroupConfig(repo *v1alpha1.Repository) repository.Group {
+func generateGroupConfig(repo *repositoryv1alpha1.Repository) repository.Group {
 	group := repository.Group{}
 
 	if repo.Spec.ForProvider.Group != nil {
@@ -326,7 +326,7 @@ func generateGroupConfig(repo *v1alpha1.Repository) repository.Group {
 
 // generateGroupDeployConfig converts group configuration with writable
 // member support.
-func generateGroupDeployConfig(repo *v1alpha1.Repository) repository.GroupDeploy {
+func generateGroupDeployConfig(repo *repositoryv1alpha1.Repository) repository.GroupDeploy {
 	group := repository.GroupDeploy{}
 
 	if repo.Spec.ForProvider.Group != nil {
@@ -338,7 +338,7 @@ func generateGroupDeployConfig(repo *v1alpha1.Repository) repository.GroupDeploy
 }
 
 // generateMavenConfig converts Maven-specific configuration.
-func generateMavenConfig(repo *v1alpha1.Repository) repository.Maven {
+func generateMavenConfig(repo *repositoryv1alpha1.Repository) repository.Maven {
 	maven := repository.Maven{
 		VersionPolicy: repository.MavenVersionPolicyRelease,
 		LayoutPolicy:  repository.MavenLayoutPolicyStrict,
@@ -366,7 +366,7 @@ func generateMavenConfig(repo *v1alpha1.Repository) repository.Maven {
 // status, blob store name, and write policy. Used by formats whose hosted
 // repositories share the HostedStorage layout (npm, raw, etc.).
 func isSimpleHostedUpToDate(
-	repoCR *v1alpha1.Repository,
+	repoCR *repositoryv1alpha1.Repository,
 	online bool,
 	blobStoreName string,
 	writePolicy *repository.StorageWritePolicy,
@@ -390,7 +390,7 @@ func isSimpleHostedUpToDate(
 }
 
 // generateDockerConfig converts Docker-specific configuration.
-func generateDockerConfig(repo *v1alpha1.Repository) repository.Docker {
+func generateDockerConfig(repo *repositoryv1alpha1.Repository) repository.Docker {
 	docker := repository.Docker{
 		V1Enabled:      false,
 		ForceBasicAuth: true,

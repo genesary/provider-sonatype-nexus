@@ -5,39 +5,39 @@ import (
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/anonymousaccess"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/blobstore"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/config"
 	contentcleanuppolicy "github.com/genesary/provider-sonatype-nexus/internal/controller/content/cleanuppolicy"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/contentselector"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/ldap"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/privilege"
+	contentcontentselector "github.com/genesary/provider-sonatype-nexus/internal/controller/content/contentselector"
+	iamanonymousaccess "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/anonymousaccess"
+	iamldap "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/ldap"
+	iamprivilege "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/privilege"
+	iamrole "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/role"
+	iamsaml "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/saml"
+	iamsecurityrealm "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/securityrealm"
+	iamssltruststore "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/securityssltruststore"
+	iamuser "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/user"
+	iamutc "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/usertokenconfiguration"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/repository"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/role"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/saml"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/securityrealm"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/securityssltruststore"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/user"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/usertokenconfiguration"
 )
 
 // Setup creates all Nexus controllers and adds them to the supplied manager.
 func Setup(mgr ctrl.Manager, opts controller.Options) error {
 	for _, setup := range []func(ctrl.Manager, controller.Options) error{
-		anonymousaccess.Setup,
 		blobstore.Setup,
 		config.Setup,
 		contentcleanuppolicy.Setup,
-		contentselector.Setup,
-		ldap.Setup,
-		privilege.Setup,
+		contentcontentselector.Setup,
+		iamanonymousaccess.Setup,
+		iamldap.Setup,
+		iamprivilege.Setup,
+		iamrole.Setup,
+		iamsaml.Setup,
+		iamsecurityrealm.Setup,
+		iamssltruststore.Setup,
+		iamuser.Setup,
+		iamutc.Setup,
 		repository.Setup,
-		role.Setup,
-		saml.Setup,
-		securityrealm.Setup,
-		securityssltruststore.Setup,
-		user.Setup,
-		usertokenconfiguration.Setup,
 	} {
 		err := setup(mgr, opts)
 		if err != nil {
