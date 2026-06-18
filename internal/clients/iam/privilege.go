@@ -101,6 +101,17 @@ func (c *privilegeClientImpl) DeletePrivilege(ctx context.Context, name string) 
 	return c.nexusClient.Security().DeletePrivilege(ctx, name)
 }
 
+// GeneratePrivilegeObservation returns the observed Privilege state.
+func GeneratePrivilegeObservation(observed *security.Privilege) iamv1alpha1.PrivilegeObservation {
+	if observed == nil {
+		return iamv1alpha1.PrivilegeObservation{}
+	}
+
+	return iamv1alpha1.PrivilegeObservation{
+		ReadOnly: &observed.ReadOnly,
+	}
+}
+
 // IsPrivilegeUpToDate reports whether the CR matches the observed Privilege.
 func IsPrivilegeUpToDate(privCR *iamv1alpha1.Privilege, observed *security.Privilege) bool {
 	if privCR.Spec.ForProvider.Description != nil &&

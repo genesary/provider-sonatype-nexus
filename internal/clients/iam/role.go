@@ -46,6 +46,15 @@ func GenerateRole(roleRes *iamv1alpha1.Role) security.Role {
 	return roleData
 }
 
+// GenerateRoleObservation returns the observed Role state.
+// Note: the upstream go-nexus-client security.Role struct does not expose
+// the readOnly or source fields returned by the Nexus REST API, so
+// RoleObservation.Source and RoleObservation.ReadOnly remain nil until
+// the upstream library is updated.
+func GenerateRoleObservation(_ *security.Role) iamv1alpha1.RoleObservation {
+	return iamv1alpha1.RoleObservation{}
+}
+
 // IsRoleUpToDate reports whether the CR matches the observed Role.
 func IsRoleUpToDate(roleRes *iamv1alpha1.Role, observed *security.Role) bool {
 	if roleRes.Spec.ForProvider.Name != observed.Name {

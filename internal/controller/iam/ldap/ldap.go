@@ -133,9 +133,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	ldapCR.SetConditions(nexusv1alpha1.Available())
 
-	if observed.ID != "" {
-		ldapCR.Status.AtProvider.ID = &observed.ID
-	}
+	ldapCR.Status.AtProvider = iamclient.GenerateLDAPObservation(observed)
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,

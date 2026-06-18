@@ -262,12 +262,59 @@ func (e *external) Disconnect(ctx context.Context) error {
 
 // observeFileBlobStore handles Observe for File-type blob stores.
 func (e *external) observeFileBlobStore(ctx context.Context, blobStore *repositoryv1alpha1.BlobStore) (managed.ExternalObservation, error) {
-	return observeBlobStoreByType(ctx, blobStore, e.client.BlobStore().GetFile, isFileBlobStoreUpToDate)
+	obs, err := observeBlobStoreByType(ctx, blobStore, e.client.BlobStore().GetFile, isFileBlobStoreUpToDate)
+	if err != nil || !obs.ResourceExists {
+		return obs, err
+	}
+
+	e.populateBlobStoreStats(ctx, blobStore)
+
+	return obs, nil
 }
 
 // observeS3BlobStore handles Observe for S3-type blob stores.
 func (e *external) observeS3BlobStore(ctx context.Context, blobStore *repositoryv1alpha1.BlobStore) (managed.ExternalObservation, error) {
-	return observeBlobStoreByType(ctx, blobStore, e.client.BlobStore().GetS3, isS3BlobStoreUpToDate)
+	obs, err := observeBlobStoreByType(ctx, blobStore, e.client.BlobStore().GetS3, isS3BlobStoreUpToDate)
+	if err != nil || !obs.ResourceExists {
+		return obs, err
+	}
+
+	e.populateBlobStoreStats(ctx, blobStore)
+
+	return obs, nil
+}
+
+// populateBlobStoreStats fetches stats for blobStore from the list endpoint and
+// populates Status.AtProvider. Errors are silently ignored — stats are
+// best-effort and should not block reconciliation.
+func (e *external) populateBlobStoreStats(ctx context.Context, blobStore *repositoryv1alpha1.BlobStore) {
+	name := meta.GetExternalName(blobStore)
+	if name == "" {
+		name = blobStore.Spec.ForProvider.Name
+	}
+
+	generics, err := e.client.BlobStore().List(ctx)
+	if err != nil {
+		return
+	}
+
+	for _, generic := range generics {
+		if generic.Name != name {
+			continue
+		}
+
+		available := int64(generic.AvailableSpaceInBytes)
+		total := int64(generic.TotalSizeInBytes)
+		count := int64(generic.BlobCount)
+
+		blobStore.Status.AtProvider = repositoryv1alpha1.BlobStoreObservation{
+			AvailableSpaceInBytes: &available,
+			TotalSizeInBytes:      &total,
+			BlobCount:             &count,
+		}
+
+		break
+	}
 }
 
 // generateFileBlobStore generates a File blob store from the CR spec.

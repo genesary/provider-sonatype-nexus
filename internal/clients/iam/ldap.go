@@ -48,6 +48,21 @@ func GenerateLDAP(ldapCR *iamv1alpha1.LDAP, password string) security.LDAP {
 	return cfg
 }
 
+// GenerateLDAPObservation returns the observed LDAP server state.
+func GenerateLDAPObservation(observed *security.LDAP) iamv1alpha1.LDAPObservation {
+	if observed == nil {
+		return iamv1alpha1.LDAPObservation{}
+	}
+
+	obs := iamv1alpha1.LDAPObservation{}
+
+	if observed.ID != "" {
+		obs.ID = &observed.ID
+	}
+
+	return obs
+}
+
 // IsLDAPUpToDate reports whether the CR matches the observed LDAP config.
 func IsLDAPUpToDate(ldapCR *iamv1alpha1.LDAP, observed *security.LDAP) bool {
 	if ldapCR.Spec.ForProvider.Protocol != observed.Protocol {

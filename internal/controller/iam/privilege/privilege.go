@@ -129,6 +129,8 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	privRes.SetConditions(nexusv1alpha1.Available())
 
+	privRes.Status.AtProvider = iamclient.GeneratePrivilegeObservation(observed)
+
 	return managed.ExternalObservation{
 		ResourceExists:   true,
 		ResourceUpToDate: iamclient.IsPrivilegeUpToDate(privRes, observed),

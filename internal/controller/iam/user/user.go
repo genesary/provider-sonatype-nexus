@@ -140,6 +140,8 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	userRes.SetConditions(nexusv1alpha1.Available())
 
+	userRes.Status.AtProvider = iamclient.GenerateUserObservation(observed)
+
 	return managed.ExternalObservation{
 		ResourceExists:   true,
 		ResourceUpToDate: iamclient.IsUserUpToDate(userRes, observed),

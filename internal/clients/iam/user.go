@@ -54,6 +54,15 @@ func GenerateUser(userRes *iamv1alpha1.User, password string) security.User {
 	return nexusUser
 }
 
+// GenerateUserObservation returns the observed User state.
+// Note: the upstream go-nexus-client security.User struct does not expose
+// the readOnly or externalRoles fields returned by the Nexus REST API, so
+// UserObservation.ReadOnly and UserObservation.ExternalRoles remain nil until
+// the upstream library is updated.
+func GenerateUserObservation(_ *security.User) iamv1alpha1.UserObservation {
+	return iamv1alpha1.UserObservation{}
+}
+
 // IsUserUpToDate reports whether the CR matches the observed User.
 func IsUserUpToDate(userRes *iamv1alpha1.User, observed *security.User) bool {
 	if userRes.Spec.ForProvider.FirstName != observed.FirstName {
