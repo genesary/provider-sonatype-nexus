@@ -9,12 +9,12 @@ import (
 // for the license endpoint.
 type LicenseEndpointCredentials struct {
 	// UsernameSecretRef references a secret key with the HTTP username.
-	// +optional
+	// +kubebuilder:validation:Optional
 	UsernameSecretRef *xpv2.SecretKeySelector `json:"usernameSecretRef,omitempty"`
 
 	// PasswordSecretRef references a secret key with the HTTP password
 	// or bearer token.
-	// +optional
+	// +kubebuilder:validation:Optional
 	PasswordSecretRef *xpv2.SecretKeySelector `json:"passwordSecretRef,omitempty"`
 }
 
@@ -22,23 +22,23 @@ type LicenseEndpointCredentials struct {
 type LicenseParameters struct {
 	// LicenseSecretRef references a Kubernetes secret containing the license
 	// data (Behavior 1). Mutually exclusive with EndpointURL.
-	// +optional
+	// +kubebuilder:validation:Optional
 	LicenseSecretRef *xpv2.SecretKeySelector `json:"licenseSecretRef,omitempty"`
 
 	// EndpointURL is the URL from which the license file is fetched
 	// (Behavior 2). Mutually exclusive with LicenseSecretRef.
-	// +optional
+	// +kubebuilder:validation:Optional
 	EndpointURL *string `json:"endpointUrl,omitempty"`
 
 	// EndpointCredentials are optional HTTP credentials for the license
 	// endpoint. Used only when EndpointURL is set.
-	// +optional
+	// +kubebuilder:validation:Optional
 	EndpointCredentials *LicenseEndpointCredentials `json:"endpointCredentials,omitempty"`
 
 	// CacheSecretRef references a Kubernetes secret used to cache the
 	// license fetched from the endpoint. Required when EndpointURL is set.
 	// The controller creates the secret if it does not exist.
-	// +optional
+	// +kubebuilder:validation:Optional
 	CacheSecretRef *xpv2.SecretKeySelector `json:"cacheSecretRef,omitempty"`
 }
 

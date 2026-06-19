@@ -26,20 +26,20 @@ type UserParameters struct {
 	// Status of the user account.
 	// +kubebuilder:validation:Enum=active;locked;disabled;changepassword
 	// +kubebuilder:default=active
-	// +optional
+	// +kubebuilder:validation:Optional
 	Status *string `json:"status,omitempty"`
 
 	// Roles assigned to the user.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Roles []string `json:"roles,omitempty"`
 
 	// PasswordSecretRef is a reference to a secret with the user password.
-	// +optional
+	// +kubebuilder:validation:Optional
 	PasswordSecretRef *xpv2.SecretKeySelector `json:"passwordSecretRef,omitempty"`
 
 	// Source of the user (default is "default" for local users).
 	// +kubebuilder:default="default"
-	// +optional
+	// +kubebuilder:validation:Optional
 	Source *string `json:"source,omitempty"`
 }
 

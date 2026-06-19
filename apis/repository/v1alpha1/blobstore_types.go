@@ -17,15 +17,15 @@ type BlobStoreParameters struct {
 	Type string `json:"type"`
 
 	// Path for File type blob store.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Path *string `json:"path,omitempty"`
 
 	// SoftQuota defines the soft quota configuration.
-	// +optional
+	// +kubebuilder:validation:Optional
 	SoftQuota *SoftQuota `json:"softQuota,omitempty"`
 
 	// S3Config defines S3 configuration for S3 type blob store.
-	// +optional
+	// +kubebuilder:validation:Optional
 	S3Config *S3Config `json:"s3Config,omitempty"`
 }
 
@@ -33,11 +33,11 @@ type BlobStoreParameters struct {
 type SoftQuota struct {
 	// Type of the soft quota.
 	// +kubebuilder:validation:Enum=spaceRemainingQuota;spaceUsedQuota
-	// +optional
+	// +kubebuilder:validation:Optional
 	Type *string `json:"type,omitempty"`
 
 	// Limit in bytes.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Limit *int64 `json:"limit,omitempty"`
 }
 
@@ -48,39 +48,39 @@ type S3Config struct {
 	Bucket string `json:"bucket"`
 
 	// Prefix for objects in the bucket.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Prefix *string `json:"prefix,omitempty"`
 
 	// Region of the S3 bucket.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Region *string `json:"region,omitempty"`
 
 	// Endpoint URL for S3 compatible storage.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Endpoint *string `json:"endpoint,omitempty"`
 
 	// Expiration days for objects.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ExpirationDays *int32 `json:"expirationDays,omitempty"`
 
 	// AccessKeyIDSecretRef is a reference to a secret containing the access key ID.
-	// +optional
+	// +kubebuilder:validation:Optional
 	AccessKeyIDSecretRef *xpv2.SecretKeySelector `json:"accessKeyIdSecretRef,omitempty"`
 
 	// SecretAccessKeySecretRef is a reference to a secret containing the secret access key.
-	// +optional
+	// +kubebuilder:validation:Optional
 	SecretAccessKeySecretRef *xpv2.SecretKeySelector `json:"secretAccessKeySecretRef,omitempty"`
 
 	// AssumeRole for S3 access.
-	// +optional
+	// +kubebuilder:validation:Optional
 	AssumeRole *string `json:"assumeRole,omitempty"`
 
 	// SessionToken for S3 access.
-	// +optional
+	// +kubebuilder:validation:Optional
 	SessionTokenSecretRef *xpv2.SecretKeySelector `json:"sessionTokenSecretRef,omitempty"`
 
 	// ForcePathStyle enables path-style access for S3.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ForcePathStyle *bool `json:"forcePathStyle,omitempty"`
 }
 

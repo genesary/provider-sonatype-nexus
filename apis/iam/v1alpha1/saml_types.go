@@ -20,29 +20,29 @@ type SAMLParameters struct {
 	UsernameAttribute string `json:"usernameAttribute"`
 
 	// FirstNameAttribute is the SAML attribute to use for the first name.
-	// +optional
+	// +kubebuilder:validation:Optional
 	FirstNameAttribute *string `json:"firstNameAttribute,omitempty"`
 
 	// LastNameAttribute is the SAML attribute to use for the last name.
-	// +optional
+	// +kubebuilder:validation:Optional
 	LastNameAttribute *string `json:"lastNameAttribute,omitempty"`
 
 	// EmailAttribute is the SAML attribute to use for the email address.
-	// +optional
+	// +kubebuilder:validation:Optional
 	EmailAttribute *string `json:"emailAttribute,omitempty"`
 
 	// GroupsAttribute is the SAML attribute to use for group membership.
-	// +optional
+	// +kubebuilder:validation:Optional
 	GroupsAttribute *string `json:"groupsAttribute,omitempty"`
 
 	// ValidateResponseSignature determines if the SAML response signature
 	// should be validated.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ValidateResponseSignature *bool `json:"validateResponseSignature,omitempty"`
 
 	// ValidateAssertionSignature determines if the SAML assertion signature
 	// should be validated.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ValidateAssertionSignature *bool `json:"validateAssertionSignature,omitempty"`
 }
 

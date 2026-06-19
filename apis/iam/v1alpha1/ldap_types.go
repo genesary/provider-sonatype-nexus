@@ -36,35 +36,35 @@ type LDAPParameters struct {
 	AuthScheme string `json:"authScheme"`
 
 	// AuthUsername is the username for LDAP authentication (for simple auth).
-	// +optional
+	// +kubebuilder:validation:Optional
 	AuthUsername *string `json:"authUsername,omitempty"`
 
 	// AuthPasswordSecretRef is a reference to a secret containing the auth
 	// password.
-	// +optional
+	// +kubebuilder:validation:Optional
 	AuthPasswordSecretRef *xpv2.SecretKeySelector `json:"authPasswordSecretRef,omitempty"`
 
 	// AuthRealm is the SASL realm for DIGEST-MD5/CRAM-MD5 authentication.
-	// +optional
+	// +kubebuilder:validation:Optional
 	AuthRealm *string `json:"authRealm,omitempty"`
 
 	// ConnectionTimeoutSeconds is the timeout for LDAP connections.
 	// +kubebuilder:default=30
-	// +optional
+	// +kubebuilder:validation:Optional
 	ConnectionTimeoutSeconds *int32 `json:"connectionTimeoutSeconds,omitempty"`
 
 	// ConnectionRetryDelaySeconds is the delay between connection retries.
 	// +kubebuilder:default=300
-	// +optional
+	// +kubebuilder:validation:Optional
 	ConnectionRetryDelaySeconds *int32 `json:"connectionRetryDelaySeconds,omitempty"`
 
 	// MaxIncidentCount is the maximum number of connection retries.
 	// +kubebuilder:default=3
-	// +optional
+	// +kubebuilder:validation:Optional
 	MaxIncidentCount *int32 `json:"maxIncidentCount,omitempty"`
 
 	// UseTrustStore determines if the truststore should be used.
-	// +optional
+	// +kubebuilder:validation:Optional
 	UseTrustStore *bool `json:"useTrustStore,omitempty"`
 
 	// UserBaseDN is the relative DN where user objects are found.
@@ -73,81 +73,81 @@ type LDAPParameters struct {
 
 	// UserSubtree determines if users are located in structures below the
 	// user base DN.
-	// +optional
+	// +kubebuilder:validation:Optional
 	UserSubtree *bool `json:"userSubtree,omitempty"`
 
 	// UserObjectClass is the LDAP class for user objects.
 	// +kubebuilder:default="inetOrgPerson"
-	// +optional
+	// +kubebuilder:validation:Optional
 	UserObjectClass *string `json:"userObjectClass,omitempty"`
 
 	// UserIDAttribute is the attribute used to identify users.
 	// +kubebuilder:default="uid"
-	// +optional
+	// +kubebuilder:validation:Optional
 	UserIDAttribute *string `json:"userIdAttribute,omitempty"`
 
 	// UserRealNameAttribute is the attribute for user real names.
 	// +kubebuilder:default="cn"
-	// +optional
+	// +kubebuilder:validation:Optional
 	UserRealNameAttribute *string `json:"userRealNameAttribute,omitempty"`
 
 	// UserEmailAddressAttribute is the attribute for user email addresses.
 	// +kubebuilder:default="mail"
-	// +optional
+	// +kubebuilder:validation:Optional
 	UserEmailAddressAttribute *string `json:"userEmailAddressAttribute,omitempty"`
 
 	// UserPasswordAttribute is the attribute for user passwords.
-	// +optional
+	// +kubebuilder:validation:Optional
 	UserPasswordAttribute *string `json:"userPasswordAttribute,omitempty"`
 
 	// UserMemberOfAttribute is the attribute storing group DNs in user
 	// objects.
-	// +optional
+	// +kubebuilder:validation:Optional
 	UserMemberOfAttribute *string `json:"userMemberOfAttribute,omitempty"`
 
 	// UserLDAPFilter is an additional filter to limit user results.
-	// +optional
+	// +kubebuilder:validation:Optional
 	UserLDAPFilter *string `json:"userLdapFilter,omitempty"`
 
 	// LDAPGroupsAsRoles determines if LDAP groups should be used as Nexus
 	// roles.
-	// +optional
+	// +kubebuilder:validation:Optional
 	LDAPGroupsAsRoles *bool `json:"ldapGroupsAsRoles,omitempty"`
 
 	// GroupType is the type of group mapping (static or dynamic).
 	// +kubebuilder:validation:Enum=static;dynamic
-	// +optional
+	// +kubebuilder:validation:Optional
 	GroupType *string `json:"groupType,omitempty"`
 
 	// GroupBaseDN is the relative DN where group objects are found.
-	// +optional
+	// +kubebuilder:validation:Optional
 	GroupBaseDN *string `json:"groupBaseDn,omitempty"`
 
 	// GroupSubtree determines if groups are located in structures below the
 	// group base DN.
-	// +optional
+	// +kubebuilder:validation:Optional
 	GroupSubtree *bool `json:"groupSubtree,omitempty"`
 
 	// GroupObjectClass is the LDAP class for group objects.
 	// +kubebuilder:default="groupOfUniqueNames"
-	// +optional
+	// +kubebuilder:validation:Optional
 	GroupObjectClass *string `json:"groupObjectClass,omitempty"`
 
 	// GroupIDAttribute is the attribute defining the Group ID.
 	// +kubebuilder:default="cn"
-	// +optional
+	// +kubebuilder:validation:Optional
 	GroupIDAttribute *string `json:"groupIdAttribute,omitempty"`
 
 	// GroupMemberAttribute is the attribute containing group member
 	// usernames.
 	// +kubebuilder:default="uniqueMember"
-	// +optional
+	// +kubebuilder:validation:Optional
 	GroupMemberAttribute *string `json:"groupMemberAttribute,omitempty"`
 
 	// GroupMemberFormat is the format of user IDs in the group member
 	// attribute.
 	// +kubebuilder:default="uid=${username},ou=people,dc=example,dc=com"
-	// +optional
+	// +kubebuilder:validation:Optional
 	GroupMemberFormat *string `json:"groupMemberFormat,omitempty"`
 }
 

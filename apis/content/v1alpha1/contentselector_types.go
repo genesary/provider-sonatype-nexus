@@ -12,7 +12,7 @@ type ContentSelectorParameters struct {
 	Name string `json:"name"`
 
 	// Description of the content selector.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Description *string `json:"description,omitempty"`
 
 	// Expression is the CSEL expression used to select content.
