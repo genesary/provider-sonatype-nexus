@@ -1,8 +1,0 @@
----
-apiVersion: pkg.crossplane.io/v1
-kind: Provider
-metadata:
-  name: provider-sonatype-nexus
-spec:
-  package: localhost:5001/provider-sonatype-nexus:e2e
-  packagePullPolicy: IfNotPresent
