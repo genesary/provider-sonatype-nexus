@@ -20,6 +20,7 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -127,7 +128,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	observed, err := e.client.GetUser(ctx, userID)
 	if err != nil {
-		if iamclient.IsNotFound(err) {
+		if helpers.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
 
@@ -140,9 +141,11 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	userRes.SetConditions(nexusv1alpha1.Available())
 
+	userRes.Status.AtProvider = iamclient.GenerateUserObservation(observed)
+
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsUserUpToDate(userRes, observed),
+		ResourceUpToDate: iamclient.IsUserUpToDate(userRes),
 	}, nil
 }
 
@@ -220,7 +223,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 
 	err := e.client.DeleteUser(ctx, userID)
 	if err != nil {
-		if iamclient.IsNotFound(err) {
+		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
 		}
 

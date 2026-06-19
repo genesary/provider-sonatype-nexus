@@ -18,6 +18,7 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -116,7 +117,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	observed, err := e.client.GetPrivilege(ctx, privName)
 	if err != nil {
-		if iamclient.IsNotFound(err) {
+		if helpers.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
 
@@ -129,9 +130,11 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	privRes.SetConditions(nexusv1alpha1.Available())
 
+	privRes.Status.AtProvider = iamclient.GeneratePrivilegeObservation(observed)
+
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsPrivilegeUpToDate(privRes, observed),
+		ResourceUpToDate: iamclient.IsPrivilegeUpToDate(privRes),
 	}, nil
 }
 
@@ -186,7 +189,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 
 	err := e.client.DeletePrivilege(ctx, privName)
 	if err != nil {
-		if iamclient.IsNotFound(err) {
+		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
 		}
 

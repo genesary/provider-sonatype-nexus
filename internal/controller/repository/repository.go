@@ -15,7 +15,6 @@ package repository
 
 import (
 	"context"
-	"strings"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
@@ -31,6 +30,7 @@ import (
 	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -260,7 +260,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 	}
 
 	err := handler.Delete(ctx, e.client, name, repoType)
-	if err != nil && !isNotFound(err) {
+	if err != nil && !helpers.IsNotFound(err) {
 		return managed.ExternalDelete{}, errors.Wrap(err, errDeleteRepository)
 	}
 
@@ -292,17 +292,4 @@ func (e *external) resolveHTTPClientPassword(ctx context.Context, repoCR *reposi
 	}
 
 	return string(data), nil
-}
-
-// isNotFound checks if an error indicates a resource was not found.
-func isNotFound(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	msg := strings.ToLower(err.Error())
-
-	return strings.Contains(msg, "404") ||
-		strings.Contains(msg, "not found") ||
-		strings.Contains(msg, "does not exist")
 }

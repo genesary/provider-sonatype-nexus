@@ -8,6 +8,7 @@ import (
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 // LDAPClient manages Nexus LDAP server configurations.
@@ -48,29 +49,53 @@ func GenerateLDAP(ldapCR *iamv1alpha1.LDAP, password string) security.LDAP {
 	return cfg
 }
 
-// IsLDAPUpToDate reports whether the CR matches the observed LDAP config.
-func IsLDAPUpToDate(ldapCR *iamv1alpha1.LDAP, observed *security.LDAP) bool {
-	if ldapCR.Spec.ForProvider.Protocol != observed.Protocol {
+// GenerateLDAPObservation returns the observed LDAP server state.
+func GenerateLDAPObservation(observed *security.LDAP) iamv1alpha1.LDAPObservation {
+	if observed == nil {
+		return iamv1alpha1.LDAPObservation{}
+	}
+
+	obs := iamv1alpha1.LDAPObservation{
+		Protocol:   observed.Protocol,
+		Host:       observed.Host,
+		Port:       observed.Port,
+		SearchBase: observed.SearchBase,
+		AuthScheme: observed.AuthSchema,
+		UserBaseDN: observed.UserBaseDN,
+	}
+
+	if observed.ID != "" {
+		obs.ID = &observed.ID
+	}
+
+	return obs
+}
+
+// IsLDAPUpToDate reports whether the CR spec matches the observed LDAP config.
+func IsLDAPUpToDate(ldapCR *iamv1alpha1.LDAP) bool {
+	obs := ldapCR.Status.AtProvider
+
+	if ldapCR.Spec.ForProvider.Protocol != obs.Protocol {
 		return false
 	}
 
-	if ldapCR.Spec.ForProvider.Host != observed.Host {
+	if ldapCR.Spec.ForProvider.Host != obs.Host {
 		return false
 	}
 
-	if ldapCR.Spec.ForProvider.Port != observed.Port {
+	if ldapCR.Spec.ForProvider.Port != obs.Port {
 		return false
 	}
 
-	if ldapCR.Spec.ForProvider.SearchBase != observed.SearchBase {
+	if ldapCR.Spec.ForProvider.SearchBase != obs.SearchBase {
 		return false
 	}
 
-	if ldapCR.Spec.ForProvider.AuthScheme != observed.AuthSchema {
+	if ldapCR.Spec.ForProvider.AuthScheme != obs.AuthScheme {
 		return false
 	}
 
-	if ldapCR.Spec.ForProvider.UserBaseDN != observed.UserBaseDN {
+	if ldapCR.Spec.ForProvider.UserBaseDN != obs.UserBaseDN {
 		return false
 	}
 
@@ -80,65 +105,25 @@ func IsLDAPUpToDate(ldapCR *iamv1alpha1.LDAP, observed *security.LDAP) bool {
 // applyLDAPConnection applies connection-related fields from the spec to the
 // LDAP config.
 func applyLDAPConnection(cfg *security.LDAP, spec *iamv1alpha1.LDAPParameters) {
-	if spec.AuthUsername != nil {
-		cfg.AuthUserName = *spec.AuthUsername
-	}
-
-	if spec.AuthRealm != nil {
-		cfg.AuthRealm = *spec.AuthRealm
-	}
-
-	if spec.ConnectionTimeoutSeconds != nil {
-		cfg.ConnectionTimeoutSeconds = *spec.ConnectionTimeoutSeconds
-	}
-
-	if spec.ConnectionRetryDelaySeconds != nil {
-		cfg.ConnectionRetryDelaySeconds = *spec.ConnectionRetryDelaySeconds
-	}
-
-	if spec.MaxIncidentCount != nil {
-		cfg.MaxIncidentCount = *spec.MaxIncidentCount
-	}
-
-	if spec.UseTrustStore != nil {
-		cfg.UseTrustStore = *spec.UseTrustStore
-	}
+	helpers.AssignIfNonNil(&cfg.AuthUserName, spec.AuthUsername)
+	helpers.AssignIfNonNil(&cfg.AuthRealm, spec.AuthRealm)
+	helpers.AssignIfNonNil(&cfg.ConnectionTimeoutSeconds, spec.ConnectionTimeoutSeconds)
+	helpers.AssignIfNonNil(&cfg.ConnectionRetryDelaySeconds, spec.ConnectionRetryDelaySeconds)
+	helpers.AssignIfNonNil(&cfg.MaxIncidentCount, spec.MaxIncidentCount)
+	helpers.AssignIfNonNil(&cfg.UseTrustStore, spec.UseTrustStore)
 }
 
 // applyLDAPUserConfig applies user-mapping fields from the spec to the LDAP
 // config.
 func applyLDAPUserConfig(cfg *security.LDAP, spec *iamv1alpha1.LDAPParameters) {
-	if spec.UserSubtree != nil {
-		cfg.UserSubtree = *spec.UserSubtree
-	}
-
-	if spec.UserObjectClass != nil {
-		cfg.UserObjectClass = *spec.UserObjectClass
-	}
-
-	if spec.UserIDAttribute != nil {
-		cfg.UserIDAttribute = *spec.UserIDAttribute
-	}
-
-	if spec.UserRealNameAttribute != nil {
-		cfg.UserRealNameAttribute = *spec.UserRealNameAttribute
-	}
-
-	if spec.UserEmailAddressAttribute != nil {
-		cfg.UserEmailAddressAttribute = *spec.UserEmailAddressAttribute
-	}
-
-	if spec.UserPasswordAttribute != nil {
-		cfg.UserPasswordAttribute = *spec.UserPasswordAttribute
-	}
-
-	if spec.UserMemberOfAttribute != nil {
-		cfg.UserMemberOfAttribute = *spec.UserMemberOfAttribute
-	}
-
-	if spec.UserLDAPFilter != nil {
-		cfg.UserLDAPFilter = *spec.UserLDAPFilter
-	}
+	helpers.AssignIfNonNil(&cfg.UserSubtree, spec.UserSubtree)
+	helpers.AssignIfNonNil(&cfg.UserObjectClass, spec.UserObjectClass)
+	helpers.AssignIfNonNil(&cfg.UserIDAttribute, spec.UserIDAttribute)
+	helpers.AssignIfNonNil(&cfg.UserRealNameAttribute, spec.UserRealNameAttribute)
+	helpers.AssignIfNonNil(&cfg.UserEmailAddressAttribute, spec.UserEmailAddressAttribute)
+	helpers.AssignIfNonNil(&cfg.UserPasswordAttribute, spec.UserPasswordAttribute)
+	helpers.AssignIfNonNil(&cfg.UserMemberOfAttribute, spec.UserMemberOfAttribute)
+	helpers.AssignIfNonNil(&cfg.UserLDAPFilter, spec.UserLDAPFilter)
 }
 
 // applyLDAPGroupConfig applies group-mapping fields from the spec to the
@@ -150,31 +135,11 @@ func applyLDAPGroupConfig(cfg *security.LDAP, spec *iamv1alpha1.LDAPParameters) 
 
 	cfg.LDAPGroupsAsRoles = *spec.LDAPGroupsAsRoles
 
-	if spec.GroupType != nil {
-		cfg.GroupType = *spec.GroupType
-	}
-
-	if spec.GroupBaseDN != nil {
-		cfg.GroupBaseDn = *spec.GroupBaseDN
-	}
-
-	if spec.GroupSubtree != nil {
-		cfg.GroupSubtree = *spec.GroupSubtree
-	}
-
-	if spec.GroupObjectClass != nil {
-		cfg.GroupObjectClass = *spec.GroupObjectClass
-	}
-
-	if spec.GroupIDAttribute != nil {
-		cfg.GroupIDAttribute = *spec.GroupIDAttribute
-	}
-
-	if spec.GroupMemberAttribute != nil {
-		cfg.GroupMemberAttribute = *spec.GroupMemberAttribute
-	}
-
-	if spec.GroupMemberFormat != nil {
-		cfg.GroupMemberFormat = *spec.GroupMemberFormat
-	}
+	helpers.AssignIfNonNil(&cfg.GroupType, spec.GroupType)
+	helpers.AssignIfNonNil(&cfg.GroupBaseDn, spec.GroupBaseDN)
+	helpers.AssignIfNonNil(&cfg.GroupSubtree, spec.GroupSubtree)
+	helpers.AssignIfNonNil(&cfg.GroupObjectClass, spec.GroupObjectClass)
+	helpers.AssignIfNonNil(&cfg.GroupIDAttribute, spec.GroupIDAttribute)
+	helpers.AssignIfNonNil(&cfg.GroupMemberAttribute, spec.GroupMemberAttribute)
+	helpers.AssignIfNonNil(&cfg.GroupMemberFormat, spec.GroupMemberFormat)
 }

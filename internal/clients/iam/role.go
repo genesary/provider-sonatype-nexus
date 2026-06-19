@@ -2,7 +2,6 @@ package iam
 
 import (
 	"context"
-	"strings"
 
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 	"github.com/pkg/errors"
@@ -39,42 +38,48 @@ func GenerateRole(roleRes *iamv1alpha1.Role) security.Role {
 		Roles:      roleRes.Spec.ForProvider.Roles,
 	}
 
-	if roleRes.Spec.ForProvider.Description != nil {
-		roleData.Description = *roleRes.Spec.ForProvider.Description
-	}
+	helpers.AssignIfNonNil(&roleData.Description, roleRes.Spec.ForProvider.Description)
 
 	return roleData
 }
 
-// IsRoleUpToDate reports whether the CR matches the observed Role.
-func IsRoleUpToDate(roleRes *iamv1alpha1.Role, observed *security.Role) bool {
-	if roleRes.Spec.ForProvider.Name != observed.Name {
+// GenerateRoleObservation returns the observed Role state.
+// Note: the upstream go-nexus-client security.Role struct does not expose
+// the readOnly or source fields returned by the Nexus REST API, so
+// RoleObservation.Source and RoleObservation.ReadOnly remain nil until
+// the upstream library is updated.
+func GenerateRoleObservation(observed *security.Role) iamv1alpha1.RoleObservation {
+	if observed == nil {
+		return iamv1alpha1.RoleObservation{}
+	}
+
+	return iamv1alpha1.RoleObservation{
+		Name:        observed.Name,
+		Description: observed.Description,
+		Privileges:  observed.Privileges,
+		Roles:       observed.Roles,
+	}
+}
+
+// IsRoleUpToDate reports whether the CR spec matches the observed Role.
+func IsRoleUpToDate(roleRes *iamv1alpha1.Role) bool {
+	obs := roleRes.Status.AtProvider
+
+	if roleRes.Spec.ForProvider.Name != obs.Name {
 		return false
 	}
 
-	if roleRes.Spec.ForProvider.Description != nil &&
-		*roleRes.Spec.ForProvider.Description != observed.Description {
+	if !helpers.IsComparablePtrEqualComparable(roleRes.Spec.ForProvider.Description, obs.Description) {
 		return false
 	}
 
-	if !helpers.AreStringSlicesEqual(roleRes.Spec.ForProvider.Privileges, observed.Privileges) {
+	if !helpers.AreStringSlicesEqual(roleRes.Spec.ForProvider.Privileges, obs.Privileges) {
 		return false
 	}
 
-	if !helpers.AreStringSlicesEqual(roleRes.Spec.ForProvider.Roles, observed.Roles) {
+	if !helpers.AreStringSlicesEqual(roleRes.Spec.ForProvider.Roles, obs.Roles) {
 		return false
 	}
 
 	return true
-}
-
-// IsNotFound reports whether an error indicates the resource was not found.
-func IsNotFound(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	return strings.Contains(err.Error(), "404") ||
-		strings.Contains(err.Error(), "not found") ||
-		strings.Contains(strings.ToLower(err.Error()), "does not exist")
 }

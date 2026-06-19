@@ -20,6 +20,10 @@ type SecuritySSLTruststoreObservation struct {
 	// +optional
 	ID *string `json:"id,omitempty"`
 
+	// Pem is the observed certificate in PEM format.
+	// +optional
+	Pem string `json:"pem,omitempty"`
+
 	// Fingerprint is the certificate fingerprint.
 	// +optional
 	Fingerprint *string `json:"fingerprint,omitempty"`

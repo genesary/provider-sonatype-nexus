@@ -146,9 +146,25 @@ spec:
               atProvider:
                 description: RoleObservation is the observed state of a Role.
                 properties:
+                  description:
+                    description: Description is the observed role description.
+                    type: string
+                  name:
+                    description: Name is the observed role name.
+                    type: string
+                  privileges:
+                    description: Privileges are the observed assigned privileges.
+                    items:
+                      type: string
+                    type: array
                   readOnly:
                     description: ReadOnly indicates if the role is read-only.
                     type: boolean
+                  roles:
+                    description: Roles are the observed contained roles.
+                    items:
+                      type: string
+                    type: array
                   source:
                     description: Source of the role.
                     type: string

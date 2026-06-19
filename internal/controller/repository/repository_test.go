@@ -693,8 +693,8 @@ func TestRepositoryIsNotFound(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := isNotFound(tt.err); got != tt.want {
-				t.Errorf("isNotFound() = %v, want %v", got, tt.want)
+			if got := helpers.IsNotFound(tt.err); got != tt.want {
+				t.Errorf("helpers.IsNotFound() = %v, want %v", got, tt.want)
 			}
 		})
 	}

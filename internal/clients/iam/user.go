@@ -43,37 +43,52 @@ func GenerateUser(userRes *iamv1alpha1.User, password string) security.User {
 		Roles:        userRes.Spec.ForProvider.Roles,
 	}
 
-	if userRes.Spec.ForProvider.Status != nil {
-		nexusUser.Status = *userRes.Spec.ForProvider.Status
-	}
-
-	if userRes.Spec.ForProvider.Source != nil {
-		nexusUser.Source = *userRes.Spec.ForProvider.Source
-	}
+	helpers.AssignIfNonNil(&nexusUser.Status, userRes.Spec.ForProvider.Status)
+	helpers.AssignIfNonNil(&nexusUser.Source, userRes.Spec.ForProvider.Source)
 
 	return nexusUser
 }
 
-// IsUserUpToDate reports whether the CR matches the observed User.
-func IsUserUpToDate(userRes *iamv1alpha1.User, observed *security.User) bool {
-	if userRes.Spec.ForProvider.FirstName != observed.FirstName {
+// GenerateUserObservation returns the observed User state.
+// Note: the upstream go-nexus-client security.User struct does not expose
+// the readOnly or externalRoles fields returned by the Nexus REST API, so
+// UserObservation.ReadOnly and UserObservation.ExternalRoles remain nil until
+// the upstream library is updated.
+func GenerateUserObservation(observed *security.User) iamv1alpha1.UserObservation {
+	if observed == nil {
+		return iamv1alpha1.UserObservation{}
+	}
+
+	return iamv1alpha1.UserObservation{
+		FirstName:    observed.FirstName,
+		LastName:     observed.LastName,
+		EmailAddress: observed.EmailAddress,
+		Status:       observed.Status,
+		Roles:        observed.Roles,
+	}
+}
+
+// IsUserUpToDate reports whether the CR spec matches the observed User.
+func IsUserUpToDate(userRes *iamv1alpha1.User) bool {
+	obs := userRes.Status.AtProvider
+
+	if userRes.Spec.ForProvider.FirstName != obs.FirstName {
 		return false
 	}
 
-	if userRes.Spec.ForProvider.LastName != observed.LastName {
+	if userRes.Spec.ForProvider.LastName != obs.LastName {
 		return false
 	}
 
-	if userRes.Spec.ForProvider.EmailAddress != observed.EmailAddress {
+	if userRes.Spec.ForProvider.EmailAddress != obs.EmailAddress {
 		return false
 	}
 
-	if userRes.Spec.ForProvider.Status != nil &&
-		*userRes.Spec.ForProvider.Status != observed.Status {
+	if !helpers.IsComparablePtrEqualComparable(userRes.Spec.ForProvider.Status, obs.Status) {
 		return false
 	}
 
-	if !helpers.AreStringSlicesEqual(userRes.Spec.ForProvider.Roles, observed.Roles) {
+	if !helpers.AreStringSlicesEqual(userRes.Spec.ForProvider.Roles, obs.Roles) {
 		return false
 	}
 

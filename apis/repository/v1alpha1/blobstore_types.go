@@ -94,6 +94,24 @@ type BlobStoreObservation struct {
 
 	// BlobCount is the number of blobs in the store.
 	BlobCount *int64 `json:"blobCount,omitempty"`
+
+	// Path is the observed filesystem path (File type only).
+	Path *string `json:"path,omitempty"`
+
+	// SoftQuotaType is the observed soft quota type.
+	SoftQuotaType *string `json:"softQuotaType,omitempty"`
+
+	// SoftQuotaLimit is the observed soft quota limit in bytes.
+	SoftQuotaLimit *int64 `json:"softQuotaLimit,omitempty"`
+
+	// BucketName is the observed S3 bucket name (S3 type only).
+	BucketName *string `json:"bucketName,omitempty"`
+
+	// BucketRegion is the observed S3 bucket region (S3 type only).
+	BucketRegion *string `json:"bucketRegion,omitempty"`
+
+	// BucketPrefix is the observed S3 bucket prefix (S3 type only).
+	BucketPrefix *string `json:"bucketPrefix,omitempty"`
 }
 
 // BlobStoreSpec defines the desired state of BlobStore.

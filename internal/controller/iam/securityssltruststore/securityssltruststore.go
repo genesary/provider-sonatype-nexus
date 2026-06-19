@@ -21,6 +21,7 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -137,7 +138,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsCertUpToDate(truststoreCR, cert),
+		ResourceUpToDate: iamclient.IsCertUpToDate(truststoreCR),
 	}, nil
 }
 
@@ -179,7 +180,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 	oldID := meta.GetExternalName(truststoreCR)
 	if oldID != "" {
 		err := e.client.RemoveCertificate(ctx, oldID)
-		if err != nil && !iamclient.IsNotFound(err) {
+		if err != nil && !helpers.IsNotFound(err) {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errRemoveCert)
 		}
 	}
@@ -219,7 +220,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 
 	err := e.client.RemoveCertificate(ctx, certID)
 	if err != nil {
-		if iamclient.IsNotFound(err) {
+		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
 		}
 

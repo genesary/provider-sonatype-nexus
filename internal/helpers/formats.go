@@ -20,6 +20,7 @@ package helpers
 import (
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -244,4 +245,17 @@ func NewStringSetFromSlice(slice []string) map[string]struct{} {
 	}
 
 	return set
+}
+
+// IsNotFound reports whether an error indicates the resource was not found.
+func IsNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	msg := strings.ToLower(err.Error())
+
+	return strings.Contains(msg, "404") ||
+		strings.Contains(msg, "not found") ||
+		strings.Contains(msg, "does not exist")
 }

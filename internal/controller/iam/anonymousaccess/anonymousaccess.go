@@ -115,11 +115,12 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetAnonymous)
 	}
 
+	anonAccess.Status.AtProvider = iamclient.GenerateAnonymousAccessObservation(settings)
 	anonAccess.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsAnonymousAccessUpToDate(anonAccess, settings),
+		ResourceUpToDate: iamclient.IsAnonymousAccessUpToDate(anonAccess),
 	}, nil
 }
 

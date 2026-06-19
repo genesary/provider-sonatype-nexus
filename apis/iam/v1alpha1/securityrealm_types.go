@@ -34,6 +34,8 @@ type RealmInfo struct {
 type SecurityRealmObservation struct {
 	// AvailableRealms lists all available realms in the system.
 	AvailableRealms []RealmInfo `json:"availableRealms,omitempty"`
+	// ActiveRealms is the observed list of active realm IDs.
+	ActiveRealms []string `json:"activeRealms,omitempty"`
 }
 
 // SecurityRealmSpec defines the desired state of SecurityRealm.

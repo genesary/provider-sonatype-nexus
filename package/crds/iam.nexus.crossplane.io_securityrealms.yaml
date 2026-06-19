@@ -143,6 +143,12 @@ spec:
               atProvider:
                 description: SecurityRealmObservation is the observed state of SecurityRealm.
                 properties:
+                  activeRealms:
+                    description: ActiveRealms is the observed list of active realm
+                      IDs.
+                    items:
+                      type: string
+                    type: array
                   availableRealms:
                     description: AvailableRealms lists all available realms in the
                       system.
