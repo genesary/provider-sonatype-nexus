@@ -34,12 +34,6 @@ type LicenseParameters struct {
 	// endpoint. Used only when EndpointURL is set.
 	// +kubebuilder:validation:Optional
 	EndpointCredentials *LicenseEndpointCredentials `json:"endpointCredentials,omitempty"`
-
-	// CacheSecretRef references a Kubernetes secret used to cache the
-	// license fetched from the endpoint. Required when EndpointURL is set.
-	// The controller creates the secret if it does not exist.
-	// +kubebuilder:validation:Optional
-	CacheSecretRef *xpv2.SecretKeySelector `json:"cacheSecretRef,omitempty"`
 }
 
 // LicenseObservation defines the observed state of License.

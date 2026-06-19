@@ -12,19 +12,18 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
+
+// licenseSecretCacheKey is the data key used when caching the license in the
+// writeConnectionSecretToRef secret.
+const licenseSecretCacheKey = "license"
 
 const (
 	// errNotLicense means the managed resource is not a License.
@@ -57,7 +56,7 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		}),
 		managed.WithLogger(opts.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(opts.PollInterval),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name)))) //nolint:deprecated // no replacement yet
+		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
@@ -155,7 +154,14 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotLicense)
 	}
 
-	return managed.ExternalCreation{}, e.applyLicense(ctx, licenseCR)
+	data, err := e.applyLicense(ctx, licenseCR)
+	if err != nil {
+		return managed.ExternalCreation{}, err
+	}
+
+	return managed.ExternalCreation{
+		ConnectionDetails: managed.ConnectionDetails{licenseSecretCacheKey: data},
+	}, nil
 }
 
 // Update reinstalls the license when it drifts from the desired state.
@@ -165,7 +171,14 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalUpdate{}, errors.New(errNotLicense)
 	}
 
-	return managed.ExternalUpdate{}, e.applyLicense(ctx, licenseCR)
+	data, err := e.applyLicense(ctx, licenseCR)
+	if err != nil {
+		return managed.ExternalUpdate{}, err
+	}
+
+	return managed.ExternalUpdate{
+		ConnectionDetails: managed.ConnectionDetails{licenseSecretCacheKey: data},
+	}, nil
 }
 
 // Delete removes the license from Nexus.
@@ -188,18 +201,17 @@ func (e *external) Disconnect(_ context.Context) error {
 	return nil
 }
 
-// applyLicense fetches the desired license and installs it on Nexus.
-// It records the installed hash in Status.AtProvider so future Observe
-// calls can detect drift when the desired license changes.
-func (e *external) applyLicense(ctx context.Context, licenseCR *iamv1alpha1.License) error {
+// applyLicense fetches the desired license, installs it on Nexus, records the
+// hash in Status.AtProvider, and returns the raw bytes for ConnectionDetails.
+func (e *external) applyLicense(ctx context.Context, licenseCR *iamv1alpha1.License) ([]byte, error) {
 	data, err := e.fetchDesiredLicense(ctx, licenseCR)
 	if err != nil {
-		return errors.Wrap(err, errFetchLicense)
+		return nil, errors.Wrap(err, errFetchLicense)
 	}
 
 	err = e.client.InstallLicense(ctx, data)
 	if err != nil {
-		return errors.Wrap(err, errInstallLicense)
+		return nil, errors.Wrap(err, errInstallLicense)
 	}
 
 	hash := iamclient.HashLicense(data)
@@ -213,17 +225,17 @@ func (e *external) applyLicense(ctx context.Context, licenseCR *iamv1alpha1.Lice
 		_ = err
 	}
 
-	return nil
+	return data, nil
 }
 
 // fetchDesiredLicense returns the license bytes from the configured source.
 // Behavior 1: reads from LicenseSecretRef.
-// Behavior 2: fetches from EndpointURL, caches in CacheSecretRef.
+// Behavior 2: fetches from EndpointURL, caches in writeConnectionSecretToRef.
 func (e *external) fetchDesiredLicense(ctx context.Context, licenseCR *iamv1alpha1.License) ([]byte, error) {
 	params := licenseCR.Spec.ForProvider
 
 	if params.LicenseSecretRef != nil {
-		return e.readSecretBytes(ctx, params.LicenseSecretRef)
+		return nexus.GetSecretBytes(ctx, e.kube, params.LicenseSecretRef)
 	}
 
 	if params.EndpointURL != nil {
@@ -233,43 +245,21 @@ func (e *external) fetchDesiredLicense(ctx context.Context, licenseCR *iamv1alph
 	return nil, errors.New(errNoLicenseSource)
 }
 
-// readSecretBytes reads raw bytes from a Kubernetes secret key.
-func (e *external) readSecretBytes(ctx context.Context, sel *xpv2.SecretKeySelector) ([]byte, error) {
-	secret := &corev1.Secret{}
-
-	err := e.kube.Get(ctx, types.NamespacedName{
-		Name:      sel.Name,
-		Namespace: sel.Namespace,
-	}, secret)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot get secret")
-	}
-
-	data, ok := secret.Data[sel.Key]
-	if !ok {
-		return nil, errors.Errorf("secret %s/%s has no key %q", sel.Namespace, sel.Name, sel.Key)
-	}
-
-	return data, nil
-}
-
-// fetchFromEndpoint fetches the license from the HTTP endpoint and caches it.
-// Falls back to the cache when the endpoint is unavailable.
+// fetchFromEndpoint fetches the license from the HTTP endpoint.
+// Falls back to the writeConnectionSecretToRef cache when the endpoint is
+// unavailable; the cache is written by the reconciler via ConnectionDetails.
 func (e *external) fetchFromEndpoint(ctx context.Context, licenseCR *iamv1alpha1.License) ([]byte, error) {
 	params := licenseCR.Spec.ForProvider
 
 	data, endpointErr := e.doEndpointRequest(ctx, *params.EndpointURL, params.EndpointCredentials)
 	if endpointErr == nil {
-		if params.CacheSecretRef != nil {
-			_ = e.cacheSecretBytes(ctx, params.CacheSecretRef, data)
-		}
-
 		return data, nil
 	}
 
-	// Endpoint unavailable: try the cache as fallback.
-	if params.CacheSecretRef != nil {
-		cached, cacheErr := e.readSecretBytes(ctx, params.CacheSecretRef)
+	// Endpoint unavailable: try the connection secret written by a prior reconcile.
+	cacheRef := licenseCR.GetWriteConnectionSecretToReference()
+	if cacheRef != nil {
+		cached, cacheErr := nexus.GetLocalConnectionSecretBytes(ctx, e.kube, licenseCR, cacheRef, licenseSecretCacheKey)
 		if cacheErr == nil {
 			return cached, nil
 		}
@@ -341,39 +331,4 @@ func (e *external) applyEndpointCredentials(ctx context.Context, req *http.Reque
 	}
 
 	return nil
-}
-
-// cacheSecretBytes writes license bytes to the specified Kubernetes secret.
-// Creates the secret if it does not exist.
-func (e *external) cacheSecretBytes(ctx context.Context, sel *xpv2.SecretKeySelector, data []byte) error {
-	key := sel.Key
-	if key == "" {
-		key = "license"
-	}
-
-	secret := &corev1.Secret{}
-
-	err := e.kube.Get(ctx, types.NamespacedName{
-		Name:      sel.Name,
-		Namespace: sel.Namespace,
-	}, secret)
-	if err != nil {
-		newSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      sel.Name,
-				Namespace: sel.Namespace,
-			},
-			Data: map[string][]byte{key: data},
-		}
-
-		return errors.Wrap(e.kube.Create(ctx, newSecret), "cannot create cache secret")
-	}
-
-	if secret.Data == nil {
-		secret.Data = make(map[string][]byte)
-	}
-
-	secret.Data[key] = data
-
-	return errors.Wrap(e.kube.Update(ctx, secret), "cannot update cache secret")
 }

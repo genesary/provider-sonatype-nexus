@@ -61,26 +61,6 @@ spec:
               forProvider:
                 description: LicenseParameters defines the desired state of License.
                 properties:
-                  cacheSecretRef:
-                    description: |-
-                      CacheSecretRef references a Kubernetes secret used to cache the
-                      license fetched from the endpoint. Required when EndpointURL is set.
-                      The controller creates the secret if it does not exist.
-                    properties:
-                      key:
-                        description: The key to select.
-                        type: string
-                      name:
-                        description: Name of the secret.
-                        type: string
-                      namespace:
-                        description: Namespace of the secret.
-                        type: string
-                    required:
-                    - key
-                    - name
-                    - namespace
-                    type: object
                   endpointCredentials:
                     description: |-
                       EndpointCredentials are optional HTTP credentials for the license

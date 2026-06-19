@@ -20,6 +20,7 @@ import (
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
+	nexus "github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	licensefake "github.com/genesary/provider-sonatype-nexus/internal/fake"
 )
 
@@ -422,7 +423,8 @@ func TestCreate_WithEndpoint(t *testing.T) {
 	}
 }
 
-// TestCreate_WithEndpointAndCache tests Create with endpoint and cache ref.
+// TestCreate_WithEndpointAndCache tests Create returns license bytes in
+// ConnectionDetails.
 func TestCreate_WithEndpointAndCache(t *testing.T) {
 	t.Parallel()
 
@@ -443,38 +445,26 @@ func TestCreate_WithEndpointAndCache(t *testing.T) {
 	cr := &iamv1alpha1.License{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-license"},
 		Spec: iamv1alpha1.LicenseSpec{
+			ManagedResourceSpec: xpv2.ManagedResourceSpec{
+				WriteConnectionSecretToReference: &xpv2.LocalSecretReference{
+					Name: "license-cache",
+				},
+			},
 			ForProvider: iamv1alpha1.LicenseParameters{
 				EndpointURL: &endpointURL,
-				CacheSecretRef: &xpv2.SecretKeySelector{
-					SecretReference: xpv2.SecretReference{
-						Name:      "license-cache",
-						Namespace: "default",
-					},
-					Key: "license.lic",
-				},
 			},
 		},
 	}
 
 	e := &external{client: mc, kube: kubeClient}
 
-	_, err := e.Create(context.Background(), cr)
+	creation, err := e.Create(context.Background(), cr)
 	if err != nil {
 		t.Fatalf("Create() with endpoint+cache returned unexpected error: %v", err)
 	}
 
-	cacheSecret := &corev1.Secret{}
-
-	err = kubeClient.Get(context.Background(), types.NamespacedName{
-		Name:      "license-cache",
-		Namespace: "default",
-	}, cacheSecret)
-	if err != nil {
-		t.Fatalf("cache secret was not created: %v", err)
-	}
-
-	if !bytes.Equal(cacheSecret.Data["license.lic"], testLicenseData) {
-		t.Error("cached license data does not match downloaded data")
+	if !bytes.Equal(creation.ConnectionDetails[licenseSecretCacheKey], testLicenseData) {
+		t.Error("Create() ConnectionDetails does not contain the downloaded license")
 	}
 }
 
@@ -484,7 +474,7 @@ func TestCreate_EndpointFallbackToCache(t *testing.T) {
 
 	cachedData := []byte("cached-license-data")
 
-	cacheSecret := newLicenseSecret("license-cache", "default", "license.lic", cachedData)
+	cacheSecret := newLicenseSecret("license-cache", "default", licenseSecretCacheKey, cachedData)
 	kubeClient := crfake.NewClientBuilder().
 		WithScheme(newTestScheme(t)).
 		WithObjects(cacheSecret).
@@ -503,15 +493,13 @@ func TestCreate_EndpointFallbackToCache(t *testing.T) {
 	cr := &iamv1alpha1.License{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-license"},
 		Spec: iamv1alpha1.LicenseSpec{
+			ManagedResourceSpec: xpv2.ManagedResourceSpec{
+				WriteConnectionSecretToReference: &xpv2.LocalSecretReference{
+					Name: "license-cache",
+				},
+			},
 			ForProvider: iamv1alpha1.LicenseParameters{
 				EndpointURL: &endpointURL,
-				CacheSecretRef: &xpv2.SecretKeySelector{
-					SecretReference: xpv2.SecretReference{
-						Name:      "license-cache",
-						Namespace: "default",
-					},
-					Key: "license.lic",
-				},
 			},
 		},
 	}
@@ -868,88 +856,8 @@ func TestConnect_GetProviderConfigError(t *testing.T) {
 	}
 }
 
-// TestCacheSecretBytes_UpdateExisting tests cacheSecretBytes update path.
-func TestCacheSecretBytes_UpdateExisting(t *testing.T) {
-	t.Parallel()
-
-	existing := newLicenseSecret("license-cache", "default", "license.lic", []byte("old-data"))
-	kubeClient := crfake.NewClientBuilder().
-		WithScheme(newTestScheme(t)).
-		WithObjects(existing).
-		Build()
-
-	e := &external{kube: kubeClient}
-
-	sel := &xpv2.SecretKeySelector{
-		SecretReference: xpv2.SecretReference{
-			Name:      "license-cache",
-			Namespace: "default",
-		},
-		Key: "license.lic",
-	}
-
-	newData := []byte("updated-license-data")
-
-	err := e.cacheSecretBytes(context.Background(), sel, newData)
-	if err != nil {
-		t.Fatalf("cacheSecretBytes() unexpected error: %v", err)
-	}
-
-	updated := &corev1.Secret{}
-
-	err = kubeClient.Get(context.Background(), types.NamespacedName{
-		Name:      "license-cache",
-		Namespace: "default",
-	}, updated)
-	if err != nil {
-		t.Fatalf("Get() updated secret: %v", err)
-	}
-
-	if !bytes.Equal(updated.Data["license.lic"], newData) {
-		t.Error("cacheSecretBytes() did not update the secret data")
-	}
-}
-
-// TestCacheSecretBytes_EmptyKey tests cacheSecretBytes with empty key field.
-func TestCacheSecretBytes_EmptyKey(t *testing.T) {
-	t.Parallel()
-
-	kubeClient := crfake.NewClientBuilder().
-		WithScheme(newTestScheme(t)).
-		Build()
-
-	e := &external{kube: kubeClient}
-
-	sel := &xpv2.SecretKeySelector{
-		SecretReference: xpv2.SecretReference{
-			Name:      "license-cache-empty-key",
-			Namespace: "default",
-		},
-		Key: "", // should default to "license"
-	}
-
-	err := e.cacheSecretBytes(context.Background(), sel, testLicenseData)
-	if err != nil {
-		t.Fatalf("cacheSecretBytes() unexpected error: %v", err)
-	}
-
-	created := &corev1.Secret{}
-
-	err = kubeClient.Get(context.Background(), types.NamespacedName{
-		Name:      "license-cache-empty-key",
-		Namespace: "default",
-	}, created)
-	if err != nil {
-		t.Fatalf("Get() created secret: %v", err)
-	}
-
-	if !bytes.Equal(created.Data["license"], testLicenseData) {
-		t.Error("cacheSecretBytes() did not use default key \"license\"")
-	}
-}
-
-// TestReadSecretBytes_MissingKey tests readSecretBytes with missing key.
-func TestReadSecretBytes_MissingKey(t *testing.T) {
+// TestGetSecretBytes_MissingKey tests GetSecretBytes with a missing key.
+func TestGetSecretBytes_MissingKey(t *testing.T) {
 	t.Parallel()
 
 	secret := newLicenseSecret("license-secret", "default", "other-key", testLicenseData)
@@ -957,8 +865,6 @@ func TestReadSecretBytes_MissingKey(t *testing.T) {
 		WithScheme(newTestScheme(t)).
 		WithObjects(secret).
 		Build()
-
-	e := &external{kube: kubeClient}
 
 	sel := &xpv2.SecretKeySelector{
 		SecretReference: xpv2.SecretReference{
@@ -968,9 +874,9 @@ func TestReadSecretBytes_MissingKey(t *testing.T) {
 		Key: "missing-key",
 	}
 
-	_, err := e.readSecretBytes(context.Background(), sel)
+	_, err := nexus.GetSecretBytes(context.Background(), kubeClient, sel)
 	if err == nil {
-		t.Fatal("readSecretBytes() expected error for missing key, got nil")
+		t.Fatal("GetSecretBytes() expected error for missing key, got nil")
 	}
 }
 
