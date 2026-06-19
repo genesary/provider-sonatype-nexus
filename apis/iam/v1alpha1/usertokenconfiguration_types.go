@@ -12,16 +12,16 @@ type UserTokenConfigurationParameters struct {
 	Enabled bool `json:"enabled"`
 
 	// ProtectContent determines if content should be protected with user tokens.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ProtectContent *bool `json:"protectContent,omitempty"`
 
 	// ExpirationEnabled determines if token expiration is enabled.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ExpirationEnabled *bool `json:"expirationEnabled,omitempty"`
 
 	// ExpirationDays is the number of days before a token expires.
 	// Only applicable if ExpirationEnabled is true.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ExpirationDays *int32 `json:"expirationDays,omitempty"`
 }
 

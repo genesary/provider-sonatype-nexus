@@ -17,53 +17,53 @@ type SecuritySSLTruststoreParameters struct {
 // truststore certificate.
 type SecuritySSLTruststoreObservation struct {
 	// ID is the certificate identifier in Nexus.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ID *string `json:"id,omitempty"`
 
 	// Pem is the observed certificate in PEM format.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Pem string `json:"pem,omitempty"`
 
 	// Fingerprint is the certificate fingerprint.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Fingerprint *string `json:"fingerprint,omitempty"`
 
 	// SerialNumber is the certificate serial number.
-	// +optional
+	// +kubebuilder:validation:Optional
 	SerialNumber *string `json:"serialNumber,omitempty"`
 
 	// IssuerCommonName is the issuer common name.
-	// +optional
+	// +kubebuilder:validation:Optional
 	IssuerCommonName *string `json:"issuerCommonName,omitempty"`
 
 	// IssuerOrganization is the issuer organization.
-	// +optional
+	// +kubebuilder:validation:Optional
 	IssuerOrganization *string `json:"issuerOrganization,omitempty"`
 
 	// IssuerOrganizationUnit is the issuer organizational unit.
-	// +optional
+	// +kubebuilder:validation:Optional
 	IssuerOrganizationUnit *string `json:"issuerOrganizationUnit,omitempty"`
 
 	// SubjectCommonName is the subject common name.
-	// +optional
+	// +kubebuilder:validation:Optional
 	SubjectCommonName *string `json:"subjectCommonName,omitempty"`
 
 	// SubjectOrganization is the subject organization.
-	// +optional
+	// +kubebuilder:validation:Optional
 	SubjectOrganization *string `json:"subjectOrganization,omitempty"`
 
 	// SubjectOrganizationUnit is the subject organizational unit.
-	// +optional
+	// +kubebuilder:validation:Optional
 	SubjectOrganizationUnit *string `json:"subjectOrganizationUnit,omitempty"`
 
 	// IssuedOn is the timestamp when the certificate was issued (epoch
 	// millis).
-	// +optional
+	// +kubebuilder:validation:Optional
 	IssuedOn *int64 `json:"issuedOn,omitempty"`
 
 	// ExpiresOn is the timestamp when the certificate expires (epoch
 	// millis).
-	// +optional
+	// +kubebuilder:validation:Optional
 	ExpiresOn *int64 `json:"expiresOn,omitempty"`
 }
 

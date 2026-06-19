@@ -12,7 +12,7 @@ type PrivilegeParameters struct {
 	Name string `json:"name"`
 
 	// Description of the privilege.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Description *string `json:"description,omitempty"`
 
 	// Type of the privilege.
@@ -26,32 +26,32 @@ type PrivilegeParameters struct {
 	// For repository-admin: BROWSE, READ, EDIT, ADD, DELETE, ALL
 	// For repository-content-selector: BROWSE, READ, EDIT, ADD, DELETE, ALL
 	// For script: READ, BROWSE, RUN, EDIT, ADD, DELETE, ALL
-	// +optional
+	// +kubebuilder:validation:Optional
 	Actions []string `json:"actions,omitempty"`
 
 	// Domain for application type privilege.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Domain *string `json:"domain,omitempty"`
 
 	// Format for repository type privileges (e.g., maven2, npm, docker).
-	// +optional
+	// +kubebuilder:validation:Optional
 	Format *string `json:"format,omitempty"`
 
 	// Repository name for repository type privileges.
 	// Use * for all repositories.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Repository *string `json:"repository,omitempty"`
 
 	// ContentSelector name for repository-content-selector type privilege.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ContentSelector *string `json:"contentSelector,omitempty"`
 
 	// ScriptName for script type privilege.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ScriptName *string `json:"scriptName,omitempty"`
 
 	// Pattern for wildcard type privilege.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Pattern *string `json:"pattern,omitempty"`
 }
 

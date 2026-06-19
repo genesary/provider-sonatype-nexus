@@ -16,15 +16,15 @@ type RoleParameters struct {
 	Name string `json:"name"`
 
 	// Description of the role.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Description *string `json:"description,omitempty"`
 
 	// Privileges assigned to this role.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Privileges []string `json:"privileges,omitempty"`
 
 	// Roles are other roles contained by this role.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Roles []string `json:"roles,omitempty"`
 }
 

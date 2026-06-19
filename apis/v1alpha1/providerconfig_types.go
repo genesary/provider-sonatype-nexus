@@ -14,7 +14,7 @@ type ProviderConfigSpec struct {
 // ProviderCredentials defines the credentials for Nexus authentication.
 type ProviderCredentials struct {
 	// SecretRef is a reference to a secret containing credentials.
-	// +optional
+	// +kubebuilder:validation:Optional
 	xpv2.CommonCredentialSelectors `json:",inline"`
 
 	// Source of the provider credentials.

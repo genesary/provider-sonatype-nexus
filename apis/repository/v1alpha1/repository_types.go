@@ -23,79 +23,79 @@ type RepositoryParameters struct {
 
 	// Online determines if the repository is online.
 	// +kubebuilder:default=true
-	// +optional
+	// +kubebuilder:validation:Optional
 	Online *bool `json:"online,omitempty"`
 
 	// Storage configuration.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Storage *RepositoryStorage `json:"storage,omitempty"`
 
 	// Cleanup configuration.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Cleanup *RepositoryCleanup `json:"cleanup,omitempty"`
 
 	// Maven specific configuration.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Maven *MavenConfig `json:"maven,omitempty"`
 
 	// Docker specific configuration.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Docker *DockerConfig `json:"docker,omitempty"`
 
 	// DockerProxy specific configuration for Docker proxy repositories.
-	// +optional
+	// +kubebuilder:validation:Optional
 	DockerProxy *DockerProxyConfig `json:"dockerProxy,omitempty"`
 
 	// Proxy configuration for proxy repositories.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Proxy *ProxyConfig `json:"proxy,omitempty"`
 
 	// NegativeCache configuration for proxy repositories.
-	// +optional
+	// +kubebuilder:validation:Optional
 	NegativeCache *NegativeCacheConfig `json:"negativeCache,omitempty"`
 
 	// HTTPClient configuration for proxy repositories.
-	// +optional
+	// +kubebuilder:validation:Optional
 	HTTPClient *HTTPClientConfig `json:"httpClient,omitempty"`
 
 	// Group configuration for group repositories.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Group *GroupConfig `json:"group,omitempty"`
 
 	// Npm specific configuration.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Npm *NpmConfig `json:"npm,omitempty"`
 
 	// Apt specific configuration.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Apt *AptConfig `json:"apt,omitempty"`
 
 	// AptSigning configuration for APT hosted repositories.
-	// +optional
+	// +kubebuilder:validation:Optional
 	AptSigning *AptSigningConfig `json:"aptSigning,omitempty"`
 
 	// Yum specific configuration.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Yum *YumConfig `json:"yum,omitempty"`
 
 	// YumSigning configuration for Yum repositories.
-	// +optional
+	// +kubebuilder:validation:Optional
 	YumSigning *YumSigningConfig `json:"yumSigning,omitempty"`
 
 	// NugetProxy specific configuration for NuGet proxy repositories.
-	// +optional
+	// +kubebuilder:validation:Optional
 	NugetProxy *NugetProxyConfig `json:"nugetProxy,omitempty"`
 
 	// Bower specific configuration.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Bower *BowerConfig `json:"bower,omitempty"`
 
 	// Cargo specific configuration.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Cargo *CargoConfig `json:"cargo,omitempty"`
 
 	// RoutingRule is the name of the routing rule for proxy repositories.
-	// +optional
+	// +kubebuilder:validation:Optional
 	RoutingRule *string `json:"routingRule,omitempty"`
 }
 
@@ -107,19 +107,19 @@ type RepositoryStorage struct {
 
 	// StrictContentTypeValidation enables strict content type validation.
 	// +kubebuilder:default=true
-	// +optional
+	// +kubebuilder:validation:Optional
 	StrictContentTypeValidation *bool `json:"strictContentTypeValidation,omitempty"`
 
 	// WritePolicy for hosted repositories.
 	// +kubebuilder:validation:Enum=ALLOW;ALLOW_ONCE;DENY
-	// +optional
+	// +kubebuilder:validation:Optional
 	WritePolicy *string `json:"writePolicy,omitempty"`
 }
 
 // RepositoryCleanup defines cleanup configuration for a repository.
 type RepositoryCleanup struct {
 	// PolicyNames is a list of cleanup policy names.
-	// +optional
+	// +kubebuilder:validation:Optional
 	PolicyNames []string `json:"policyNames,omitempty"`
 }
 
@@ -127,40 +127,40 @@ type RepositoryCleanup struct {
 type MavenConfig struct {
 	// VersionPolicy for Maven repositories.
 	// +kubebuilder:validation:Enum=RELEASE;SNAPSHOT;MIXED
-	// +optional
+	// +kubebuilder:validation:Optional
 	VersionPolicy *string `json:"versionPolicy,omitempty"`
 
 	// LayoutPolicy for Maven repositories.
 	// +kubebuilder:validation:Enum=STRICT;PERMISSIVE
-	// +optional
+	// +kubebuilder:validation:Optional
 	LayoutPolicy *string `json:"layoutPolicy,omitempty"`
 
 	// ContentDisposition for Maven repositories.
 	// +kubebuilder:validation:Enum=INLINE;ATTACHMENT
-	// +optional
+	// +kubebuilder:validation:Optional
 	ContentDisposition *string `json:"contentDisposition,omitempty"`
 }
 
 // DockerConfig defines Docker specific configuration.
 type DockerConfig struct {
 	// V1Enabled allows clients to use V1 Docker registry API.
-	// +optional
+	// +kubebuilder:validation:Optional
 	V1Enabled *bool `json:"v1Enabled,omitempty"`
 
 	// ForceBasicAuth forces basic authentication.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ForceBasicAuth *bool `json:"forceBasicAuth,omitempty"`
 
 	// HTTPPort for Docker registry.
-	// +optional
+	// +kubebuilder:validation:Optional
 	HTTPPort *int32 `json:"httpPort,omitempty"`
 
 	// HTTPSPort for Docker registry.
-	// +optional
+	// +kubebuilder:validation:Optional
 	HTTPSPort *int32 `json:"httpsPort,omitempty"`
 
 	// Subdomain for Docker registry.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Subdomain *string `json:"subdomain,omitempty"`
 }
 
@@ -172,12 +172,12 @@ type ProxyConfig struct {
 
 	// ContentMaxAge is the maximum age of cached content in minutes.
 	// +kubebuilder:default=1440
-	// +optional
+	// +kubebuilder:validation:Optional
 	ContentMaxAge *int32 `json:"contentMaxAge,omitempty"`
 
 	// MetadataMaxAge is the maximum age of cached metadata in minutes.
 	// +kubebuilder:default=1440
-	// +optional
+	// +kubebuilder:validation:Optional
 	MetadataMaxAge *int32 `json:"metadataMaxAge,omitempty"`
 }
 
@@ -185,59 +185,59 @@ type ProxyConfig struct {
 type NegativeCacheConfig struct {
 	// Enabled determines if negative caching is enabled.
 	// +kubebuilder:default=true
-	// +optional
+	// +kubebuilder:validation:Optional
 	Enabled *bool `json:"enabled,omitempty"`
 
 	// TimeToLive is the time to live for negative cache entries in minutes.
 	// +kubebuilder:default=1440
-	// +optional
+	// +kubebuilder:validation:Optional
 	TimeToLive *int32 `json:"timeToLive,omitempty"`
 }
 
 // HTTPClientConfig defines HTTP client configuration for proxy repositories.
 type HTTPClientConfig struct {
 	// Blocked determines if the repository is blocked.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Blocked *bool `json:"blocked,omitempty"`
 
 	// AutoBlock determines if the repository is auto-blocked.
 	// +kubebuilder:default=true
-	// +optional
+	// +kubebuilder:validation:Optional
 	AutoBlock *bool `json:"autoBlock,omitempty"`
 
 	// Connection configuration.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Connection *HTTPClientConnection `json:"connection,omitempty"`
 
 	// Authentication configuration.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Authentication *HTTPClientAuthentication `json:"authentication,omitempty"`
 }
 
 // HTTPClientConnection defines HTTP client connection configuration.
 type HTTPClientConnection struct {
 	// Retries is the number of retries.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Retries *int32 `json:"retries,omitempty"`
 
 	// UserAgentSuffix is a custom user agent suffix.
-	// +optional
+	// +kubebuilder:validation:Optional
 	UserAgentSuffix *string `json:"userAgentSuffix,omitempty"`
 
 	// Timeout is the connection timeout in seconds.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Timeout *int32 `json:"timeout,omitempty"`
 
 	// EnableCircularRedirects enables circular redirects.
-	// +optional
+	// +kubebuilder:validation:Optional
 	EnableCircularRedirects *bool `json:"enableCircularRedirects,omitempty"`
 
 	// EnableCookies enables cookies.
-	// +optional
+	// +kubebuilder:validation:Optional
 	EnableCookies *bool `json:"enableCookies,omitempty"`
 
 	// UseTrustStore uses the trust store.
-	// +optional
+	// +kubebuilder:validation:Optional
 	UseTrustStore *bool `json:"useTrustStore,omitempty"`
 }
 
@@ -245,56 +245,56 @@ type HTTPClientConnection struct {
 type HTTPClientAuthentication struct {
 	// Type of authentication.
 	// +kubebuilder:validation:Enum=username;ntlm
-	// +optional
+	// +kubebuilder:validation:Optional
 	Type *string `json:"type,omitempty"`
 
 	// Username for authentication.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Username *string `json:"username,omitempty"`
 
 	// PasswordSecretRef is a reference to a secret containing the password.
-	// +optional
+	// +kubebuilder:validation:Optional
 	PasswordSecretRef *xpv2.SecretKeySelector `json:"passwordSecretRef,omitempty"`
 
 	// NTLMHost is the NTLM host.
-	// +optional
+	// +kubebuilder:validation:Optional
 	NTLMHost *string `json:"ntlmHost,omitempty"`
 
 	// NTLMDomain is the NTLM domain.
-	// +optional
+	// +kubebuilder:validation:Optional
 	NTLMDomain *string `json:"ntlmDomain,omitempty"`
 }
 
 // GroupConfig defines group configuration for group repositories.
 type GroupConfig struct {
 	// MemberNames is a list of member repository names.
-	// +optional
+	// +kubebuilder:validation:Optional
 	MemberNames []string `json:"memberNames,omitempty"`
 
 	// WritableMember is the writable member of the group (for Docker and Maven).
-	// +optional
+	// +kubebuilder:validation:Optional
 	WritableMember *string `json:"writableMember,omitempty"`
 }
 
 // NpmConfig defines npm specific configuration.
 type NpmConfig struct {
 	// RemoveNonCataloged removes non-cataloged versions.
-	// +optional
+	// +kubebuilder:validation:Optional
 	RemoveNonCataloged *bool `json:"removeNonCataloged,omitempty"`
 
 	// RemoveQuarantined removes quarantined components.
-	// +optional
+	// +kubebuilder:validation:Optional
 	RemoveQuarantined *bool `json:"removeQuarantined,omitempty"`
 }
 
 // AptConfig defines APT specific configuration.
 type AptConfig struct {
 	// Distribution for APT repository.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Distribution *string `json:"distribution,omitempty"`
 
 	// Flat determines if the repository uses flat format.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Flat *bool `json:"flat,omitempty"`
 }
 
@@ -303,23 +303,23 @@ type YumConfig struct {
 	// RepodataDepth is the repodata depth.
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=5
-	// +optional
+	// +kubebuilder:validation:Optional
 	RepodataDepth *int32 `json:"repodataDepth,omitempty"`
 
 	// DeployPolicy for Yum repositories.
 	// +kubebuilder:validation:Enum=STRICT;PERMISSIVE
-	// +optional
+	// +kubebuilder:validation:Optional
 	DeployPolicy *string `json:"deployPolicy,omitempty"`
 }
 
 // YumSigningConfig defines Yum signing configuration.
 type YumSigningConfig struct {
 	// Keypair is the PGP signing key pair (armored private key).
-	// +optional
+	// +kubebuilder:validation:Optional
 	Keypair *string `json:"keypair,omitempty"`
 
 	// Passphrase to access PGP signing key.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Passphrase *string `json:"passphrase,omitempty"`
 }
 
@@ -330,7 +330,7 @@ type AptSigningConfig struct {
 	Keypair string `json:"keypair"`
 
 	// Passphrase to access PGP signing key.
-	// +optional
+	// +kubebuilder:validation:Optional
 	Passphrase *string `json:"passphrase,omitempty"`
 }
 
@@ -338,19 +338,19 @@ type AptSigningConfig struct {
 type DockerProxyConfig struct {
 	// IndexType is the type of Docker index (HUB, REGISTRY, CUSTOM).
 	// +kubebuilder:validation:Enum=HUB;REGISTRY;CUSTOM
-	// +optional
+	// +kubebuilder:validation:Optional
 	IndexType *string `json:"indexType,omitempty"`
 
 	// IndexURL is the URL of the Docker index to use (for CUSTOM type).
-	// +optional
+	// +kubebuilder:validation:Optional
 	IndexURL *string `json:"indexUrl,omitempty"`
 
 	// CacheForeignLayers allows downloading and caching foreign layers.
-	// +optional
+	// +kubebuilder:validation:Optional
 	CacheForeignLayers *bool `json:"cacheForeignLayers,omitempty"`
 
 	// ForeignLayerUrlWhitelist is a list of regex patterns for allowed foreign layer URLs.
-	// +optional
+	// +kubebuilder:validation:Optional
 	ForeignLayerUrlWhitelist []string `json:"foreignLayerUrlWhitelist,omitempty"`
 }
 
@@ -358,27 +358,27 @@ type DockerProxyConfig struct {
 type NugetProxyConfig struct {
 	// QueryCacheItemMaxAge is how long to cache query results in seconds.
 	// +kubebuilder:default=3600
-	// +optional
+	// +kubebuilder:validation:Optional
 	QueryCacheItemMaxAge *int32 `json:"queryCacheItemMaxAge,omitempty"`
 
 	// NugetVersion is the NuGet protocol version (V2 or V3).
 	// +kubebuilder:validation:Enum=V2;V3
 	// +kubebuilder:default=V3
-	// +optional
+	// +kubebuilder:validation:Optional
 	NugetVersion *string `json:"nugetVersion,omitempty"`
 }
 
 // BowerConfig defines Bower specific configuration.
 type BowerConfig struct {
 	// RewritePackageUrls forces Bower to retrieve packages through this proxy.
-	// +optional
+	// +kubebuilder:validation:Optional
 	RewritePackageUrls *bool `json:"rewritePackageUrls,omitempty"`
 }
 
 // CargoConfig defines Cargo specific configuration.
 type CargoConfig struct {
 	// RequireAuthentication indicates if this repository requires authentication.
-	// +optional
+	// +kubebuilder:validation:Optional
 	RequireAuthentication *bool `json:"requireAuthentication,omitempty"`
 }
 
