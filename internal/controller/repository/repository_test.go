@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 	"github.com/genesary/provider-sonatype-nexus/test/mocks"
 )
 
@@ -699,7 +700,7 @@ func TestRepositoryIsNotFound(t *testing.T) {
 	}
 }
 
-// TestStringSlicesEqual tests the stringSlicesEqual function.
+// TestStringSlicesEqual tests helpers.AreStringSlicesEqual.
 func TestStringSlicesEqual(t *testing.T) {
 	t.Parallel()
 
@@ -745,8 +746,8 @@ func TestStringSlicesEqual(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := stringSlicesEqual(tt.a, tt.b); got != tt.want {
-				t.Errorf("stringSlicesEqual() = %v, want %v", got, tt.want)
+			if got := helpers.AreStringSlicesEqual(tt.a, tt.b); got != tt.want {
+				t.Errorf("helpers.AreStringSlicesEqual() = %v, want %v", got, tt.want)
 			}
 		})
 	}

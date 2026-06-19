@@ -8,7 +8,7 @@ import (
 
 	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/genesary/provider-sonatype-nexus/internal/utils"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 // DockerHandler handles Docker repository operations.
@@ -186,7 +186,7 @@ func (h *DockerHandler) isGroupUpToDate(repoCR *repositoryv1alpha1.Repository, r
 	}
 
 	if repoCR.Spec.ForProvider.Group != nil {
-		if !utils.StringSlicesEqual(repo.Group.MemberNames, repoCR.Spec.ForProvider.Group.MemberNames) {
+		if !helpers.AreStringSlicesEqual(repo.Group.MemberNames, repoCR.Spec.ForProvider.Group.MemberNames) {
 			return false
 		}
 	}

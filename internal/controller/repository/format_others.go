@@ -15,7 +15,7 @@ import (
 
 	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/genesary/provider-sonatype-nexus/internal/utils"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 // NugetHandler handles NuGet repository operations.
@@ -1153,15 +1153,10 @@ func isBasicGroupUpToDate(repoCR *repositoryv1alpha1.Repository, name string, on
 	}
 
 	if repoCR.Spec.ForProvider.Group != nil {
-		if !utils.StringSlicesEqual(repoCR.Spec.ForProvider.Group.MemberNames, memberNames) {
+		if !helpers.AreStringSlicesEqual(repoCR.Spec.ForProvider.Group.MemberNames, memberNames) {
 			return false
 		}
 	}
 
 	return true
-}
-
-// stringSlicesEqual is kept for backward compatibility with tests.
-func stringSlicesEqual(a, b []string) bool {
-	return utils.StringSlicesEqual(a, b)
 }
