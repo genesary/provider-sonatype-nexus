@@ -91,7 +91,16 @@ run: go.build
 # ====================================================================================
 # End to End Testing
 
-CROSSPLANE_VERSION = 1.19.0
+# Pin the kind cluster name used by both controlplane.up and
+# local.xpkg.deploy.provider.* so cluster/local/integration_tests.sh and
+# the build submodule agree on which cluster to deploy into.
+KIND_CLUSTER_NAME ?= $(BUILD_REGISTRY)-inttests
+
+# Pin the Crossplane chart version. The submodule's controlplane.up runs
+# `helm install ... --version $(CROSSPLANE_VERSION)`, which fails with
+# "flag needs an argument" when CROSSPLANE_VERSION is empty.
+CROSSPLANE_VERSION ?= 2.2.1
+
 -include build/makelib/local.xpkg.mk
 -include build/makelib/controlplane.mk
 
@@ -101,7 +110,25 @@ local-deploy: build controlplane.up local.xpkg.deploy.provider.$(PROJECT_NAME)
 	@$(KUBECTL) wait provider.pkg $(PROJECT_NAME) --for condition=Healthy --for condition=Installed --for=create --timeout 5m
 	@$(OK) running locally built provider
 
-.PHONY: submodules fallthrough run
+# e2e.run is the single entry-point for CI: builds → cluster → Nexus → Go suite.
+e2e.run: test-integration
+
+# Spin up the full stack and run the Go e2e suite end-to-end.
+test-integration: $(KIND) $(KUBECTL) $(CROSSPLANE_CLI) $(HELM)
+	@$(INFO) running integration tests using kind $(KIND_VERSION)
+	@KIND_NODE_IMAGE_TAG=$(KIND_NODE_IMAGE_TAG) $(ROOT_DIR)/cluster/local/integration_tests.sh || $(FAIL)
+	@$(OK) integration tests passed
+
+# Run only the Go e2e suite against an already-provisioned cluster.
+# Expects NEXUS_URL, NEXUS_USER, and NEXUS_PASS to be exported by the caller;
+# cluster/local/integration_tests.sh exports these automatically.
+E2E_TEST_TIMEOUT ?= 30m
+e2e.test:
+	@$(INFO) running e2e Go suite with build tag e2e
+	@go test -tags=e2e -timeout=$(E2E_TEST_TIMEOUT) -count=1 ./internal/test/e2e/... || $(FAIL)
+	@$(OK) e2e Go suite passed
+
+.PHONY: submodules fallthrough run e2e.run test-integration e2e.test
 
 # ====================================================================================
 # Special Targets
