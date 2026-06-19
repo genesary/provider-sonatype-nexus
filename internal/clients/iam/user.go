@@ -43,13 +43,8 @@ func GenerateUser(userRes *iamv1alpha1.User, password string) security.User {
 		Roles:        userRes.Spec.ForProvider.Roles,
 	}
 
-	if userRes.Spec.ForProvider.Status != nil {
-		nexusUser.Status = *userRes.Spec.ForProvider.Status
-	}
-
-	if userRes.Spec.ForProvider.Source != nil {
-		nexusUser.Source = *userRes.Spec.ForProvider.Source
-	}
+	helpers.AssignIfNonNil(&nexusUser.Status, userRes.Spec.ForProvider.Status)
+	helpers.AssignIfNonNil(&nexusUser.Source, userRes.Spec.ForProvider.Source)
 
 	return nexusUser
 }
@@ -89,8 +84,7 @@ func IsUserUpToDate(userRes *iamv1alpha1.User) bool {
 		return false
 	}
 
-	if userRes.Spec.ForProvider.Status != nil &&
-		*userRes.Spec.ForProvider.Status != obs.Status {
+	if !helpers.IsComparablePtrEqualComparable(userRes.Spec.ForProvider.Status, obs.Status) {
 		return false
 	}
 

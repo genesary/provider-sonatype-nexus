@@ -3,7 +3,6 @@ package blobstore
 
 import (
 	"context"
-	"strings"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
@@ -19,6 +18,7 @@ import (
 	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -140,7 +140,7 @@ func observeTypedBlobStore[T any](
 
 	result, err := getter(ctx, name)
 	if err != nil {
-		if isNotFound(err) {
+		if helpers.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
 
@@ -252,7 +252,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 
 	err := e.client.BlobStore().Delete(ctx, name)
 	if err != nil {
-		if isNotFound(err) {
+		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
 		}
 
@@ -481,15 +481,4 @@ func isS3BucketConfigUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore) bool {
 	}
 
 	return true
-}
-
-// isNotFound checks if an error indicates a resource was not found.
-func isNotFound(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	return strings.Contains(err.Error(), "404") ||
-		strings.Contains(err.Error(), "not found") ||
-		strings.Contains(strings.ToLower(err.Error()), "does not exist")
 }

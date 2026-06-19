@@ -118,8 +118,7 @@ func GeneratePrivilegeObservation(observed *security.Privilege) iamv1alpha1.Priv
 func IsPrivilegeUpToDate(privCR *iamv1alpha1.Privilege) bool {
 	obs := privCR.Status.AtProvider
 
-	if privCR.Spec.ForProvider.Description != nil &&
-		*privCR.Spec.ForProvider.Description != obs.Description {
+	if !helpers.IsComparablePtrEqualComparable(privCR.Spec.ForProvider.Description, obs.Description) {
 		return false
 	}
 
@@ -142,17 +141,9 @@ type repoPrivilegeFields struct {
 func extractRepoFields(privCR *iamv1alpha1.Privilege) repoPrivilegeFields {
 	fields := repoPrivilegeFields{name: privCR.Spec.ForProvider.Name}
 
-	if privCR.Spec.ForProvider.Description != nil {
-		fields.description = *privCR.Spec.ForProvider.Description
-	}
-
-	if privCR.Spec.ForProvider.Format != nil {
-		fields.format = *privCR.Spec.ForProvider.Format
-	}
-
-	if privCR.Spec.ForProvider.Repository != nil {
-		fields.repository = *privCR.Spec.ForProvider.Repository
-	}
+	helpers.AssignIfNonNil(&fields.description, privCR.Spec.ForProvider.Description)
+	helpers.AssignIfNonNil(&fields.format, privCR.Spec.ForProvider.Format)
+	helpers.AssignIfNonNil(&fields.repository, privCR.Spec.ForProvider.Repository)
 
 	return fields
 }
@@ -164,13 +155,8 @@ func buildApplicationPrivilege(privCR *iamv1alpha1.Privilege) security.Privilege
 		Actions: toApplicationActions(privCR.Spec.ForProvider.Actions),
 	}
 
-	if privCR.Spec.ForProvider.Description != nil {
-		privObj.Description = *privCR.Spec.ForProvider.Description
-	}
-
-	if privCR.Spec.ForProvider.Domain != nil {
-		privObj.Domain = *privCR.Spec.ForProvider.Domain
-	}
+	helpers.AssignIfNonNil(&privObj.Description, privCR.Spec.ForProvider.Description)
+	helpers.AssignIfNonNil(&privObj.Domain, privCR.Spec.ForProvider.Domain)
 
 	return privObj
 }
@@ -214,9 +200,7 @@ func buildRepoContentSelectorPrivilege(privCR *iamv1alpha1.Privilege) security.P
 		Actions:     toRepositoryContentSelectorActions(privCR.Spec.ForProvider.Actions),
 	}
 
-	if privCR.Spec.ForProvider.ContentSelector != nil {
-		privObj.ContentSelector = *privCR.Spec.ForProvider.ContentSelector
-	}
+	helpers.AssignIfNonNil(&privObj.ContentSelector, privCR.Spec.ForProvider.ContentSelector)
 
 	return privObj
 }
@@ -228,13 +212,8 @@ func buildScriptPrivilege(privCR *iamv1alpha1.Privilege) security.PrivilegeScrip
 		Actions: toScriptActions(privCR.Spec.ForProvider.Actions),
 	}
 
-	if privCR.Spec.ForProvider.Description != nil {
-		privObj.Description = *privCR.Spec.ForProvider.Description
-	}
-
-	if privCR.Spec.ForProvider.ScriptName != nil {
-		privObj.ScriptName = *privCR.Spec.ForProvider.ScriptName
-	}
+	helpers.AssignIfNonNil(&privObj.Description, privCR.Spec.ForProvider.Description)
+	helpers.AssignIfNonNil(&privObj.ScriptName, privCR.Spec.ForProvider.ScriptName)
 
 	return privObj
 }
@@ -245,13 +224,8 @@ func buildWildcardPrivilege(privCR *iamv1alpha1.Privilege) security.PrivilegeWil
 		Name: privCR.Spec.ForProvider.Name,
 	}
 
-	if privCR.Spec.ForProvider.Description != nil {
-		privObj.Description = *privCR.Spec.ForProvider.Description
-	}
-
-	if privCR.Spec.ForProvider.Pattern != nil {
-		privObj.Pattern = *privCR.Spec.ForProvider.Pattern
-	}
+	helpers.AssignIfNonNil(&privObj.Description, privCR.Spec.ForProvider.Description)
+	helpers.AssignIfNonNil(&privObj.Pattern, privCR.Spec.ForProvider.Pattern)
 
 	return privObj
 }

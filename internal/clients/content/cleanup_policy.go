@@ -3,7 +3,6 @@ package content
 
 import (
 	"context"
-	"strings"
 
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 
@@ -36,7 +35,7 @@ func (w *withListFallback) GetCleanupPolicy(ctx context.Context, name string) (*
 		return policy, nil
 	}
 
-	if !IsNotFound(err) {
+	if !helpers.IsNotFound(err) {
 		return nil, err
 	}
 
@@ -138,19 +137,6 @@ func GenerateCleanupPolicyObservation(observed *cleanuppolicies.CleanupPolicy) c
 	}
 
 	return obs
-}
-
-// IsNotFound reports whether an error indicates a resource was not found.
-func IsNotFound(err error) bool {
-	if err == nil {
-		return false
-	}
-
-	msg := err.Error()
-
-	return strings.Contains(msg, "404") ||
-		strings.Contains(msg, "not found") ||
-		strings.Contains(strings.ToLower(msg), "does not exist")
 }
 
 // areCriteriaFieldsEqual checks string/int pointer criteria fields equality.

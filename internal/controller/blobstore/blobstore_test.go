@@ -9,6 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 	"github.com/genesary/provider-sonatype-nexus/test/mocks"
 )
 
@@ -603,8 +604,8 @@ func TestIsNotFound(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			if got := isNotFound(tt.err); got != tt.want {
-				t.Errorf("isNotFound() = %v, want %v", got, tt.want)
+			if got := helpers.IsNotFound(tt.err); got != tt.want {
+				t.Errorf("helpers.IsNotFound() = %v, want %v", got, tt.want)
 			}
 		})
 	}

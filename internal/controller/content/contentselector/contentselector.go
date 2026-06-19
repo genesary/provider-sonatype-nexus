@@ -18,6 +18,7 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	contentclient "github.com/genesary/provider-sonatype-nexus/internal/clients/content"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -116,7 +117,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	observed, err := e.client.GetContentSelector(ctx, name)
 	if err != nil {
-		if contentclient.IsNotFound(err) {
+		if helpers.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
 
@@ -187,7 +188,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 
 	err := e.client.DeleteContentSelector(ctx, name)
 	if err != nil {
-		if contentclient.IsNotFound(err) {
+		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
 		}
 

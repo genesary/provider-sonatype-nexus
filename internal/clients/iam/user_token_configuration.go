@@ -8,6 +8,7 @@ import (
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 // UserTokenConfigurationClient manages user token configuration.
@@ -32,13 +33,8 @@ func GenerateUserTokenConfiguration(userTokenCfg *iamv1alpha1.UserTokenConfigura
 		Enabled: userTokenCfg.Spec.ForProvider.Enabled,
 	}
 
-	if userTokenCfg.Spec.ForProvider.ProtectContent != nil {
-		config.ProtectContent = *userTokenCfg.Spec.ForProvider.ProtectContent
-	}
-
-	if userTokenCfg.Spec.ForProvider.ExpirationEnabled != nil {
-		config.ExpirationEnabled = *userTokenCfg.Spec.ForProvider.ExpirationEnabled
-	}
+	helpers.AssignIfNonNil(&config.ProtectContent, userTokenCfg.Spec.ForProvider.ProtectContent)
+	helpers.AssignIfNonNil(&config.ExpirationEnabled, userTokenCfg.Spec.ForProvider.ExpirationEnabled)
 
 	if userTokenCfg.Spec.ForProvider.ExpirationDays != nil {
 		config.ExpirationDays = int(*userTokenCfg.Spec.ForProvider.ExpirationDays)
@@ -69,13 +65,11 @@ func IsUserTokenConfigUpToDate(userTokenCfg *iamv1alpha1.UserTokenConfiguration)
 		return false
 	}
 
-	if userTokenCfg.Spec.ForProvider.ProtectContent != nil &&
-		*userTokenCfg.Spec.ForProvider.ProtectContent != obs.ProtectContent {
+	if !helpers.IsComparablePtrEqualComparable(userTokenCfg.Spec.ForProvider.ProtectContent, obs.ProtectContent) {
 		return false
 	}
 
-	if userTokenCfg.Spec.ForProvider.ExpirationEnabled != nil &&
-		*userTokenCfg.Spec.ForProvider.ExpirationEnabled != obs.ExpirationEnabled {
+	if !helpers.IsComparablePtrEqualComparable(userTokenCfg.Spec.ForProvider.ExpirationEnabled, obs.ExpirationEnabled) {
 		return false
 	}
 
