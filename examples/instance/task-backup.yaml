@@ -1,0 +1,19 @@
+---
+apiVersion: instance.nexus.crossplane.io/v1alpha1
+kind: Task
+metadata:
+  name: daily-db-backup
+spec:
+  forProvider:
+    name: daily-db-backup
+    typeId: db.backup
+    enabled: true
+    message: "Daily database backup"
+    notificationCondition: FAILURE
+    alertEmail: admin@example.com
+    schedule:
+      type: daily
+      timezone: "UTC"
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

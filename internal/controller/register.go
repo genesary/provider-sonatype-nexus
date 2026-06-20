@@ -19,6 +19,7 @@ import (
 	iamssltruststore "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/securityssltruststore"
 	iamuser "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/user"
 	iamutc "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/usertokenconfiguration"
+	instancetask "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/task"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/repository"
 )
 
@@ -39,6 +40,7 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		iamssltruststore.Setup,
 		iamuser.Setup,
 		iamutc.Setup,
+		instancetask.Setup,
 		repository.Setup,
 	} {
 		err := setup(mgr, opts)

@@ -1,0 +1,16 @@
+---
+apiVersion: instance.nexus.crossplane.io/v1alpha1
+kind: Task
+metadata:
+  name: e2e-cleanup-task
+spec:
+  forProvider:
+    name: e2e-cleanup-task
+    typeId: repository.cleanup
+    enabled: true
+    message: "E2E test cleanup task"
+    schedule:
+      type: manual
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default
