@@ -130,24 +130,30 @@ func (m *MockCleanupPolicyService) DeleteCleanupPolicy(ctx context.Context, name
 
 // MockBlobStoreService is a mock implementation of nexus.BlobStoreService.
 type MockBlobStoreService struct {
-	GetFileFn    func(ctx context.Context, name string) (*blobstore.File, error)
-	GetS3Fn      func(ctx context.Context, name string) (*blobstore.S3, error)
-	CreateFileFn func(ctx context.Context, bs *blobstore.File) error
-	CreateS3Fn   func(ctx context.Context, bs *blobstore.S3) error
-	UpdateFileFn func(ctx context.Context, name string, bs *blobstore.File) error
-	UpdateS3Fn   func(ctx context.Context, name string, bs *blobstore.S3) error
-	DeleteFn     func(ctx context.Context, name string) error
-	ListFn       func(ctx context.Context) ([]blobstore.Generic, error)
+	GetFileFn     func(ctx context.Context, name string) (*blobstore.File, error)
+	GetS3Fn       func(ctx context.Context, name string) (*blobstore.S3, error)
+	GetAzureFn    func(ctx context.Context, name string) (*blobstore.Azure, error)
+	CreateFileFn  func(ctx context.Context, bs *blobstore.File) error
+	CreateS3Fn    func(ctx context.Context, bs *blobstore.S3) error
+	CreateAzureFn func(ctx context.Context, bs *blobstore.Azure) error
+	UpdateFileFn  func(ctx context.Context, name string, bs *blobstore.File) error
+	UpdateS3Fn    func(ctx context.Context, name string, bs *blobstore.S3) error
+	UpdateAzureFn func(ctx context.Context, name string, bs *blobstore.Azure) error
+	DeleteFn      func(ctx context.Context, name string) error
+	ListFn        func(ctx context.Context) ([]blobstore.Generic, error)
 
 	// Call tracking
-	GetFileCalls    []string
-	GetS3Calls      []string
-	CreateFileCalls []*blobstore.File
-	CreateS3Calls   []*blobstore.S3
-	UpdateFileCalls []UpdateFileCall
-	UpdateS3Calls   []UpdateS3Call
-	DeleteCalls     []string
-	ListCalls       int
+	GetFileCalls     []string
+	GetS3Calls       []string
+	GetAzureCalls    []string
+	CreateFileCalls  []*blobstore.File
+	CreateS3Calls    []*blobstore.S3
+	CreateAzureCalls []*blobstore.Azure
+	UpdateFileCalls  []UpdateFileCall
+	UpdateS3Calls    []UpdateS3Call
+	UpdateAzureCalls []UpdateAzureCall
+	DeleteCalls      []string
+	ListCalls        int
 }
 
 // UpdateFileCall tracks calls to UpdateFile.
@@ -160,6 +166,12 @@ type UpdateFileCall struct {
 type UpdateS3Call struct {
 	Name      string
 	BlobStore *blobstore.S3
+}
+
+// UpdateAzureCall tracks calls to UpdateAzure.
+type UpdateAzureCall struct {
+	Name      string
+	BlobStore *blobstore.Azure
 }
 
 // GetFile mock implementation.
@@ -177,6 +189,16 @@ func (m *MockBlobStoreService) GetS3(ctx context.Context, name string) (*blobsto
 	m.GetS3Calls = append(m.GetS3Calls, name)
 	if m.GetS3Fn != nil {
 		return m.GetS3Fn(ctx, name)
+	}
+
+	return nil, errMockNotConfigured
+}
+
+// GetAzure mock implementation.
+func (m *MockBlobStoreService) GetAzure(ctx context.Context, name string) (*blobstore.Azure, error) {
+	m.GetAzureCalls = append(m.GetAzureCalls, name)
+	if m.GetAzureFn != nil {
+		return m.GetAzureFn(ctx, name)
 	}
 
 	return nil, errMockNotConfigured
@@ -202,6 +224,16 @@ func (m *MockBlobStoreService) CreateS3(ctx context.Context, bs *blobstore.S3) e
 	return nil
 }
 
+// CreateAzure mock implementation.
+func (m *MockBlobStoreService) CreateAzure(ctx context.Context, bs *blobstore.Azure) error {
+	m.CreateAzureCalls = append(m.CreateAzureCalls, bs)
+	if m.CreateAzureFn != nil {
+		return m.CreateAzureFn(ctx, bs)
+	}
+
+	return nil
+}
+
 // UpdateFile mock implementation.
 func (m *MockBlobStoreService) UpdateFile(ctx context.Context, name string, bs *blobstore.File) error {
 	m.UpdateFileCalls = append(m.UpdateFileCalls, UpdateFileCall{Name: name, BlobStore: bs})
@@ -217,6 +249,16 @@ func (m *MockBlobStoreService) UpdateS3(ctx context.Context, name string, bs *bl
 	m.UpdateS3Calls = append(m.UpdateS3Calls, UpdateS3Call{Name: name, BlobStore: bs})
 	if m.UpdateS3Fn != nil {
 		return m.UpdateS3Fn(ctx, name, bs)
+	}
+
+	return nil
+}
+
+// UpdateAzure mock implementation.
+func (m *MockBlobStoreService) UpdateAzure(ctx context.Context, name string, bs *blobstore.Azure) error {
+	m.UpdateAzureCalls = append(m.UpdateAzureCalls, UpdateAzureCall{Name: name, BlobStore: bs})
+	if m.UpdateAzureFn != nil {
+		return m.UpdateAzureFn(ctx, name, bs)
 	}
 
 	return nil

@@ -1,0 +1,43 @@
+---
+# Azure Blob Storage-backed BlobStore example (ACCOUNTKEY auth)
+apiVersion: repository.nexus.crossplane.io/v1alpha1
+kind: BlobStore
+metadata:
+  name: my-azure-blobstore
+  namespace: default
+spec:
+  forProvider:
+    name: my-azure-blobstore
+    type: Azure
+    azure:
+      accountName: mystorageaccount
+      containerName: nexus-blobs
+      authenticationMethod: ACCOUNTKEY
+      accountKeySecretRef:
+        name: azure-storage-secret
+        namespace: crossplane-system
+        key: accountKey
+    softQuota:
+      type: spaceUsedQuota
+      limit: 1073741824  # 1GB in bytes
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default
+---
+# Azure Blob Storage-backed BlobStore example (Managed Identity auth)
+apiVersion: repository.nexus.crossplane.io/v1alpha1
+kind: BlobStore
+metadata:
+  name: my-azure-blobstore-msi
+  namespace: default
+spec:
+  forProvider:
+    name: my-azure-blobstore-msi
+    type: Azure
+    azure:
+      accountName: mystorageaccount
+      containerName: nexus-blobs
+      authenticationMethod: MANAGEDIDENTITY
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

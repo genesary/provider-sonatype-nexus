@@ -38,9 +38,13 @@ const (
 	errUpdateBlobStore = "cannot update blob store in Nexus"
 	// errDeleteBlobStore is returned when deleting the blob store from Nexus fails.
 	errDeleteBlobStore = "cannot delete blob store from Nexus"
+	// errGetAccountKey is returned when the Azure account key secret cannot be resolved.
+	errGetAccountKey = "cannot get Azure account key from secret"
 
 	// blobStoreTypeFile is the string identifier for File-type blob stores.
 	blobStoreTypeFile = "File"
+	// blobStoreTypeAzure is the string identifier for Azure-type blob stores.
+	blobStoreTypeAzure = "Azure"
 )
 
 // Setup creates a controller for BlobStore resources.
@@ -98,12 +102,13 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{client: nc}, nil
+	return &external{client: nc, kube: c.kube}, nil
 }
 
 // external implements managed.ExternalClient.
 type external struct {
 	client nexus.Client
+	kube   client.Client
 }
 
 // Observe checks if the BlobStore resource exists and is up-to-date.
@@ -118,6 +123,8 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return e.observeFileBlobStore(ctx, blobStore)
 	case "S3":
 		return e.observeS3BlobStore(ctx, blobStore)
+	case blobStoreTypeAzure:
+		return e.observeAzureBlobStore(ctx, blobStore)
 	default:
 		return e.observeFileBlobStore(ctx, blobStore)
 	}
@@ -183,6 +190,15 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		if err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errCreateBlobStore)
 		}
+	case blobStoreTypeAzure:
+		azureBlobStore, err := e.generateAzureBlobStore(ctx, blobStore)
+		if err != nil {
+			return managed.ExternalCreation{}, errors.Wrap(err, errGetAccountKey)
+		}
+
+		if err := e.client.BlobStore().CreateAzure(ctx, azureBlobStore); err != nil {
+			return managed.ExternalCreation{}, errors.Wrap(err, errCreateBlobStore)
+		}
 	default:
 		// Default to File type
 		fileBlobStore := generateFileBlobStore(blobStore)
@@ -223,6 +239,15 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 		err := e.client.BlobStore().UpdateS3(ctx, name, s3BlobStore)
 		if err != nil {
+			return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateBlobStore)
+		}
+	case blobStoreTypeAzure:
+		azureBlobStore, err := e.generateAzureBlobStore(ctx, blobStore)
+		if err != nil {
+			return managed.ExternalUpdate{}, errors.Wrap(err, errGetAccountKey)
+		}
+
+		if err := e.client.BlobStore().UpdateAzure(ctx, name, azureBlobStore); err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateBlobStore)
 		}
 	default:
@@ -478,6 +503,98 @@ func isS3BucketConfigUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore) bool {
 		if obs.BucketPrefix == nil || *obs.BucketPrefix != *blobStoreCR.Spec.ForProvider.S3Config.Prefix {
 			return false
 		}
+	}
+
+	return true
+}
+
+// observeAzureBlobStore handles Observe for Azure-type blob stores.
+func (e *external) observeAzureBlobStore(ctx context.Context, blobStore *repositoryv1alpha1.BlobStore) (managed.ExternalObservation, error) {
+	return observeTypedBlobStore(ctx, blobStore, e, e.client.BlobStore().GetAzure, populateAzureBlobStoreObservation, isAzureBlobStoreUpToDate)
+}
+
+// generateAzureBlobStore builds the Azure blob store struct from the CR, resolving the account key secret.
+func (e *external) generateAzureBlobStore(ctx context.Context, blobStoreCR *repositoryv1alpha1.BlobStore) (*blobstore.Azure, error) {
+	azureBlobStore := &blobstore.Azure{
+		Name: blobStoreCR.Spec.ForProvider.Name,
+	}
+
+	if blobStoreCR.Spec.ForProvider.SoftQuota != nil {
+		azureBlobStore.SoftQuota = &blobstore.SoftQuota{}
+
+		if blobStoreCR.Spec.ForProvider.SoftQuota.Type != nil {
+			azureBlobStore.SoftQuota.Type = *blobStoreCR.Spec.ForProvider.SoftQuota.Type
+		}
+
+		if blobStoreCR.Spec.ForProvider.SoftQuota.Limit != nil {
+			azureBlobStore.SoftQuota.Limit = *blobStoreCR.Spec.ForProvider.SoftQuota.Limit
+		}
+	}
+
+	if blobStoreCR.Spec.ForProvider.AzureConfig != nil {
+		cfg := blobStoreCR.Spec.ForProvider.AzureConfig
+		azureBlobStore.BucketConfiguration = blobstore.AzureBucketConfiguration{
+			AccountName:   cfg.AccountName,
+			ContainerName: cfg.ContainerName,
+			Authentication: blobstore.AzureBucketConfigurationAuthentication{
+				AuthenticationMethod: blobstore.AzureAuthenticationMethod(cfg.AuthenticationMethod),
+			},
+		}
+
+		if cfg.AccountKeySecretRef != nil {
+			accountKey, err := nexus.GetSecretValue(ctx, e.kube, cfg.AccountKeySecretRef)
+			if err != nil {
+				return nil, err
+			}
+
+			azureBlobStore.BucketConfiguration.Authentication.AccountKey = accountKey
+		}
+	}
+
+	return azureBlobStore, nil
+}
+
+// populateAzureBlobStoreObservation sets status fields from the Azure blob store response.
+func populateAzureBlobStoreObservation(blobStore *repositoryv1alpha1.BlobStore, azureBlobStore *blobstore.Azure) {
+	accountName := azureBlobStore.BucketConfiguration.AccountName
+	containerName := azureBlobStore.BucketConfiguration.ContainerName
+	authMethod := string(azureBlobStore.BucketConfiguration.Authentication.AuthenticationMethod)
+
+	blobStore.Status.AtProvider.AzureAccountName = &accountName
+	blobStore.Status.AtProvider.AzureContainerName = &containerName
+	blobStore.Status.AtProvider.AzureAuthenticationMethod = &authMethod
+
+	if azureBlobStore.SoftQuota != nil {
+		quotaType := azureBlobStore.SoftQuota.Type
+		quotaLimit := azureBlobStore.SoftQuota.Limit
+		blobStore.Status.AtProvider.SoftQuotaType = &quotaType
+		blobStore.Status.AtProvider.SoftQuotaLimit = &quotaLimit
+	}
+}
+
+// isAzureBlobStoreUpToDate returns true when the observed Azure state matches the spec.
+func isAzureBlobStoreUpToDate(blobStoreCR *repositoryv1alpha1.BlobStore) bool {
+	if !isSoftQuotaUpToDate(blobStoreCR) {
+		return false
+	}
+
+	cfg := blobStoreCR.Spec.ForProvider.AzureConfig
+	if cfg == nil {
+		return true
+	}
+
+	obs := blobStoreCR.Status.AtProvider
+
+	if obs.AzureAccountName == nil || *obs.AzureAccountName != cfg.AccountName {
+		return false
+	}
+
+	if obs.AzureContainerName == nil || *obs.AzureContainerName != cfg.ContainerName {
+		return false
+	}
+
+	if obs.AzureAuthenticationMethod == nil || *obs.AzureAuthenticationMethod != cfg.AuthenticationMethod {
+		return false
 	}
 
 	return true
