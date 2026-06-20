@@ -1,0 +1,20 @@
+---
+apiVersion: instance.nexus.crossplane.io/v1alpha1
+kind: Task
+metadata:
+  name: weekly-cleanup
+spec:
+  forProvider:
+    name: weekly-cleanup
+    typeId: repository.cleanup
+    enabled: true
+    message: "Weekly cleanup of stale artifacts"
+    notificationCondition: FAILURE
+    schedule:
+      type: weekly
+      timezone: "UTC"
+      recurringDays:
+        - sunday
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

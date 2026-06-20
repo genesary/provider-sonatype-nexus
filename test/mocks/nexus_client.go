@@ -10,6 +10,9 @@ import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	nxtask "github.com/datadrivers/go-nexus-client/nexus3/schema/task"
+
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
 // errMockNotConfigured is returned when a mock function has not been
@@ -24,6 +27,7 @@ type MockClient struct {
 	MockRepository    *MockRepositoryService
 	MockSecurity      *MockSecurityService
 	MockSSL           *MockSSLService
+	MockTask          *MockTaskService
 }
 
 // NewMockClient creates a new MockClient with default mocks.
@@ -35,7 +39,57 @@ func NewMockClient() *MockClient {
 		MockRepository:    &MockRepositoryService{},
 		MockSecurity:      &MockSecurityService{},
 		MockSSL:           &MockSSLService{},
+		MockTask:          &MockTaskService{},
 	}
+}
+
+// Task returns the mock task service.
+func (m *MockClient) Task() nexus.TaskService {
+	return m.MockTask
+}
+
+// MockTaskService is a mock implementation of nexus.TaskService.
+type MockTaskService struct {
+	GetTaskByNameFn func(ctx context.Context, name string) (*nxtask.Task, error)
+	CreateTaskFn    func(ctx context.Context, t *nxtask.TaskCreateStruct) (*nxtask.Task, error)
+	UpdateTaskFn    func(ctx context.Context, id string, t *nxtask.TaskCreateStruct) error
+	DeleteTaskFn    func(ctx context.Context, id string) error
+}
+
+// GetTaskByName mock implementation.
+func (m *MockTaskService) GetTaskByName(ctx context.Context, name string) (*nxtask.Task, error) {
+	if m.GetTaskByNameFn != nil {
+		return m.GetTaskByNameFn(ctx, name)
+	}
+
+	return nil, errMockNotConfigured
+}
+
+// CreateTask mock implementation.
+func (m *MockTaskService) CreateTask(ctx context.Context, t *nxtask.TaskCreateStruct) (*nxtask.Task, error) {
+	if m.CreateTaskFn != nil {
+		return m.CreateTaskFn(ctx, t)
+	}
+
+	return nil, errMockNotConfigured
+}
+
+// UpdateTask mock implementation.
+func (m *MockTaskService) UpdateTask(ctx context.Context, id string, t *nxtask.TaskCreateStruct) error {
+	if m.UpdateTaskFn != nil {
+		return m.UpdateTaskFn(ctx, id, t)
+	}
+
+	return errMockNotConfigured
+}
+
+// DeleteTask mock implementation.
+func (m *MockTaskService) DeleteTask(ctx context.Context, id string) error {
+	if m.DeleteTaskFn != nil {
+		return m.DeleteTaskFn(ctx, id)
+	}
+
+	return errMockNotConfigured
 }
 
 // MockCleanupPolicyService is a mock implementation of

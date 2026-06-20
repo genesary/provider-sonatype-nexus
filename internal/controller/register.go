@@ -23,6 +23,7 @@ import (
 	instanceblobstore "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/blobstore"
 	instancecapability "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/capability"
 	instanceiqserver "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/iqserverconfiguration"
+	instancetask "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/task"
 )
 
 // Setup creates all Nexus controllers and adds them to the supplied manager.
@@ -46,6 +47,7 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		iamuser.Setup,
 		iamutc.Setup,
 		contentrepository.Setup,
+		instancetask.Setup,
 	} {
 		err := setup(mgr, opts)
 		if err != nil {
