@@ -11,8 +11,8 @@ type BlobStoreParameters struct {
 	// +kubebuilder:validation:Required
 	Name string `json:"name"`
 
-	// Type of the blob store (File or S3).
-	// +kubebuilder:validation:Enum=File;S3
+	// Type of the blob store (File, S3, or Azure).
+	// +kubebuilder:validation:Enum=File;S3;Azure
 	// +kubebuilder:default=File
 	Type string `json:"type"`
 
@@ -27,6 +27,10 @@ type BlobStoreParameters struct {
 	// S3Config defines S3 configuration for S3 type blob store.
 	// +kubebuilder:validation:Optional
 	S3Config *S3Config `json:"s3Config,omitempty"`
+
+	// AzureConfig defines Azure configuration for Azure type blob store.
+	// +kubebuilder:validation:Optional
+	AzureConfig *AzureConfig `json:"azure,omitempty"`
 }
 
 // SoftQuota defines a soft quota configuration for blob stores.
@@ -84,6 +88,27 @@ type S3Config struct {
 	ForcePathStyle *bool `json:"forcePathStyle,omitempty"`
 }
 
+// AzureConfig defines Azure configuration for Azure type blob stores.
+type AzureConfig struct {
+	// AccountName found under Access keys for the storage account.
+	// +kubebuilder:validation:Required
+	AccountName string `json:"accountName"`
+
+	// ContainerName is the name of an existing container to be used for storage.
+	// +kubebuilder:validation:Required
+	ContainerName string `json:"containerName"`
+
+	// AuthenticationMethod is the type of Azure authentication to use.
+	// +kubebuilder:validation:Enum=ACCOUNTKEY;MANAGEDIDENTITY
+	// +kubebuilder:validation:Required
+	AuthenticationMethod string `json:"authenticationMethod"`
+
+	// AccountKeySecretRef references a secret containing the Azure storage account key.
+	// Required when authenticationMethod is ACCOUNTKEY.
+	// +kubebuilder:validation:Optional
+	AccountKeySecretRef *xpv2.SecretKeySelector `json:"accountKeySecretRef,omitempty"`
+}
+
 // BlobStoreObservation represents the observed state of a BlobStore.
 type BlobStoreObservation struct {
 	// AvailableSpaceInBytes is the available space in bytes.
@@ -112,6 +137,15 @@ type BlobStoreObservation struct {
 
 	// BucketPrefix is the observed S3 bucket prefix (S3 type only).
 	BucketPrefix *string `json:"bucketPrefix,omitempty"`
+
+	// AzureAccountName is the observed Azure storage account name (Azure type only).
+	AzureAccountName *string `json:"azureAccountName,omitempty"`
+
+	// AzureContainerName is the observed Azure container name (Azure type only).
+	AzureContainerName *string `json:"azureContainerName,omitempty"`
+
+	// AzureAuthenticationMethod is the observed Azure authentication method (Azure type only).
+	AzureAuthenticationMethod *string `json:"azureAuthenticationMethod,omitempty"`
 }
 
 // BlobStoreSpec defines the desired state of BlobStore.

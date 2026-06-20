@@ -58,10 +58,13 @@ type Client interface {
 type BlobStoreService interface {
 	GetFile(ctx context.Context, name string) (*blobstore.File, error)
 	GetS3(ctx context.Context, name string) (*blobstore.S3, error)
+	GetAzure(ctx context.Context, name string) (*blobstore.Azure, error)
 	CreateFile(ctx context.Context, bs *blobstore.File) error
 	CreateS3(ctx context.Context, bs *blobstore.S3) error
+	CreateAzure(ctx context.Context, bs *blobstore.Azure) error
 	UpdateFile(ctx context.Context, name string, bs *blobstore.File) error
 	UpdateS3(ctx context.Context, name string, bs *blobstore.S3) error
+	UpdateAzure(ctx context.Context, name string, bs *blobstore.Azure) error
 	Delete(ctx context.Context, name string) error
 	List(ctx context.Context) ([]blobstore.Generic, error)
 }
@@ -589,6 +592,11 @@ func (s *blobStoreService) GetS3(ctx context.Context, name string) (*blobstore.S
 	return s.client.BlobStore.S3.Get(name)
 }
 
+// GetAzure gets an Azure blob store by name.
+func (s *blobStoreService) GetAzure(ctx context.Context, name string) (*blobstore.Azure, error) {
+	return s.client.BlobStore.Azure.Get(name)
+}
+
 // CreateFile creates a File blob store.
 func (s *blobStoreService) CreateFile(ctx context.Context, bs *blobstore.File) error {
 	return s.client.BlobStore.File.Create(bs)
@@ -599,6 +607,11 @@ func (s *blobStoreService) CreateS3(ctx context.Context, bs *blobstore.S3) error
 	return s.client.BlobStore.S3.Create(bs)
 }
 
+// CreateAzure creates an Azure blob store.
+func (s *blobStoreService) CreateAzure(ctx context.Context, bs *blobstore.Azure) error {
+	return s.client.BlobStore.Azure.Create(bs)
+}
+
 // UpdateFile updates a File blob store.
 func (s *blobStoreService) UpdateFile(ctx context.Context, name string, bs *blobstore.File) error {
 	return s.client.BlobStore.File.Update(name, bs)
@@ -607,6 +620,11 @@ func (s *blobStoreService) UpdateFile(ctx context.Context, name string, bs *blob
 // UpdateS3 updates an S3 blob store.
 func (s *blobStoreService) UpdateS3(ctx context.Context, name string, bs *blobstore.S3) error {
 	return s.client.BlobStore.S3.Update(name, bs)
+}
+
+// UpdateAzure updates an Azure blob store.
+func (s *blobStoreService) UpdateAzure(ctx context.Context, name string, bs *blobstore.Azure) error {
+	return s.client.BlobStore.Azure.Update(name, bs)
 }
 
 // Delete deletes a blob store by name.
