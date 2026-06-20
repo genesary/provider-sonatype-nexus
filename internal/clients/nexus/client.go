@@ -13,6 +13,7 @@ import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	nxtask "github.com/datadrivers/go-nexus-client/nexus3/schema/task"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -45,6 +46,14 @@ type CleanupPolicyService interface {
 	DeleteCleanupPolicy(ctx context.Context, name string) error
 }
 
+// TaskService provides methods for managing scheduled tasks.
+type TaskService interface {
+	GetTaskByName(ctx context.Context, name string) (*nxtask.Task, error)
+	CreateTask(ctx context.Context, t *nxtask.TaskCreateStruct) (*nxtask.Task, error)
+	UpdateTask(ctx context.Context, id string, t *nxtask.TaskCreateStruct) error
+	DeleteTask(ctx context.Context, id string) error
+}
+
 // Client is an interface for interacting with the Nexus API.
 type Client interface {
 	BlobStore() BlobStoreService
@@ -52,6 +61,7 @@ type Client interface {
 	Repository() RepositoryService
 	Security() SecurityService
 	SSL() SSLService
+	Task() TaskService
 }
 
 // BlobStoreService provides methods for managing blob stores.
@@ -397,6 +407,11 @@ type cleanupPolicyService struct {
 	client *nexus3.NexusClient
 }
 
+// taskService implements TaskService.
+type taskService struct {
+	client *nexus3.NexusClient
+}
+
 // NewClient creates a new Nexus client from the provided credentials.
 func NewClient(creds Credentials) (Client, error) {
 	cfg := client.Config{
@@ -548,6 +563,59 @@ func (c *nexusClientWrapper) Security() SecurityService {
 // SSL returns the SSLService.
 func (c *nexusClientWrapper) SSL() SSLService {
 	return &sslService{client: c.client}
+}
+
+// Task returns the TaskService.
+func (c *nexusClientWrapper) Task() TaskService {
+	return &taskService{client: c.client}
+}
+
+// TaskService implementations
+
+// GetTaskByName lists all tasks and returns the one with the matching name.
+// Returns nil, nil when no task with that name exists.
+func (s *taskService) GetTaskByName(_ context.Context, name string) (*nxtask.Task, error) {
+	tasks, token, err := s.client.Task.ListTasks(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range tasks {
+		if tasks[i].Name == name {
+			return &tasks[i], nil
+		}
+	}
+
+	// paginate if needed
+	for token != nil {
+		tasks, token, err = s.client.Task.ListTasks(nil, token)
+		if err != nil {
+			return nil, err
+		}
+
+		for i := range tasks {
+			if tasks[i].Name == name {
+				return &tasks[i], nil
+			}
+		}
+	}
+
+	return nil, nil //nolint:nilnil // intentionally returns nil task and nil error when the task is not found
+}
+
+// CreateTask creates a new scheduled task and returns it.
+func (s *taskService) CreateTask(_ context.Context, t *nxtask.TaskCreateStruct) (*nxtask.Task, error) {
+	return s.client.Task.CreateTask(t)
+}
+
+// UpdateTask updates an existing task by ID.
+func (s *taskService) UpdateTask(_ context.Context, id string, t *nxtask.TaskCreateStruct) error {
+	return s.client.Task.UpdateTask(id, t)
+}
+
+// DeleteTask deletes a task by ID.
+func (s *taskService) DeleteTask(_ context.Context, id string) error {
+	return s.client.Task.DeleteTask(id)
 }
 
 // CleanupPolicyService implementations
