@@ -6,6 +6,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/blobstore"
+	"github.com/genesary/provider-sonatype-nexus/internal/controller/capability"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/config"
 	contentcleanuppolicy "github.com/genesary/provider-sonatype-nexus/internal/controller/content/cleanuppolicy"
 	contentcontentselector "github.com/genesary/provider-sonatype-nexus/internal/controller/content/contentselector"
@@ -26,6 +27,7 @@ import (
 func Setup(mgr ctrl.Manager, opts controller.Options) error {
 	for _, setup := range []func(ctrl.Manager, controller.Options) error{
 		blobstore.Setup,
+		capability.Setup,
 		config.Setup,
 		contentcleanuppolicy.Setup,
 		contentcontentselector.Setup,

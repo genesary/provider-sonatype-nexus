@@ -6,6 +6,7 @@ import (
 	"errors"
 
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
+	nexussdk "github.com/datadrivers/go-nexus-client/nexus3/schema/capability"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
@@ -22,6 +23,7 @@ var _ nexus.Client = &MockClient{}
 // MockClient is a mock implementation of nexus.Client.
 type MockClient struct {
 	MockBlobStore     *MockBlobStoreService
+	MockCapability    *MockCapabilityService
 	MockCleanupPolicy *MockCleanupPolicyService
 	MockRepository    *MockRepositoryService
 	MockSecurity      *MockSecurityService
@@ -32,11 +34,17 @@ type MockClient struct {
 func NewMockClient() *MockClient {
 	return &MockClient{
 		MockBlobStore:     &MockBlobStoreService{},
+		MockCapability:    &MockCapabilityService{},
 		MockCleanupPolicy: &MockCleanupPolicyService{},
 		MockRepository:    &MockRepositoryService{},
 		MockSecurity:      &MockSecurityService{},
 		MockSSL:           &MockSSLService{},
 	}
+}
+
+// Capability returns the mock capability service.
+func (m *MockClient) Capability() nexus.CapabilityService {
+	return m.MockCapability
 }
 
 // BlobStore returns the mock blob store service.
@@ -2510,4 +2518,48 @@ func (m *MockSSLService) ListCertificates(ctx context.Context) ([]security.SSLCe
 	}
 
 	return nil, errMockNotConfigured
+}
+
+// MockCapabilityService is a mock implementation of nexus.CapabilityService.
+type MockCapabilityService struct {
+	GetCapabilityFn    func(ctx context.Context, id string) (*nexussdk.Capability, error)
+	CreateCapabilityFn func(ctx context.Context, create nexussdk.CapabilityCreate) (*nexussdk.Capability, error)
+	UpdateCapabilityFn func(ctx context.Context, id string, update nexussdk.CapabilityUpdate) error
+	DeleteCapabilityFn func(ctx context.Context, id string) error
+}
+
+// GetCapability mock implementation.
+func (m *MockCapabilityService) GetCapability(ctx context.Context, id string) (*nexussdk.Capability, error) {
+	if m.GetCapabilityFn != nil {
+		return m.GetCapabilityFn(ctx, id)
+	}
+
+	return nil, errMockNotConfigured
+}
+
+// CreateCapability mock implementation.
+func (m *MockCapabilityService) CreateCapability(ctx context.Context, create nexussdk.CapabilityCreate) (*nexussdk.Capability, error) {
+	if m.CreateCapabilityFn != nil {
+		return m.CreateCapabilityFn(ctx, create)
+	}
+
+	return nil, errMockNotConfigured
+}
+
+// UpdateCapability mock implementation.
+func (m *MockCapabilityService) UpdateCapability(ctx context.Context, id string, update nexussdk.CapabilityUpdate) error {
+	if m.UpdateCapabilityFn != nil {
+		return m.UpdateCapabilityFn(ctx, id, update)
+	}
+
+	return errMockNotConfigured
+}
+
+// DeleteCapability mock implementation.
+func (m *MockCapabilityService) DeleteCapability(ctx context.Context, id string) error {
+	if m.DeleteCapabilityFn != nil {
+		return m.DeleteCapabilityFn(ctx, id)
+	}
+
+	return errMockNotConfigured
 }

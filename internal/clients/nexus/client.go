@@ -10,6 +10,7 @@ import (
 	"github.com/datadrivers/go-nexus-client/nexus3"
 	"github.com/datadrivers/go-nexus-client/nexus3/pkg/client"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
+	"github.com/datadrivers/go-nexus-client/nexus3/schema/capability"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
@@ -45,9 +46,18 @@ type CleanupPolicyService interface {
 	DeleteCleanupPolicy(ctx context.Context, name string) error
 }
 
+// CapabilityService provides methods for managing capabilities.
+type CapabilityService interface {
+	GetCapability(ctx context.Context, id string) (*capability.Capability, error)
+	CreateCapability(ctx context.Context, create capability.CapabilityCreate) (*capability.Capability, error)
+	UpdateCapability(ctx context.Context, id string, update capability.CapabilityUpdate) error
+	DeleteCapability(ctx context.Context, id string) error
+}
+
 // Client is an interface for interacting with the Nexus API.
 type Client interface {
 	BlobStore() BlobStoreService
+	Capability() CapabilityService
 	CleanupPolicy() CleanupPolicyService
 	Repository() RepositoryService
 	Security() SecurityService
@@ -392,6 +402,31 @@ type sslService struct {
 	client *nexus3.NexusClient
 }
 
+// capabilityService implements CapabilityService.
+type capabilityService struct {
+	client *nexus3.NexusClient
+}
+
+// GetCapability retrieves a capability by ID.
+func (s *capabilityService) GetCapability(_ context.Context, id string) (*capability.Capability, error) {
+	return s.client.Capability.Get(id)
+}
+
+// CreateCapability creates a new capability.
+func (s *capabilityService) CreateCapability(_ context.Context, create capability.CapabilityCreate) (*capability.Capability, error) {
+	return s.client.Capability.Create(create)
+}
+
+// UpdateCapability updates an existing capability.
+func (s *capabilityService) UpdateCapability(_ context.Context, id string, update capability.CapabilityUpdate) error {
+	return s.client.Capability.Update(id, update)
+}
+
+// DeleteCapability deletes a capability by ID.
+func (s *capabilityService) DeleteCapability(_ context.Context, id string) error {
+	return s.client.Capability.Delete(id)
+}
+
 // cleanupPolicyService implements CleanupPolicyService.
 type cleanupPolicyService struct {
 	client *nexus3.NexusClient
@@ -528,6 +563,11 @@ func GetSecretValue(ctx context.Context, kube kubeclient.Client, selector *xpv2.
 // BlobStore returns the BlobStoreService.
 func (c *nexusClientWrapper) BlobStore() BlobStoreService {
 	return &blobStoreService{client: c.client}
+}
+
+// Capability returns the CapabilityService.
+func (c *nexusClientWrapper) Capability() CapabilityService {
+	return &capabilityService{client: c.client}
 }
 
 // CleanupPolicy returns the CleanupPolicyService.
