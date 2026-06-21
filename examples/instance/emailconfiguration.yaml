@@ -1,0 +1,24 @@
+apiVersion: instance.nexus.crossplane.io/v1alpha1
+kind: EmailConfiguration
+metadata:
+  name: smtp-config
+spec:
+  forProvider:
+    enabled: true
+    host: smtp.example.com
+    port: 587
+    username: nexus-notifications@example.com
+    passwordSecretRef:
+      name: smtp-credentials
+      namespace: crossplane-system
+      key: password
+    fromAddress: nexus@example.com
+    subjectPrefix: "[Nexus]"
+    startTlsEnabled: true
+    startTlsRequired: true
+    sslOnConnectEnabled: false
+    sslServerIdentityCheckEnabled: true
+    nexusTrustStoreEnabled: false
+  providerConfigRef:
+    kind: ClusterProviderConfig
+    name: default

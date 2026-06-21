@@ -23,6 +23,7 @@ import (
 
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
+	mailschema "github.com/datadrivers/go-nexus-client/nexus3/schema"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 )
@@ -117,4 +118,9 @@ func (f *Framework) FetchHelmProxyRepo(name string) (*repository.HelmProxyReposi
 // FetchPypiProxyRepo returns the PyPI proxy repository with the given name.
 func (f *Framework) FetchPypiProxyRepo(name string) (*repository.PypiProxyRepository, error) {
 	return f.Nexus.Repository().GetPypiProxy(context.Background(), name)
+}
+
+// FetchEmailConfiguration returns the current Nexus email configuration.
+func (f *Framework) FetchEmailConfiguration() (*mailschema.MailConfig, error) {
+	return f.Nexus.MailConfig().GetEmailConfiguration(context.Background())
 }

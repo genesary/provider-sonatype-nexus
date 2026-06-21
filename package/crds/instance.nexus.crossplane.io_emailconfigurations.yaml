@@ -1,0 +1,298 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: emailconfigurations.instance.nexus.crossplane.io
+spec:
+  group: instance.nexus.crossplane.io
+  names:
+    categories:
+    - crossplane
+    - managed
+    - nexus
+    kind: EmailConfiguration
+    listKind: EmailConfigurationList
+    plural: emailconfigurations
+    singular: emailconfiguration
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.conditions[?(@.type=='Ready')].status
+      name: READY
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='Synced')].status
+      name: SYNCED
+      type: string
+    - jsonPath: .spec.forProvider.enabled
+      name: ENABLED
+      type: boolean
+    - jsonPath: .spec.forProvider.host
+      name: HOST
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: EmailConfiguration is the Schema for the Nexus SMTP email configuration
+          API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: EmailConfigurationSpec defines the desired state of EmailConfiguration.
+            properties:
+              forProvider:
+                description: |-
+                  EmailConfigurationParameters defines the desired state of the Nexus SMTP
+                  email configuration.
+                properties:
+                  enabled:
+                    description: Enabled determines whether outbound email is active.
+                    type: boolean
+                  fromAddress:
+                    description: FromAddress is the email address used as the sender.
+                    type: string
+                  host:
+                    description: Host is the SMTP server hostname or IP address.
+                    type: string
+                  nexusTrustStoreEnabled:
+                    description: NexusTrustStoreEnabled uses the Nexus truststore
+                      for TLS verification.
+                    type: boolean
+                  passwordSecretRef:
+                    description: |-
+                      PasswordSecretRef references a Kubernetes Secret containing the SMTP
+                      password. The password is write-only and is never returned by the API.
+                    properties:
+                      key:
+                        description: The key to select.
+                        type: string
+                      name:
+                        description: Name of the secret.
+                        type: string
+                      namespace:
+                        description: Namespace of the secret.
+                        type: string
+                    required:
+                    - key
+                    - name
+                    - namespace
+                    type: object
+                  port:
+                    description: Port is the SMTP server port.
+                    type: integer
+                  sslOnConnectEnabled:
+                    description: SslOnConnectEnabled enables SSL/TLS on connect (SMTPS).
+                    type: boolean
+                  sslServerIdentityCheckEnabled:
+                    description: SslServerIdentityCheckEnabled enables SSL certificate
+                      identity checks.
+                    type: boolean
+                  startTlsEnabled:
+                    description: StartTlsEnabled enables STARTTLS support.
+                    type: boolean
+                  startTlsRequired:
+                    description: StartTlsRequired requires STARTTLS for all connections.
+                    type: boolean
+                  subjectPrefix:
+                    description: SubjectPrefix is prepended to all outbound email
+                      subjects.
+                    type: string
+                  username:
+                    description: Username is the SMTP account username.
+                    type: string
+                required:
+                - enabled
+                - fromAddress
+                - host
+                - port
+                type: object
+              managementPolicies:
+                default:
+                - '*'
+                description: |-
+                  THIS IS A BETA FIELD. It is on by default but can be opted out
+                  through a Crossplane feature flag.
+                  ManagementPolicies specify the array of actions Crossplane is allowed to
+                  take on the managed and external resources.
+                  See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223
+                  and this one: https://github.com/crossplane/crossplane/blob/444267e84783136daa93568b364a5f01228cacbe/design/one-pager-ignore-changes.md
+                items:
+                  description: |-
+                    A ManagementAction represents an action that the Crossplane controllers
+                    can take on an external resource.
+                  enum:
+                  - Observe
+                  - Create
+                  - Update
+                  - Delete
+                  - LateInitialize
+                  - '*'
+                  type: string
+                type: array
+              providerConfigRef:
+                default:
+                  kind: ClusterProviderConfig
+                  name: default
+                description: |-
+                  ProviderConfigReference specifies how the provider that will be used to
+                  create, observe, update, and delete this managed resource should be
+                  configured.
+                properties:
+                  kind:
+                    description: Kind of the referenced object.
+                    type: string
+                  name:
+                    description: Name of the referenced object.
+                    type: string
+                required:
+                - kind
+                - name
+                type: object
+              writeConnectionSecretToRef:
+                description: |-
+                  WriteConnectionSecretToReference specifies the namespace and name of a
+                  Secret to which any connection details for this managed resource should
+                  be written. Connection details frequently include the endpoint, username,
+                  and password required to connect to the managed resource.
+                properties:
+                  name:
+                    description: Name of the secret.
+                    type: string
+                required:
+                - name
+                type: object
+            required:
+            - forProvider
+            type: object
+          status:
+            description: EmailConfigurationStatus defines the observed state of EmailConfiguration.
+            properties:
+              atProvider:
+                description: |-
+                  EmailConfigurationObservation is the observed state of the Nexus email
+                  configuration.
+                properties:
+                  enabled:
+                    description: Enabled is the observed enabled state.
+                    type: boolean
+                  fromAddress:
+                    description: FromAddress is the observed sender address.
+                    type: string
+                  host:
+                    description: Host is the observed SMTP hostname.
+                    type: string
+                  nexusTrustStoreEnabled:
+                    description: NexusTrustStoreEnabled is the observed Nexus truststore
+                      state.
+                    type: boolean
+                  port:
+                    description: Port is the observed SMTP port.
+                    type: integer
+                  sslOnConnectEnabled:
+                    description: SslOnConnectEnabled is the observed SSL-on-connect
+                      state.
+                    type: boolean
+                  sslServerIdentityCheckEnabled:
+                    description: SslServerIdentityCheckEnabled is the observed SSL
+                      identity check state.
+                    type: boolean
+                  startTlsEnabled:
+                    description: StartTlsEnabled is the observed STARTTLS enabled
+                      state.
+                    type: boolean
+                  startTlsRequired:
+                    description: StartTlsRequired is the observed STARTTLS required
+                      state.
+                    type: boolean
+                  subjectPrefix:
+                    description: SubjectPrefix is the observed subject prefix.
+                    type: string
+                  username:
+                    description: Username is the observed SMTP username.
+                    type: string
+                type: object
+              conditions:
+                description: Conditions of the resource.
+                items:
+                  description: A Condition that may apply to a resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        LastTransitionTime is the last time this condition transitioned from one
+                        status to another.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        A Message containing details about this condition's last transition from
+                        one status to another, if any.
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      type: integer
+                    reason:
+                      description: A Reason for this condition's last transition from
+                        one status to another.
+                      type: string
+                    status:
+                      description: Status of this condition; is it currently True,
+                        False, or Unknown?
+                      type: string
+                    type:
+                      description: |-
+                        Type of this condition. At most one of each condition type may apply to
+                        a resource at any point in time.
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              lastHandledReconcileAt:
+                description: |-
+                  LastHandledReconcileAt holds the value of the most recent
+                  reconcile-requested-at annotation token that the controller has
+                  processed. Users can compare this to the annotation to determine
+                  whether a reconcile request has been handled.
+                type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the latest metadata.generation
+                  which resulted in either a ready state, or stalled due to error
+                  it can not recover from without human intervention.
+                format: int64
+                type: integer
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
