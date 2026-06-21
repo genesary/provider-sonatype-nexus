@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/datadrivers/go-nexus-client/nexus3/schema"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
@@ -24,6 +25,7 @@ type MockClient struct {
 	MockBlobStore     *MockBlobStoreService
 	MockCleanupPolicy *MockCleanupPolicyService
 	MockRepository    *MockRepositoryService
+	MockScript        *MockScriptService
 	MockSecurity      *MockSecurityService
 	MockSSL           *MockSSLService
 }
@@ -34,6 +36,7 @@ func NewMockClient() *MockClient {
 		MockBlobStore:     &MockBlobStoreService{},
 		MockCleanupPolicy: &MockCleanupPolicyService{},
 		MockRepository:    &MockRepositoryService{},
+		MockScript:        &MockScriptService{},
 		MockSecurity:      &MockSecurityService{},
 		MockSSL:           &MockSSLService{},
 	}
@@ -54,6 +57,11 @@ func (m *MockClient) Repository() nexus.RepositoryService {
 	return m.MockRepository
 }
 
+// Script returns the mock script service.
+func (m *MockClient) Script() nexus.ScriptService {
+	return m.MockScript
+}
+
 // Security returns the mock security service.
 func (m *MockClient) Security() nexus.SecurityService {
 	return m.MockSecurity
@@ -62,6 +70,60 @@ func (m *MockClient) Security() nexus.SecurityService {
 // SSL returns the mock SSL service.
 func (m *MockClient) SSL() nexus.SSLService {
 	return m.MockSSL
+}
+
+// MockScriptService is a mock implementation of nexus.ScriptService.
+type MockScriptService struct {
+	GetScriptFn    func(ctx context.Context, name string) (*schema.Script, error)
+	ListScriptsFn  func(ctx context.Context) ([]schema.Script, error)
+	CreateScriptFn func(ctx context.Context, script *schema.Script) error
+	UpdateScriptFn func(ctx context.Context, script *schema.Script) error
+	DeleteScriptFn func(ctx context.Context, name string) error
+}
+
+// GetScript implements nexus.ScriptService.
+func (m *MockScriptService) GetScript(ctx context.Context, name string) (*schema.Script, error) {
+	if m.GetScriptFn != nil {
+		return m.GetScriptFn(ctx, name)
+	}
+
+	return nil, errMockNotConfigured
+}
+
+// ListScripts implements nexus.ScriptService.
+func (m *MockScriptService) ListScripts(ctx context.Context) ([]schema.Script, error) {
+	if m.ListScriptsFn != nil {
+		return m.ListScriptsFn(ctx)
+	}
+
+	return nil, errMockNotConfigured
+}
+
+// CreateScript implements nexus.ScriptService.
+func (m *MockScriptService) CreateScript(ctx context.Context, script *schema.Script) error {
+	if m.CreateScriptFn != nil {
+		return m.CreateScriptFn(ctx, script)
+	}
+
+	return errMockNotConfigured
+}
+
+// UpdateScript implements nexus.ScriptService.
+func (m *MockScriptService) UpdateScript(ctx context.Context, script *schema.Script) error {
+	if m.UpdateScriptFn != nil {
+		return m.UpdateScriptFn(ctx, script)
+	}
+
+	return errMockNotConfigured
+}
+
+// DeleteScript implements nexus.ScriptService.
+func (m *MockScriptService) DeleteScript(ctx context.Context, name string) error {
+	if m.DeleteScriptFn != nil {
+		return m.DeleteScriptFn(ctx, name)
+	}
+
+	return errMockNotConfigured
 }
 
 // MockCleanupPolicyService is a mock implementation of

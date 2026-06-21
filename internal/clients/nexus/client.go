@@ -9,6 +9,7 @@ import (
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/datadrivers/go-nexus-client/nexus3"
 	"github.com/datadrivers/go-nexus-client/nexus3/pkg/client"
+	"github.com/datadrivers/go-nexus-client/nexus3/schema"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
@@ -45,11 +46,21 @@ type CleanupPolicyService interface {
 	DeleteCleanupPolicy(ctx context.Context, name string) error
 }
 
+// ScriptService manages Nexus Groovy scripts.
+type ScriptService interface {
+	GetScript(ctx context.Context, name string) (*schema.Script, error)
+	ListScripts(ctx context.Context) ([]schema.Script, error)
+	CreateScript(ctx context.Context, script *schema.Script) error
+	UpdateScript(ctx context.Context, script *schema.Script) error
+	DeleteScript(ctx context.Context, name string) error
+}
+
 // Client is an interface for interacting with the Nexus API.
 type Client interface {
 	BlobStore() BlobStoreService
 	CleanupPolicy() CleanupPolicyService
 	Repository() RepositoryService
+	Script() ScriptService
 	Security() SecurityService
 	SSL() SSLService
 }
@@ -392,6 +403,11 @@ type sslService struct {
 	client *nexus3.NexusClient
 }
 
+// scriptService implements ScriptService.
+type scriptService struct {
+	client *nexus3.NexusClient
+}
+
 // cleanupPolicyService implements CleanupPolicyService.
 type cleanupPolicyService struct {
 	client *nexus3.NexusClient
@@ -540,6 +556,11 @@ func (c *nexusClientWrapper) Repository() RepositoryService {
 	return &repositoryService{client: c.client}
 }
 
+// Script returns the ScriptService.
+func (c *nexusClientWrapper) Script() ScriptService {
+	return &scriptService{client: c.client}
+}
+
 // Security returns the SecurityService.
 func (c *nexusClientWrapper) Security() SecurityService {
 	return &securityService{client: c.client}
@@ -575,6 +596,33 @@ func (s *cleanupPolicyService) UpdateCleanupPolicy(ctx context.Context, policy *
 // DeleteCleanupPolicy deletes a cleanup policy by name.
 func (s *cleanupPolicyService) DeleteCleanupPolicy(ctx context.Context, name string) error {
 	return s.client.CleanupPolicy.Delete(name)
+}
+
+// ScriptService implementations
+
+// GetScript gets a script by name.
+func (s *scriptService) GetScript(ctx context.Context, name string) (*schema.Script, error) {
+	return s.client.Script.Get(name)
+}
+
+// ListScripts lists all scripts.
+func (s *scriptService) ListScripts(ctx context.Context) ([]schema.Script, error) {
+	return s.client.Script.List()
+}
+
+// CreateScript creates a new script.
+func (s *scriptService) CreateScript(ctx context.Context, script *schema.Script) error {
+	return s.client.Script.Create(script)
+}
+
+// UpdateScript updates an existing script.
+func (s *scriptService) UpdateScript(ctx context.Context, script *schema.Script) error {
+	return s.client.Script.Update(script)
+}
+
+// DeleteScript deletes a script by name.
+func (s *scriptService) DeleteScript(ctx context.Context, name string) error {
+	return s.client.Script.Delete(name)
 }
 
 // BlobStoreService implementations

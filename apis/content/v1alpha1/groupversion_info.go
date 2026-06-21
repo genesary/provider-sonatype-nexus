@@ -39,3 +39,11 @@ var (
 	ContentSelectorKindAPIVersion   = ContentSelectorKind + "." + SchemeGroupVersion.String()
 	ContentSelectorGroupVersionKind = SchemeGroupVersion.WithKind(ContentSelectorKind)
 )
+
+// Script type metadata.
+var (
+	ScriptKind             = reflect.TypeFor[Script]().Name()
+	ScriptGroupKind        = schema.GroupKind{Group: APIGroup, Kind: ScriptKind}.String()
+	ScriptKindAPIVersion   = ScriptKind + "." + SchemeGroupVersion.String()
+	ScriptGroupVersionKind = SchemeGroupVersion.WithKind(ScriptKind)
+)

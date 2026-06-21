@@ -21,6 +21,7 @@ package e2e
 import (
 	"context"
 
+	"github.com/datadrivers/go-nexus-client/nexus3/schema"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
@@ -117,4 +118,16 @@ func (f *Framework) FetchHelmProxyRepo(name string) (*repository.HelmProxyReposi
 // FetchPypiProxyRepo returns the PyPI proxy repository with the given name.
 func (f *Framework) FetchPypiProxyRepo(name string) (*repository.PypiProxyRepository, error) {
 	return f.Nexus.Repository().GetPypiProxy(context.Background(), name)
+}
+
+// ScriptingAvailable reports whether the Nexus Scripting API is accessible.
+// The API requires nexus.scripts.allowCreation=true and is removed in Nexus 3.70+.
+func (f *Framework) ScriptingAvailable() bool {
+	_, err := f.Nexus.Script().ListScripts(context.Background())
+	return err == nil
+}
+
+// FetchScript returns the Nexus Groovy script with the given name.
+func (f *Framework) FetchScript(name string) (*schema.Script, error) {
+	return f.Nexus.Script().GetScript(context.Background(), name)
 }
