@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 
+	mailschema "github.com/datadrivers/go-nexus-client/nexus3/schema"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
@@ -23,6 +24,7 @@ var _ nexus.Client = &MockClient{}
 type MockClient struct {
 	MockBlobStore     *MockBlobStoreService
 	MockCleanupPolicy *MockCleanupPolicyService
+	MockMailConfig    *MockMailConfigService
 	MockRepository    *MockRepositoryService
 	MockSecurity      *MockSecurityService
 	MockSSL           *MockSSLService
@@ -33,6 +35,7 @@ func NewMockClient() *MockClient {
 	return &MockClient{
 		MockBlobStore:     &MockBlobStoreService{},
 		MockCleanupPolicy: &MockCleanupPolicyService{},
+		MockMailConfig:    &MockMailConfigService{},
 		MockRepository:    &MockRepositoryService{},
 		MockSecurity:      &MockSecurityService{},
 		MockSSL:           &MockSSLService{},
@@ -62,6 +65,35 @@ func (m *MockClient) Security() nexus.SecurityService {
 // SSL returns the mock SSL service.
 func (m *MockClient) SSL() nexus.SSLService {
 	return m.MockSSL
+}
+
+// MailConfig returns the mock mail config service.
+func (m *MockClient) MailConfig() nexus.MailConfigService {
+	return m.MockMailConfig
+}
+
+// MockMailConfigService is a mock implementation of nexus.MailConfigService.
+type MockMailConfigService struct {
+	GetEmailConfigurationFn    func(ctx context.Context) (*mailschema.MailConfig, error)
+	UpdateEmailConfigurationFn func(ctx context.Context, config mailschema.MailConfig) error
+}
+
+// GetEmailConfiguration implements nexus.MailConfigService.
+func (m *MockMailConfigService) GetEmailConfiguration(ctx context.Context) (*mailschema.MailConfig, error) {
+	if m.GetEmailConfigurationFn != nil {
+		return m.GetEmailConfigurationFn(ctx)
+	}
+
+	return nil, errMockNotConfigured
+}
+
+// UpdateEmailConfiguration implements nexus.MailConfigService.
+func (m *MockMailConfigService) UpdateEmailConfiguration(ctx context.Context, config mailschema.MailConfig) error {
+	if m.UpdateEmailConfigurationFn != nil {
+		return m.UpdateEmailConfigurationFn(ctx, config)
+	}
+
+	return errMockNotConfigured
 }
 
 // MockCleanupPolicyService is a mock implementation of

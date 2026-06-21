@@ -9,6 +9,7 @@ import (
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/datadrivers/go-nexus-client/nexus3"
 	"github.com/datadrivers/go-nexus-client/nexus3/pkg/client"
+	mailschema "github.com/datadrivers/go-nexus-client/nexus3/schema"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
@@ -45,10 +46,18 @@ type CleanupPolicyService interface {
 	DeleteCleanupPolicy(ctx context.Context, name string) error
 }
 
+// MailConfigService provides methods for managing the Nexus email
+// configuration.
+type MailConfigService interface {
+	GetEmailConfiguration(ctx context.Context) (*mailschema.MailConfig, error)
+	UpdateEmailConfiguration(ctx context.Context, config mailschema.MailConfig) error
+}
+
 // Client is an interface for interacting with the Nexus API.
 type Client interface {
 	BlobStore() BlobStoreService
 	CleanupPolicy() CleanupPolicyService
+	MailConfig() MailConfigService
 	Repository() RepositoryService
 	Security() SecurityService
 	SSL() SSLService
@@ -548,6 +557,26 @@ func (c *nexusClientWrapper) Security() SecurityService {
 // SSL returns the SSLService.
 func (c *nexusClientWrapper) SSL() SSLService {
 	return &sslService{client: c.client}
+}
+
+// MailConfig returns the MailConfigService.
+func (c *nexusClientWrapper) MailConfig() MailConfigService {
+	return &mailConfigService{client: c.client}
+}
+
+// mailConfigService implements MailConfigService.
+type mailConfigService struct {
+	client *nexus3.NexusClient
+}
+
+// GetEmailConfiguration retrieves the current Nexus email configuration.
+func (s *mailConfigService) GetEmailConfiguration(_ context.Context) (*mailschema.MailConfig, error) {
+	return s.client.MailConfig.Get()
+}
+
+// UpdateEmailConfiguration updates the Nexus email configuration.
+func (s *mailConfigService) UpdateEmailConfiguration(_ context.Context, config mailschema.MailConfig) error {
+	return s.client.MailConfig.Update(&config)
 }
 
 // CleanupPolicyService implementations
