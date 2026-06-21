@@ -1,0 +1,26 @@
+---
+apiVersion: content.nexus.crossplane.io/v1alpha1
+kind: Script
+metadata:
+  name: create-local-user
+spec:
+  forProvider:
+    name: create-local-user
+    type: groovy
+    content: |
+      import org.sonatype.nexus.security.user.UserManager
+      import org.sonatype.nexus.security.user.User
+
+      def userId = 'example-user'
+      def um = container.lookup(UserManager.class.getName(), 'default')
+      def user = new User()
+      user.setUserId(userId)
+      user.setFirstName('Example')
+      user.setLastName('User')
+      user.setEmailAddress('example@example.com')
+      user.setSource('default')
+      user.setStatus(org.sonatype.nexus.security.user.UserStatus.active)
+      um.addUser(user, 'changeme')
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default
