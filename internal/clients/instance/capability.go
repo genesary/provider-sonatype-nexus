@@ -32,9 +32,7 @@ func NewCapabilityClient(creds nexus.Credentials) (CapabilityClient, error) {
 }
 
 // GenerateCapabilityCreate builds a CapabilityCreate from the CR's spec.
-func GenerateCapabilityCreate(cr *instancev1alpha1.Capability) nexussdk.CapabilityCreate {
-	params := cr.Spec.ForProvider
-
+func GenerateCapabilityCreate(params *instancev1alpha1.CapabilityParameters) nexussdk.CapabilityCreate {
 	return nexussdk.CapabilityCreate{
 		Type:       params.TypeId,
 		Notes:      params.Notes,
@@ -45,9 +43,7 @@ func GenerateCapabilityCreate(cr *instancev1alpha1.Capability) nexussdk.Capabili
 
 // GenerateCapabilityUpdate builds a CapabilityUpdate from the CR's spec and
 // the server-assigned ID.
-func GenerateCapabilityUpdate(cr *instancev1alpha1.Capability, id string) nexussdk.CapabilityUpdate {
-	params := cr.Spec.ForProvider
-
+func GenerateCapabilityUpdate(params *instancev1alpha1.CapabilityParameters, id string) nexussdk.CapabilityUpdate {
 	return nexussdk.CapabilityUpdate{
 		ID:         id,
 		Type:       params.TypeId,

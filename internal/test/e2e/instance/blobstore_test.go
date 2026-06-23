@@ -16,7 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package capability_test
+package instance_test
 
 import (
 	"testing"
@@ -29,50 +29,48 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/internal/test/e2e"
 )
 
-func TestCapabilityCRUD(t *testing.T) {
+func TestBlobStoreCRUD(t *testing.T) {
 	t.Parallel()
 
 	f := e2e.New(t)
 
-	cr := &instancev1alpha1.Capability{
-		ObjectMeta: metav1.ObjectMeta{Name: "e2e-docker-bearer-token", Namespace: "default"},
-		Spec: instancev1alpha1.CapabilitySpec{
+	const bsName = "e2e-test-file"
+
+	bs := &instancev1alpha1.BlobStore{
+		ObjectMeta: metav1.ObjectMeta{Name: "e2e-test-file-blobstore", Namespace: "default"},
+		Spec: instancev1alpha1.BlobStoreSpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: &xpv2.ProviderConfigReference{
 					Kind: "ProviderConfig",
 					Name: f.ProviderConfigName,
 				},
 			},
-			ForProvider: instancev1alpha1.CapabilityParameters{
-				TypeId:  "DockerBearerTokenRealm",
-				Enabled: true,
-				Notes:   "E2E test capability",
+			ForProvider: instancev1alpha1.BlobStoreParameters{
+				Name: bsName,
+				Type: "File",
+				Path: ptrTo("/nexus-data/blobs/e2e-test-file"),
+				SoftQuota: &instancev1alpha1.SoftQuota{
+					Type:  ptrTo("spaceRemainingQuota"),
+					Limit: ptrTo(int64(104857600)),
+				},
 			},
 		},
 	}
 
-	f.CreateAndWaitForReady(t, cr, 2*time.Minute)
-	e2e.AssertReady(t, cr)
-	e2e.AssertSynced(t, cr)
+	f.CreateAndWaitForReady(t, bs, 2*time.Minute)
+	e2e.AssertReady(t, bs)
+	e2e.AssertSynced(t, bs)
 
-	if cr.Status.AtProvider.ID == "" {
-		t.Fatal("AtProvider.ID should be set after creation")
-	}
-
-	got, err := f.FetchCapability(cr.Status.AtProvider.ID)
+	got, err := f.FetchBlobStoreFile(bsName)
 	if err != nil {
-		t.Fatalf("fetching capability from Nexus: %v", err)
+		t.Fatalf("fetching blob store from Nexus: %v", err)
 	}
-
 	if got == nil {
-		t.Fatalf("capability %q not found in Nexus", cr.Status.AtProvider.ID)
+		t.Fatalf("blob store %q not found in Nexus", bsName)
 	}
-
-	if got.Type != cr.Spec.ForProvider.TypeId {
-		t.Errorf("capability type = %q, want %q", got.Type, cr.Spec.ForProvider.TypeId)
-	}
-
-	if !got.Enabled {
-		t.Error("capability should be enabled")
+	if got.Name != bsName {
+		t.Errorf("blob store name = %q, want %q", got.Name, bsName)
 	}
 }
+
+func ptrTo[T any](v T) *T { return &v }

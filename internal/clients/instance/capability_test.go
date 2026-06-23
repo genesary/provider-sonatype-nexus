@@ -32,7 +32,7 @@ func TestGenerateCapabilityCreate(t *testing.T) {
 
 	cr := newCR("DockerBearerTokenRealm", true, "notes", map[string]string{"key": "val"})
 
-	got := instanceclient.GenerateCapabilityCreate(cr)
+	got := instanceclient.GenerateCapabilityCreate(&cr.Spec.ForProvider)
 
 	if got.Type != "DockerBearerTokenRealm" {
 		t.Errorf("Type = %q, want DockerBearerTokenRealm", got.Type)
@@ -58,7 +58,7 @@ func TestGenerateCapabilityCreate_NilProperties(t *testing.T) {
 
 	cr := newCR("DockerBearerTokenRealm", true, "", nil)
 
-	got := instanceclient.GenerateCapabilityCreate(cr)
+	got := instanceclient.GenerateCapabilityCreate(&cr.Spec.ForProvider)
 
 	if got.Properties == nil {
 		t.Error("Properties should not be nil")
@@ -75,7 +75,7 @@ func TestGenerateCapabilityUpdate(t *testing.T) {
 
 	cr := newCR("DockerBearerTokenRealm", false, "updated", map[string]string{"a": "b"})
 
-	got := instanceclient.GenerateCapabilityUpdate(cr, "id-xyz")
+	got := instanceclient.GenerateCapabilityUpdate(&cr.Spec.ForProvider, "id-xyz")
 
 	if got.ID != "id-xyz" {
 		t.Errorf("ID = %q, want id-xyz", got.ID)
@@ -105,7 +105,7 @@ func TestGenerateCapabilityUpdate_NilProperties(t *testing.T) {
 
 	cr := newCR("DockerBearerTokenRealm", true, "", nil)
 
-	got := instanceclient.GenerateCapabilityUpdate(cr, "id-abc")
+	got := instanceclient.GenerateCapabilityUpdate(&cr.Spec.ForProvider, "id-abc")
 
 	if got.Properties == nil {
 		t.Error("Properties should not be nil")

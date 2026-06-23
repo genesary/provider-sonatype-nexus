@@ -144,7 +144,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotCapability)
 	}
 
-	created, err := e.client.Create(instanceclient.GenerateCapabilityCreate(capabilityCR))
+	created, err := e.client.Create(instanceclient.GenerateCapabilityCreate(&capabilityCR.Spec.ForProvider))
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateCap)
 	}
@@ -163,7 +163,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 	id := meta.GetExternalName(capabilityCR)
 
-	err := e.client.Update(id, instanceclient.GenerateCapabilityUpdate(capabilityCR, id))
+	err := e.client.Update(id, instanceclient.GenerateCapabilityUpdate(&capabilityCR.Spec.ForProvider, id))
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateCap)
 	}
