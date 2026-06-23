@@ -952,6 +952,90 @@ func (h *CondaHandler) Delete(ctx context.Context, client *pkgrepository.Reposit
 	return errors.Errorf("unsupported conda repository type: %s", repoType)
 }
 
+// HuggingfaceHandler handles HuggingFace repository operations.
+type HuggingfaceHandler struct{}
+
+// SupportedTypes returns repository types supported by HuggingfaceHandler.
+func (h *HuggingfaceHandler) SupportedTypes() []string { return []string{repoTypeProxy} }
+
+// Observe checks whether the HuggingFace repository exists and is up to date.
+func (h *HuggingfaceHandler) Observe(ctx context.Context, client *pkgrepository.RepositoryService, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
+	if repoType == repoTypeProxy {
+		return observeRepo(name, client.Huggingface.Proxy.Get, isHuggingfaceProxyUpToDate, repoCR)
+	}
+
+	return false, false
+}
+
+// Create creates a new HuggingFace repository of the given type.
+func (h *HuggingfaceHandler) Create(ctx context.Context, client *pkgrepository.RepositoryService, repoCR *repositoryv1alpha1.Repository, repoType string) error {
+	if repoType == repoTypeProxy {
+		return client.Huggingface.Proxy.Create(repository.HuggingfaceProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)})
+	}
+
+	return errors.Errorf("unsupported huggingface repository type: %s", repoType)
+}
+
+// Update updates an existing HuggingFace repository of the given type.
+func (h *HuggingfaceHandler) Update(ctx context.Context, client *pkgrepository.RepositoryService, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
+	if repoType == repoTypeProxy {
+		return client.Huggingface.Proxy.Update(name, repository.HuggingfaceProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)})
+	}
+
+	return errors.Errorf("unsupported huggingface repository type: %s", repoType)
+}
+
+// Delete removes a HuggingFace repository of the given type.
+func (h *HuggingfaceHandler) Delete(ctx context.Context, client *pkgrepository.RepositoryService, name, repoType string) error {
+	if repoType == repoTypeProxy {
+		return client.Huggingface.Proxy.Delete(name)
+	}
+
+	return errors.Errorf("unsupported huggingface repository type: %s", repoType)
+}
+
+// P2Handler handles P2 repository operations.
+type P2Handler struct{}
+
+// SupportedTypes returns repository types supported by P2Handler.
+func (h *P2Handler) SupportedTypes() []string { return []string{repoTypeProxy} }
+
+// Observe checks whether the P2 repository exists and is up to date.
+func (h *P2Handler) Observe(ctx context.Context, client *pkgrepository.RepositoryService, name, repoType string, repoCR *repositoryv1alpha1.Repository) (exists, upToDate bool) {
+	if repoType == repoTypeProxy {
+		return observeRepo(name, client.P2.Proxy.Get, isP2ProxyUpToDate, repoCR)
+	}
+
+	return false, false
+}
+
+// Create creates a new P2 repository of the given type.
+func (h *P2Handler) Create(ctx context.Context, client *pkgrepository.RepositoryService, repoCR *repositoryv1alpha1.Repository, repoType string) error {
+	if repoType == repoTypeProxy {
+		return client.P2.Proxy.Create(repository.P2ProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)})
+	}
+
+	return errors.Errorf("unsupported p2 repository type: %s", repoType)
+}
+
+// Update updates an existing P2 repository of the given type.
+func (h *P2Handler) Update(ctx context.Context, client *pkgrepository.RepositoryService, name string, repoCR *repositoryv1alpha1.Repository, repoType string) error {
+	if repoType == repoTypeProxy {
+		return client.P2.Proxy.Update(name, repository.P2ProxyRepository{Name: repoCR.Spec.ForProvider.Name, Online: getOnline(repoCR), Storage: generateProxyStorage(repoCR), Proxy: generateProxyConfig(repoCR), NegativeCache: generateNegativeCache(repoCR), HTTPClient: generateHTTPClient(ctx, repoCR)})
+	}
+
+	return errors.Errorf("unsupported p2 repository type: %s", repoType)
+}
+
+// Delete removes a P2 repository of the given type.
+func (h *P2Handler) Delete(ctx context.Context, client *pkgrepository.RepositoryService, name, repoType string) error {
+	if repoType == repoTypeProxy {
+		return client.P2.Proxy.Delete(name)
+	}
+
+	return errors.Errorf("unsupported p2 repository type: %s", repoType)
+}
+
 // isNugetHostedUpToDate checks if a Nuget hosted repository is up to date.
 func isNugetHostedUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.NugetHostedRepository) bool {
 	return isBasicHostedUpToDate(repoCR, repo.Name, repo.Online)
@@ -1106,6 +1190,17 @@ func isConanProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repositor
 
 // isCondaProxyUpToDate checks if a Conda proxy repository is up to date.
 func isCondaProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.CondaProxyRepository) bool {
+	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
+}
+
+// isHuggingfaceProxyUpToDate checks if a HuggingFace proxy repository is up
+// to date.
+func isHuggingfaceProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.HuggingfaceProxyRepository) bool {
+	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
+}
+
+// isP2ProxyUpToDate checks if a P2 proxy repository is up to date.
+func isP2ProxyUpToDate(repoCR *repositoryv1alpha1.Repository, repo *repository.P2ProxyRepository) bool {
 	return isBasicProxyUpToDate(repoCR, repo.Name, repo.Online, repo.RemoteURL)
 }
 
