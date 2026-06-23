@@ -71,4 +71,6 @@ func init() {
 	RegisterHandler("cocoapods", &CocoapodsHandler{})
 	RegisterHandler("conan", &ConanHandler{})
 	RegisterHandler("conda", &CondaHandler{})
+	RegisterHandler("huggingface", &HuggingfaceHandler{})
+	RegisterHandler("p2", &P2Handler{})
 }
