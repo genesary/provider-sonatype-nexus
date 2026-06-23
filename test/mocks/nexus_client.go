@@ -10,15 +10,11 @@ import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
-
-	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
 // errMockNotConfigured is returned when a mock function has not been
 // configured.
 var errMockNotConfigured = errors.New("mock function not configured")
-
-var _ nexus.Client = &MockClient{}
 
 // MockClient is a mock implementation of nexus.Client.
 type MockClient struct {
@@ -40,36 +36,6 @@ func NewMockClient() *MockClient {
 		MockSecurity:      &MockSecurityService{},
 		MockSSL:           &MockSSLService{},
 	}
-}
-
-// Capability returns the mock capability service.
-func (m *MockClient) Capability() nexus.CapabilityService {
-	return m.MockCapability
-}
-
-// BlobStore returns the mock blob store service.
-func (m *MockClient) BlobStore() nexus.BlobStoreService {
-	return m.MockBlobStore
-}
-
-// CleanupPolicy returns the mock cleanup policy service.
-func (m *MockClient) CleanupPolicy() nexus.CleanupPolicyService {
-	return m.MockCleanupPolicy
-}
-
-// Repository returns the mock repository service.
-func (m *MockClient) Repository() nexus.RepositoryService {
-	return m.MockRepository
-}
-
-// Security returns the mock security service.
-func (m *MockClient) Security() nexus.SecurityService {
-	return m.MockSecurity
-}
-
-// SSL returns the mock SSL service.
-func (m *MockClient) SSL() nexus.SSLService {
-	return m.MockSSL
 }
 
 // MockCleanupPolicyService is a mock implementation of

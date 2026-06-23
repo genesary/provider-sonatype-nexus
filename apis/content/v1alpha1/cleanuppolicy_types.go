@@ -1,8 +1,11 @@
 package v1alpha1
 
 import (
+	"reflect"
+
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // CleanupPolicyParameters defines the desired state of a CleanupPolicy.
@@ -111,6 +114,14 @@ type CleanupPolicyList struct {
 
 	Items []CleanupPolicy `json:"items"`
 }
+
+// CleanupPolicy type metadata.
+var (
+	CleanupPolicyKind             = reflect.TypeFor[CleanupPolicy]().Name()
+	CleanupPolicyGroupKind        = schema.GroupKind{Group: APIGroup, Kind: CleanupPolicyKind}.String()
+	CleanupPolicyKindAPIVersion   = CleanupPolicyKind + "." + SchemeGroupVersion.String()
+	CleanupPolicyGroupVersionKind = SchemeGroupVersion.WithKind(CleanupPolicyKind)
+)
 
 // init registers the CleanupPolicy types with the scheme.
 func init() {

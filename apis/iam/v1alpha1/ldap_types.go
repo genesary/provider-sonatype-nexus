@@ -1,8 +1,11 @@
 package v1alpha1
 
 import (
+	"reflect"
+
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // LDAPParameters defines the desired state of an LDAP server configuration.
@@ -211,6 +214,14 @@ type LDAPList struct {
 
 	Items []LDAP `json:"items"`
 }
+
+// LDAP type metadata.
+var (
+	LDAPKind             = reflect.TypeFor[LDAP]().Name()
+	LDAPGroupKind        = schema.GroupKind{Group: APIGroup, Kind: LDAPKind}.String()
+	LDAPKindAPIVersion   = LDAPKind + "." + SchemeGroupVersion.String()
+	LDAPGroupVersionKind = SchemeGroupVersion.WithKind(LDAPKind)
+)
 
 // init registers this type with the SchemeBuilder.
 func init() {

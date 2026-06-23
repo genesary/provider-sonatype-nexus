@@ -15,7 +15,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
-	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
+	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	iammocks "github.com/genesary/provider-sonatype-nexus/test/mocks/iam"
 )
@@ -92,7 +92,7 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.ListCertificatesFn = func(_ context.Context) ([]security.SSLCertificate, error) {
+				mc.ListCertificatesFn = func() ([]security.SSLCertificate, error) {
 					return []security.SSLCertificate{
 						{
 							Id:                "cert-id-123",
@@ -116,7 +116,7 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.ListCertificatesFn = func(_ context.Context) ([]security.SSLCertificate, error) {
+				mc.ListCertificatesFn = func() ([]security.SSLCertificate, error) {
 					return []security.SSLCertificate{
 						{Id: "cert-id-123", Pem: testPem},
 					}, nil
@@ -135,7 +135,7 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.ListCertificatesFn = func(_ context.Context) ([]security.SSLCertificate, error) {
+				mc.ListCertificatesFn = func() ([]security.SSLCertificate, error) {
 					return []security.SSLCertificate{}, nil
 				}
 			},
@@ -152,7 +152,7 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.ListCertificatesFn = func(_ context.Context) ([]security.SSLCertificate, error) {
+				mc.ListCertificatesFn = func() ([]security.SSLCertificate, error) {
 					return nil, errors.New("connection error")
 				}
 			},
@@ -205,10 +205,10 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTruststoreCR(testPem),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.AddCertificateFn = func(_ context.Context, _ *security.SSLCertificate) error {
+				mc.AddCertificateFn = func(_ *security.SSLCertificate) error {
 					return nil
 				}
-				mc.ListCertificatesFn = func(_ context.Context) ([]security.SSLCertificate, error) {
+				mc.ListCertificatesFn = func() ([]security.SSLCertificate, error) {
 					return []security.SSLCertificate{
 						{Id: "new-cert-id", Pem: testPem},
 					}, nil
@@ -220,7 +220,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateAPIError",
 			cr:   newTruststoreCR(testPem),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.AddCertificateFn = func(_ context.Context, _ *security.SSLCertificate) error {
+				mc.AddCertificateFn = func(_ *security.SSLCertificate) error {
 					return errors.New("add error")
 				}
 			},
@@ -230,10 +230,10 @@ func TestCreate(t *testing.T) {
 			name: "CreateCantFindAfterAdd",
 			cr:   newTruststoreCR(testPem),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.AddCertificateFn = func(_ context.Context, _ *security.SSLCertificate) error {
+				mc.AddCertificateFn = func(_ *security.SSLCertificate) error {
 					return nil
 				}
-				mc.ListCertificatesFn = func(_ context.Context) ([]security.SSLCertificate, error) {
+				mc.ListCertificatesFn = func() ([]security.SSLCertificate, error) {
 					return []security.SSLCertificate{}, nil
 				}
 			},
@@ -286,13 +286,13 @@ func TestUpdate(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.RemoveCertificateFn = func(_ context.Context, _ string) error {
+				mc.RemoveCertificateFn = func(_ string) error {
 					return nil
 				}
-				mc.AddCertificateFn = func(_ context.Context, _ *security.SSLCertificate) error {
+				mc.AddCertificateFn = func(_ *security.SSLCertificate) error {
 					return nil
 				}
-				mc.ListCertificatesFn = func(_ context.Context) ([]security.SSLCertificate, error) {
+				mc.ListCertificatesFn = func() ([]security.SSLCertificate, error) {
 					return []security.SSLCertificate{
 						{Id: "new-cert-id", Pem: testPem},
 					}, nil
@@ -309,10 +309,10 @@ func TestUpdate(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.RemoveCertificateFn = func(_ context.Context, _ string) error {
+				mc.RemoveCertificateFn = func(_ string) error {
 					return nil
 				}
-				mc.AddCertificateFn = func(_ context.Context, _ *security.SSLCertificate) error {
+				mc.AddCertificateFn = func(_ *security.SSLCertificate) error {
 					return errors.New("add error")
 				}
 			},
@@ -358,7 +358,7 @@ func TestDelete(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.RemoveCertificateFn = func(_ context.Context, _ string) error {
+				mc.RemoveCertificateFn = func(_ string) error {
 					return nil
 				}
 			},
@@ -373,7 +373,7 @@ func TestDelete(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.RemoveCertificateFn = func(_ context.Context, _ string) error {
+				mc.RemoveCertificateFn = func(_ string) error {
 					return errors.New("404 not found")
 				}
 			},
@@ -393,7 +393,7 @@ func TestDelete(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.RemoveCertificateFn = func(_ context.Context, _ string) error {
+				mc.RemoveCertificateFn = func(_ string) error {
 					return errors.New("server error")
 				}
 			},

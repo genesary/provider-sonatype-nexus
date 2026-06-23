@@ -25,7 +25,7 @@ import (
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
+	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/test/e2e"
 )
 
@@ -42,20 +42,20 @@ func TestMavenHostedRepository(t *testing.T) {
 
 	const repoName = "e2e-test-maven-hosted"
 
-	repo := &repositoryv1alpha1.Repository{
+	repo := &contentv1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{Name: repoName, Namespace: "default"},
-		Spec: repositoryv1alpha1.RepositorySpec{
+		Spec: contentv1alpha1.RepositorySpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: newProviderConfigRef(f.ProviderConfigName),
 			},
-			ForProvider: repositoryv1alpha1.RepositoryParameters{
+			ForProvider: contentv1alpha1.RepositoryParameters{
 				Name:   repoName,
 				Format: "maven2",
 				Type:   "hosted",
-				Storage: &repositoryv1alpha1.RepositoryStorage{
+				Storage: &contentv1alpha1.RepositoryStorage{
 					BlobStoreName: defaultBlobStore,
 				},
-				Maven: &repositoryv1alpha1.MavenConfig{
+				Maven: &contentv1alpha1.MavenConfig{
 					VersionPolicy: ptrTo("RELEASE"),
 					LayoutPolicy:  ptrTo("STRICT"),
 				},
@@ -86,24 +86,24 @@ func TestMavenProxyRepository(t *testing.T) {
 
 	const repoName = "e2e-test-maven-proxy"
 
-	repo := &repositoryv1alpha1.Repository{
+	repo := &contentv1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{Name: repoName, Namespace: "default"},
-		Spec: repositoryv1alpha1.RepositorySpec{
+		Spec: contentv1alpha1.RepositorySpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: newProviderConfigRef(f.ProviderConfigName),
 			},
-			ForProvider: repositoryv1alpha1.RepositoryParameters{
+			ForProvider: contentv1alpha1.RepositoryParameters{
 				Name:   repoName,
 				Format: "maven2",
 				Type:   "proxy",
-				Storage: &repositoryv1alpha1.RepositoryStorage{
+				Storage: &contentv1alpha1.RepositoryStorage{
 					BlobStoreName: defaultBlobStore,
 				},
-				Maven: &repositoryv1alpha1.MavenConfig{
+				Maven: &contentv1alpha1.MavenConfig{
 					VersionPolicy: ptrTo("RELEASE"),
 					LayoutPolicy:  ptrTo("STRICT"),
 				},
-				Proxy: &repositoryv1alpha1.ProxyConfig{
+				Proxy: &contentv1alpha1.ProxyConfig{
 					RemoteURL: "https://repo1.maven.org/maven2/",
 				},
 			},
@@ -133,17 +133,17 @@ func TestNpmHostedRepository(t *testing.T) {
 
 	const repoName = "e2e-test-npm-hosted"
 
-	repo := &repositoryv1alpha1.Repository{
+	repo := &contentv1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{Name: repoName, Namespace: "default"},
-		Spec: repositoryv1alpha1.RepositorySpec{
+		Spec: contentv1alpha1.RepositorySpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: newProviderConfigRef(f.ProviderConfigName),
 			},
-			ForProvider: repositoryv1alpha1.RepositoryParameters{
+			ForProvider: contentv1alpha1.RepositoryParameters{
 				Name:   repoName,
 				Format: "npm",
 				Type:   "hosted",
-				Storage: &repositoryv1alpha1.RepositoryStorage{
+				Storage: &contentv1alpha1.RepositoryStorage{
 					BlobStoreName: defaultBlobStore,
 				},
 			},
@@ -173,20 +173,20 @@ func TestDockerHostedRepository(t *testing.T) {
 
 	const repoName = "e2e-test-docker-hosted"
 
-	repo := &repositoryv1alpha1.Repository{
+	repo := &contentv1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{Name: repoName, Namespace: "default"},
-		Spec: repositoryv1alpha1.RepositorySpec{
+		Spec: contentv1alpha1.RepositorySpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: newProviderConfigRef(f.ProviderConfigName),
 			},
-			ForProvider: repositoryv1alpha1.RepositoryParameters{
+			ForProvider: contentv1alpha1.RepositoryParameters{
 				Name:   repoName,
 				Format: "docker",
 				Type:   "hosted",
-				Storage: &repositoryv1alpha1.RepositoryStorage{
+				Storage: &contentv1alpha1.RepositoryStorage{
 					BlobStoreName: defaultBlobStore,
 				},
-				Docker: &repositoryv1alpha1.DockerConfig{
+				Docker: &contentv1alpha1.DockerConfig{
 					V1Enabled:      ptrTo(false),
 					ForceBasicAuth: ptrTo(true),
 				},
@@ -217,17 +217,17 @@ func TestHelmHostedRepository(t *testing.T) {
 
 	const repoName = "e2e-test-helm-hosted"
 
-	repo := &repositoryv1alpha1.Repository{
+	repo := &contentv1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{Name: repoName, Namespace: "default"},
-		Spec: repositoryv1alpha1.RepositorySpec{
+		Spec: contentv1alpha1.RepositorySpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: newProviderConfigRef(f.ProviderConfigName),
 			},
-			ForProvider: repositoryv1alpha1.RepositoryParameters{
+			ForProvider: contentv1alpha1.RepositoryParameters{
 				Name:   repoName,
 				Format: "helm",
 				Type:   "hosted",
-				Storage: &repositoryv1alpha1.RepositoryStorage{
+				Storage: &contentv1alpha1.RepositoryStorage{
 					BlobStoreName: defaultBlobStore,
 				},
 			},
@@ -257,20 +257,20 @@ func TestHelmProxyRepository(t *testing.T) {
 
 	const repoName = "e2e-test-helm-proxy"
 
-	repo := &repositoryv1alpha1.Repository{
+	repo := &contentv1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{Name: repoName, Namespace: "default"},
-		Spec: repositoryv1alpha1.RepositorySpec{
+		Spec: contentv1alpha1.RepositorySpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: newProviderConfigRef(f.ProviderConfigName),
 			},
-			ForProvider: repositoryv1alpha1.RepositoryParameters{
+			ForProvider: contentv1alpha1.RepositoryParameters{
 				Name:   repoName,
 				Format: "helm",
 				Type:   "proxy",
-				Storage: &repositoryv1alpha1.RepositoryStorage{
+				Storage: &contentv1alpha1.RepositoryStorage{
 					BlobStoreName: defaultBlobStore,
 				},
-				Proxy: &repositoryv1alpha1.ProxyConfig{
+				Proxy: &contentv1alpha1.ProxyConfig{
 					RemoteURL: "https://charts.helm.sh/stable/",
 				},
 			},
@@ -300,20 +300,20 @@ func TestPypiProxyRepository(t *testing.T) {
 
 	const repoName = "e2e-test-pypi-proxy"
 
-	repo := &repositoryv1alpha1.Repository{
+	repo := &contentv1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{Name: repoName, Namespace: "default"},
-		Spec: repositoryv1alpha1.RepositorySpec{
+		Spec: contentv1alpha1.RepositorySpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: newProviderConfigRef(f.ProviderConfigName),
 			},
-			ForProvider: repositoryv1alpha1.RepositoryParameters{
+			ForProvider: contentv1alpha1.RepositoryParameters{
 				Name:   repoName,
 				Format: "pypi",
 				Type:   "proxy",
-				Storage: &repositoryv1alpha1.RepositoryStorage{
+				Storage: &contentv1alpha1.RepositoryStorage{
 					BlobStoreName: defaultBlobStore,
 				},
-				Proxy: &repositoryv1alpha1.ProxyConfig{
+				Proxy: &contentv1alpha1.ProxyConfig{
 					RemoteURL: "https://pypi.org",
 				},
 			},
@@ -349,53 +349,53 @@ func TestMavenGroupRepository(t *testing.T) {
 		groupName  = "e2e-test-maven-group"
 	)
 
-	hostedRepo := &repositoryv1alpha1.Repository{
+	hostedRepo := &contentv1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{Name: hostedName, Namespace: "default"},
-		Spec: repositoryv1alpha1.RepositorySpec{
+		Spec: contentv1alpha1.RepositorySpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: newProviderConfigRef(f.ProviderConfigName),
 			},
-			ForProvider: repositoryv1alpha1.RepositoryParameters{
+			ForProvider: contentv1alpha1.RepositoryParameters{
 				Name:    hostedName,
 				Format:  "maven2",
 				Type:    "hosted",
-				Storage: &repositoryv1alpha1.RepositoryStorage{BlobStoreName: defaultBlobStore},
-				Maven:   &repositoryv1alpha1.MavenConfig{VersionPolicy: ptrTo("RELEASE")},
+				Storage: &contentv1alpha1.RepositoryStorage{BlobStoreName: defaultBlobStore},
+				Maven:   &contentv1alpha1.MavenConfig{VersionPolicy: ptrTo("RELEASE")},
 			},
 		},
 	}
 	f.CreateAndWaitForReady(t, hostedRepo, 2*time.Minute)
 
-	proxyRepo := &repositoryv1alpha1.Repository{
+	proxyRepo := &contentv1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{Name: proxyName, Namespace: "default"},
-		Spec: repositoryv1alpha1.RepositorySpec{
+		Spec: contentv1alpha1.RepositorySpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: newProviderConfigRef(f.ProviderConfigName),
 			},
-			ForProvider: repositoryv1alpha1.RepositoryParameters{
+			ForProvider: contentv1alpha1.RepositoryParameters{
 				Name:    proxyName,
 				Format:  "maven2",
 				Type:    "proxy",
-				Storage: &repositoryv1alpha1.RepositoryStorage{BlobStoreName: defaultBlobStore},
-				Maven:   &repositoryv1alpha1.MavenConfig{VersionPolicy: ptrTo("RELEASE")},
-				Proxy:   &repositoryv1alpha1.ProxyConfig{RemoteURL: "https://repo1.maven.org/maven2/"},
+				Storage: &contentv1alpha1.RepositoryStorage{BlobStoreName: defaultBlobStore},
+				Maven:   &contentv1alpha1.MavenConfig{VersionPolicy: ptrTo("RELEASE")},
+				Proxy:   &contentv1alpha1.ProxyConfig{RemoteURL: "https://repo1.maven.org/maven2/"},
 			},
 		},
 	}
 	f.CreateAndWaitForReady(t, proxyRepo, 2*time.Minute)
 
-	groupRepo := &repositoryv1alpha1.Repository{
+	groupRepo := &contentv1alpha1.Repository{
 		ObjectMeta: metav1.ObjectMeta{Name: groupName, Namespace: "default"},
-		Spec: repositoryv1alpha1.RepositorySpec{
+		Spec: contentv1alpha1.RepositorySpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: newProviderConfigRef(f.ProviderConfigName),
 			},
-			ForProvider: repositoryv1alpha1.RepositoryParameters{
+			ForProvider: contentv1alpha1.RepositoryParameters{
 				Name:    groupName,
 				Format:  "maven2",
 				Type:    "group",
-				Storage: &repositoryv1alpha1.RepositoryStorage{BlobStoreName: defaultBlobStore},
-				Group:   &repositoryv1alpha1.GroupConfig{MemberNames: []string{hostedName, proxyName}},
+				Storage: &contentv1alpha1.RepositoryStorage{BlobStoreName: defaultBlobStore},
+				Group:   &contentv1alpha1.GroupConfig{MemberNames: []string{hostedName, proxyName}},
 			},
 		},
 	}

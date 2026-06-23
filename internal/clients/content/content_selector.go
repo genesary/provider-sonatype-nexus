@@ -1,8 +1,6 @@
 package content
 
 import (
-	"context"
-
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
@@ -11,20 +9,20 @@ import (
 
 // ContentSelectorClient defines the interface for content selector operations.
 type ContentSelectorClient interface {
-	GetContentSelector(ctx context.Context, name string) (*security.ContentSelector, error)
-	CreateContentSelector(ctx context.Context, cs security.ContentSelector) error
-	UpdateContentSelector(ctx context.Context, name string, cs security.ContentSelector) error
-	DeleteContentSelector(ctx context.Context, name string) error
+	Get(name string) (*security.ContentSelector, error)
+	Create(cs security.ContentSelector) error
+	Update(name string, cs security.ContentSelector) error
+	Delete(name string) error
 }
 
 // NewContentSelectorClient creates a ContentSelectorClient from credentials.
 func NewContentSelectorClient(creds nexus.Credentials) (ContentSelectorClient, error) {
-	nexusClient, err := nexus.NewClient(creds)
+	nc, err := nexus.NewClient(creds)
 	if err != nil {
 		return nil, err
 	}
 
-	return nexusClient.Security(), nil
+	return nc.Security.ContentSelector, nil
 }
 
 // GenerateContentSelector builds a Nexus ContentSelector from a CR spec.

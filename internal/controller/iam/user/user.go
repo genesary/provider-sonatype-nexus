@@ -126,7 +126,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		userID = userRes.Spec.ForProvider.UserID
 	}
 
-	observed, err := e.client.GetUser(ctx, userID)
+	observed, err := e.client.Get(userID)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
@@ -163,7 +163,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 	userData := iamclient.GenerateUser(userRes, password)
 
-	err = e.client.CreateUser(ctx, userData)
+	err = e.client.Create(userData)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateUser)
 	}
@@ -187,7 +187,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 	userData := iamclient.GenerateUser(userRes, "")
 
-	err := e.client.UpdateUser(ctx, userID, userData)
+	err := e.client.Update(userID, userData)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateUser)
 	}
@@ -199,7 +199,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		}
 
 		if password != "" {
-			err = e.client.ChangePassword(ctx, userID, password)
+			err = e.client.ChangePassword(userID, password)
 			if err != nil {
 				return managed.ExternalUpdate{}, errors.Wrap(err, errChangePassword)
 			}
@@ -221,7 +221,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		userID = userRes.Spec.ForProvider.UserID
 	}
 
-	err := e.client.DeleteUser(ctx, userID)
+	err := e.client.Delete(userID)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil

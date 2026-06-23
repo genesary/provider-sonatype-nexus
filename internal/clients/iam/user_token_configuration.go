@@ -1,10 +1,7 @@
 package iam
 
 import (
-	"context"
-
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
-	"github.com/pkg/errors"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
@@ -13,18 +10,18 @@ import (
 
 // UserTokenConfigurationClient manages user token configuration.
 type UserTokenConfigurationClient interface {
-	GetUserTokenConfiguration(ctx context.Context) (*security.UserTokenConfiguration, error)
-	UpdateUserTokenConfiguration(ctx context.Context, config security.UserTokenConfiguration) error
+	Get() (*security.UserTokenConfiguration, error)
+	Configure(config security.UserTokenConfiguration) error
 }
 
 // NewUserTokenConfigurationClient returns a new UserTokenConfigurationClient.
 func NewUserTokenConfigurationClient(creds nexus.Credentials) (UserTokenConfigurationClient, error) {
-	nexusClient, err := nexus.NewClient(creds)
+	nc, err := nexus.NewClient(creds)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot create nexus client")
+		return nil, err
 	}
 
-	return nexusClient.Security(), nil
+	return nc.Security.UserTokens, nil
 }
 
 // GenerateUserTokenConfiguration converts the CR spec to Nexus config.

@@ -1,20 +1,18 @@
 package iam
 
 import (
-	"context"
-
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 
-	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
+	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 )
 
 var _ iamclient.SSLTruststoreClient = &MockSSLTruststoreClient{}
 
 // MockSSLTruststoreClient is a mock of iamclient.SSLTruststoreClient.
 type MockSSLTruststoreClient struct {
-	AddCertificateFn    func(ctx context.Context, cert *security.SSLCertificate) error
-	RemoveCertificateFn func(ctx context.Context, id string) error
-	ListCertificatesFn  func(ctx context.Context) ([]security.SSLCertificate, error)
+	AddCertificateFn    func(cert *security.SSLCertificate) error
+	RemoveCertificateFn func(id string) error
+	ListCertificatesFn  func() ([]security.SSLCertificate, error)
 
 	AddCertificateCalls    []*security.SSLCertificate
 	RemoveCertificateCalls []string
@@ -27,33 +25,33 @@ func NewMockSSLTruststoreClient() *MockSSLTruststoreClient {
 }
 
 // AddCertificate mock implementation.
-func (m *MockSSLTruststoreClient) AddCertificate(ctx context.Context, cert *security.SSLCertificate) error {
+func (m *MockSSLTruststoreClient) AddCertificate(cert *security.SSLCertificate) error {
 	m.AddCertificateCalls = append(m.AddCertificateCalls, cert)
 
 	if m.AddCertificateFn != nil {
-		return m.AddCertificateFn(ctx, cert)
+		return m.AddCertificateFn(cert)
 	}
 
 	return errMockNotConfigured
 }
 
 // RemoveCertificate mock implementation.
-func (m *MockSSLTruststoreClient) RemoveCertificate(ctx context.Context, id string) error {
+func (m *MockSSLTruststoreClient) RemoveCertificate(id string) error {
 	m.RemoveCertificateCalls = append(m.RemoveCertificateCalls, id)
 
 	if m.RemoveCertificateFn != nil {
-		return m.RemoveCertificateFn(ctx, id)
+		return m.RemoveCertificateFn(id)
 	}
 
 	return errMockNotConfigured
 }
 
 // ListCertificates mock implementation.
-func (m *MockSSLTruststoreClient) ListCertificates(ctx context.Context) ([]security.SSLCertificate, error) {
+func (m *MockSSLTruststoreClient) ListCertificates() ([]security.SSLCertificate, error) {
 	m.ListCertificatesCalls++
 
 	if m.ListCertificatesFn != nil {
-		return m.ListCertificatesFn(ctx)
+		return m.ListCertificatesFn()
 	}
 
 	return nil, errMockNotConfigured

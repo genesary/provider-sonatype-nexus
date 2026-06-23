@@ -1,8 +1,11 @@
 package v1alpha1
 
 import (
+	"reflect"
+
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // UserTokenConfigurationParameters defines the desired state.
@@ -78,6 +81,14 @@ type UserTokenConfigurationList struct {
 
 	Items []UserTokenConfiguration `json:"items"`
 }
+
+// UserTokenConfiguration type metadata.
+var (
+	UserTokenConfigurationKind             = reflect.TypeFor[UserTokenConfiguration]().Name()
+	UserTokenConfigurationGroupKind        = schema.GroupKind{Group: APIGroup, Kind: UserTokenConfigurationKind}.String()
+	UserTokenConfigurationKindAPIVersion   = UserTokenConfigurationKind + "." + SchemeGroupVersion.String()
+	UserTokenConfigurationGroupVersionKind = SchemeGroupVersion.WithKind(UserTokenConfigurationKind)
+)
 
 // init registers the UserTokenConfiguration types with the scheme.
 func init() {

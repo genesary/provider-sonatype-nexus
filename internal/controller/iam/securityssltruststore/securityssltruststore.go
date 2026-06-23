@@ -17,9 +17,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
+	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
-	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
+	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
@@ -123,7 +123,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	cert, err := e.findCertificateByID(ctx, certID)
+	cert, err := e.findCertificateByID(certID)
 	if err != nil {
 		if stderrors.Is(err, errCertNotFound) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
@@ -149,14 +149,14 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotTruststore)
 	}
 
-	err := e.client.AddCertificate(ctx, &security.SSLCertificate{
+	err := e.client.AddCertificate(&security.SSLCertificate{
 		Pem: truststoreCR.Spec.ForProvider.Pem,
 	})
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errAddCert)
 	}
 
-	added, err := e.findCertificateByPem(ctx, truststoreCR.Spec.ForProvider.Pem)
+	added, err := e.findCertificateByPem(truststoreCR.Spec.ForProvider.Pem)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errFindCert)
 	}
@@ -179,20 +179,20 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 	oldID := meta.GetExternalName(truststoreCR)
 	if oldID != "" {
-		err := e.client.RemoveCertificate(ctx, oldID)
+		err := e.client.RemoveCertificate(oldID)
 		if err != nil && !helpers.IsNotFound(err) {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errRemoveCert)
 		}
 	}
 
-	err := e.client.AddCertificate(ctx, &security.SSLCertificate{
+	err := e.client.AddCertificate(&security.SSLCertificate{
 		Pem: truststoreCR.Spec.ForProvider.Pem,
 	})
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errAddCert)
 	}
 
-	added, err := e.findCertificateByPem(ctx, truststoreCR.Spec.ForProvider.Pem)
+	added, err := e.findCertificateByPem(truststoreCR.Spec.ForProvider.Pem)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errFindCert)
 	}
@@ -218,7 +218,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalDelete{}, nil
 	}
 
-	err := e.client.RemoveCertificate(ctx, certID)
+	err := e.client.RemoveCertificate(certID)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
@@ -237,8 +237,8 @@ func (e *external) Disconnect(_ context.Context) error {
 
 // findCertificateByID finds a certificate in the truststore by its ID.
 // Returns errCertNotFound when the ID is not present in the list.
-func (e *external) findCertificateByID(ctx context.Context, certID string) (*security.SSLCertificate, error) {
-	certs, err := e.client.ListCertificates(ctx)
+func (e *external) findCertificateByID(certID string) (*security.SSLCertificate, error) {
+	certs, err := e.client.ListCertificates()
 	if err != nil {
 		return nil, err
 	}
@@ -254,8 +254,8 @@ func (e *external) findCertificateByID(ctx context.Context, certID string) (*sec
 
 // findCertificateByPem finds a certificate in the truststore by its PEM
 // content.
-func (e *external) findCertificateByPem(ctx context.Context, pem string) (*security.SSLCertificate, error) {
-	certs, err := e.client.ListCertificates(ctx)
+func (e *external) findCertificateByPem(pem string) (*security.SSLCertificate, error) {
+	certs, err := e.client.ListCertificates()
 	if err != nil {
 		return nil, err
 	}

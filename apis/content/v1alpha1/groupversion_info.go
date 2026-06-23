@@ -1,8 +1,6 @@
 package v1alpha1
 
 import (
-	"reflect"
-
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
@@ -22,20 +20,4 @@ var (
 
 	// AddToScheme adds the types in this group-version to the given scheme.
 	AddToScheme = SchemeBuilder.AddToScheme
-)
-
-// CleanupPolicy type metadata.
-var (
-	CleanupPolicyKind             = reflect.TypeFor[CleanupPolicy]().Name()
-	CleanupPolicyGroupKind        = schema.GroupKind{Group: APIGroup, Kind: CleanupPolicyKind}.String()
-	CleanupPolicyKindAPIVersion   = CleanupPolicyKind + "." + SchemeGroupVersion.String()
-	CleanupPolicyGroupVersionKind = SchemeGroupVersion.WithKind(CleanupPolicyKind)
-)
-
-// ContentSelector type metadata.
-var (
-	ContentSelectorKind             = reflect.TypeFor[ContentSelector]().Name()
-	ContentSelectorGroupKind        = schema.GroupKind{Group: APIGroup, Kind: ContentSelectorKind}.String()
-	ContentSelectorKindAPIVersion   = ContentSelectorKind + "." + SchemeGroupVersion.String()
-	ContentSelectorGroupVersionKind = SchemeGroupVersion.WithKind(ContentSelectorKind)
 )

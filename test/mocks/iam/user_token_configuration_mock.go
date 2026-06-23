@@ -1,9 +1,6 @@
-//nolint:dupl // mock files have structurally similar but distinct types
 package iam
 
 import (
-	"context"
-
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
@@ -13,11 +10,11 @@ var _ iamclient.UserTokenConfigurationClient = &MockUserTokenConfigurationClient
 
 // MockUserTokenConfigurationClient is a mock UserTokenConfigurationClient.
 type MockUserTokenConfigurationClient struct {
-	GetUserTokenConfigurationFn    func(ctx context.Context) (*security.UserTokenConfiguration, error)
-	UpdateUserTokenConfigurationFn func(ctx context.Context, config security.UserTokenConfiguration) error
+	GetFn       func() (*security.UserTokenConfiguration, error)
+	ConfigureFn func(config security.UserTokenConfiguration) error
 
-	GetUserTokenConfigurationCalls    int
-	UpdateUserTokenConfigurationCalls []security.UserTokenConfiguration
+	GetCalls       int
+	ConfigureCalls []security.UserTokenConfiguration
 }
 
 // NewMockUserTokenConfigurationClient creates a new mock client.
@@ -25,23 +22,23 @@ func NewMockUserTokenConfigurationClient() *MockUserTokenConfigurationClient {
 	return &MockUserTokenConfigurationClient{}
 }
 
-// GetUserTokenConfiguration mock implementation.
-func (m *MockUserTokenConfigurationClient) GetUserTokenConfiguration(ctx context.Context) (*security.UserTokenConfiguration, error) {
-	m.GetUserTokenConfigurationCalls++
+// Get mock implementation.
+func (m *MockUserTokenConfigurationClient) Get() (*security.UserTokenConfiguration, error) {
+	m.GetCalls++
 
-	if m.GetUserTokenConfigurationFn != nil {
-		return m.GetUserTokenConfigurationFn(ctx)
+	if m.GetFn != nil {
+		return m.GetFn()
 	}
 
 	return nil, errMockNotConfigured
 }
 
-// UpdateUserTokenConfiguration mock implementation.
-func (m *MockUserTokenConfigurationClient) UpdateUserTokenConfiguration(ctx context.Context, config security.UserTokenConfiguration) error {
-	m.UpdateUserTokenConfigurationCalls = append(m.UpdateUserTokenConfigurationCalls, config)
+// Configure mock implementation.
+func (m *MockUserTokenConfigurationClient) Configure(config security.UserTokenConfiguration) error {
+	m.ConfigureCalls = append(m.ConfigureCalls, config)
 
-	if m.UpdateUserTokenConfigurationFn != nil {
-		return m.UpdateUserTokenConfigurationFn(ctx, config)
+	if m.ConfigureFn != nil {
+		return m.ConfigureFn(config)
 	}
 
 	return errMockNotConfigured

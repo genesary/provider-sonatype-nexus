@@ -3,7 +3,7 @@ package iam
 import (
 	"context"
 
-	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
+	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 )
 
 var _ iamclient.LicenseClient = &MockLicenseClient{}

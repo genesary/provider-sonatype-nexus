@@ -1,23 +1,25 @@
-//nolint:dupl // mock files have structurally similar but distinct types
 package iam
 
 import (
-	"context"
+	"errors"
 
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
 )
 
+// errMockNotConfigured is returned when no mock function has been configured.
+var errMockNotConfigured = errors.New("mock function not configured")
+
 var _ iamclient.AnonymousAccessClient = &MockAnonymousAccessClient{}
 
 // MockAnonymousAccessClient is a mock of iamclient.AnonymousAccessClient.
 type MockAnonymousAccessClient struct {
-	GetAnonymousAccessFn    func(ctx context.Context) (*security.AnonymousAccessSettings, error)
-	UpdateAnonymousAccessFn func(ctx context.Context, settings security.AnonymousAccessSettings) error
+	ReadFn   func() (*security.AnonymousAccessSettings, error)
+	UpdateFn func(settings security.AnonymousAccessSettings) error
 
-	GetAnonymousAccessCalls    int
-	UpdateAnonymousAccessCalls []security.AnonymousAccessSettings
+	ReadCalls   int
+	UpdateCalls []security.AnonymousAccessSettings
 }
 
 // NewMockAnonymousAccessClient creates a new MockAnonymousAccessClient.
@@ -25,23 +27,23 @@ func NewMockAnonymousAccessClient() *MockAnonymousAccessClient {
 	return &MockAnonymousAccessClient{}
 }
 
-// GetAnonymousAccess mock implementation.
-func (m *MockAnonymousAccessClient) GetAnonymousAccess(ctx context.Context) (*security.AnonymousAccessSettings, error) {
-	m.GetAnonymousAccessCalls++
+// Read mock implementation.
+func (m *MockAnonymousAccessClient) Read() (*security.AnonymousAccessSettings, error) {
+	m.ReadCalls++
 
-	if m.GetAnonymousAccessFn != nil {
-		return m.GetAnonymousAccessFn(ctx)
+	if m.ReadFn != nil {
+		return m.ReadFn()
 	}
 
 	return nil, errMockNotConfigured
 }
 
-// UpdateAnonymousAccess mock implementation.
-func (m *MockAnonymousAccessClient) UpdateAnonymousAccess(ctx context.Context, settings security.AnonymousAccessSettings) error {
-	m.UpdateAnonymousAccessCalls = append(m.UpdateAnonymousAccessCalls, settings)
+// Update mock implementation.
+func (m *MockAnonymousAccessClient) Update(settings security.AnonymousAccessSettings) error {
+	m.UpdateCalls = append(m.UpdateCalls, settings)
 
-	if m.UpdateAnonymousAccessFn != nil {
-		return m.UpdateAnonymousAccessFn(ctx, settings)
+	if m.UpdateFn != nil {
+		return m.UpdateFn(settings)
 	}
 
 	return errMockNotConfigured

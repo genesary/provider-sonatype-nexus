@@ -82,7 +82,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestAnonymousAccess(true, "anonymous", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.GetAnonymousAccessFn = func(_ context.Context) (*security.AnonymousAccessSettings, error) {
+				mc.ReadFn = func() (*security.AnonymousAccessSettings, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -94,7 +94,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestAnonymousAccess(true, "anonymous", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.GetAnonymousAccessFn = func(_ context.Context) (*security.AnonymousAccessSettings, error) {
+				mc.ReadFn = func() (*security.AnonymousAccessSettings, error) {
 					return &security.AnonymousAccessSettings{
 						Enabled:   true,
 						UserID:    "anonymous",
@@ -110,7 +110,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButEnabledDiffers",
 			cr:   newTestAnonymousAccess(false, "anonymous", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.GetAnonymousAccessFn = func(_ context.Context) (*security.AnonymousAccessSettings, error) {
+				mc.ReadFn = func() (*security.AnonymousAccessSettings, error) {
 					return &security.AnonymousAccessSettings{
 						Enabled:   true,
 						UserID:    "anonymous",
@@ -126,7 +126,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButUserIDDiffers",
 			cr:   newTestAnonymousAccess(true, "guest", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.GetAnonymousAccessFn = func(_ context.Context) (*security.AnonymousAccessSettings, error) {
+				mc.ReadFn = func() (*security.AnonymousAccessSettings, error) {
 					return &security.AnonymousAccessSettings{
 						Enabled:   true,
 						UserID:    "anonymous",
@@ -196,7 +196,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestAnonymousAccess(true, "anonymous", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.UpdateAnonymousAccessFn = func(_ context.Context, _ security.AnonymousAccessSettings) error {
+				mc.UpdateFn = func(_ security.AnonymousAccessSettings) error {
 					return nil
 				}
 			},
@@ -204,12 +204,12 @@ func TestCreate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockAnonymousAccessClient) {
 				t.Helper()
 
-				if len(mc.UpdateAnonymousAccessCalls) != 1 {
-					t.Errorf("expected 1 UpdateAnonymousAccess call, got %d", len(mc.UpdateAnonymousAccessCalls))
+				if len(mc.UpdateCalls) != 1 {
+					t.Errorf("expected 1 Update call, got %d", len(mc.UpdateCalls))
 				}
 
-				if !mc.UpdateAnonymousAccessCalls[0].Enabled {
-					t.Error("expected Enabled=true in UpdateAnonymousAccess call")
+				if !mc.UpdateCalls[0].Enabled {
+					t.Error("expected Enabled=true in Update call")
 				}
 			},
 		},
@@ -217,7 +217,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestAnonymousAccess(true, "anonymous", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.UpdateAnonymousAccessFn = func(_ context.Context, _ security.AnonymousAccessSettings) error {
+				mc.UpdateFn = func(_ security.AnonymousAccessSettings) error {
 					return errors.New("update failed")
 				}
 			},
@@ -275,7 +275,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestAnonymousAccess(false, "anonymous", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.UpdateAnonymousAccessFn = func(_ context.Context, _ security.AnonymousAccessSettings) error {
+				mc.UpdateFn = func(_ security.AnonymousAccessSettings) error {
 					return nil
 				}
 			},
@@ -283,8 +283,8 @@ func TestUpdate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockAnonymousAccessClient) {
 				t.Helper()
 
-				if len(mc.UpdateAnonymousAccessCalls) != 1 {
-					t.Errorf("expected 1 UpdateAnonymousAccess call, got %d", len(mc.UpdateAnonymousAccessCalls))
+				if len(mc.UpdateCalls) != 1 {
+					t.Errorf("expected 1 Update call, got %d", len(mc.UpdateCalls))
 				}
 			},
 		},
@@ -292,7 +292,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestAnonymousAccess(true, "anonymous", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.UpdateAnonymousAccessFn = func(_ context.Context, _ security.AnonymousAccessSettings) error {
+				mc.UpdateFn = func(_ security.AnonymousAccessSettings) error {
 					return errors.New("update failed")
 				}
 			},
@@ -349,8 +349,8 @@ func TestDelete(t *testing.T) {
 		t.Errorf("Delete() returned unexpected error: %v", err)
 	}
 
-	if len(mc.UpdateAnonymousAccessCalls) != 0 {
-		t.Error("Delete() should not call UpdateAnonymousAccess")
+	if len(mc.UpdateCalls) != 0 {
+		t.Error("Delete() should not call Update")
 	}
 }
 

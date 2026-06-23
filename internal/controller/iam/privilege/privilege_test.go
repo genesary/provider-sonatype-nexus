@@ -67,7 +67,7 @@ func TestObserve(t *testing.T) {
 			name: "NotFound_404",
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.GetPrivilegeFn = func(_ context.Context, _ string) (*security.Privilege, error) {
+				mc.GetFn = func(_ string) (*security.Privilege, error) {
 					return nil, errors.New("404 not found")
 				}
 			},
@@ -79,7 +79,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.GetPrivilegeFn = func(_ context.Context, _ string) (*security.Privilege, error) {
+				mc.GetFn = func(_ string) (*security.Privilege, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -91,7 +91,7 @@ func TestObserve(t *testing.T) {
 			name: "NilPrivilegeReturned",
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.GetPrivilegeFn = func(_ context.Context, _ string) (*security.Privilege, error) {
+				mc.GetFn = func(_ string) (*security.Privilege, error) {
 					//nolint:nilnil // intentionally testing nil privilege with nil error
 					return nil, nil
 				}
@@ -104,7 +104,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.GetPrivilegeFn = func(_ context.Context, _ string) (*security.Privilege, error) {
+				mc.GetFn = func(_ string) (*security.Privilege, error) {
 					return &security.Privilege{
 						Name: "my-priv",
 						Type: "application",
@@ -125,7 +125,7 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.GetPrivilegeFn = func(_ context.Context, _ string) (*security.Privilege, error) {
+				mc.GetFn = func(_ string) (*security.Privilege, error) {
 					return &security.Privilege{
 						Name:    "my-priv",
 						Type:    "application",
@@ -195,7 +195,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestPrivilege("new-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.CreatePrivilegeFn = func(_ context.Context, _ *iamv1alpha1.Privilege) error {
+				mc.CreateFn = func(_ *iamv1alpha1.Privilege) error {
 					return nil
 				}
 			},
@@ -203,12 +203,12 @@ func TestCreate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockPrivilegeClient) {
 				t.Helper()
 
-				if len(mc.CreatePrivilegeCalls) != 1 {
-					t.Errorf("expected 1 Create call, got %d", len(mc.CreatePrivilegeCalls))
+				if len(mc.CreateCalls) != 1 {
+					t.Errorf("expected 1 Create call, got %d", len(mc.CreateCalls))
 				}
 
-				if mc.CreatePrivilegeCalls[0].Spec.ForProvider.Name != "new-priv" {
-					t.Errorf("wrong name: %v", mc.CreatePrivilegeCalls[0].Spec.ForProvider.Name)
+				if mc.CreateCalls[0].Spec.ForProvider.Name != "new-priv" {
+					t.Errorf("wrong name: %v", mc.CreateCalls[0].Spec.ForProvider.Name)
 				}
 			},
 		},
@@ -216,7 +216,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestPrivilege("new-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.CreatePrivilegeFn = func(_ context.Context, _ *iamv1alpha1.Privilege) error {
+				mc.CreateFn = func(_ *iamv1alpha1.Privilege) error {
 					return errors.New("create failed")
 				}
 			},
@@ -274,7 +274,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.UpdatePrivilegeFn = func(_ context.Context, _ string, _ *iamv1alpha1.Privilege) error {
+				mc.UpdateFn = func(_ string, _ *iamv1alpha1.Privilege) error {
 					return nil
 				}
 			},
@@ -282,8 +282,8 @@ func TestUpdate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockPrivilegeClient) {
 				t.Helper()
 
-				if len(mc.UpdatePrivilegeCalls) != 1 {
-					t.Errorf("expected 1 Update call, got %d", len(mc.UpdatePrivilegeCalls))
+				if len(mc.UpdateCalls) != 1 {
+					t.Errorf("expected 1 Update call, got %d", len(mc.UpdateCalls))
 				}
 			},
 		},
@@ -291,7 +291,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.UpdatePrivilegeFn = func(_ context.Context, _ string, _ *iamv1alpha1.Privilege) error {
+				mc.UpdateFn = func(_ string, _ *iamv1alpha1.Privilege) error {
 					return errors.New("update failed")
 				}
 			},
@@ -349,7 +349,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteSuccess",
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.DeletePrivilegeFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return nil
 				}
 			},
@@ -357,12 +357,12 @@ func TestDelete(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockPrivilegeClient) {
 				t.Helper()
 
-				if len(mc.DeletePrivilegeCalls) != 1 {
-					t.Errorf("expected 1 Delete call, got %d", len(mc.DeletePrivilegeCalls))
+				if len(mc.DeleteCalls) != 1 {
+					t.Errorf("expected 1 Delete call, got %d", len(mc.DeleteCalls))
 				}
 
-				if mc.DeletePrivilegeCalls[0] != "my-priv" {
-					t.Errorf("wrong id passed to Delete: %v", mc.DeletePrivilegeCalls[0])
+				if mc.DeleteCalls[0] != "my-priv" {
+					t.Errorf("wrong id passed to Delete: %v", mc.DeleteCalls[0])
 				}
 			},
 		},
@@ -370,7 +370,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteNotFound",
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.DeletePrivilegeFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return errors.New("404 not found")
 				}
 			},
@@ -380,7 +380,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteError",
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.DeletePrivilegeFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return errors.New("server error")
 				}
 			},

@@ -67,7 +67,7 @@ func TestObserve(t *testing.T) {
 			name: "NotFound_404",
 			cr:   newTestRole("my-role", "My Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.GetRoleFn = func(_ context.Context, _ string) (*security.Role, error) {
+				mc.GetFn = func(_ string) (*security.Role, error) {
 					return nil, errors.New("404 not found")
 				}
 			},
@@ -79,7 +79,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestRole("my-role", "My Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.GetRoleFn = func(_ context.Context, _ string) (*security.Role, error) {
+				mc.GetFn = func(_ string) (*security.Role, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -91,7 +91,7 @@ func TestObserve(t *testing.T) {
 			name: "NilRoleReturned",
 			cr:   newTestRole("my-role", "My Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.GetRoleFn = func(_ context.Context, _ string) (*security.Role, error) {
+				mc.GetFn = func(_ string) (*security.Role, error) {
 					//nolint:nilnil // intentionally testing nil role with nil error
 					return nil, nil
 				}
@@ -104,7 +104,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestRole("my-role", "My Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.GetRoleFn = func(_ context.Context, _ string) (*security.Role, error) {
+				mc.GetFn = func(_ string) (*security.Role, error) {
 					return &security.Role{
 						ID:   "my-role",
 						Name: "My Role",
@@ -119,7 +119,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated",
 			cr:   newTestRole("my-role", "New Name"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.GetRoleFn = func(_ context.Context, _ string) (*security.Role, error) {
+				mc.GetFn = func(_ string) (*security.Role, error) {
 					return &security.Role{
 						ID:   "my-role",
 						Name: "Old Name",
@@ -141,7 +141,7 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.GetRoleFn = func(_ context.Context, id string) (*security.Role, error) {
+				mc.GetFn = func(id string) (*security.Role, error) {
 					if id != "external-role-id" {
 						return nil, errors.New("wrong id called")
 					}
@@ -214,7 +214,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestRole("new-role", "New Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.CreateRoleFn = func(_ context.Context, _ security.Role) error {
+				mc.CreateFn = func(_ security.Role) error {
 					return nil
 				}
 			},
@@ -222,12 +222,12 @@ func TestCreate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockRoleClient) {
 				t.Helper()
 
-				if len(mc.CreateRoleCalls) != 1 {
-					t.Errorf("expected 1 Create call, got %d", len(mc.CreateRoleCalls))
+				if len(mc.CreateCalls) != 1 {
+					t.Errorf("expected 1 Create call, got %d", len(mc.CreateCalls))
 				}
 
-				if mc.CreateRoleCalls[0].ID != "new-role" {
-					t.Errorf("wrong role ID: %v", mc.CreateRoleCalls[0].ID)
+				if mc.CreateCalls[0].ID != "new-role" {
+					t.Errorf("wrong role ID: %v", mc.CreateCalls[0].ID)
 				}
 			},
 		},
@@ -235,7 +235,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestRole("new-role", "New Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.CreateRoleFn = func(_ context.Context, _ security.Role) error {
+				mc.CreateFn = func(_ security.Role) error {
 					return errors.New("create failed")
 				}
 			},
@@ -293,7 +293,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestRole("existing-role", "Updated Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.UpdateRoleFn = func(_ context.Context, _ string, _ security.Role) error {
+				mc.UpdateFn = func(_ string, _ security.Role) error {
 					return nil
 				}
 			},
@@ -301,8 +301,8 @@ func TestUpdate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockRoleClient) {
 				t.Helper()
 
-				if len(mc.UpdateRoleCalls) != 1 {
-					t.Errorf("expected 1 Update call, got %d", len(mc.UpdateRoleCalls))
+				if len(mc.UpdateCalls) != 1 {
+					t.Errorf("expected 1 Update call, got %d", len(mc.UpdateCalls))
 				}
 			},
 		},
@@ -310,7 +310,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestRole("existing-role", "Updated Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.UpdateRoleFn = func(_ context.Context, _ string, _ security.Role) error {
+				mc.UpdateFn = func(_ string, _ security.Role) error {
 					return errors.New("update failed")
 				}
 			},
@@ -368,7 +368,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteSuccess",
 			cr:   newTestRole("old-role", "Old Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.DeleteRoleFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return nil
 				}
 			},
@@ -376,12 +376,12 @@ func TestDelete(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockRoleClient) {
 				t.Helper()
 
-				if len(mc.DeleteRoleCalls) != 1 {
-					t.Errorf("expected 1 Delete call, got %d", len(mc.DeleteRoleCalls))
+				if len(mc.DeleteCalls) != 1 {
+					t.Errorf("expected 1 Delete call, got %d", len(mc.DeleteCalls))
 				}
 
-				if mc.DeleteRoleCalls[0] != "old-role" {
-					t.Errorf("wrong id passed to Delete: %v", mc.DeleteRoleCalls[0])
+				if mc.DeleteCalls[0] != "old-role" {
+					t.Errorf("wrong id passed to Delete: %v", mc.DeleteCalls[0])
 				}
 			},
 		},
@@ -389,7 +389,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteNotFound",
 			cr:   newTestRole("old-role", "Old Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.DeleteRoleFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return errors.New("404 not found")
 				}
 			},
@@ -399,7 +399,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteError",
 			cr:   newTestRole("old-role", "Old Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.DeleteRoleFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return errors.New("server error")
 				}
 			},

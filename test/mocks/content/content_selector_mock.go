@@ -1,8 +1,6 @@
 package content
 
 import (
-	"context"
-
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 
 	contentclient "github.com/genesary/provider-sonatype-nexus/internal/clients/content"
@@ -12,15 +10,15 @@ var _ contentclient.ContentSelectorClient = &MockContentSelectorClient{}
 
 // MockContentSelectorClient is a mock of contentclient.ContentSelectorClient.
 type MockContentSelectorClient struct {
-	GetContentSelectorFn    func(ctx context.Context, name string) (*security.ContentSelector, error)
-	CreateContentSelectorFn func(ctx context.Context, cs security.ContentSelector) error
-	UpdateContentSelectorFn func(ctx context.Context, name string, cs security.ContentSelector) error
-	DeleteContentSelectorFn func(ctx context.Context, name string) error
+	GetFn    func(name string) (*security.ContentSelector, error)
+	CreateFn func(cs security.ContentSelector) error
+	UpdateFn func(name string, cs security.ContentSelector) error
+	DeleteFn func(name string) error
 
-	GetContentSelectorCalls    []string
-	CreateContentSelectorCalls []security.ContentSelector
-	UpdateContentSelectorCalls []security.ContentSelector
-	DeleteContentSelectorCalls []string
+	GetCalls    []string
+	CreateCalls []security.ContentSelector
+	UpdateCalls []string
+	DeleteCalls []string
 }
 
 // NewMockContentSelectorClient creates a new MockContentSelectorClient.
@@ -28,45 +26,45 @@ func NewMockContentSelectorClient() *MockContentSelectorClient {
 	return &MockContentSelectorClient{}
 }
 
-// GetContentSelector mock implementation.
-func (m *MockContentSelectorClient) GetContentSelector(ctx context.Context, name string) (*security.ContentSelector, error) {
-	m.GetContentSelectorCalls = append(m.GetContentSelectorCalls, name)
+// Get mock implementation.
+func (m *MockContentSelectorClient) Get(name string) (*security.ContentSelector, error) {
+	m.GetCalls = append(m.GetCalls, name)
 
-	if m.GetContentSelectorFn != nil {
-		return m.GetContentSelectorFn(ctx, name)
+	if m.GetFn != nil {
+		return m.GetFn(name)
 	}
 
 	return nil, errMockNotConfigured
 }
 
-// CreateContentSelector mock implementation.
-func (m *MockContentSelectorClient) CreateContentSelector(ctx context.Context, cs security.ContentSelector) error {
-	m.CreateContentSelectorCalls = append(m.CreateContentSelectorCalls, cs)
+// Create mock implementation.
+func (m *MockContentSelectorClient) Create(cs security.ContentSelector) error {
+	m.CreateCalls = append(m.CreateCalls, cs)
 
-	if m.CreateContentSelectorFn != nil {
-		return m.CreateContentSelectorFn(ctx, cs)
+	if m.CreateFn != nil {
+		return m.CreateFn(cs)
 	}
 
 	return errMockNotConfigured
 }
 
-// UpdateContentSelector mock implementation.
-func (m *MockContentSelectorClient) UpdateContentSelector(ctx context.Context, name string, cs security.ContentSelector) error {
-	m.UpdateContentSelectorCalls = append(m.UpdateContentSelectorCalls, cs)
+// Update mock implementation.
+func (m *MockContentSelectorClient) Update(name string, cs security.ContentSelector) error {
+	m.UpdateCalls = append(m.UpdateCalls, name)
 
-	if m.UpdateContentSelectorFn != nil {
-		return m.UpdateContentSelectorFn(ctx, name, cs)
+	if m.UpdateFn != nil {
+		return m.UpdateFn(name, cs)
 	}
 
 	return errMockNotConfigured
 }
 
-// DeleteContentSelector mock implementation.
-func (m *MockContentSelectorClient) DeleteContentSelector(ctx context.Context, name string) error {
-	m.DeleteContentSelectorCalls = append(m.DeleteContentSelectorCalls, name)
+// Delete mock implementation.
+func (m *MockContentSelectorClient) Delete(name string) error {
+	m.DeleteCalls = append(m.DeleteCalls, name)
 
-	if m.DeleteContentSelectorFn != nil {
-		return m.DeleteContentSelectorFn(ctx, name)
+	if m.DeleteFn != nil {
+		return m.DeleteFn(name)
 	}
 
 	return errMockNotConfigured

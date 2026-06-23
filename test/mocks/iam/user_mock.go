@@ -1,8 +1,6 @@
 package iam
 
 import (
-	"context"
-
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
@@ -12,16 +10,16 @@ var _ iamclient.UserClient = &MockUserClient{}
 
 // MockUserClient is a mock of iamclient.UserClient.
 type MockUserClient struct {
-	GetUserFn        func(ctx context.Context, id string) (*security.User, error)
-	CreateUserFn     func(ctx context.Context, user security.User) error
-	UpdateUserFn     func(ctx context.Context, id string, user security.User) error
-	DeleteUserFn     func(ctx context.Context, id string) error
-	ChangePasswordFn func(ctx context.Context, id, password string) error
+	GetFn            func(id string) (*security.User, error)
+	CreateFn         func(user security.User) error
+	UpdateFn         func(id string, user security.User) error
+	DeleteFn         func(id string) error
+	ChangePasswordFn func(id, password string) error
 
-	GetUserCalls        []string
-	CreateUserCalls     []security.User
-	UpdateUserCalls     []string
-	DeleteUserCalls     []string
+	GetCalls            []string
+	CreateCalls         []security.User
+	UpdateCalls         []string
+	DeleteCalls         []string
 	ChangePasswordCalls []string
 }
 
@@ -30,56 +28,56 @@ func NewMockUserClient() *MockUserClient {
 	return &MockUserClient{}
 }
 
-// GetUser mock implementation.
-func (m *MockUserClient) GetUser(ctx context.Context, id string) (*security.User, error) {
-	m.GetUserCalls = append(m.GetUserCalls, id)
+// Get mock implementation.
+func (m *MockUserClient) Get(id string) (*security.User, error) {
+	m.GetCalls = append(m.GetCalls, id)
 
-	if m.GetUserFn != nil {
-		return m.GetUserFn(ctx, id)
+	if m.GetFn != nil {
+		return m.GetFn(id)
 	}
 
 	return nil, errMockNotConfigured
 }
 
-// CreateUser mock implementation.
-func (m *MockUserClient) CreateUser(ctx context.Context, user security.User) error {
-	m.CreateUserCalls = append(m.CreateUserCalls, user)
+// Create mock implementation.
+func (m *MockUserClient) Create(user security.User) error {
+	m.CreateCalls = append(m.CreateCalls, user)
 
-	if m.CreateUserFn != nil {
-		return m.CreateUserFn(ctx, user)
+	if m.CreateFn != nil {
+		return m.CreateFn(user)
 	}
 
 	return errMockNotConfigured
 }
 
-// UpdateUser mock implementation.
-func (m *MockUserClient) UpdateUser(ctx context.Context, id string, user security.User) error {
-	m.UpdateUserCalls = append(m.UpdateUserCalls, id)
+// Update mock implementation.
+func (m *MockUserClient) Update(id string, user security.User) error {
+	m.UpdateCalls = append(m.UpdateCalls, id)
 
-	if m.UpdateUserFn != nil {
-		return m.UpdateUserFn(ctx, id, user)
+	if m.UpdateFn != nil {
+		return m.UpdateFn(id, user)
 	}
 
 	return errMockNotConfigured
 }
 
-// DeleteUser mock implementation.
-func (m *MockUserClient) DeleteUser(ctx context.Context, id string) error {
-	m.DeleteUserCalls = append(m.DeleteUserCalls, id)
+// Delete mock implementation.
+func (m *MockUserClient) Delete(id string) error {
+	m.DeleteCalls = append(m.DeleteCalls, id)
 
-	if m.DeleteUserFn != nil {
-		return m.DeleteUserFn(ctx, id)
+	if m.DeleteFn != nil {
+		return m.DeleteFn(id)
 	}
 
 	return errMockNotConfigured
 }
 
 // ChangePassword mock implementation.
-func (m *MockUserClient) ChangePassword(ctx context.Context, id, password string) error {
+func (m *MockUserClient) ChangePassword(id, password string) error {
 	m.ChangePasswordCalls = append(m.ChangePasswordCalls, id)
 
 	if m.ChangePasswordFn != nil {
-		return m.ChangePasswordFn(ctx, id, password)
+		return m.ChangePasswordFn(id, password)
 	}
 
 	return errMockNotConfigured

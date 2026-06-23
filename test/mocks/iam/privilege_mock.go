@@ -1,8 +1,6 @@
 package iam
 
 import (
-	"context"
-
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
@@ -13,15 +11,15 @@ var _ iamclient.PrivilegeClient = &MockPrivilegeClient{}
 
 // MockPrivilegeClient is a mock of iamclient.PrivilegeClient.
 type MockPrivilegeClient struct {
-	GetPrivilegeFn    func(ctx context.Context, name string) (*security.Privilege, error)
-	CreatePrivilegeFn func(ctx context.Context, privCR *iamv1alpha1.Privilege) error
-	UpdatePrivilegeFn func(ctx context.Context, name string, privCR *iamv1alpha1.Privilege) error
-	DeletePrivilegeFn func(ctx context.Context, name string) error
+	GetFn    func(name string) (*security.Privilege, error)
+	CreateFn func(privCR *iamv1alpha1.Privilege) error
+	UpdateFn func(name string, privCR *iamv1alpha1.Privilege) error
+	DeleteFn func(name string) error
 
-	GetPrivilegeCalls    []string
-	CreatePrivilegeCalls []*iamv1alpha1.Privilege
-	UpdatePrivilegeCalls []string
-	DeletePrivilegeCalls []string
+	GetCalls    []string
+	CreateCalls []*iamv1alpha1.Privilege
+	UpdateCalls []string
+	DeleteCalls []string
 }
 
 // NewMockPrivilegeClient creates a new MockPrivilegeClient.
@@ -29,45 +27,45 @@ func NewMockPrivilegeClient() *MockPrivilegeClient {
 	return &MockPrivilegeClient{}
 }
 
-// GetPrivilege mock implementation.
-func (m *MockPrivilegeClient) GetPrivilege(ctx context.Context, name string) (*security.Privilege, error) {
-	m.GetPrivilegeCalls = append(m.GetPrivilegeCalls, name)
+// Get mock implementation.
+func (m *MockPrivilegeClient) Get(name string) (*security.Privilege, error) {
+	m.GetCalls = append(m.GetCalls, name)
 
-	if m.GetPrivilegeFn != nil {
-		return m.GetPrivilegeFn(ctx, name)
+	if m.GetFn != nil {
+		return m.GetFn(name)
 	}
 
 	return nil, errMockNotConfigured
 }
 
-// CreatePrivilege mock implementation.
-func (m *MockPrivilegeClient) CreatePrivilege(ctx context.Context, privCR *iamv1alpha1.Privilege) error {
-	m.CreatePrivilegeCalls = append(m.CreatePrivilegeCalls, privCR)
+// Create mock implementation.
+func (m *MockPrivilegeClient) Create(privCR *iamv1alpha1.Privilege) error {
+	m.CreateCalls = append(m.CreateCalls, privCR)
 
-	if m.CreatePrivilegeFn != nil {
-		return m.CreatePrivilegeFn(ctx, privCR)
+	if m.CreateFn != nil {
+		return m.CreateFn(privCR)
 	}
 
 	return errMockNotConfigured
 }
 
-// UpdatePrivilege mock implementation.
-func (m *MockPrivilegeClient) UpdatePrivilege(ctx context.Context, name string, privCR *iamv1alpha1.Privilege) error {
-	m.UpdatePrivilegeCalls = append(m.UpdatePrivilegeCalls, name)
+// Update mock implementation.
+func (m *MockPrivilegeClient) Update(name string, privCR *iamv1alpha1.Privilege) error {
+	m.UpdateCalls = append(m.UpdateCalls, name)
 
-	if m.UpdatePrivilegeFn != nil {
-		return m.UpdatePrivilegeFn(ctx, name, privCR)
+	if m.UpdateFn != nil {
+		return m.UpdateFn(name, privCR)
 	}
 
 	return errMockNotConfigured
 }
 
-// DeletePrivilege mock implementation.
-func (m *MockPrivilegeClient) DeletePrivilege(ctx context.Context, name string) error {
-	m.DeletePrivilegeCalls = append(m.DeletePrivilegeCalls, name)
+// Delete mock implementation.
+func (m *MockPrivilegeClient) Delete(name string) error {
+	m.DeleteCalls = append(m.DeleteCalls, name)
 
-	if m.DeletePrivilegeFn != nil {
-		return m.DeletePrivilegeFn(ctx, name)
+	if m.DeleteFn != nil {
+		return m.DeleteFn(name)
 	}
 
 	return errMockNotConfigured

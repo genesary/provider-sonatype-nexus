@@ -107,7 +107,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{}, errors.New(errNotSAML)
 	}
 
-	observed, err := e.client.GetSAML(ctx)
+	observed, err := e.client.Read()
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
@@ -136,7 +136,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotSAML)
 	}
 
-	err := e.client.ApplySAML(ctx, iamclient.GenerateSAML(samlCR))
+	err := e.client.Apply(iamclient.GenerateSAML(samlCR))
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errApplySAML)
 	}
@@ -151,7 +151,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalUpdate{}, errors.New(errNotSAML)
 	}
 
-	err := e.client.ApplySAML(ctx, iamclient.GenerateSAML(samlCR))
+	err := e.client.Apply(iamclient.GenerateSAML(samlCR))
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errApplySAML)
 	}
@@ -166,7 +166,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalDelete{}, errors.New(errNotSAML)
 	}
 
-	err := e.client.DeleteSAML(ctx)
+	err := e.client.Delete()
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil

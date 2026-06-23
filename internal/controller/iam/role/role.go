@@ -115,7 +115,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		roleID = roleRes.Spec.ForProvider.ID
 	}
 
-	observed, err := e.client.GetRole(ctx, roleID)
+	observed, err := e.client.Get(roleID)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
@@ -147,7 +147,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 	roleData := iamclient.GenerateRole(roleRes)
 
-	err := e.client.CreateRole(ctx, roleData)
+	err := e.client.Create(roleData)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateRole)
 	}
@@ -171,7 +171,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 	roleData := iamclient.GenerateRole(roleRes)
 
-	err := e.client.UpdateRole(ctx, roleID, roleData)
+	err := e.client.Update(roleID, roleData)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateRole)
 	}
@@ -191,7 +191,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		roleID = roleRes.Spec.ForProvider.ID
 	}
 
-	err := e.client.DeleteRole(ctx, roleID)
+	err := e.client.Delete(roleID)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil

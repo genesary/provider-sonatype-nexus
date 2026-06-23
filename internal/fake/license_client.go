@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
+	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 )
 
 // errNotImplemented is returned when a mock function has not been configured.

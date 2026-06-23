@@ -2,8 +2,6 @@
 package iam
 
 import (
-	"context"
-
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
@@ -13,15 +11,15 @@ var _ iamclient.RoleClient = &MockRoleClient{}
 
 // MockRoleClient is a mock of iamclient.RoleClient.
 type MockRoleClient struct {
-	GetRoleFn    func(ctx context.Context, id string) (*security.Role, error)
-	CreateRoleFn func(ctx context.Context, role security.Role) error
-	UpdateRoleFn func(ctx context.Context, id string, role security.Role) error
-	DeleteRoleFn func(ctx context.Context, id string) error
+	GetFn    func(id string) (*security.Role, error)
+	CreateFn func(role security.Role) error
+	UpdateFn func(id string, role security.Role) error
+	DeleteFn func(id string) error
 
-	GetRoleCalls    []string
-	CreateRoleCalls []security.Role
-	UpdateRoleCalls []string
-	DeleteRoleCalls []string
+	GetCalls    []string
+	CreateCalls []security.Role
+	UpdateCalls []string
+	DeleteCalls []string
 }
 
 // NewMockRoleClient creates a new MockRoleClient.
@@ -29,45 +27,45 @@ func NewMockRoleClient() *MockRoleClient {
 	return &MockRoleClient{}
 }
 
-// GetRole mock implementation.
-func (m *MockRoleClient) GetRole(ctx context.Context, id string) (*security.Role, error) {
-	m.GetRoleCalls = append(m.GetRoleCalls, id)
+// Get mock implementation.
+func (m *MockRoleClient) Get(id string) (*security.Role, error) {
+	m.GetCalls = append(m.GetCalls, id)
 
-	if m.GetRoleFn != nil {
-		return m.GetRoleFn(ctx, id)
+	if m.GetFn != nil {
+		return m.GetFn(id)
 	}
 
 	return nil, errMockNotConfigured
 }
 
-// CreateRole mock implementation.
-func (m *MockRoleClient) CreateRole(ctx context.Context, role security.Role) error {
-	m.CreateRoleCalls = append(m.CreateRoleCalls, role)
+// Create mock implementation.
+func (m *MockRoleClient) Create(role security.Role) error {
+	m.CreateCalls = append(m.CreateCalls, role)
 
-	if m.CreateRoleFn != nil {
-		return m.CreateRoleFn(ctx, role)
+	if m.CreateFn != nil {
+		return m.CreateFn(role)
 	}
 
 	return errMockNotConfigured
 }
 
-// UpdateRole mock implementation.
-func (m *MockRoleClient) UpdateRole(ctx context.Context, id string, role security.Role) error {
-	m.UpdateRoleCalls = append(m.UpdateRoleCalls, id)
+// Update mock implementation.
+func (m *MockRoleClient) Update(id string, role security.Role) error {
+	m.UpdateCalls = append(m.UpdateCalls, id)
 
-	if m.UpdateRoleFn != nil {
-		return m.UpdateRoleFn(ctx, id, role)
+	if m.UpdateFn != nil {
+		return m.UpdateFn(id, role)
 	}
 
 	return errMockNotConfigured
 }
 
-// DeleteRole mock implementation.
-func (m *MockRoleClient) DeleteRole(ctx context.Context, id string) error {
-	m.DeleteRoleCalls = append(m.DeleteRoleCalls, id)
+// Delete mock implementation.
+func (m *MockRoleClient) Delete(id string) error {
+	m.DeleteCalls = append(m.DeleteCalls, id)
 
-	if m.DeleteRoleFn != nil {
-		return m.DeleteRoleFn(ctx, id)
+	if m.DeleteFn != nil {
+		return m.DeleteFn(id)
 	}
 
 	return errMockNotConfigured

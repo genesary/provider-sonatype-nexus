@@ -2,28 +2,22 @@
 package iam
 
 import (
-	"context"
-	"errors"
-
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 
-	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
+	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 )
-
-// errMockNotConfigured is returned when a mock function has not been set.
-var errMockNotConfigured = errors.New("mock function not configured")
 
 var _ iamclient.SecurityRealmClient = &MockSecurityRealmClient{}
 
 // MockSecurityRealmClient is a mock of iamclient.SecurityRealmClient.
 type MockSecurityRealmClient struct {
-	ListActiveRealmsFn    func(ctx context.Context) ([]string, error)
-	ListAvailableRealmsFn func(ctx context.Context) ([]security.Realm, error)
-	ActivateRealmsFn      func(ctx context.Context, ids []string) error
+	ListActiveFn    func() ([]string, error)
+	ListAvailableFn func() ([]security.Realm, error)
+	ActivateFn      func(ids []string) error
 
-	ListActiveRealmsCalls    int
-	ListAvailableRealmsCalls int
-	ActivateRealmsCalls      [][]string
+	ListActiveCalls    int
+	ListAvailableCalls int
+	ActivateCalls      [][]string
 }
 
 // NewMockSecurityRealmClient creates a new MockSecurityRealmClient.
@@ -31,34 +25,34 @@ func NewMockSecurityRealmClient() *MockSecurityRealmClient {
 	return &MockSecurityRealmClient{}
 }
 
-// ListActiveRealms mock implementation.
-func (m *MockSecurityRealmClient) ListActiveRealms(ctx context.Context) ([]string, error) {
-	m.ListActiveRealmsCalls++
+// ListActive mock implementation.
+func (m *MockSecurityRealmClient) ListActive() ([]string, error) {
+	m.ListActiveCalls++
 
-	if m.ListActiveRealmsFn != nil {
-		return m.ListActiveRealmsFn(ctx)
+	if m.ListActiveFn != nil {
+		return m.ListActiveFn()
 	}
 
 	return nil, errMockNotConfigured
 }
 
-// ListAvailableRealms mock implementation.
-func (m *MockSecurityRealmClient) ListAvailableRealms(ctx context.Context) ([]security.Realm, error) {
-	m.ListAvailableRealmsCalls++
+// ListAvailable mock implementation.
+func (m *MockSecurityRealmClient) ListAvailable() ([]security.Realm, error) {
+	m.ListAvailableCalls++
 
-	if m.ListAvailableRealmsFn != nil {
-		return m.ListAvailableRealmsFn(ctx)
+	if m.ListAvailableFn != nil {
+		return m.ListAvailableFn()
 	}
 
 	return nil, errMockNotConfigured
 }
 
-// ActivateRealms mock implementation.
-func (m *MockSecurityRealmClient) ActivateRealms(ctx context.Context, ids []string) error {
-	m.ActivateRealmsCalls = append(m.ActivateRealmsCalls, ids)
+// Activate mock implementation.
+func (m *MockSecurityRealmClient) Activate(ids []string) error {
+	m.ActivateCalls = append(m.ActivateCalls, ids)
 
-	if m.ActivateRealmsFn != nil {
-		return m.ActivateRealmsFn(ctx, ids)
+	if m.ActivateFn != nil {
+		return m.ActivateFn(ids)
 	}
 
 	return errMockNotConfigured

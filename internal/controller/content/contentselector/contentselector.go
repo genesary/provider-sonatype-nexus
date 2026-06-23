@@ -115,7 +115,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		name = contentSelector.Spec.ForProvider.Name
 	}
 
-	observed, err := e.client.GetContentSelector(ctx, name)
+	observed, err := e.client.Get(name)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
@@ -144,7 +144,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotContentSelector)
 	}
 
-	err := e.client.CreateContentSelector(ctx, contentclient.GenerateContentSelector(contentSelector))
+	err := e.client.Create(contentclient.GenerateContentSelector(contentSelector))
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateContentSelector)
 	}
@@ -166,7 +166,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		name = contentSelector.Spec.ForProvider.Name
 	}
 
-	err := e.client.UpdateContentSelector(ctx, name, contentclient.GenerateContentSelector(contentSelector))
+	err := e.client.Update(name, contentclient.GenerateContentSelector(contentSelector))
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateContentSelector)
 	}
@@ -186,7 +186,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		name = contentSelector.Spec.ForProvider.Name
 	}
 
-	err := e.client.DeleteContentSelector(ctx, name)
+	err := e.client.Delete(name)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil

@@ -1,8 +1,11 @@
 package v1alpha1
 
 import (
+	"reflect"
+
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // CapabilityParameters are the configurable fields of a Capability.
@@ -71,6 +74,14 @@ type CapabilityList struct {
 
 	Items []Capability `json:"items"`
 }
+
+// Capability type metadata.
+var (
+	CapabilityKind             = reflect.TypeFor[Capability]().Name()
+	CapabilityGroupKind        = schema.GroupKind{Group: APIGroup, Kind: CapabilityKind}.String()
+	CapabilityKindAPIVersion   = CapabilityKind + "." + SchemeGroupVersion.String()
+	CapabilityGroupVersionKind = SchemeGroupVersion.WithKind(CapabilityKind)
+)
 
 // init registers Capability types with the SchemeBuilder.
 func init() {

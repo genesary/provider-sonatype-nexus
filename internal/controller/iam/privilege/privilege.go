@@ -115,7 +115,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		privName = privRes.Spec.ForProvider.Name
 	}
 
-	observed, err := e.client.GetPrivilege(ctx, privName)
+	observed, err := e.client.Get(privName)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
@@ -145,7 +145,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotPrivilege)
 	}
 
-	err := e.client.CreatePrivilege(ctx, privRes)
+	err := e.client.Create(privRes)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreatePrivilege)
 	}
@@ -167,7 +167,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		privName = privRes.Spec.ForProvider.Name
 	}
 
-	err := e.client.UpdatePrivilege(ctx, privName, privRes)
+	err := e.client.Update(privName, privRes)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdatePrivilege)
 	}
@@ -187,7 +187,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		privName = privRes.Spec.ForProvider.Name
 	}
 
-	err := e.client.DeletePrivilege(ctx, privName)
+	err := e.client.Delete(privName)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil

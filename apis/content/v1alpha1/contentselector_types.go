@@ -1,8 +1,11 @@
 package v1alpha1
 
 import (
+	"reflect"
+
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // ContentSelectorParameters defines the desired state of a ContentSelector.
@@ -70,6 +73,14 @@ type ContentSelectorList struct {
 
 	Items []ContentSelector `json:"items"`
 }
+
+// ContentSelector type metadata.
+var (
+	ContentSelectorKind             = reflect.TypeFor[ContentSelector]().Name()
+	ContentSelectorGroupKind        = schema.GroupKind{Group: APIGroup, Kind: ContentSelectorKind}.String()
+	ContentSelectorKindAPIVersion   = ContentSelectorKind + "." + SchemeGroupVersion.String()
+	ContentSelectorGroupVersionKind = SchemeGroupVersion.WithKind(ContentSelectorKind)
+)
 
 // init registers the ContentSelector types with the scheme.
 func init() {

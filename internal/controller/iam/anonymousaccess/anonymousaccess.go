@@ -110,7 +110,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	settings, err := e.client.GetAnonymousAccess(ctx)
+	settings, err := e.client.Read()
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetAnonymous)
 	}
@@ -133,7 +133,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 	settings := iamclient.GenerateAnonymousAccessSettings(anonAccess)
 
-	err := e.client.UpdateAnonymousAccess(ctx, settings)
+	err := e.client.Update(settings)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errUpdateAnonymous)
 	}
@@ -150,7 +150,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 	settings := iamclient.GenerateAnonymousAccessSettings(anonAccess)
 
-	err := e.client.UpdateAnonymousAccess(ctx, settings)
+	err := e.client.Update(settings)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateAnonymous)
 	}

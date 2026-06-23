@@ -2,8 +2,6 @@
 package iam
 
 import (
-	"context"
-
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
@@ -13,15 +11,15 @@ var _ iamclient.LDAPClient = &MockLDAPClient{}
 
 // MockLDAPClient is a mock of iamclient.LDAPClient.
 type MockLDAPClient struct {
-	GetLDAPFn    func(ctx context.Context, name string) (*security.LDAP, error)
-	CreateLDAPFn func(ctx context.Context, ldap security.LDAP) error
-	UpdateLDAPFn func(ctx context.Context, name string, ldap security.LDAP) error
-	DeleteLDAPFn func(ctx context.Context, name string) error
+	GetFn    func(name string) (*security.LDAP, error)
+	CreateFn func(ldap security.LDAP) error
+	UpdateFn func(name string, ldap security.LDAP) error
+	DeleteFn func(name string) error
 
-	GetLDAPCalls    []string
-	CreateLDAPCalls []security.LDAP
-	UpdateLDAPCalls []string
-	DeleteLDAPCalls []string
+	GetCalls    []string
+	CreateCalls []security.LDAP
+	UpdateCalls []string
+	DeleteCalls []string
 }
 
 // NewMockLDAPClient creates a new MockLDAPClient.
@@ -29,45 +27,45 @@ func NewMockLDAPClient() *MockLDAPClient {
 	return &MockLDAPClient{}
 }
 
-// GetLDAP mock implementation.
-func (m *MockLDAPClient) GetLDAP(ctx context.Context, name string) (*security.LDAP, error) {
-	m.GetLDAPCalls = append(m.GetLDAPCalls, name)
+// Get mock implementation.
+func (m *MockLDAPClient) Get(name string) (*security.LDAP, error) {
+	m.GetCalls = append(m.GetCalls, name)
 
-	if m.GetLDAPFn != nil {
-		return m.GetLDAPFn(ctx, name)
+	if m.GetFn != nil {
+		return m.GetFn(name)
 	}
 
 	return nil, errMockNotConfigured
 }
 
-// CreateLDAP mock implementation.
-func (m *MockLDAPClient) CreateLDAP(ctx context.Context, ldap security.LDAP) error {
-	m.CreateLDAPCalls = append(m.CreateLDAPCalls, ldap)
+// Create mock implementation.
+func (m *MockLDAPClient) Create(ldap security.LDAP) error {
+	m.CreateCalls = append(m.CreateCalls, ldap)
 
-	if m.CreateLDAPFn != nil {
-		return m.CreateLDAPFn(ctx, ldap)
+	if m.CreateFn != nil {
+		return m.CreateFn(ldap)
 	}
 
 	return errMockNotConfigured
 }
 
-// UpdateLDAP mock implementation.
-func (m *MockLDAPClient) UpdateLDAP(ctx context.Context, name string, ldap security.LDAP) error {
-	m.UpdateLDAPCalls = append(m.UpdateLDAPCalls, name)
+// Update mock implementation.
+func (m *MockLDAPClient) Update(name string, ldap security.LDAP) error {
+	m.UpdateCalls = append(m.UpdateCalls, name)
 
-	if m.UpdateLDAPFn != nil {
-		return m.UpdateLDAPFn(ctx, name, ldap)
+	if m.UpdateFn != nil {
+		return m.UpdateFn(name, ldap)
 	}
 
 	return errMockNotConfigured
 }
 
-// DeleteLDAP mock implementation.
-func (m *MockLDAPClient) DeleteLDAP(ctx context.Context, name string) error {
-	m.DeleteLDAPCalls = append(m.DeleteLDAPCalls, name)
+// Delete mock implementation.
+func (m *MockLDAPClient) Delete(name string) error {
+	m.DeleteCalls = append(m.DeleteCalls, name)
 
-	if m.DeleteLDAPFn != nil {
-		return m.DeleteLDAPFn(ctx, name)
+	if m.DeleteFn != nil {
+		return m.DeleteFn(name)
 	}
 
 	return errMockNotConfigured

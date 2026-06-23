@@ -15,7 +15,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
-	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
+	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	iammocks "github.com/genesary/provider-sonatype-nexus/test/mocks/iam"
 )
@@ -80,7 +80,7 @@ func TestObserve(t *testing.T) {
 			name: "ListActiveRealmsError",
 			cr:   newTestSecurityRealm("singleton", []string{"NexusAuthenticatingRealm"}),
 			mockSetup: func(mc *iammocks.MockSecurityRealmClient) {
-				mc.ListActiveRealmsFn = func(_ context.Context) ([]string, error) {
+				mc.ListActiveFn = func() ([]string, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -92,10 +92,10 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestSecurityRealm("singleton", []string{"NexusAuthenticatingRealm"}),
 			mockSetup: func(mc *iammocks.MockSecurityRealmClient) {
-				mc.ListActiveRealmsFn = func(_ context.Context) ([]string, error) {
+				mc.ListActiveFn = func() ([]string, error) {
 					return []string{"NexusAuthenticatingRealm"}, nil
 				}
-				mc.ListAvailableRealmsFn = func(_ context.Context) ([]security.Realm, error) {
+				mc.ListAvailableFn = func() ([]security.Realm, error) {
 					return []security.Realm{{ID: "NexusAuthenticatingRealm", Name: "Local Authenticating Realm"}}, nil
 				}
 			},
@@ -107,10 +107,10 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated",
 			cr:   newTestSecurityRealm("singleton", []string{"NexusAuthenticatingRealm", "LdapRealm"}),
 			mockSetup: func(mc *iammocks.MockSecurityRealmClient) {
-				mc.ListActiveRealmsFn = func(_ context.Context) ([]string, error) {
+				mc.ListActiveFn = func() ([]string, error) {
 					return []string{"NexusAuthenticatingRealm"}, nil
 				}
-				mc.ListAvailableRealmsFn = func(_ context.Context) ([]security.Realm, error) {
+				mc.ListAvailableFn = func() ([]security.Realm, error) {
 					return nil, nil
 				}
 			},
@@ -122,10 +122,10 @@ func TestObserve(t *testing.T) {
 			name: "ListAvailableRealmsError_StillObserves",
 			cr:   newTestSecurityRealm("singleton", []string{"NexusAuthenticatingRealm"}),
 			mockSetup: func(mc *iammocks.MockSecurityRealmClient) {
-				mc.ListActiveRealmsFn = func(_ context.Context) ([]string, error) {
+				mc.ListActiveFn = func() ([]string, error) {
 					return []string{"NexusAuthenticatingRealm"}, nil
 				}
-				mc.ListAvailableRealmsFn = func(_ context.Context) ([]security.Realm, error) {
+				mc.ListAvailableFn = func() ([]security.Realm, error) {
 					return nil, errors.New("unavailable")
 				}
 			},
@@ -183,10 +183,10 @@ func TestObserve_PopulatesAtProvider(t *testing.T) {
 	cr := newTestSecurityRealm("singleton", []string{"NexusAuthenticatingRealm"})
 
 	mc := iammocks.NewMockSecurityRealmClient()
-	mc.ListActiveRealmsFn = func(_ context.Context) ([]string, error) {
+	mc.ListActiveFn = func() ([]string, error) {
 		return []string{"NexusAuthenticatingRealm"}, nil
 	}
-	mc.ListAvailableRealmsFn = func(_ context.Context) ([]security.Realm, error) {
+	mc.ListAvailableFn = func() ([]security.Realm, error) {
 		return []security.Realm{
 			{ID: "NexusAuthenticatingRealm", Name: "Local Authenticating Realm"},
 			{ID: "LdapRealm", Name: "LDAP Realm"},
@@ -220,7 +220,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestSecurityRealm("singleton", []string{"NexusAuthenticatingRealm"}),
 			mockSetup: func(mc *iammocks.MockSecurityRealmClient) {
-				mc.ActivateRealmsFn = func(_ context.Context, _ []string) error {
+				mc.ActivateFn = func(_ []string) error {
 					return nil
 				}
 			},
@@ -228,12 +228,12 @@ func TestCreate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockSecurityRealmClient) {
 				t.Helper()
 
-				if len(mc.ActivateRealmsCalls) != 1 {
-					t.Errorf("expected 1 ActivateRealms call, got %d", len(mc.ActivateRealmsCalls))
+				if len(mc.ActivateCalls) != 1 {
+					t.Errorf("expected 1 ActivateRealms call, got %d", len(mc.ActivateCalls))
 				}
 
-				if len(mc.ActivateRealmsCalls[0]) != 1 || mc.ActivateRealmsCalls[0][0] != "NexusAuthenticatingRealm" {
-					t.Errorf("unexpected realms passed: %v", mc.ActivateRealmsCalls[0])
+				if len(mc.ActivateCalls[0]) != 1 || mc.ActivateCalls[0][0] != "NexusAuthenticatingRealm" {
+					t.Errorf("unexpected realms passed: %v", mc.ActivateCalls[0])
 				}
 			},
 		},
@@ -241,7 +241,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestSecurityRealm("singleton", []string{"NexusAuthenticatingRealm"}),
 			mockSetup: func(mc *iammocks.MockSecurityRealmClient) {
-				mc.ActivateRealmsFn = func(_ context.Context, _ []string) error {
+				mc.ActivateFn = func(_ []string) error {
 					return errors.New("activate failed")
 				}
 			},
@@ -302,7 +302,7 @@ func TestUpdate(t *testing.T) {
 				"LdapRealm",
 			}),
 			mockSetup: func(mc *iammocks.MockSecurityRealmClient) {
-				mc.ActivateRealmsFn = func(_ context.Context, _ []string) error {
+				mc.ActivateFn = func(_ []string) error {
 					return nil
 				}
 			},
@@ -310,12 +310,12 @@ func TestUpdate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockSecurityRealmClient) {
 				t.Helper()
 
-				if len(mc.ActivateRealmsCalls) != 1 {
-					t.Errorf("expected 1 ActivateRealms call, got %d", len(mc.ActivateRealmsCalls))
+				if len(mc.ActivateCalls) != 1 {
+					t.Errorf("expected 1 ActivateRealms call, got %d", len(mc.ActivateCalls))
 				}
 
-				if len(mc.ActivateRealmsCalls[0]) != 2 {
-					t.Errorf("expected 2 realms, got %d", len(mc.ActivateRealmsCalls[0]))
+				if len(mc.ActivateCalls[0]) != 2 {
+					t.Errorf("expected 2 realms, got %d", len(mc.ActivateCalls[0]))
 				}
 			},
 		},
@@ -323,7 +323,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestSecurityRealm("singleton", []string{"NexusAuthenticatingRealm"}),
 			mockSetup: func(mc *iammocks.MockSecurityRealmClient) {
-				mc.ActivateRealmsFn = func(_ context.Context, _ []string) error {
+				mc.ActivateFn = func(_ []string) error {
 					return errors.New("update failed")
 				}
 			},
@@ -380,7 +380,7 @@ func TestDelete(t *testing.T) {
 		t.Errorf("Delete() returned unexpected error: %v", err)
 	}
 
-	if len(mc.ActivateRealmsCalls) != 0 {
+	if len(mc.ActivateCalls) != 0 {
 		t.Error("Delete() should not call ActivateRealms")
 	}
 }

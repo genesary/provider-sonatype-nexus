@@ -25,7 +25,7 @@ import (
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/repository/v1alpha1"
+	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/test/e2e"
 )
 
@@ -36,20 +36,20 @@ func TestBlobStoreCRUD(t *testing.T) {
 
 	const bsName = "e2e-test-file"
 
-	bs := &repositoryv1alpha1.BlobStore{
+	bs := &instancev1alpha1.BlobStore{
 		ObjectMeta: metav1.ObjectMeta{Name: "e2e-test-file-blobstore", Namespace: "default"},
-		Spec: repositoryv1alpha1.BlobStoreSpec{
+		Spec: instancev1alpha1.BlobStoreSpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: &xpv2.ProviderConfigReference{
 					Kind: "ProviderConfig",
 					Name: f.ProviderConfigName,
 				},
 			},
-			ForProvider: repositoryv1alpha1.BlobStoreParameters{
+			ForProvider: instancev1alpha1.BlobStoreParameters{
 				Name: bsName,
 				Type: "File",
 				Path: ptrTo("/nexus-data/blobs/e2e-test-file"),
-				SoftQuota: &repositoryv1alpha1.SoftQuota{
+				SoftQuota: &instancev1alpha1.SoftQuota{
 					Type:  ptrTo("spaceRemainingQuota"),
 					Limit: ptrTo(int64(104857600)),
 				},

@@ -115,7 +115,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		name = cleanupPolicy.Spec.ForProvider.Name
 	}
 
-	observed, err := e.client.GetCleanupPolicy(ctx, name)
+	observed, err := e.client.Get(name)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
@@ -144,7 +144,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotCleanupPolicy)
 	}
 
-	err := e.client.CreateCleanupPolicy(ctx, contentclient.GenerateCleanupPolicy(cleanupPolicy))
+	err := e.client.Create(contentclient.GenerateCleanupPolicy(cleanupPolicy))
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateCleanupPolicy)
 	}
@@ -161,7 +161,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalUpdate{}, errors.New(errNotCleanupPolicy)
 	}
 
-	err := e.client.UpdateCleanupPolicy(ctx, contentclient.GenerateCleanupPolicy(cleanupPolicy))
+	err := e.client.Update(contentclient.GenerateCleanupPolicy(cleanupPolicy))
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateCleanupPolicy)
 	}
@@ -181,7 +181,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		name = cleanupPolicy.Spec.ForProvider.Name
 	}
 
-	err := e.client.DeleteCleanupPolicy(ctx, name)
+	err := e.client.Delete(name)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
