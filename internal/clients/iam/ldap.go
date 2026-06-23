@@ -1,10 +1,7 @@
 package iam
 
 import (
-	"context"
-
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
-	"github.com/pkg/errors"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
@@ -13,20 +10,20 @@ import (
 
 // LDAPClient manages Nexus LDAP server configurations.
 type LDAPClient interface {
-	GetLDAP(ctx context.Context, name string) (*security.LDAP, error)
-	CreateLDAP(ctx context.Context, ldap security.LDAP) error
-	UpdateLDAP(ctx context.Context, name string, ldap security.LDAP) error
-	DeleteLDAP(ctx context.Context, name string) error
+	Get(name string) (*security.LDAP, error)
+	Create(ldap security.LDAP) error
+	Update(name string, ldap security.LDAP) error
+	Delete(name string) error
 }
 
 // NewLDAPClient returns a new LDAPClient.
 func NewLDAPClient(creds nexus.Credentials) (LDAPClient, error) {
-	nexusClient, err := nexus.NewClient(creds)
+	nc, err := nexus.NewClient(creds)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot create nexus client")
+		return nil, err
 	}
 
-	return nexusClient.Security(), nil
+	return nc.Security.LDAP, nil
 }
 
 // GenerateLDAP converts an LDAP CR to the Nexus API type.

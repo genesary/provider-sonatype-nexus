@@ -1,8 +1,6 @@
 package v1alpha1
 
 import (
-	"reflect"
-
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
@@ -22,84 +20,4 @@ var (
 
 	// AddToScheme adds the types in this group-version to the given scheme.
 	AddToScheme = SchemeBuilder.AddToScheme
-)
-
-// AnonymousAccess type metadata.
-var (
-	AnonymousAccessKind             = reflect.TypeFor[AnonymousAccess]().Name()
-	AnonymousAccessGroupKind        = schema.GroupKind{Group: APIGroup, Kind: AnonymousAccessKind}.String()
-	AnonymousAccessKindAPIVersion   = AnonymousAccessKind + "." + SchemeGroupVersion.String()
-	AnonymousAccessGroupVersionKind = SchemeGroupVersion.WithKind(AnonymousAccessKind)
-)
-
-// UserTokenConfiguration type metadata.
-var (
-	UserTokenConfigurationKind             = reflect.TypeFor[UserTokenConfiguration]().Name()
-	UserTokenConfigurationGroupKind        = schema.GroupKind{Group: APIGroup, Kind: UserTokenConfigurationKind}.String()
-	UserTokenConfigurationKindAPIVersion   = UserTokenConfigurationKind + "." + SchemeGroupVersion.String()
-	UserTokenConfigurationGroupVersionKind = SchemeGroupVersion.WithKind(UserTokenConfigurationKind)
-)
-
-// Role type metadata.
-var (
-	RoleKind             = reflect.TypeFor[Role]().Name()
-	RoleGroupKind        = schema.GroupKind{Group: APIGroup, Kind: RoleKind}.String()
-	RoleKindAPIVersion   = RoleKind + "." + SchemeGroupVersion.String()
-	RoleGroupVersionKind = SchemeGroupVersion.WithKind(RoleKind)
-)
-
-// SecurityRealm type metadata.
-var (
-	SecurityRealmKind             = reflect.TypeFor[SecurityRealm]().Name()
-	SecurityRealmGroupKind        = schema.GroupKind{Group: APIGroup, Kind: SecurityRealmKind}.String()
-	SecurityRealmKindAPIVersion   = SecurityRealmKind + "." + SchemeGroupVersion.String()
-	SecurityRealmGroupVersionKind = SchemeGroupVersion.WithKind(SecurityRealmKind)
-)
-
-// Privilege type metadata.
-var (
-	PrivilegeKind             = reflect.TypeFor[Privilege]().Name()
-	PrivilegeGroupKind        = schema.GroupKind{Group: APIGroup, Kind: PrivilegeKind}.String()
-	PrivilegeKindAPIVersion   = PrivilegeKind + "." + SchemeGroupVersion.String()
-	PrivilegeGroupVersionKind = SchemeGroupVersion.WithKind(PrivilegeKind)
-)
-
-// User type metadata.
-var (
-	UserKind             = reflect.TypeFor[User]().Name()
-	UserGroupKind        = schema.GroupKind{Group: APIGroup, Kind: UserKind}.String()
-	UserKindAPIVersion   = UserKind + "." + SchemeGroupVersion.String()
-	UserGroupVersionKind = SchemeGroupVersion.WithKind(UserKind)
-)
-
-// LDAP type metadata.
-var (
-	LDAPKind             = reflect.TypeFor[LDAP]().Name()
-	LDAPGroupKind        = schema.GroupKind{Group: APIGroup, Kind: LDAPKind}.String()
-	LDAPKindAPIVersion   = LDAPKind + "." + SchemeGroupVersion.String()
-	LDAPGroupVersionKind = SchemeGroupVersion.WithKind(LDAPKind)
-)
-
-// SAML type metadata.
-var (
-	SAMLKind             = reflect.TypeFor[SAML]().Name()
-	SAMLGroupKind        = schema.GroupKind{Group: APIGroup, Kind: SAMLKind}.String()
-	SAMLKindAPIVersion   = SAMLKind + "." + SchemeGroupVersion.String()
-	SAMLGroupVersionKind = SchemeGroupVersion.WithKind(SAMLKind)
-)
-
-// SecuritySSLTruststore type metadata.
-var (
-	SecuritySSLTruststoreKind             = reflect.TypeFor[SecuritySSLTruststore]().Name()
-	SecuritySSLTruststoreGroupKind        = schema.GroupKind{Group: APIGroup, Kind: SecuritySSLTruststoreKind}.String()
-	SecuritySSLTruststoreKindAPIVersion   = SecuritySSLTruststoreKind + "." + SchemeGroupVersion.String()
-	SecuritySSLTruststoreGroupVersionKind = SchemeGroupVersion.WithKind(SecuritySSLTruststoreKind)
-)
-
-// License type metadata.
-var (
-	LicenseKind             = reflect.TypeFor[License]().Name()
-	LicenseGroupKind        = schema.GroupKind{Group: APIGroup, Kind: LicenseKind}.String()
-	LicenseKindAPIVersion   = LicenseKind + "." + SchemeGroupVersion.String()
-	LicenseGroupVersionKind = SchemeGroupVersion.WithKind(LicenseKind)
 )

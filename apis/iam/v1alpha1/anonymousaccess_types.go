@@ -1,8 +1,11 @@
 package v1alpha1
 
 import (
+	"reflect"
+
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // AnonymousAccessParameters defines the desired state of AnonymousAccess.
@@ -71,6 +74,14 @@ type AnonymousAccessList struct {
 
 	Items []AnonymousAccess `json:"items"`
 }
+
+// AnonymousAccess type metadata.
+var (
+	AnonymousAccessKind             = reflect.TypeFor[AnonymousAccess]().Name()
+	AnonymousAccessGroupKind        = schema.GroupKind{Group: APIGroup, Kind: AnonymousAccessKind}.String()
+	AnonymousAccessKindAPIVersion   = AnonymousAccessKind + "." + SchemeGroupVersion.String()
+	AnonymousAccessGroupVersionKind = SchemeGroupVersion.WithKind(AnonymousAccessKind)
+)
 
 // init registers the AnonymousAccess types with the scheme.
 func init() {

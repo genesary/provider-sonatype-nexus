@@ -2,8 +2,7 @@
 package content
 
 import (
-	"context"
-
+	nexuspkgcleanup "github.com/datadrivers/go-nexus-client/nexus3/pkg/cleanup"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
@@ -13,24 +12,23 @@ import (
 
 // CleanupPolicyClient defines the interface for cleanup policy operations.
 type CleanupPolicyClient interface {
-	GetCleanupPolicy(ctx context.Context, name string) (*cleanuppolicies.CleanupPolicy, error)
-	CreateCleanupPolicy(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error
-	UpdateCleanupPolicy(ctx context.Context, policy *cleanuppolicies.CleanupPolicy) error
-	DeleteCleanupPolicy(ctx context.Context, name string) error
+	Get(name string) (*cleanuppolicies.CleanupPolicy, error)
+	Create(policy *cleanuppolicies.CleanupPolicy) error
+	Update(policy *cleanuppolicies.CleanupPolicy) error
+	Delete(name string) error
 }
 
-// withListFallback wraps nexus.CleanupPolicyService and overrides
-// GetCleanupPolicy to fall back to a list-and-filter search when
-// the per-name GET returns 404.
-// Some Nexus deployments serve cleanup policies only through the list endpoint.
+// withListFallback wraps CleanupPolicyService to fall back to a list-and-filter
+// search when the per-name GET returns 404. Some Nexus deployments serve
+// cleanup policies only through the list endpoint.
 type withListFallback struct {
-	nexus.CleanupPolicyService
+	*nexuspkgcleanup.CleanupPolicyService
 }
 
-// GetCleanupPolicy tries the individual GET endpoint first; on a not-found
-// error it lists all policies and returns the one whose name matches.
-func (w *withListFallback) GetCleanupPolicy(ctx context.Context, name string) (*cleanuppolicies.CleanupPolicy, error) {
-	policy, err := w.CleanupPolicyService.GetCleanupPolicy(ctx, name)
+// Get tries the individual GET endpoint first; on a not-found error it lists
+// all policies and returns the one whose name matches.
+func (w *withListFallback) Get(name string) (*cleanuppolicies.CleanupPolicy, error) {
+	policy, err := w.CleanupPolicyService.Get(name)
 	if err == nil {
 		return policy, nil
 	}
@@ -39,7 +37,7 @@ func (w *withListFallback) GetCleanupPolicy(ctx context.Context, name string) (*
 		return nil, err
 	}
 
-	all, listErr := w.ListCleanupPolicies(ctx)
+	all, listErr := w.List()
 	if listErr != nil {
 		return nil, err
 	}
@@ -55,12 +53,12 @@ func (w *withListFallback) GetCleanupPolicy(ctx context.Context, name string) (*
 
 // NewCleanupPolicyClient creates a CleanupPolicyClient from credentials.
 func NewCleanupPolicyClient(creds nexus.Credentials) (CleanupPolicyClient, error) {
-	nexusClient, err := nexus.NewClient(creds)
+	nc, err := nexus.NewClient(creds)
 	if err != nil {
 		return nil, err
 	}
 
-	return &withListFallback{nexusClient.CleanupPolicy()}, nil
+	return &withListFallback{nc.CleanupPolicy}, nil
 }
 
 // GenerateCleanupPolicy builds a Nexus CleanupPolicy object from a CR spec.
@@ -139,7 +137,8 @@ func GenerateCleanupPolicyObservation(observed *cleanuppolicies.CleanupPolicy) c
 	return obs
 }
 
-// areCriteriaFieldsEqual checks string/int pointer criteria fields equality.
+// areCriteriaFieldsEqual reports whether the notes and criteria fields in the
+// CR spec match the observed policy.
 func areCriteriaFieldsEqual(params contentv1alpha1.CleanupPolicyParameters, observed *cleanuppolicies.CleanupPolicy) bool {
 	return helpers.IsComparablePtrEqualComparablePtr(params.Notes, observed.Notes) &&
 		helpers.IsComparablePtrEqualComparablePtr(params.CriteriaLastBlobUpdated, observed.CriteriaLastBlobUpdated) &&

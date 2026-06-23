@@ -1,10 +1,8 @@
 package iam
 
 import (
-	"context"
-
+	nexuspkgsecurity "github.com/datadrivers/go-nexus-client/nexus3/pkg/security"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
-	"github.com/pkg/errors"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
@@ -13,21 +11,52 @@ import (
 
 // UserClient manages Nexus users.
 type UserClient interface {
-	GetUser(ctx context.Context, id string) (*security.User, error)
-	CreateUser(ctx context.Context, user security.User) error
-	UpdateUser(ctx context.Context, id string, user security.User) error
-	DeleteUser(ctx context.Context, id string) error
-	ChangePassword(ctx context.Context, id, password string) error
+	Get(id string) (*security.User, error)
+	Create(user security.User) error
+	Update(id string, user security.User) error
+	Delete(id string) error
+	ChangePassword(id, password string) error
+}
+
+// userClientImpl wraps SecurityUserService to hide the optional source
+// parameter from Get.
+type userClientImpl struct {
+	svc *nexuspkgsecurity.SecurityUserService
+}
+
+// Get returns the user with the given ID.
+func (c *userClientImpl) Get(id string) (*security.User, error) {
+	return c.svc.Get(id, nil)
+}
+
+// Create creates a new Nexus user.
+func (c *userClientImpl) Create(user security.User) error {
+	return c.svc.Create(user)
+}
+
+// Update updates the user with the given ID.
+func (c *userClientImpl) Update(id string, user security.User) error {
+	return c.svc.Update(id, user)
+}
+
+// Delete deletes the user with the given ID.
+func (c *userClientImpl) Delete(id string) error {
+	return c.svc.Delete(id)
+}
+
+// ChangePassword changes the password for the user with the given ID.
+func (c *userClientImpl) ChangePassword(id, password string) error {
+	return c.svc.ChangePassword(id, password)
 }
 
 // NewUserClient returns a new UserClient.
 func NewUserClient(creds nexus.Credentials) (UserClient, error) {
-	nexusClient, err := nexus.NewClient(creds)
+	nc, err := nexus.NewClient(creds)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot create nexus client")
+		return nil, err
 	}
 
-	return nexusClient.Security(), nil
+	return &userClientImpl{svc: nc.Security.User}, nil
 }
 
 // GenerateUser converts a User CR to the Nexus API type.
@@ -50,10 +79,6 @@ func GenerateUser(userRes *iamv1alpha1.User, password string) security.User {
 }
 
 // GenerateUserObservation returns the observed User state.
-// Note: the upstream go-nexus-client security.User struct does not expose
-// the readOnly or externalRoles fields returned by the Nexus REST API, so
-// UserObservation.ReadOnly and UserObservation.ExternalRoles remain nil until
-// the upstream library is updated.
 func GenerateUserObservation(observed *security.User) iamv1alpha1.UserObservation {
 	if observed == nil {
 		return iamv1alpha1.UserObservation{}

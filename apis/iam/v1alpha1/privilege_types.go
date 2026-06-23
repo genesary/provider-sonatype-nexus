@@ -1,8 +1,11 @@
 package v1alpha1
 
 import (
+	"reflect"
+
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // PrivilegeParameters defines the desired state of a Privilege.
@@ -106,6 +109,14 @@ type PrivilegeList struct {
 
 	Items []Privilege `json:"items"`
 }
+
+// Privilege type metadata.
+var (
+	PrivilegeKind             = reflect.TypeFor[Privilege]().Name()
+	PrivilegeGroupKind        = schema.GroupKind{Group: APIGroup, Kind: PrivilegeKind}.String()
+	PrivilegeKindAPIVersion   = PrivilegeKind + "." + SchemeGroupVersion.String()
+	PrivilegeGroupVersionKind = SchemeGroupVersion.WithKind(PrivilegeKind)
+)
 
 // init registers the Privilege types with the scheme.
 func init() {

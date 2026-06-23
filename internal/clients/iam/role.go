@@ -1,10 +1,7 @@
 package iam
 
 import (
-	"context"
-
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
-	"github.com/pkg/errors"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
@@ -13,20 +10,20 @@ import (
 
 // RoleClient manages Nexus roles.
 type RoleClient interface {
-	GetRole(ctx context.Context, id string) (*security.Role, error)
-	CreateRole(ctx context.Context, role security.Role) error
-	UpdateRole(ctx context.Context, id string, role security.Role) error
-	DeleteRole(ctx context.Context, id string) error
+	Get(id string) (*security.Role, error)
+	Create(role security.Role) error
+	Update(id string, role security.Role) error
+	Delete(id string) error
 }
 
 // NewRoleClient returns a new RoleClient.
 func NewRoleClient(creds nexus.Credentials) (RoleClient, error) {
-	nexusClient, err := nexus.NewClient(creds)
+	nc, err := nexus.NewClient(creds)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot create nexus client")
+		return nil, err
 	}
 
-	return nexusClient.Security(), nil
+	return nc.Security.Role, nil
 }
 
 // GenerateRole converts a Role CR to the Nexus API type.

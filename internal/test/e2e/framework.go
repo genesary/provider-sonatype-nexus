@@ -27,6 +27,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
+	nexus3 "github.com/datadrivers/go-nexus-client/nexus3"
+
 	"github.com/genesary/provider-sonatype-nexus/apis"
 	nexusclient "github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
@@ -50,7 +52,7 @@ type Framework struct {
 	Kube client.Client
 	// Nexus talks to the Nexus REST API directly, used to verify the
 	// state the provider reconciled into Nexus.
-	Nexus nexusclient.Client
+	Nexus *nexus3.NexusClient
 	// ProviderConfigName is the ProviderConfig managed resources should reference.
 	ProviderConfigName string
 }

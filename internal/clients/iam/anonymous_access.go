@@ -1,32 +1,32 @@
+// Package iam provides clients for Nexus IAM resources.
 package iam
 
 import (
-	"context"
-
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
-	"github.com/pkg/errors"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
-// AnonymousAccessClient manages anonymous access settings.
+// AnonymousAccessClient manages the Nexus anonymous access configuration.
 type AnonymousAccessClient interface {
-	GetAnonymousAccess(ctx context.Context) (*security.AnonymousAccessSettings, error)
-	UpdateAnonymousAccess(ctx context.Context, settings security.AnonymousAccessSettings) error
+	Read() (*security.AnonymousAccessSettings, error)
+	Update(settings security.AnonymousAccessSettings) error
 }
 
-// NewAnonymousAccessClient returns a new AnonymousAccessClient.
+// NewAnonymousAccessClient returns an AnonymousAccessClient backed by a
+// live Nexus connection.
 func NewAnonymousAccessClient(creds nexus.Credentials) (AnonymousAccessClient, error) {
-	nexusClient, err := nexus.NewClient(creds)
+	nc, err := nexus.NewClient(creds)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot create nexus client")
+		return nil, err
 	}
 
-	return nexusClient.Security(), nil
+	return nc.Security.Anonymous, nil
 }
 
-// GenerateAnonymousAccessSettings converts the CR spec to Nexus settings.
+// GenerateAnonymousAccessSettings builds an AnonymousAccessSettings
+// from the CR spec.
 func GenerateAnonymousAccessSettings(cr *iamv1alpha1.AnonymousAccess) security.AnonymousAccessSettings {
 	return security.AnonymousAccessSettings{
 		Enabled:   cr.Spec.ForProvider.Enabled,
@@ -35,7 +35,8 @@ func GenerateAnonymousAccessSettings(cr *iamv1alpha1.AnonymousAccess) security.A
 	}
 }
 
-// GenerateAnonymousAccessObservation returns the observed state.
+// GenerateAnonymousAccessObservation converts observed settings to an
+// observation struct.
 func GenerateAnonymousAccessObservation(settings *security.AnonymousAccessSettings) iamv1alpha1.AnonymousAccessObservation {
 	if settings == nil {
 		return iamv1alpha1.AnonymousAccessObservation{}
@@ -48,7 +49,8 @@ func GenerateAnonymousAccessObservation(settings *security.AnonymousAccessSettin
 	}
 }
 
-// IsAnonymousAccessUpToDate reports whether the CR spec matches observed.
+// IsAnonymousAccessUpToDate reports whether the CR spec matches
+// the observed state.
 func IsAnonymousAccessUpToDate(anonAccess *iamv1alpha1.AnonymousAccess) bool {
 	obs := anonAccess.Status.AtProvider
 

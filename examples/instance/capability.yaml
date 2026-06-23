@@ -1,0 +1,15 @@
+---
+apiVersion: instance.nexus.crossplane.io/v1alpha1
+kind: Capability
+metadata:
+  name: audit
+  namespace: default
+spec:
+  forProvider:
+    typeId: audit
+    enabled: true
+    notes: "This capability enables the audit feature in Nexus, allowing for tracking and logging of user actions and system events. It is essential for maintaining security and compliance within the system."
+    properties: {}
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

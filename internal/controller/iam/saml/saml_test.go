@@ -68,7 +68,7 @@ func TestObserve(t *testing.T) {
 			name: "NotFound_404",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.GetSAMLFn = func(_ context.Context) (*security.SAML, error) {
+				mc.ReadFn = func() (*security.SAML, error) {
 					return nil, errors.New("404 not found")
 				}
 			},
@@ -80,7 +80,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.GetSAMLFn = func(_ context.Context) (*security.SAML, error) {
+				mc.ReadFn = func() (*security.SAML, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -92,7 +92,7 @@ func TestObserve(t *testing.T) {
 			name: "NilSAMLReturned",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.GetSAMLFn = func(_ context.Context) (*security.SAML, error) {
+				mc.ReadFn = func() (*security.SAML, error) {
 					//nolint:nilnil // intentionally testing nil SAML with nil error
 					return nil, nil
 				}
@@ -105,7 +105,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.GetSAMLFn = func(_ context.Context) (*security.SAML, error) {
+				mc.ReadFn = func() (*security.SAML, error) {
 					return &security.SAML{
 						IdpMetadata:       "metadata-xml",
 						EntityId:          "nexus-entity",
@@ -121,7 +121,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.GetSAMLFn = func(_ context.Context) (*security.SAML, error) {
+				mc.ReadFn = func() (*security.SAML, error) {
 					return &security.SAML{
 						IdpMetadata:       "different-metadata",
 						EntityId:          "nexus-entity",
@@ -191,7 +191,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.ApplySAMLFn = func(_ context.Context, _ security.SAML) error {
+				mc.ApplyFn = func(_ security.SAML) error {
 					return nil
 				}
 			},
@@ -199,12 +199,12 @@ func TestCreate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockSAMLClient) {
 				t.Helper()
 
-				if len(mc.ApplySAMLCalls) != 1 {
-					t.Errorf("expected 1 ApplySAML call, got %d", len(mc.ApplySAMLCalls))
+				if len(mc.ApplyCalls) != 1 {
+					t.Errorf("expected 1 ApplySAML call, got %d", len(mc.ApplyCalls))
 				}
 
-				if mc.ApplySAMLCalls[0].EntityId != "nexus-entity" {
-					t.Errorf("wrong entity ID: %v", mc.ApplySAMLCalls[0].EntityId)
+				if mc.ApplyCalls[0].EntityId != "nexus-entity" {
+					t.Errorf("wrong entity ID: %v", mc.ApplyCalls[0].EntityId)
 				}
 			},
 		},
@@ -212,7 +212,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.ApplySAMLFn = func(_ context.Context, _ security.SAML) error {
+				mc.ApplyFn = func(_ security.SAML) error {
 					return errors.New("apply failed")
 				}
 			},
@@ -270,7 +270,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.ApplySAMLFn = func(_ context.Context, _ security.SAML) error {
+				mc.ApplyFn = func(_ security.SAML) error {
 					return nil
 				}
 			},
@@ -278,8 +278,8 @@ func TestUpdate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockSAMLClient) {
 				t.Helper()
 
-				if len(mc.ApplySAMLCalls) != 1 {
-					t.Errorf("expected 1 ApplySAML call, got %d", len(mc.ApplySAMLCalls))
+				if len(mc.ApplyCalls) != 1 {
+					t.Errorf("expected 1 ApplySAML call, got %d", len(mc.ApplyCalls))
 				}
 			},
 		},
@@ -287,7 +287,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.ApplySAMLFn = func(_ context.Context, _ security.SAML) error {
+				mc.ApplyFn = func(_ security.SAML) error {
 					return errors.New("apply failed")
 				}
 			},
@@ -345,7 +345,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteSuccess",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.DeleteSAMLFn = func(_ context.Context) error {
+				mc.DeleteFn = func() error {
 					return nil
 				}
 			},
@@ -353,8 +353,8 @@ func TestDelete(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockSAMLClient) {
 				t.Helper()
 
-				if mc.DeleteSAMLCalls != 1 {
-					t.Errorf("expected 1 Delete call, got %d", mc.DeleteSAMLCalls)
+				if mc.DeleteCalls != 1 {
+					t.Errorf("expected 1 Delete call, got %d", mc.DeleteCalls)
 				}
 			},
 		},
@@ -362,7 +362,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteNotFound",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.DeleteSAMLFn = func(_ context.Context) error {
+				mc.DeleteFn = func() error {
 					return errors.New("404 not found")
 				}
 			},
@@ -372,7 +372,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteError",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.DeleteSAMLFn = func(_ context.Context) error {
+				mc.DeleteFn = func() error {
 					return errors.New("server error")
 				}
 			},

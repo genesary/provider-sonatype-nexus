@@ -75,7 +75,7 @@ func TestObserve(t *testing.T) {
 			name: "NotFound_404",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.GetUserFn = func(_ context.Context, _ string) (*security.User, error) {
+				mc.GetFn = func(_ string) (*security.User, error) {
 					return nil, errors.New("404 not found")
 				}
 			},
@@ -87,7 +87,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.GetUserFn = func(_ context.Context, _ string) (*security.User, error) {
+				mc.GetFn = func(_ string) (*security.User, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -99,7 +99,7 @@ func TestObserve(t *testing.T) {
 			name: "NilUserReturned",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.GetUserFn = func(_ context.Context, _ string) (*security.User, error) {
+				mc.GetFn = func(_ string) (*security.User, error) {
 					//nolint:nilnil // intentionally testing nil user with nil error
 					return nil, nil
 				}
@@ -112,7 +112,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.GetUserFn = func(_ context.Context, _ string) (*security.User, error) {
+				mc.GetFn = func(_ string) (*security.User, error) {
 					return &security.User{
 						UserID:       "alice",
 						FirstName:    "Alice",
@@ -129,7 +129,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated",
 			cr:   newTestUser("alice", "Alice", "NewLastName"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.GetUserFn = func(_ context.Context, _ string) (*security.User, error) {
+				mc.GetFn = func(_ string) (*security.User, error) {
 					return &security.User{
 						UserID:       "alice",
 						FirstName:    "Alice",
@@ -200,7 +200,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.CreateUserFn = func(_ context.Context, _ security.User) error {
+				mc.CreateFn = func(_ security.User) error {
 					return nil
 				}
 			},
@@ -208,12 +208,12 @@ func TestCreate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockUserClient) {
 				t.Helper()
 
-				if len(mc.CreateUserCalls) != 1 {
-					t.Errorf("expected 1 Create call, got %d", len(mc.CreateUserCalls))
+				if len(mc.CreateCalls) != 1 {
+					t.Errorf("expected 1 Create call, got %d", len(mc.CreateCalls))
 				}
 
-				if mc.CreateUserCalls[0].UserID != "alice" {
-					t.Errorf("wrong user ID: %v", mc.CreateUserCalls[0].UserID)
+				if mc.CreateCalls[0].UserID != "alice" {
+					t.Errorf("wrong user ID: %v", mc.CreateCalls[0].UserID)
 				}
 			},
 		},
@@ -221,7 +221,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.CreateUserFn = func(_ context.Context, _ security.User) error {
+				mc.CreateFn = func(_ security.User) error {
 					return errors.New("create failed")
 				}
 			},
@@ -282,7 +282,7 @@ func TestCreate_WithPassword(t *testing.T) {
 	kubeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
 
 	mc := iammocks.NewMockUserClient()
-	mc.CreateUserFn = func(_ context.Context, user security.User) error {
+	mc.CreateFn = func(user security.User) error {
 		if user.Password != "s3cr3t" {
 			return errors.New("unexpected password value")
 		}
@@ -322,7 +322,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.UpdateUserFn = func(_ context.Context, _ string, _ security.User) error {
+				mc.UpdateFn = func(_ string, _ security.User) error {
 					return nil
 				}
 			},
@@ -330,8 +330,8 @@ func TestUpdate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockUserClient) {
 				t.Helper()
 
-				if len(mc.UpdateUserCalls) != 1 {
-					t.Errorf("expected 1 Update call, got %d", len(mc.UpdateUserCalls))
+				if len(mc.UpdateCalls) != 1 {
+					t.Errorf("expected 1 Update call, got %d", len(mc.UpdateCalls))
 				}
 			},
 		},
@@ -339,7 +339,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.UpdateUserFn = func(_ context.Context, _ string, _ security.User) error {
+				mc.UpdateFn = func(_ string, _ security.User) error {
 					return errors.New("update failed")
 				}
 			},
@@ -400,10 +400,10 @@ func TestUpdate_WithPassword(t *testing.T) {
 	kubeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
 
 	mc := iammocks.NewMockUserClient()
-	mc.UpdateUserFn = func(_ context.Context, _ string, _ security.User) error {
+	mc.UpdateFn = func(_ string, _ security.User) error {
 		return nil
 	}
-	mc.ChangePasswordFn = func(_ context.Context, id, password string) error {
+	mc.ChangePasswordFn = func(id, password string) error {
 		if password != "newpass" {
 			return errors.New("unexpected password")
 		}
@@ -447,7 +447,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteSuccess",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.DeleteUserFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return nil
 				}
 			},
@@ -455,12 +455,12 @@ func TestDelete(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockUserClient) {
 				t.Helper()
 
-				if len(mc.DeleteUserCalls) != 1 {
-					t.Errorf("expected 1 Delete call, got %d", len(mc.DeleteUserCalls))
+				if len(mc.DeleteCalls) != 1 {
+					t.Errorf("expected 1 Delete call, got %d", len(mc.DeleteCalls))
 				}
 
-				if mc.DeleteUserCalls[0] != "alice" {
-					t.Errorf("wrong id passed to Delete: %v", mc.DeleteUserCalls[0])
+				if mc.DeleteCalls[0] != "alice" {
+					t.Errorf("wrong id passed to Delete: %v", mc.DeleteCalls[0])
 				}
 			},
 		},
@@ -468,7 +468,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteNotFound",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.DeleteUserFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return errors.New("404 not found")
 				}
 			},
@@ -478,7 +478,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteError",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.DeleteUserFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return errors.New("server error")
 				}
 			},

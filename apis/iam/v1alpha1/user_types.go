@@ -1,8 +1,11 @@
 package v1alpha1
 
 import (
+	"reflect"
+
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // UserParameters defines the desired state of a User.
@@ -107,6 +110,14 @@ type UserList struct {
 
 	Items []User `json:"items"`
 }
+
+// User type metadata.
+var (
+	UserKind             = reflect.TypeFor[User]().Name()
+	UserGroupKind        = schema.GroupKind{Group: APIGroup, Kind: UserKind}.String()
+	UserKindAPIVersion   = UserKind + "." + SchemeGroupVersion.String()
+	UserGroupVersionKind = SchemeGroupVersion.WithKind(UserKind)
+)
 
 // init registers the User types with the scheme.
 func init() {

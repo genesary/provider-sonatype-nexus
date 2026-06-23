@@ -1,11 +1,9 @@
 package iam
 
 import (
-	"context"
 	"reflect"
 
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
-	"github.com/pkg/errors"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
@@ -13,19 +11,19 @@ import (
 
 // SAMLClient manages Nexus SAML SSO configuration.
 type SAMLClient interface {
-	GetSAML(ctx context.Context) (*security.SAML, error)
-	ApplySAML(ctx context.Context, saml security.SAML) error
-	DeleteSAML(ctx context.Context) error
+	Read() (*security.SAML, error)
+	Apply(saml security.SAML) error
+	Delete() error
 }
 
 // NewSAMLClient returns a new SAMLClient.
 func NewSAMLClient(creds nexus.Credentials) (SAMLClient, error) {
-	nexusClient, err := nexus.NewClient(creds)
+	nc, err := nexus.NewClient(creds)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot create nexus client")
+		return nil, err
 	}
 
-	return nexusClient.Security(), nil
+	return nc.Security.SAML, nil
 }
 
 // GenerateSAML converts a SAML CR to the Nexus API type.

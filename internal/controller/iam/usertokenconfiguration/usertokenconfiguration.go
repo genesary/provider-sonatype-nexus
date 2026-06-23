@@ -110,7 +110,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	config, err := e.client.GetUserTokenConfiguration(ctx)
+	config, err := e.client.Get()
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetUserTokenConfig)
 	}
@@ -133,7 +133,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 	config := iamclient.GenerateUserTokenConfiguration(userTokenCfg)
 
-	err := e.client.UpdateUserTokenConfiguration(ctx, config)
+	err := e.client.Configure(config)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errUpdateUserTokenConfig)
 	}
@@ -150,7 +150,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 	config := iamclient.GenerateUserTokenConfiguration(userTokenCfg)
 
-	err := e.client.UpdateUserTokenConfiguration(ctx, config)
+	err := e.client.Configure(config)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateUserTokenConfig)
 	}

@@ -69,7 +69,7 @@ func TestObserve(t *testing.T) {
 			name: "NotFound_404",
 			cr:   newTestContentSelector("my-selector", "format == 'maven2'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.GetContentSelectorFn = func(_ context.Context, _ string) (*security.ContentSelector, error) {
+				mc.GetFn = func(_ string) (*security.ContentSelector, error) {
 					return nil, errors.New("404 not found")
 				}
 			},
@@ -81,7 +81,7 @@ func TestObserve(t *testing.T) {
 			name: "NilReturned",
 			cr:   newTestContentSelector("my-selector", "format == 'maven2'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.GetContentSelectorFn = func(_ context.Context, _ string) (*security.ContentSelector, error) {
+				mc.GetFn = func(_ string) (*security.ContentSelector, error) {
 					//nolint:nilnil // intentionally testing nil with nil error
 					return nil, nil
 				}
@@ -94,7 +94,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestContentSelector("my-selector", "format == 'maven2'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.GetContentSelectorFn = func(_ context.Context, _ string) (*security.ContentSelector, error) {
+				mc.GetFn = func(_ string) (*security.ContentSelector, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -111,7 +111,7 @@ func TestObserve(t *testing.T) {
 				return cs
 			}(),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.GetContentSelectorFn = func(_ context.Context, _ string) (*security.ContentSelector, error) {
+				mc.GetFn = func(_ string) (*security.ContentSelector, error) {
 					return &security.ContentSelector{
 						Name:        "my-selector",
 						Expression:  "format == 'maven2'",
@@ -127,7 +127,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated",
 			cr:   newTestContentSelector("my-selector", "format == 'docker'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.GetContentSelectorFn = func(_ context.Context, _ string) (*security.ContentSelector, error) {
+				mc.GetFn = func(_ string) (*security.ContentSelector, error) {
 					return &security.ContentSelector{
 						Name:       "my-selector",
 						Expression: "format == 'maven2'",
@@ -149,7 +149,7 @@ func TestObserve(t *testing.T) {
 				return cs
 			}(),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.GetContentSelectorFn = func(_ context.Context, name string) (*security.ContentSelector, error) {
+				mc.GetFn = func(name string) (*security.ContentSelector, error) {
 					if name != "external-name" {
 						return nil, errors.New("wrong name called")
 					}
@@ -222,7 +222,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestContentSelector("new-selector", "format == 'helm'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.CreateContentSelectorFn = func(_ context.Context, _ security.ContentSelector) error {
+				mc.CreateFn = func(_ security.ContentSelector) error {
 					return nil
 				}
 			},
@@ -230,12 +230,12 @@ func TestCreate(t *testing.T) {
 			validate: func(t *testing.T, mc *contentmocks.MockContentSelectorClient) {
 				t.Helper()
 
-				if len(mc.CreateContentSelectorCalls) != 1 {
-					t.Errorf("expected 1 Create call, got %d", len(mc.CreateContentSelectorCalls))
+				if len(mc.CreateCalls) != 1 {
+					t.Errorf("expected 1 Create call, got %d", len(mc.CreateCalls))
 				}
 
-				if mc.CreateContentSelectorCalls[0].Name != "new-selector" {
-					t.Errorf("wrong selector name: %v", mc.CreateContentSelectorCalls[0].Name)
+				if mc.CreateCalls[0].Name != "new-selector" {
+					t.Errorf("wrong selector name: %v", mc.CreateCalls[0].Name)
 				}
 			},
 		},
@@ -243,7 +243,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestContentSelector("new-selector", "format == 'helm'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.CreateContentSelectorFn = func(_ context.Context, _ security.ContentSelector) error {
+				mc.CreateFn = func(_ security.ContentSelector) error {
 					return errors.New("create failed")
 				}
 			},
@@ -308,7 +308,7 @@ func TestUpdate(t *testing.T) {
 				return cs
 			}(),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.UpdateContentSelectorFn = func(_ context.Context, _ string, _ security.ContentSelector) error {
+				mc.UpdateFn = func(_ string, _ security.ContentSelector) error {
 					return nil
 				}
 			},
@@ -316,8 +316,8 @@ func TestUpdate(t *testing.T) {
 			validate: func(t *testing.T, mc *contentmocks.MockContentSelectorClient) {
 				t.Helper()
 
-				if len(mc.UpdateContentSelectorCalls) != 1 {
-					t.Errorf("expected 1 Update call, got %d", len(mc.UpdateContentSelectorCalls))
+				if len(mc.UpdateCalls) != 1 {
+					t.Errorf("expected 1 Update call, got %d", len(mc.UpdateCalls))
 				}
 			},
 		},
@@ -325,7 +325,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestContentSelector("existing-selector", "format == 'raw'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.UpdateContentSelectorFn = func(_ context.Context, _ string, _ security.ContentSelector) error {
+				mc.UpdateFn = func(_ string, _ security.ContentSelector) error {
 					return errors.New("update failed")
 				}
 			},
@@ -383,7 +383,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteSuccess",
 			cr:   newTestContentSelector("old-selector", "format == 'pypi'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.DeleteContentSelectorFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return nil
 				}
 			},
@@ -391,12 +391,12 @@ func TestDelete(t *testing.T) {
 			validate: func(t *testing.T, mc *contentmocks.MockContentSelectorClient) {
 				t.Helper()
 
-				if len(mc.DeleteContentSelectorCalls) != 1 {
-					t.Errorf("expected 1 Delete call, got %d", len(mc.DeleteContentSelectorCalls))
+				if len(mc.DeleteCalls) != 1 {
+					t.Errorf("expected 1 Delete call, got %d", len(mc.DeleteCalls))
 				}
 
-				if mc.DeleteContentSelectorCalls[0] != "old-selector" {
-					t.Errorf("wrong name passed to Delete: %v", mc.DeleteContentSelectorCalls[0])
+				if mc.DeleteCalls[0] != "old-selector" {
+					t.Errorf("wrong name passed to Delete: %v", mc.DeleteCalls[0])
 				}
 			},
 		},
@@ -404,7 +404,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteNotFound",
 			cr:   newTestContentSelector("old-selector", "format == 'pypi'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.DeleteContentSelectorFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return errors.New("404 not found")
 				}
 			},
@@ -414,7 +414,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteError",
 			cr:   newTestContentSelector("old-selector", "format == 'pypi'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.DeleteContentSelectorFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return errors.New("server error")
 				}
 			},
@@ -431,7 +431,7 @@ func TestDelete(t *testing.T) {
 				return cs
 			}(),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.DeleteContentSelectorFn = func(_ context.Context, name string) error {
+				mc.DeleteFn = func(name string) error {
 					if name != "nexus-selector-name" {
 						return errors.New("wrong name: " + name)
 					}
@@ -576,7 +576,7 @@ func TestObserve_UpdatesAtProvider(t *testing.T) {
 	cr := newTestContentSelector("my-selector", "format == 'docker'")
 
 	mc := contentmocks.NewMockContentSelectorClient()
-	mc.GetContentSelectorFn = func(_ context.Context, _ string) (*security.ContentSelector, error) {
+	mc.GetFn = func(_ string) (*security.ContentSelector, error) {
 		return &security.ContentSelector{
 			Name:        "my-selector",
 			Expression:  "format == 'docker'",

@@ -13,9 +13,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
+	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
-	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
+	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
@@ -110,12 +110,12 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	activeRealms, err := e.client.ListActiveRealms(ctx)
+	activeRealms, err := e.client.ListActive()
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetRealms)
 	}
 
-	availableRealms, _ := e.client.ListAvailableRealms(ctx)
+	availableRealms, _ := e.client.ListAvailable()
 	securityRealm.Status.AtProvider = iamclient.GenerateSecurityRealmObservation(availableRealms, activeRealms)
 	securityRealm.SetConditions(nexusv1alpha1.Available())
 
@@ -132,7 +132,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotSecurityRealm)
 	}
 
-	err := e.client.ActivateRealms(ctx, securityRealm.Spec.ForProvider.ActiveRealms)
+	err := e.client.Activate(securityRealm.Spec.ForProvider.ActiveRealms)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errActivateRealms)
 	}
@@ -147,7 +147,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalUpdate{}, errors.New(errNotSecurityRealm)
 	}
 
-	err := e.client.ActivateRealms(ctx, securityRealm.Spec.ForProvider.ActiveRealms)
+	err := e.client.Activate(securityRealm.Spec.ForProvider.ActiveRealms)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errActivateRealms)
 	}

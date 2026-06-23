@@ -78,7 +78,7 @@ func TestObserve(t *testing.T) {
 			name: "NotFound_404",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.GetLDAPFn = func(_ context.Context, _ string) (*security.LDAP, error) {
+				mc.GetFn = func(_ string) (*security.LDAP, error) {
 					return nil, errors.New("404 not found")
 				}
 			},
@@ -90,7 +90,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.GetLDAPFn = func(_ context.Context, _ string) (*security.LDAP, error) {
+				mc.GetFn = func(_ string) (*security.LDAP, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -102,7 +102,7 @@ func TestObserve(t *testing.T) {
 			name: "NilLDAPReturned",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.GetLDAPFn = func(_ context.Context, _ string) (*security.LDAP, error) {
+				mc.GetFn = func(_ string) (*security.LDAP, error) {
 					//nolint:nilnil // intentionally testing nil LDAP with nil error
 					return nil, nil
 				}
@@ -115,7 +115,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.GetLDAPFn = func(_ context.Context, _ string) (*security.LDAP, error) {
+				mc.GetFn = func(_ string) (*security.LDAP, error) {
 					return &security.LDAP{
 						Name:       "corp-ldap",
 						Protocol:   "ldap",
@@ -135,7 +135,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated",
 			cr:   newTestLDAP("corp-ldap", "ldap-new.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.GetLDAPFn = func(_ context.Context, _ string) (*security.LDAP, error) {
+				mc.GetFn = func(_ string) (*security.LDAP, error) {
 					return &security.LDAP{
 						Name:       "corp-ldap",
 						Protocol:   "ldap",
@@ -209,7 +209,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.CreateLDAPFn = func(_ context.Context, _ security.LDAP) error {
+				mc.CreateFn = func(_ security.LDAP) error {
 					return nil
 				}
 			},
@@ -217,12 +217,12 @@ func TestCreate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockLDAPClient) {
 				t.Helper()
 
-				if len(mc.CreateLDAPCalls) != 1 {
-					t.Errorf("expected 1 Create call, got %d", len(mc.CreateLDAPCalls))
+				if len(mc.CreateCalls) != 1 {
+					t.Errorf("expected 1 Create call, got %d", len(mc.CreateCalls))
 				}
 
-				if mc.CreateLDAPCalls[0].Host != "ldap.example.com" {
-					t.Errorf("wrong host: %v", mc.CreateLDAPCalls[0].Host)
+				if mc.CreateCalls[0].Host != "ldap.example.com" {
+					t.Errorf("wrong host: %v", mc.CreateCalls[0].Host)
 				}
 			},
 		},
@@ -230,7 +230,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.CreateLDAPFn = func(_ context.Context, _ security.LDAP) error {
+				mc.CreateFn = func(_ security.LDAP) error {
 					return errors.New("create failed")
 				}
 			},
@@ -291,7 +291,7 @@ func TestCreate_WithPassword(t *testing.T) {
 	kubeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
 
 	mc := iammocks.NewMockLDAPClient()
-	mc.CreateLDAPFn = func(_ context.Context, ldap security.LDAP) error {
+	mc.CreateFn = func(ldap security.LDAP) error {
 		if ldap.AuthPassword != "s3cr3t" {
 			return errors.New("unexpected password value")
 		}
@@ -331,7 +331,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.UpdateLDAPFn = func(_ context.Context, _ string, _ security.LDAP) error {
+				mc.UpdateFn = func(_ string, _ security.LDAP) error {
 					return nil
 				}
 			},
@@ -339,8 +339,8 @@ func TestUpdate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockLDAPClient) {
 				t.Helper()
 
-				if len(mc.UpdateLDAPCalls) != 1 {
-					t.Errorf("expected 1 Update call, got %d", len(mc.UpdateLDAPCalls))
+				if len(mc.UpdateCalls) != 1 {
+					t.Errorf("expected 1 Update call, got %d", len(mc.UpdateCalls))
 				}
 			},
 		},
@@ -348,7 +348,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.UpdateLDAPFn = func(_ context.Context, _ string, _ security.LDAP) error {
+				mc.UpdateFn = func(_ string, _ security.LDAP) error {
 					return errors.New("update failed")
 				}
 			},
@@ -406,7 +406,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteSuccess",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.DeleteLDAPFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return nil
 				}
 			},
@@ -414,12 +414,12 @@ func TestDelete(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockLDAPClient) {
 				t.Helper()
 
-				if len(mc.DeleteLDAPCalls) != 1 {
-					t.Errorf("expected 1 Delete call, got %d", len(mc.DeleteLDAPCalls))
+				if len(mc.DeleteCalls) != 1 {
+					t.Errorf("expected 1 Delete call, got %d", len(mc.DeleteCalls))
 				}
 
-				if mc.DeleteLDAPCalls[0] != "corp-ldap" {
-					t.Errorf("wrong name passed to Delete: %v", mc.DeleteLDAPCalls[0])
+				if mc.DeleteCalls[0] != "corp-ldap" {
+					t.Errorf("wrong name passed to Delete: %v", mc.DeleteCalls[0])
 				}
 			},
 		},
@@ -427,7 +427,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteNotFound",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.DeleteLDAPFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return errors.New("404 not found")
 				}
 			},
@@ -437,7 +437,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteError",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.DeleteLDAPFn = func(_ context.Context, _ string) error {
+				mc.DeleteFn = func(_ string) error {
 					return errors.New("server error")
 				}
 			},

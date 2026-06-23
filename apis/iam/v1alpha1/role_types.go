@@ -1,8 +1,11 @@
 package v1alpha1
 
 import (
+	"reflect"
+
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // RoleParameters defines the desired state of a Role.
@@ -89,6 +92,14 @@ type RoleList struct {
 
 	Items []Role `json:"items"`
 }
+
+// Role type metadata.
+var (
+	RoleKind             = reflect.TypeFor[Role]().Name()
+	RoleGroupKind        = schema.GroupKind{Group: APIGroup, Kind: RoleKind}.String()
+	RoleKindAPIVersion   = RoleKind + "." + SchemeGroupVersion.String()
+	RoleGroupVersionKind = SchemeGroupVersion.WithKind(RoleKind)
+)
 
 // init registers the Role types with the scheme.
 func init() {

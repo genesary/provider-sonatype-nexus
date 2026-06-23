@@ -82,7 +82,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestUserTokenConfig(true),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.GetUserTokenConfigurationFn = func(_ context.Context) (*security.UserTokenConfiguration, error) {
+				mc.GetFn = func() (*security.UserTokenConfiguration, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -94,7 +94,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestUserTokenConfig(true),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.GetUserTokenConfigurationFn = func(_ context.Context) (*security.UserTokenConfiguration, error) {
+				mc.GetFn = func() (*security.UserTokenConfiguration, error) {
 					return &security.UserTokenConfiguration{Enabled: true}, nil
 				}
 			},
@@ -106,7 +106,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButEnabledDiffers",
 			cr:   newTestUserTokenConfig(false),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.GetUserTokenConfigurationFn = func(_ context.Context) (*security.UserTokenConfiguration, error) {
+				mc.GetFn = func() (*security.UserTokenConfiguration, error) {
 					return &security.UserTokenConfiguration{Enabled: true}, nil
 				}
 			},
@@ -123,7 +123,7 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.GetUserTokenConfigurationFn = func(_ context.Context) (*security.UserTokenConfiguration, error) {
+				mc.GetFn = func() (*security.UserTokenConfiguration, error) {
 					return &security.UserTokenConfiguration{
 						Enabled:        true,
 						ProtectContent: false,
@@ -192,7 +192,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestUserTokenConfig(true),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.UpdateUserTokenConfigurationFn = func(_ context.Context, _ security.UserTokenConfiguration) error {
+				mc.ConfigureFn = func(_ security.UserTokenConfiguration) error {
 					return nil
 				}
 			},
@@ -200,12 +200,12 @@ func TestCreate(t *testing.T) {
 			validate: func(t *testing.T, mc *iammocks.MockUserTokenConfigurationClient) {
 				t.Helper()
 
-				if len(mc.UpdateUserTokenConfigurationCalls) != 1 {
+				if len(mc.ConfigureCalls) != 1 {
 					t.Errorf("expected 1 UpdateUserTokenConfiguration call, got %d",
-						len(mc.UpdateUserTokenConfigurationCalls))
+						len(mc.ConfigureCalls))
 				}
 
-				if !mc.UpdateUserTokenConfigurationCalls[0].Enabled {
+				if !mc.ConfigureCalls[0].Enabled {
 					t.Error("expected Enabled=true in UpdateUserTokenConfiguration call")
 				}
 			},
@@ -214,7 +214,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestUserTokenConfig(true),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.UpdateUserTokenConfigurationFn = func(_ context.Context, _ security.UserTokenConfiguration) error {
+				mc.ConfigureFn = func(_ security.UserTokenConfiguration) error {
 					return errors.New("update failed")
 				}
 			},
@@ -271,7 +271,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestUserTokenConfig(false),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.UpdateUserTokenConfigurationFn = func(_ context.Context, _ security.UserTokenConfiguration) error {
+				mc.ConfigureFn = func(_ security.UserTokenConfiguration) error {
 					return nil
 				}
 			},
@@ -281,7 +281,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestUserTokenConfig(true),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.UpdateUserTokenConfigurationFn = func(_ context.Context, _ security.UserTokenConfiguration) error {
+				mc.ConfigureFn = func(_ security.UserTokenConfiguration) error {
 					return errors.New("update failed")
 				}
 			},
@@ -334,7 +334,7 @@ func TestDelete(t *testing.T) {
 		t.Errorf("Delete() returned unexpected error: %v", err)
 	}
 
-	if len(mc.UpdateUserTokenConfigurationCalls) != 0 {
+	if len(mc.ConfigureCalls) != 0 {
 		t.Error("Delete() should not call UpdateUserTokenConfiguration")
 	}
 }

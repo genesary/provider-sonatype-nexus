@@ -5,10 +5,10 @@ import (
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/blobstore"
 	"github.com/genesary/provider-sonatype-nexus/internal/controller/config"
 	contentcleanuppolicy "github.com/genesary/provider-sonatype-nexus/internal/controller/content/cleanuppolicy"
 	contentcontentselector "github.com/genesary/provider-sonatype-nexus/internal/controller/content/contentselector"
+	contentrepository "github.com/genesary/provider-sonatype-nexus/internal/controller/content/repository"
 	iamanonymousaccess "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/anonymousaccess"
 	iamldap "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/ldap"
 	iamlicense "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/license"
@@ -19,14 +19,16 @@ import (
 	iamssltruststore "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/securityssltruststore"
 	iamuser "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/user"
 	iamutc "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/usertokenconfiguration"
-	"github.com/genesary/provider-sonatype-nexus/internal/controller/repository"
+	instanceblobstore "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/blobstore"
+	instancecapability "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/capability"
 )
 
 // Setup creates all Nexus controllers and adds them to the supplied manager.
 func Setup(mgr ctrl.Manager, opts controller.Options) error {
 	for _, setup := range []func(ctrl.Manager, controller.Options) error{
-		blobstore.Setup,
+		instanceblobstore.Setup,
 		config.Setup,
+		instancecapability.Setup,
 		contentcleanuppolicy.Setup,
 		contentcontentselector.Setup,
 		iamanonymousaccess.Setup,
@@ -39,7 +41,7 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		iamssltruststore.Setup,
 		iamuser.Setup,
 		iamutc.Setup,
-		repository.Setup,
+		contentrepository.Setup,
 	} {
 		err := setup(mgr, opts)
 		if err != nil {
