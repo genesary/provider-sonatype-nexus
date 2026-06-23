@@ -263,6 +263,9 @@ func TestCreate(t *testing.T) {
 			name: "Success",
 			cr:   newTestCapability("cap", "DockerBearerTokenRealm"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
+				mc.ListFn = func() ([]nexussdk.Capability, error) {
+					return []nexussdk.Capability{}, nil
+				}
 				mc.CreateFn = func(_ nexussdk.CapabilityCreate) (*nexussdk.Capability, error) {
 					return &nexussdk.Capability{ID: "server-id-123", Type: "DockerBearerTokenRealm"}, nil
 				}
@@ -271,9 +274,35 @@ func TestCreate(t *testing.T) {
 			wantExtName: "server-id-123",
 		},
 		{
+			name: "AdoptExisting",
+			cr:   newTestCapability("cap", "audit"),
+			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
+				mc.ListFn = func() ([]nexussdk.Capability, error) {
+					return []nexussdk.Capability{
+						{ID: "existing-id-456", Type: "audit"},
+					}, nil
+				}
+			},
+			wantErr:     false,
+			wantExtName: "existing-id-456",
+		},
+		{
+			name: "ListError",
+			cr:   newTestCapability("cap", "DockerBearerTokenRealm"),
+			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
+				mc.ListFn = func() ([]nexussdk.Capability, error) {
+					return nil, errors.New("nexus unavailable")
+				}
+			},
+			wantErr: true,
+		},
+		{
 			name: "CreateError",
 			cr:   newTestCapability("cap", "DockerBearerTokenRealm"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
+				mc.ListFn = func() ([]nexussdk.Capability, error) {
+					return []nexussdk.Capability{}, nil
+				}
 				mc.CreateFn = func(_ nexussdk.CapabilityCreate) (*nexussdk.Capability, error) {
 					return nil, errors.New("nexus unavailable")
 				}

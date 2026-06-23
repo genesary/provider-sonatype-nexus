@@ -6,7 +6,7 @@ metadata:
   namespace: default
 spec:
   forProvider:
-    typeId: Audit
+    typeId: audit
     enabled: true
     notes: "This capability enables the audit feature in Nexus, allowing for tracking and logging of user actions and system events. It is essential for maintaining security and compliance within the system."
     properties: {}

@@ -32,6 +32,8 @@ const (
 	errNewClient = "cannot create new Nexus client"
 	// errGetCapability is returned when retrieving a Capability fails.
 	errGetCapability = "cannot get capability from Nexus"
+	// errListCapabilities is returned when listing capabilities fails.
+	errListCapabilities = "cannot list capabilities from Nexus"
 	// errCreateCap is returned when creating a Capability fails.
 	errCreateCap = "cannot create capability in Nexus"
 	// errUpdateCap is returned when updating a Capability fails.
@@ -137,11 +139,26 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 	}, nil
 }
 
-// Create creates the external resource.
+// Create creates the external resource, adopting an existing one if a
+// capability with the same TypeId already exists
+// (e.g. singleton types like Audit).
 func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
 	capabilityCR, isCapability := managedRes.(*instancev1alpha1.Capability)
 	if !isCapability {
 		return managed.ExternalCreation{}, errors.New(errNotCapability)
+	}
+
+	existing, err := e.client.List()
+	if err != nil {
+		return managed.ExternalCreation{}, errors.Wrap(err, errListCapabilities)
+	}
+
+	for _, cap := range existing {
+		if cap.Type == capabilityCR.Spec.ForProvider.TypeId {
+			meta.SetExternalName(capabilityCR, cap.ID)
+
+			return managed.ExternalCreation{}, nil
+		}
 	}
 
 	created, err := e.client.Create(instanceclient.GenerateCapabilityCreate(&capabilityCR.Spec.ForProvider))
