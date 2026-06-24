@@ -1,6 +1,6 @@
 ---
 # File-based BlobStore example
-apiVersion: repository.nexus.crossplane.io/v1alpha1
+apiVersion: content.nexus.crossplane.io/v1alpha1
 kind: BlobStore
 metadata:
   name: my-file-blobstore
@@ -11,8 +11,8 @@ spec:
     type: File
     path: /nexus-data/blobs/my-file-blobstore
     softQuota:
-      type: spaceRemainingQuota  # or spaceUsedQuota
-      limit: 104857600  # 100MB in bytes
+      type: spaceRemainingQuota # or spaceUsedQuota
+      limit: 104857600 # 100MB in bytes
   providerConfigRef:
     kind: ProviderConfig
     name: default

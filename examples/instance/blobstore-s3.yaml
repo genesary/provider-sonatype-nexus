@@ -1,6 +1,6 @@
 ---
 # S3-based BlobStore example
-apiVersion: repository.nexus.crossplane.io/v1alpha1
+apiVersion: content.nexus.crossplane.io/v1alpha1
 kind: BlobStore
 metadata:
   name: my-s3-blobstore
@@ -16,7 +16,7 @@ spec:
       expirationDays: 30
     softQuota:
       type: spaceUsedQuota
-      limit: 1073741824  # 1GB in bytes
+      limit: 1073741824 # 1GB in bytes
   providerConfigRef:
     kind: ProviderConfig
     name: default

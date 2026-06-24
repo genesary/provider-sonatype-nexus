@@ -1,6 +1,6 @@
 ---
 # NPM hosted repository example
-apiVersion: repository.nexus.crossplane.io/v1alpha1
+apiVersion: content.nexus.crossplane.io/v1alpha1
 kind: Repository
 metadata:
   name: npm-hosted
