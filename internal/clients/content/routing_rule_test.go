@@ -204,4 +204,3 @@ func TestGenerateRoutingRuleObservation_Full(t *testing.T) {
 		t.Errorf("Matchers = %v, want [.*-SNAPSHOT.*]", obs.Matchers)
 	}
 }
-
