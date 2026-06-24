@@ -19,6 +19,7 @@ limitations under the License.
 package e2e
 
 import (
+	"github.com/datadrivers/go-nexus-client/nexus3/schema"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
 	nexussdk "github.com/datadrivers/go-nexus-client/nexus3/schema/capability"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
@@ -127,4 +128,8 @@ func (f *Framework) FetchPypiProxyRepo(name string) (*repository.PypiProxyReposi
 // FetchCapability returns the capability with the given ID, or (nil, nil) if absent.
 func (f *Framework) FetchCapability(id string) (*nexussdk.Capability, error) {
 	return f.Nexus.Capability.Get(id)
+}
+
+func (f *Framework) FetchRoutingRule(name string) (*schema.RoutingRule, error) {
+	return f.Nexus.RoutingRule.Get(name)
 }

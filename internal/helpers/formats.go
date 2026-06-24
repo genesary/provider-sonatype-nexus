@@ -257,5 +257,6 @@ func IsNotFound(err error) bool {
 
 	return strings.Contains(msg, "404") ||
 		strings.Contains(msg, "not found") ||
+		strings.Contains(msg, "did not find") ||
 		strings.Contains(msg, "does not exist")
 }

@@ -1,0 +1,15 @@
+---
+apiVersion: content.nexus.crossplane.io/v1alpha1
+kind: RoutingRule
+metadata:
+  name: example-routing-rule
+spec:
+  forProvider:
+    name: example-routing-rule
+    description: "Example routing rule for deny all"
+    mode: BLOCK
+    matchers:
+      - "test"
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default
