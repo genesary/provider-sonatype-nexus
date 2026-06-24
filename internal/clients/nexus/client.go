@@ -4,7 +4,6 @@ package nexus
 
 import (
 	"context"
-	"encoding/json"
 
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/datadrivers/go-nexus-client/nexus3"
@@ -12,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	kubeclient "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
@@ -81,42 +81,38 @@ func GetCredentials(ctx context.Context, kube kubeclient.Client, managed interfa
 
 // GetCredentialsFromSpec extracts Nexus credentials from a ProviderConfigSpec.
 func GetCredentialsFromSpec(ctx context.Context, kube kubeclient.Client, spec v1alpha1.ProviderConfigSpec) (Credentials, error) {
-	var creds Credentials
-
-	if spec.Credentials.Source != "Secret" {
-		return creds, errors.New("only Secret source is supported")
+	if spec.Username.Source != xpv2.CredentialsSourceSecret {
+		return Credentials{}, errors.Errorf("credentials source %q for username is not supported", spec.Username.Source)
 	}
 
-	if spec.Credentials.SecretRef == nil {
-		return creds, errors.New("secretRef is required when source is Secret")
+	if spec.Password.Source != xpv2.CredentialsSourceSecret {
+		return Credentials{}, errors.Errorf("credentials source %q for password is not supported", spec.Password.Source)
 	}
 
-	secret := &corev1.Secret{}
+	if spec.Username.SecretRef == nil {
+		return Credentials{}, errors.New("secretRef is required for username")
+	}
 
-	err := kube.Get(ctx, types.NamespacedName{
-		Name:      spec.Credentials.SecretRef.Name,
-		Namespace: spec.Credentials.SecretRef.Namespace,
-	}, secret)
+	if spec.Password.SecretRef == nil {
+		return Credentials{}, errors.New("secretRef is required for password")
+	}
+
+	username, err := GetSecretValue(ctx, kube, spec.Username.SecretRef)
 	if err != nil {
-		return creds, errors.Wrap(err, "failed to get credentials secret")
+		return Credentials{}, errors.Wrap(err, "cannot get username from secret")
 	}
 
-	key := "credentials"
-	if spec.Credentials.SecretRef.Key != "" {
-		key = spec.Credentials.SecretRef.Key
-	}
-
-	data, ok := secret.Data[key]
-	if !ok {
-		return creds, errors.Errorf("secret does not contain key %q", key)
-	}
-
-	err = json.Unmarshal(data, &creds)
+	password, err := GetSecretValue(ctx, kube, spec.Password.SecretRef)
 	if err != nil {
-		return creds, errors.Wrap(err, "failed to unmarshal credentials")
+		return Credentials{}, errors.Wrap(err, "cannot get password from secret")
 	}
 
-	return creds, nil
+	return Credentials{
+		URL:      spec.URL,
+		Username: username,
+		Password: password,
+		Insecure: ptr.Deref(spec.InsecureSkipVerify, false),
+	}, nil
 }
 
 // GetCredentialsFromSecret extracts Nexus credentials from a
