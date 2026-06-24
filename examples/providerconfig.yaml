@@ -1,19 +1,23 @@
 ---
-# Secret containing Nexus credentials (JSON-encoded)
+# Secret containing Nexus username
 apiVersion: v1
 kind: Secret
 metadata:
-  name: nexus-credentials
+  name: nexus-username
   namespace: crossplane-system
 type: Opaque
 stringData:
-  credentials: |
-    {
-      "url": "http://nexus.example.com:8081",
-      "username": "admin",
-      "password": "admin123",
-      "insecure": false
-    }
+  username: admin
+---
+# Secret containing Nexus password
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nexus-password
+  namespace: crossplane-system
+type: Opaque
+stringData:
+  password: admin123
 ---
 # Namespace-scoped ProviderConfig
 apiVersion: nexus.crossplane.io/v1alpha1
@@ -22,12 +26,20 @@ metadata:
   name: default
   namespace: crossplane-system
 spec:
-  credentials:
+  url: http://nexus.example.com:8081
+  insecureSkipVerify: false
+  username:
     source: Secret
     secretRef:
-      name: nexus-credentials
+      name: nexus-username
       namespace: crossplane-system
-      key: credentials
+      key: username
+  password:
+    source: Secret
+    secretRef:
+      name: nexus-password
+      namespace: crossplane-system
+      key: password
 ---
 # Cluster-scoped ProviderConfig
 apiVersion: nexus.crossplane.io/v1alpha1
@@ -35,9 +47,17 @@ kind: ClusterProviderConfig
 metadata:
   name: default
 spec:
-  credentials:
+  url: http://nexus.example.com:8081
+  insecureSkipVerify: false
+  username:
     source: Secret
     secretRef:
-      name: nexus-credentials
+      name: nexus-username
       namespace: crossplane-system
-      key: credentials
+      key: username
+  password:
+    source: Secret
+    secretRef:
+      name: nexus-password
+      namespace: crossplane-system
+      key: password

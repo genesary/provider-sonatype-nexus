@@ -88,25 +88,29 @@ kubectl apply -f e2e/manifests/provider.yaml
 
 ## Configuration
 
-### Create a Secret with Nexus Credentials
+### Create Secrets with Nexus Credentials
 
-The secret must contain a JSON-encoded credentials object:
+Each sensitive field is referenced from its own Kubernetes Secret, allowing credentials
+provisioned outside of Crossplane to be referenced directly:
 
 ```yaml
 apiVersion: v1
 kind: Secret
 metadata:
-  name: nexus-credentials
+  name: nexus-username
   namespace: crossplane-system
 type: Opaque
 stringData:
-  credentials: |
-    {
-      "url": "http://nexus.example.com:8081",
-      "username": "admin",
-      "password": "admin123",
-      "insecure": false
-    }
+  username: admin
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nexus-password
+  namespace: crossplane-system
+type: Opaque
+stringData:
+  password: admin123
 ```
 
 ### Create a ProviderConfig
@@ -116,13 +120,22 @@ apiVersion: nexus.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
   name: default
+  namespace: crossplane-system
 spec:
-  credentials:
+  url: http://nexus.example.com:8081
+  insecureSkipVerify: false
+  username:
     source: Secret
     secretRef:
-      name: nexus-credentials
+      name: nexus-username
       namespace: crossplane-system
-      key: credentials
+      key: username
+  password:
+    source: Secret
+    secretRef:
+      name: nexus-password
+      namespace: crossplane-system
+      key: password
 ```
 
 ## Usage Examples

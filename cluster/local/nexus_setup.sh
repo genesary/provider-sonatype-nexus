@@ -5,8 +5,8 @@
 #   1. apply Deployment + Service from e2e/manifests/nexus.yaml
 #   2. wait for the Deployment to become Available
 #   3. poll localhost:8081 (mapped via kind NodePort) until Nexus reports ready
-#   4. write JSON credentials to a Kubernetes Secret in crossplane-system
-#   5. apply a ProviderConfig wired to the in-cluster Service
+#   4. write username and password each to their own Kubernetes Secret in crossplane-system
+#   5. apply a ProviderConfig and ClusterProviderConfig wired to the in-cluster Service
 #
 # Required environment:
 #   KUBECTL (path to kubectl, falls back to "kubectl")
@@ -21,7 +21,8 @@ NEXUS_DEPLOYMENT="${NEXUS_DEPLOYMENT:-nexus}"
 NEXUS_ADMIN_USER="${NEXUS_ADMIN_USER:-admin}"
 NEXUS_ADMIN_PASS="${NEXUS_ADMIN_PASS:-admin123}"
 NEXUS_LOCAL_PORT="${NEXUS_LOCAL_PORT:-8081}"
-NEXUS_SECRET_NAME="${NEXUS_SECRET_NAME:-nexus-credentials}"
+NEXUS_USERNAME_SECRET_NAME="${NEXUS_USERNAME_SECRET_NAME:-nexus-username}"
+NEXUS_PASSWORD_SECRET_NAME="${NEXUS_PASSWORD_SECRET_NAME:-nexus-password}"
 NEXUS_SECRET_NAMESPACE="${NEXUS_SECRET_NAMESPACE:-crossplane-system}"
 NEXUS_PROVIDERCONFIG_NAME="${NEXUS_PROVIDERCONFIG_NAME:-default}"
 NEXUS_PROVIDERCONFIG_NAMESPACE="${NEXUS_PROVIDERCONFIG_NAMESPACE:-default}"
@@ -58,10 +59,16 @@ if ! curl -sf -o /dev/null "${NEXUS_LOCAL_URL}/service/rest/v1/status"; then
     exit 1
 fi
 
-log "Writing credentials Secret ${NEXUS_SECRET_NAMESPACE}/${NEXUS_SECRET_NAME}"
-"${KUBECTL}" create secret generic "${NEXUS_SECRET_NAME}" \
+log "Writing username Secret ${NEXUS_SECRET_NAMESPACE}/${NEXUS_USERNAME_SECRET_NAME}"
+"${KUBECTL}" create secret generic "${NEXUS_USERNAME_SECRET_NAME}" \
     --namespace="${NEXUS_SECRET_NAMESPACE}" \
-    --from-literal=credentials="{\"url\":\"${NEXUS_IN_CLUSTER_URL}\",\"username\":\"${NEXUS_ADMIN_USER}\",\"password\":\"${NEXUS_ADMIN_PASS}\",\"insecure\":true}" \
+    --from-literal=username="${NEXUS_ADMIN_USER}" \
+    --dry-run=client -o yaml | "${KUBECTL}" apply -f -
+
+log "Writing password Secret ${NEXUS_SECRET_NAMESPACE}/${NEXUS_PASSWORD_SECRET_NAME}"
+"${KUBECTL}" create secret generic "${NEXUS_PASSWORD_SECRET_NAME}" \
+    --namespace="${NEXUS_SECRET_NAMESPACE}" \
+    --from-literal=password="${NEXUS_ADMIN_PASS}" \
     --dry-run=client -o yaml | "${KUBECTL}" apply -f -
 
 log "Applying ProviderConfig '${NEXUS_PROVIDERCONFIG_NAME}' in namespace '${NEXUS_PROVIDERCONFIG_NAMESPACE}'"
@@ -72,12 +79,20 @@ metadata:
   name: ${NEXUS_PROVIDERCONFIG_NAME}
   namespace: ${NEXUS_PROVIDERCONFIG_NAMESPACE}
 spec:
-  credentials:
+  url: ${NEXUS_IN_CLUSTER_URL}
+  insecureSkipVerify: true
+  username:
     source: Secret
     secretRef:
-      name: ${NEXUS_SECRET_NAME}
+      name: ${NEXUS_USERNAME_SECRET_NAME}
       namespace: ${NEXUS_SECRET_NAMESPACE}
-      key: credentials
+      key: username
+  password:
+    source: Secret
+    secretRef:
+      name: ${NEXUS_PASSWORD_SECRET_NAME}
+      namespace: ${NEXUS_SECRET_NAMESPACE}
+      key: password
 EOF
 
 log "Applying ClusterProviderConfig '${NEXUS_PROVIDERCONFIG_NAME}' (for cluster-scoped resources)"
@@ -87,12 +102,20 @@ kind: ClusterProviderConfig
 metadata:
   name: ${NEXUS_PROVIDERCONFIG_NAME}
 spec:
-  credentials:
+  url: ${NEXUS_IN_CLUSTER_URL}
+  insecureSkipVerify: true
+  username:
     source: Secret
     secretRef:
-      name: ${NEXUS_SECRET_NAME}
+      name: ${NEXUS_USERNAME_SECRET_NAME}
       namespace: ${NEXUS_SECRET_NAMESPACE}
-      key: credentials
+      key: username
+  password:
+    source: Secret
+    secretRef:
+      name: ${NEXUS_PASSWORD_SECRET_NAME}
+      namespace: ${NEXUS_SECRET_NAMESPACE}
+      key: password
 EOF
 
-log "Nexus ready at ${NEXUS_IN_CLUSTER_URL} (credentials in ${NEXUS_SECRET_NAMESPACE}/${NEXUS_SECRET_NAME})"
+log "Nexus ready at ${NEXUS_IN_CLUSTER_URL} (credentials in ${NEXUS_SECRET_NAMESPACE}/${NEXUS_USERNAME_SECRET_NAME} and ${NEXUS_SECRET_NAMESPACE}/${NEXUS_PASSWORD_SECRET_NAME})"

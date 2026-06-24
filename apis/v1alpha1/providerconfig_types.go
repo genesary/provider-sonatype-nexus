@@ -7,13 +7,23 @@ import (
 
 // ProviderConfigSpec defines the desired state of ProviderConfig.
 type ProviderConfigSpec struct {
-	// Credentials required to authenticate to Nexus.
-	Credentials ProviderCredentials `json:"credentials"`
+	// URL is the URL of the Nexus instance.
+	// +kubebuilder:validation:Required
+	URL string `json:"url"`
+
+	// InsecureSkipVerify indicates whether to skip TLS certificate verification.
+	// +kubebuilder:validation:Optional
+	InsecureSkipVerify *bool `json:"insecureSkipVerify,omitempty"`
+
+	// Username credentials to authenticate with Nexus.
+	Username ProviderCredentials `json:"username"`
+
+	// Password credentials to authenticate with Nexus.
+	Password ProviderCredentials `json:"password"`
 }
 
 // ProviderCredentials defines the credentials for Nexus authentication.
 type ProviderCredentials struct {
-	// SecretRef is a reference to a secret containing credentials.
 	// +kubebuilder:validation:Optional
 	xpv2.CommonCredentialSelectors `json:",inline"`
 
@@ -31,7 +41,7 @@ type ProviderConfigStatus struct {
 // +kubebuilder:storageversion
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:printcolumn:name="SECRET-NAME",type="string",JSONPath=".spec.credentials.secretRef.name",priority=1
+// +kubebuilder:printcolumn:name="USERNAME-SECRET",type="string",JSONPath=".spec.username.secretRef.name",priority=1
 // +kubebuilder:resource:scope=Namespaced,categories={crossplane,provider,nexus}
 
 // ProviderConfig is the Schema for the namespaced providerconfigs API.
@@ -83,7 +93,7 @@ type ProviderConfigUsageList struct {
 // +kubebuilder:storageversion
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:printcolumn:name="SECRET-NAME",type="string",JSONPath=".spec.credentials.secretRef.name",priority=1
+// +kubebuilder:printcolumn:name="USERNAME-SECRET",type="string",JSONPath=".spec.username.secretRef.name",priority=1
 // +kubebuilder:resource:scope=Cluster,categories={crossplane,provider,nexus}
 
 // ClusterProviderConfig is the Schema for the cluster-scoped
