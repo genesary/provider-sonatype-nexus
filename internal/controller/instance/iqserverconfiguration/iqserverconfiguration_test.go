@@ -20,51 +20,61 @@ import (
 	instancemocks "github.com/genesary/provider-sonatype-nexus/test/mocks/instance"
 )
 
-func ptrTo[T any](v T) *T { return &v }
-
+// newTestIQServer returns a minimal IQServerConfiguration for tests.
 func newTestIQServer(enabled bool) *instancev1alpha1.IQServerConfiguration {
+	showLink := true
+	authType := "USER"
+	timeout := 60
+
 	return &instancev1alpha1.IQServerConfiguration{
 		ObjectMeta: metav1.ObjectMeta{Name: "iq-connection"},
 		Spec: instancev1alpha1.IQServerConfigurationSpec{
 			ForProvider: instancev1alpha1.IQServerConfigurationParameters{
-				Enabled:              enabled,
-				ShowLink:             true,
-				URL:                  ptrTo("https://iq.example.com"),
-				AuthenticationMethod: ptrTo("USER"),
-				Username:             ptrTo("nexus-user"),
-				TimeoutSeconds:       ptrTo(60),
+				Enabled:            &enabled,
+				ShowLink:           &showLink,
+				URL:                "https://iq.example.com",
+				AuthenticationType: &authType,
+				TimeoutSeconds:     &timeout,
 			},
 		},
 	}
 }
 
+// newTestScheme returns a runtime.Scheme with all required types registered.
 func newTestScheme(t *testing.T) *runtime.Scheme {
 	t.Helper()
 
 	s := runtime.NewScheme()
 
-	if err := instancev1alpha1.AddToScheme(s); err != nil {
+	err := instancev1alpha1.AddToScheme(s)
+	if err != nil {
 		t.Fatalf("AddToScheme(instance) failed: %v", err)
 	}
 
-	if err := nexusv1alpha1.AddToScheme(s); err != nil {
+	err = nexusv1alpha1.AddToScheme(s)
+	if err != nil {
 		t.Fatalf("AddToScheme(nexus) failed: %v", err)
 	}
 
 	return s
 }
 
+// newObservedConfig returns a sample IQServerConfiguration from Nexus.
 func newObservedConfig() *nexussdk.IQServerConfiguration {
+	url := "https://iq.example.com"
+	authType := "USER"
+	timeout := 60
+
 	return &nexussdk.IQServerConfiguration{
 		Enabled:            true,
 		ShowLink:           true,
-		URL:                ptrTo("https://iq.example.com"),
-		AuthenticationType: ptrTo("USER"),
-		Username:           ptrTo("nexus-user"),
-		TimeoutSeconds:     ptrTo(60),
+		URL:                &url,
+		AuthenticationType: &authType,
+		TimeoutSeconds:     &timeout,
 	}
 }
 
+// TestObserve covers the Observe method across all meaningful branches.
 func TestObserve(t *testing.T) {
 	t.Parallel()
 
@@ -77,7 +87,7 @@ func TestObserve(t *testing.T) {
 		wantErr      bool
 	}{
 		{
-			name: "DeletionTimestamp_ReportsAbsent",
+			name: "DeletionTimestamp_DisabledInNexus_ReportsAbsent",
 			cr: func() *instancev1alpha1.IQServerConfiguration {
 				cr := newTestIQServer(true)
 				now := metav1.NewTime(time.Now())
@@ -85,8 +95,31 @@ func TestObserve(t *testing.T) {
 
 				return cr
 			}(),
+			mockSetup: func(mc *instancemocks.MockIQServerClient) {
+				mc.GetFn = func() (*nexussdk.IQServerConfiguration, error) {
+					return &nexussdk.IQServerConfiguration{Enabled: false}, nil
+				}
+			},
 			wantExists:   false,
 			wantUpToDate: false,
+			wantErr:      false,
+		},
+		{
+			name: "DeletionTimestamp_StillEnabled_ReportsPresent",
+			cr: func() *instancev1alpha1.IQServerConfiguration {
+				cr := newTestIQServer(true)
+				now := metav1.NewTime(time.Now())
+				cr.DeletionTimestamp = &now
+
+				return cr
+			}(),
+			mockSetup: func(mc *instancemocks.MockIQServerClient) {
+				mc.GetFn = func() (*nexussdk.IQServerConfiguration, error) {
+					return newObservedConfig(), nil
+				}
+			},
+			wantExists:   true,
+			wantUpToDate: true,
 			wantErr:      false,
 		},
 		{
@@ -129,7 +162,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButURLDiffers",
 			cr: func() *instancev1alpha1.IQServerConfiguration {
 				cr := newTestIQServer(true)
-				cr.Spec.ForProvider.URL = ptrTo("https://other-iq.example.com")
+				cr.Spec.ForProvider.URL = "https://other-iq.example.com"
 
 				return cr
 			}(),
@@ -173,6 +206,7 @@ func TestObserve(t *testing.T) {
 	}
 }
 
+// TestObserve_WrongType verifies Observe rejects invalid managed resources.
 func TestObserve_WrongType(t *testing.T) {
 	t.Parallel()
 
@@ -184,6 +218,7 @@ func TestObserve_WrongType(t *testing.T) {
 	}
 }
 
+// TestCreate covers the Create method across all meaningful branches.
 func TestCreate(t *testing.T) {
 	t.Parallel()
 
@@ -250,6 +285,7 @@ func TestCreate(t *testing.T) {
 	}
 }
 
+// TestCreate_WrongType verifies Create rejects invalid managed resources.
 func TestCreate_WrongType(t *testing.T) {
 	t.Parallel()
 
@@ -261,6 +297,7 @@ func TestCreate_WrongType(t *testing.T) {
 	}
 }
 
+// TestUpdate covers the Update method across all meaningful branches.
 func TestUpdate(t *testing.T) {
 	t.Parallel()
 
@@ -323,6 +360,7 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+// TestUpdate_WrongType verifies Update rejects invalid managed resources.
 func TestUpdate_WrongType(t *testing.T) {
 	t.Parallel()
 
@@ -334,24 +372,78 @@ func TestUpdate_WrongType(t *testing.T) {
 	}
 }
 
+// TestDelete covers the Delete method across all meaningful branches.
 func TestDelete(t *testing.T) {
 	t.Parallel()
 
-	cr := newTestIQServer(true)
-	mc := instancemocks.NewMockIQServerClient()
+	tests := []struct {
+		name      string
+		cr        *instancev1alpha1.IQServerConfiguration
+		mockSetup func(*instancemocks.MockIQServerClient)
+		wantErr   bool
+		validate  func(*testing.T, *instancemocks.MockIQServerClient)
+	}{
+		{
+			name: "DisableSuccess",
+			cr:   newTestIQServer(true),
+			mockSetup: func(mc *instancemocks.MockIQServerClient) {
+				mc.DisableFn = func() error { return nil }
+			},
+			wantErr: false,
+			validate: func(t *testing.T, mc *instancemocks.MockIQServerClient) {
+				t.Helper()
 
-	e := &external{client: mc}
-
-	_, err := e.Delete(context.Background(), cr)
-	if err != nil {
-		t.Errorf("Delete() returned unexpected error: %v", err)
+				if mc.DisableCalls != 1 {
+					t.Errorf("expected 1 Disable call, got %d", mc.DisableCalls)
+				}
+			},
+		},
+		{
+			name: "DisableError",
+			cr:   newTestIQServer(true),
+			mockSetup: func(mc *instancemocks.MockIQServerClient) {
+				mc.DisableFn = func() error { return errors.New("disable failed") }
+			},
+			wantErr: true,
+		},
 	}
 
-	if len(mc.UpdateCalls) != 0 {
-		t.Error("Delete() should not call Update")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			mc := instancemocks.NewMockIQServerClient()
+			if tt.mockSetup != nil {
+				tt.mockSetup(mc)
+			}
+
+			e := &external{client: mc}
+			_, err := e.Delete(context.Background(), tt.cr)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Delete() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.validate != nil {
+				tt.validate(t, mc)
+			}
+		})
 	}
 }
 
+// TestDelete_WrongType verifies Delete rejects invalid managed resources.
+func TestDelete_WrongType(t *testing.T) {
+	t.Parallel()
+
+	e := &external{client: instancemocks.NewMockIQServerClient()}
+
+	_, err := e.Delete(context.Background(), nil)
+	if err == nil {
+		t.Error("Delete() with nil managed resource should return error")
+	}
+}
+
+// TestDisconnect verifies Disconnect is a no-op.
 func TestDisconnect(t *testing.T) {
 	t.Parallel()
 
@@ -363,6 +455,7 @@ func TestDisconnect(t *testing.T) {
 	}
 }
 
+// TestConnect_WrongType verifies Connect rejects invalid managed resources.
 func TestConnect_WrongType(t *testing.T) {
 	t.Parallel()
 
@@ -378,6 +471,7 @@ func TestConnect_WrongType(t *testing.T) {
 	}
 }
 
+// TestConnect_TrackError verifies Connect fails without ProviderConfig Kind.
 func TestConnect_TrackError(t *testing.T) {
 	t.Parallel()
 
@@ -395,6 +489,7 @@ func TestConnect_TrackError(t *testing.T) {
 	}
 }
 
+// TestConnect_GetProviderConfigError verifies Connect needs ProviderConfig.
 func TestConnect_GetProviderConfigError(t *testing.T) {
 	t.Parallel()
 

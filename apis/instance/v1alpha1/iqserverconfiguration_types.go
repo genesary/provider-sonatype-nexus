@@ -8,68 +8,105 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+// IQServerConfigurationParameters are configurable IQ Server settings.
 type IQServerConfigurationParameters struct {
-	Enabled bool `json:"enabled"`
+	// Enabled indicates whether the IQ Server configuration is enabled or disabled.
+	// If unset, will default to true.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=true
+	Enabled *bool `json:"enabled"`
 
-	ShowLink bool `json:"showLink"`
+	// ShowLink indicates whether to show the IQ Server link in the Nexus UI.
+	// If unset, will default to false.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=false
+	ShowLink *bool `json:"showLink"`
 
-	// +optional
-	URL *string `json:"url,omitempty"`
+	// URL is the URL of the IQ Server.
+	// +kubebuilder:validation:Required
+	URL string `json:"url"`
 
-	// AuthenticationMethod is either "USER" or "PKI".
-	// +optional
-	AuthenticationMethod *string `json:"authenticationMethod,omitempty"`
+	// AuthenticationType is either "USER" or "PKI".
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=USER;PKI
+	AuthenticationType *string `json:"authenticationType"`
 
-	// +optional
-	Username *string `json:"username,omitempty"`
+	// UsernameSecretRef references the Kubernetes Secret key holding the IQ Server username.
+	// +kubebuilder:validation:Optional
+	UsernameSecretRef *xpv2.SecretKeySelector `json:"usernameSecretRef"`
 
 	// PasswordSecretRef references the Kubernetes Secret key holding the IQ Server password.
-	// +optional
-	PasswordSecretRef *xpv2.SecretKeySelector `json:"passwordSecretRef,omitempty"`
+	// +kubebuilder:validation:Optional
+	PasswordSecretRef *xpv2.SecretKeySelector `json:"passwordSecretRef"`
 
-	UseTrustStoreForURL bool `json:"useTrustStoreForUrl,omitempty"`
+	// UseTrustStoreForURL indicates whether to use the trust store for the IQ Server URL.
+	// +kubebuilder:validation:Optional
+	UseTrustStoreForURL *bool `json:"useTrustStoreForUrl"`
 
-	// +optional
-	TimeoutSeconds *int `json:"timeoutSeconds,omitempty"`
+	// TimeoutSeconds is the timeout in seconds for the IQ Server connection.
+	// If unset, will default to 10 seconds.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=10
+	TimeoutSeconds *int `json:"timeoutSeconds"`
 
-	// +optional
-	Properties *string `json:"properties,omitempty"`
+	// Properties is a string of properties to set for the IQ Server configuration.
+	// +kubebuilder:validation:Optional
+	Properties *string `json:"properties"`
 
-	FailOpenModeEnabled bool `json:"failOpenModeEnabled,omitempty"`
+	// FailOpenModeEnabled indicates whether the fail open mode is enabled.
+	// If unset, will default to false.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=false
+	FailOpenModeEnabled *bool `json:"failOpenModeEnabled"`
 }
 
+// IQServerConfigurationObservation is the observed IQ Server state.
 type IQServerConfigurationObservation struct {
-	Enabled bool `json:"enabled,omitempty"`
+	// Enabled reflects whether the IQ Server integration is enabled.
+	Enabled bool `json:"enabled"`
 
-	ShowLink bool `json:"showLink,omitempty"`
+	// ShowLink reflects whether the IQ Server link is shown in the Nexus UI.
+	ShowLink bool `json:"showLink"`
 
-	URL *string `json:"url,omitempty"`
+	// URL is the observed IQ Server URL.
+	URL string `json:"url"`
 
-	AuthenticationMethod *string `json:"authenticationMethod,omitempty"`
+	// AuthenticationType is the observed authentication type.
+	AuthenticationType string `json:"authenticationType"`
 
-	Username *string `json:"username,omitempty"`
+	// UseTrustStoreForURL reflects whether the trust store is used for the IQ Server URL.
+	UseTrustStoreForURL bool `json:"useTrustStoreForUrl"`
 
-	UseTrustStoreForURL bool `json:"useTrustStoreForUrl,omitempty"`
+	// TimeoutSeconds is the observed connection timeout in seconds.
+	TimeoutSeconds int `json:"timeoutSeconds"`
 
-	TimeoutSeconds *int `json:"timeoutSeconds,omitempty"`
+	// Properties is the observed properties string.
+	Properties string `json:"properties"`
 
-	Properties *string `json:"properties,omitempty"`
-
-	FailOpenModeEnabled bool `json:"failOpenModeEnabled,omitempty"`
+	// FailOpenModeEnabled reflects whether fail open mode is enabled.
+	FailOpenModeEnabled bool `json:"failOpenModeEnabled"`
 }
 
+// IQServerConfigurationSpec defines the desired IQ Server state.
 type IQServerConfigurationSpec struct {
 	xpv2.ManagedResourceSpec `json:",inline"`
 
+	// ForProvider holds the provider-specific configuration for this resource.
 	ForProvider IQServerConfigurationParameters `json:"forProvider"`
 }
 
+// IQServerConfigurationStatus holds the observed IQ Server state.
 type IQServerConfigurationStatus struct {
 	xpv2.ManagedResourceStatus `json:",inline"`
 
+	// AtProvider holds the provider-specific observed state.
 	AtProvider IQServerConfigurationObservation `json:"atProvider,omitempty"`
 }
 
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+
+// IQServerConfiguration is the Schema for the IQ Server configuration API.
 type IQServerConfiguration struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -78,6 +115,9 @@ type IQServerConfiguration struct {
 	Status IQServerConfigurationStatus `json:"status,omitempty"`
 }
 
+// +kubebuilder:object:root=true
+
+// IQServerConfigurationList contains a list of IQServerConfiguration.
 type IQServerConfigurationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
@@ -85,6 +125,7 @@ type IQServerConfigurationList struct {
 	Items []IQServerConfiguration `json:"items"`
 }
 
+// IQServerConfiguration type metadata.
 var (
 	IQServerConfigurationKind             = reflect.TypeFor[IQServerConfiguration]().Name()
 	IQServerConfigurationGroupKind        = schema.GroupKind{Group: APIGroup, Kind: IQServerConfigurationKind}.String()
@@ -92,6 +133,7 @@ var (
 	IQServerConfigurationGroupVersionKind = SchemeGroupVersion.WithKind(IQServerConfigurationKind)
 )
 
+// init registers IQServerConfiguration types with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&IQServerConfiguration{}, &IQServerConfigurationList{})
 }

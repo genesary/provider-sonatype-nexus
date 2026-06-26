@@ -1,3 +1,4 @@
+// Package iqserverconfiguration manages IQServerConfiguration resources.
 package iqserverconfiguration
 
 import (
@@ -19,15 +20,28 @@ import (
 )
 
 const (
+	// errNotIQServerConfiguration means managed resource
+	// is not an IQServerConfiguration.
 	errNotIQServerConfiguration = "managed resource is not an IQServerConfiguration custom resource"
-	errTrackPCUsage             = "cannot track ProviderConfig usage"
-	errGetPC                    = "cannot get ProviderConfig"
-	errNewClient                = "cannot create new Nexus client"
-	errGetIQServer              = "cannot get IQ Server configuration from Nexus"
-	errUpdateIQServer           = "cannot update IQ Server configuration in Nexus"
-	errGetPassword              = "cannot get IQ Server password from secret"
+	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
+	errTrackPCUsage = "cannot track ProviderConfig usage"
+	// errGetPC is returned when retrieving the ProviderConfig fails.
+	errGetPC = "cannot get ProviderConfig"
+	// errNewClient is returned when creating the Nexus client fails.
+	errNewClient = "cannot create new Nexus client"
+	// errGetIQServer is returned when retrieving IQ Server config fails.
+	errGetIQServer = "cannot get IQ Server configuration from Nexus"
+	// errDeleteIQServer is returned when IQ Server configuration disable fails.
+	errDeleteIQServer = "cannot disable IQ Server configuration in Nexus"
+	// errUpdateIQServer is returned when IQ Server configuration update fails.
+	errUpdateIQServer = "cannot update IQ Server configuration in Nexus"
+	// errGetPassword is returned when reading the IQ Server password fails.
+	errGetPassword = "cannot get IQ Server password from secret"
+	// errGetUsername is returned when reading the IQ Server username fails.
+	errGetUsername = "cannot get IQ Server username from secret"
 )
 
+// Setup adds a controller that reconciles IQServerConfiguration resources.
 func Setup(mgr ctrl.Manager, opts controller.Options) error {
 	name := managed.ControllerName(instancev1alpha1.IQServerConfigurationGroupKind)
 
@@ -49,11 +63,13 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
+// connector creates an external client for IQServerConfiguration resources.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
+// Connect creates the external IQ Server client.
 func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
 	_, ok := managedRes.(*instancev1alpha1.IQServerConfiguration)
 	if !ok {
@@ -83,19 +99,17 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{client: iqClient, kube: c.kube}, nil
 }
 
+// external implements managed.ExternalClient for IQServerConfiguration.
 type external struct {
 	client instanceclient.IQServerClient
 	kube   client.Client
 }
 
+// Observe checks the current IQ Server configuration against desired state.
 func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	cr, ok := managedRes.(*instancev1alpha1.IQServerConfiguration)
+	iqConfig, ok := managedRes.(*instancev1alpha1.IQServerConfiguration)
 	if !ok {
 		return managed.ExternalObservation{}, errors.New(errNotIQServerConfiguration)
-	}
-
-	if cr.GetDeletionTimestamp() != nil {
-		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
 	observed, err := e.client.Get()
@@ -103,72 +117,103 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetIQServer)
 	}
 
-	cr.Status.AtProvider = instanceclient.GenerateIQServerObservation(observed)
-	cr.SetConditions(nexusv1alpha1.Available())
+	if !iqConfig.GetDeletionTimestamp().IsZero() && observed != nil && !observed.Enabled {
+		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
+
+	iqConfig.Status.AtProvider = instanceclient.GenerateIQServerObservation(observed)
+	iqConfig.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: instanceclient.IsIQServerUpToDate(cr, observed),
+		ResourceUpToDate: instanceclient.IsIQServerUpToDate(iqConfig, observed),
 	}, nil
 }
 
+// Create applies the IQ Server configuration in Nexus.
+// IQ Server config is a singleton; Create simply applies the spec.
 func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	cr, ok := managedRes.(*instancev1alpha1.IQServerConfiguration)
+	iqConfig, ok := managedRes.(*instancev1alpha1.IQServerConfiguration)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotIQServerConfiguration)
 	}
 
-	password, err := e.resolvePassword(ctx, cr)
+	err := e.applyConfig(ctx, iqConfig)
 	if err != nil {
 		return managed.ExternalCreation{}, err
-	}
-
-	config := instanceclient.GenerateIQServerUpdate(&cr.Spec.ForProvider, password)
-
-	if err := e.client.Update(config); err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, errUpdateIQServer)
 	}
 
 	return managed.ExternalCreation{}, nil
 }
 
+// Update applies the IQ Server configuration in Nexus.
 func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	cr, ok := managedRes.(*instancev1alpha1.IQServerConfiguration)
+	iqConfig, ok := managedRes.(*instancev1alpha1.IQServerConfiguration)
 	if !ok {
 		return managed.ExternalUpdate{}, errors.New(errNotIQServerConfiguration)
 	}
 
-	password, err := e.resolvePassword(ctx, cr)
+	err := e.applyConfig(ctx, iqConfig)
 	if err != nil {
 		return managed.ExternalUpdate{}, err
-	}
-
-	config := instanceclient.GenerateIQServerUpdate(&cr.Spec.ForProvider, password)
-
-	if err := e.client.Update(config); err != nil {
-		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateIQServer)
 	}
 
 	return managed.ExternalUpdate{}, nil
 }
 
-func (e *external) Delete(_ context.Context, _ resource.Managed) (managed.ExternalDelete, error) {
+// Delete disables the IQ Server integration in Nexus.
+// IQ Server config is a singleton; Delete disables rather than removes.
+func (e *external) Delete(_ context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
+	_, ok := managedRes.(*instancev1alpha1.IQServerConfiguration)
+	if !ok {
+		return managed.ExternalDelete{}, errors.New(errNotIQServerConfiguration)
+	}
+
+	err := e.client.Disable()
+	if err != nil {
+		return managed.ExternalDelete{}, errors.Wrap(err, errDeleteIQServer)
+	}
+
 	return managed.ExternalDelete{}, nil
 }
 
+// Disconnect is a no-op; Nexus HTTP client has no persistent connection.
 func (e *external) Disconnect(_ context.Context) error {
 	return nil
 }
 
-func (e *external) resolvePassword(ctx context.Context, cr *instancev1alpha1.IQServerConfiguration) (string, error) {
-	if cr.Spec.ForProvider.PasswordSecretRef == nil {
-		return "", nil
-	}
-
-	password, err := nexus.GetSecretValue(ctx, e.kube, cr.Spec.ForProvider.PasswordSecretRef)
+// applyConfig resolves credentials and pushes the config to Nexus.
+func (e *external) applyConfig(ctx context.Context, iqConfig *instancev1alpha1.IQServerConfiguration) error {
+	username, password, err := e.resolveCredentials(ctx, iqConfig)
 	if err != nil {
-		return "", errors.Wrap(err, errGetPassword)
+		return err
 	}
 
-	return password, nil
+	config := instanceclient.GenerateIQServerUpdate(&iqConfig.Spec.ForProvider, username, password)
+
+	err = e.client.Update(config)
+	if err != nil {
+		return errors.Wrap(err, errUpdateIQServer)
+	}
+
+	return nil
+}
+
+// resolveCredentials reads username and password from Kubernetes Secrets.
+func (e *external) resolveCredentials(ctx context.Context, iqConfig *instancev1alpha1.IQServerConfiguration) (username, password string, err error) {
+	if iqConfig.Spec.ForProvider.UsernameSecretRef != nil {
+		username, err = nexus.GetSecretValue(ctx, e.kube, iqConfig.Spec.ForProvider.UsernameSecretRef)
+		if err != nil {
+			return "", "", errors.Wrap(err, errGetUsername)
+		}
+	}
+
+	if iqConfig.Spec.ForProvider.PasswordSecretRef != nil {
+		password, err = nexus.GetSecretValue(ctx, e.kube, iqConfig.Spec.ForProvider.PasswordSecretRef)
+		if err != nil {
+			return "", "", errors.Wrap(err, errGetPassword)
+		}
+	}
+
+	return username, password, nil
 }
