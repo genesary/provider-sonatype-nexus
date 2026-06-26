@@ -9,8 +9,11 @@ spec:
     enabled: true
     showLink: true
     url: https://iq.example.com
-    authenticationMethod: USER
-    username: nexus-iq-user
+    authenticationType: USER
+    usernameSecretRef:
+      name: iq-credentials
+      namespace: crossplane-system
+      key: username
     passwordSecretRef:
       name: iq-credentials
       namespace: crossplane-system
