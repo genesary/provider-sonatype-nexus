@@ -1,0 +1,24 @@
+---
+apiVersion: instance.nexus.crossplane.io/v1alpha1
+kind: IQServerConfiguration
+metadata:
+  name: iq-connection
+  namespace: default
+spec:
+  forProvider:
+    enabled: true
+    showLink: true
+    url: https://iq.example.com
+    authenticationMethod: USER
+    username: nexus-iq-user
+    passwordSecretRef:
+      name: iq-credentials
+      namespace: crossplane-system
+      key: password
+    useTrustStoreForUrl: false
+    timeoutSeconds: 60
+    properties: "sonatypePolicyEvaluationLimit=10"
+    failOpenModeEnabled: false
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default
