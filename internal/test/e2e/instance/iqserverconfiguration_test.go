@@ -8,6 +8,7 @@ import (
 
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/test/e2e"
@@ -28,8 +29,8 @@ func TestIQServerConfigurationUpdate(t *testing.T) {
 				},
 			},
 			ForProvider: instancev1alpha1.IQServerConfigurationParameters{
-				Enabled:  false,
-				ShowLink: false,
+				Enabled:  ptr.To(false),
+				ShowLink: ptr.To(false),
 			},
 		},
 	}
