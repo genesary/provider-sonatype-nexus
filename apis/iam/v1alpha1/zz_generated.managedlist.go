@@ -14,47 +14,6 @@ func (l *AnonymousAccessList) GetItems() []resource.Managed {
 	for i := range l.Items {
 		items[i] = &l.Items[i]
 	}
-
-	return items
-}
-
-// GetItems of this UserTokenConfigurationList.
-func (l *UserTokenConfigurationList) GetItems() []resource.Managed {
-	items := make([]resource.Managed, len(l.Items))
-	for i := range l.Items {
-		items[i] = &l.Items[i]
-	}
-
-	return items
-}
-
-// GetItems of this RoleList.
-func (l *RoleList) GetItems() []resource.Managed {
-	items := make([]resource.Managed, len(l.Items))
-	for i := range l.Items {
-		items[i] = &l.Items[i]
-	}
-
-	return items
-}
-
-// GetItems of this UserList.
-func (l *UserList) GetItems() []resource.Managed {
-	items := make([]resource.Managed, len(l.Items))
-	for i := range l.Items {
-		items[i] = &l.Items[i]
-	}
-
-	return items
-}
-
-// GetItems of this PrivilegeList.
-func (l *PrivilegeList) GetItems() []resource.Managed {
-	items := make([]resource.Managed, len(l.Items))
-	for i := range l.Items {
-		items[i] = &l.Items[i]
-	}
-
 	return items
 }
 
@@ -64,7 +23,24 @@ func (l *LDAPList) GetItems() []resource.Managed {
 	for i := range l.Items {
 		items[i] = &l.Items[i]
 	}
+	return items
+}
 
+// GetItems of this PrivilegeList.
+func (l *PrivilegeList) GetItems() []resource.Managed {
+	items := make([]resource.Managed, len(l.Items))
+	for i := range l.Items {
+		items[i] = &l.Items[i]
+	}
+	return items
+}
+
+// GetItems of this RoleList.
+func (l *RoleList) GetItems() []resource.Managed {
+	items := make([]resource.Managed, len(l.Items))
+	for i := range l.Items {
+		items[i] = &l.Items[i]
+	}
 	return items
 }
 
@@ -74,6 +50,23 @@ func (l *SAMLList) GetItems() []resource.Managed {
 	for i := range l.Items {
 		items[i] = &l.Items[i]
 	}
+	return items
+}
 
+// GetItems of this UserList.
+func (l *UserList) GetItems() []resource.Managed {
+	items := make([]resource.Managed, len(l.Items))
+	for i := range l.Items {
+		items[i] = &l.Items[i]
+	}
+	return items
+}
+
+// GetItems of this UserTokenConfigurationList.
+func (l *UserTokenConfigurationList) GetItems() []resource.Managed {
+	items := make([]resource.Managed, len(l.Items))
+	for i := range l.Items {
+		items[i] = &l.Items[i]
+	}
 	return items
 }
