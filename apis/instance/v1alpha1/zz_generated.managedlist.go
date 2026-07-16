@@ -26,6 +26,15 @@ func (l *CapabilityList) GetItems() []resource.Managed {
 	return items
 }
 
+// GetItems of this IQServerConfigurationList.
+func (l *IQServerConfigurationList) GetItems() []resource.Managed {
+	items := make([]resource.Managed, len(l.Items))
+	for i := range l.Items {
+		items[i] = &l.Items[i]
+	}
+	return items
+}
+
 // GetItems of this LicenseList.
 func (l *LicenseList) GetItems() []resource.Managed {
 	items := make([]resource.Managed, len(l.Items))
@@ -50,15 +59,5 @@ func (l *SecuritySSLTruststoreList) GetItems() []resource.Managed {
 	for i := range l.Items {
 		items[i] = &l.Items[i]
 	}
-	return items
-}
-
-// GetItems of this IQServerConfigurationList.
-func (l *IQServerConfigurationList) GetItems() []resource.Managed {
-	items := make([]resource.Managed, len(l.Items))
-	for i := range l.Items {
-		items[i] = &l.Items[i]
-	}
-
 	return items
 }
