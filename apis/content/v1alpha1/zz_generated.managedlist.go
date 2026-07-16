@@ -26,6 +26,7 @@ func (l *ContentSelectorList) GetItems() []resource.Managed {
 	return items
 }
 
+// GetItems of this RepositoryList.
 func (l *RepositoryList) GetItems() []resource.Managed {
 	items := make([]resource.Managed, len(l.Items))
 	for i := range l.Items {
@@ -34,6 +35,7 @@ func (l *RepositoryList) GetItems() []resource.Managed {
 	return items
 }
 
+// GetItems of this RoutingRuleList.
 func (l *RoutingRuleList) GetItems() []resource.Managed {
 	items := make([]resource.Managed, len(l.Items))
 	for i := range l.Items {

@@ -32,7 +32,6 @@ func (l *LicenseList) GetItems() []resource.Managed {
 	for i := range l.Items {
 		items[i] = &l.Items[i]
 	}
-
 	return items
 }
 
@@ -42,7 +41,6 @@ func (l *SecurityRealmList) GetItems() []resource.Managed {
 	for i := range l.Items {
 		items[i] = &l.Items[i]
 	}
-
 	return items
 }
 
@@ -52,6 +50,5 @@ func (l *SecuritySSLTruststoreList) GetItems() []resource.Managed {
 	for i := range l.Items {
 		items[i] = &l.Items[i]
 	}
-
 	return items
 }

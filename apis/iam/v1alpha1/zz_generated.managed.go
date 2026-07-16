@@ -48,123 +48,43 @@ func (mg *AnonymousAccess) SetWriteConnectionSecretToReference(r *xpv2.LocalSecr
 	mg.Spec.WriteConnectionSecretToReference = r
 }
 
-// GetCondition of this UserTokenConfiguration.
-func (mg *UserTokenConfiguration) GetCondition(ct xpv2.ConditionType) xpv2.Condition {
+// GetCondition of this LDAP.
+func (mg *LDAP) GetCondition(ct xpv2.ConditionType) xpv2.Condition {
 	return mg.Status.GetCondition(ct)
 }
 
-// GetManagementPolicies of this UserTokenConfiguration.
-func (mg *UserTokenConfiguration) GetManagementPolicies() xpv2.ManagementPolicies {
+// GetManagementPolicies of this LDAP.
+func (mg *LDAP) GetManagementPolicies() xpv2.ManagementPolicies {
 	return mg.Spec.ManagementPolicies
 }
 
-// GetProviderConfigReference of this UserTokenConfiguration.
-func (mg *UserTokenConfiguration) GetProviderConfigReference() *xpv2.ProviderConfigReference {
+// GetProviderConfigReference of this LDAP.
+func (mg *LDAP) GetProviderConfigReference() *xpv2.ProviderConfigReference {
 	return mg.Spec.ProviderConfigReference
 }
 
-// GetWriteConnectionSecretToReference of this UserTokenConfiguration.
-func (mg *UserTokenConfiguration) GetWriteConnectionSecretToReference() *xpv2.LocalSecretReference {
+// GetWriteConnectionSecretToReference of this LDAP.
+func (mg *LDAP) GetWriteConnectionSecretToReference() *xpv2.LocalSecretReference {
 	return mg.Spec.WriteConnectionSecretToReference
 }
 
-// SetConditions of this UserTokenConfiguration.
-func (mg *UserTokenConfiguration) SetConditions(c ...xpv2.Condition) {
+// SetConditions of this LDAP.
+func (mg *LDAP) SetConditions(c ...xpv2.Condition) {
 	mg.Status.SetConditions(c...)
 }
 
-// SetManagementPolicies of this UserTokenConfiguration.
-func (mg *UserTokenConfiguration) SetManagementPolicies(r xpv2.ManagementPolicies) {
+// SetManagementPolicies of this LDAP.
+func (mg *LDAP) SetManagementPolicies(r xpv2.ManagementPolicies) {
 	mg.Spec.ManagementPolicies = r
 }
 
-// SetProviderConfigReference of this UserTokenConfiguration.
-func (mg *UserTokenConfiguration) SetProviderConfigReference(r *xpv2.ProviderConfigReference) {
+// SetProviderConfigReference of this LDAP.
+func (mg *LDAP) SetProviderConfigReference(r *xpv2.ProviderConfigReference) {
 	mg.Spec.ProviderConfigReference = r
 }
 
-// SetWriteConnectionSecretToReference of this UserTokenConfiguration.
-func (mg *UserTokenConfiguration) SetWriteConnectionSecretToReference(r *xpv2.LocalSecretReference) {
-	mg.Spec.WriteConnectionSecretToReference = r
-}
-
-// GetCondition of this Role.
-func (mg *Role) GetCondition(ct xpv2.ConditionType) xpv2.Condition {
-	return mg.Status.GetCondition(ct)
-}
-
-// GetManagementPolicies of this Role.
-func (mg *Role) GetManagementPolicies() xpv2.ManagementPolicies {
-	return mg.Spec.ManagementPolicies
-}
-
-// GetProviderConfigReference of this Role.
-func (mg *Role) GetProviderConfigReference() *xpv2.ProviderConfigReference {
-	return mg.Spec.ProviderConfigReference
-}
-
-// GetWriteConnectionSecretToReference of this Role.
-func (mg *Role) GetWriteConnectionSecretToReference() *xpv2.LocalSecretReference {
-	return mg.Spec.WriteConnectionSecretToReference
-}
-
-// SetConditions of this Role.
-func (mg *Role) SetConditions(c ...xpv2.Condition) {
-	mg.Status.SetConditions(c...)
-}
-
-// SetManagementPolicies of this Role.
-func (mg *Role) SetManagementPolicies(r xpv2.ManagementPolicies) {
-	mg.Spec.ManagementPolicies = r
-}
-
-// SetProviderConfigReference of this Role.
-func (mg *Role) SetProviderConfigReference(r *xpv2.ProviderConfigReference) {
-	mg.Spec.ProviderConfigReference = r
-}
-
-// SetWriteConnectionSecretToReference of this Role.
-func (mg *Role) SetWriteConnectionSecretToReference(r *xpv2.LocalSecretReference) {
-	mg.Spec.WriteConnectionSecretToReference = r
-}
-
-// GetCondition of this User.
-func (mg *User) GetCondition(ct xpv2.ConditionType) xpv2.Condition {
-	return mg.Status.GetCondition(ct)
-}
-
-// GetManagementPolicies of this User.
-func (mg *User) GetManagementPolicies() xpv2.ManagementPolicies {
-	return mg.Spec.ManagementPolicies
-}
-
-// GetProviderConfigReference of this User.
-func (mg *User) GetProviderConfigReference() *xpv2.ProviderConfigReference {
-	return mg.Spec.ProviderConfigReference
-}
-
-// GetWriteConnectionSecretToReference of this User.
-func (mg *User) GetWriteConnectionSecretToReference() *xpv2.LocalSecretReference {
-	return mg.Spec.WriteConnectionSecretToReference
-}
-
-// SetConditions of this User.
-func (mg *User) SetConditions(c ...xpv2.Condition) {
-	mg.Status.SetConditions(c...)
-}
-
-// SetManagementPolicies of this User.
-func (mg *User) SetManagementPolicies(r xpv2.ManagementPolicies) {
-	mg.Spec.ManagementPolicies = r
-}
-
-// SetProviderConfigReference of this User.
-func (mg *User) SetProviderConfigReference(r *xpv2.ProviderConfigReference) {
-	mg.Spec.ProviderConfigReference = r
-}
-
-// SetWriteConnectionSecretToReference of this User.
-func (mg *User) SetWriteConnectionSecretToReference(r *xpv2.LocalSecretReference) {
+// SetWriteConnectionSecretToReference of this LDAP.
+func (mg *LDAP) SetWriteConnectionSecretToReference(r *xpv2.LocalSecretReference) {
 	mg.Spec.WriteConnectionSecretToReference = r
 }
 
@@ -208,43 +128,43 @@ func (mg *Privilege) SetWriteConnectionSecretToReference(r *xpv2.LocalSecretRefe
 	mg.Spec.WriteConnectionSecretToReference = r
 }
 
-// GetCondition of this LDAP.
-func (mg *LDAP) GetCondition(ct xpv2.ConditionType) xpv2.Condition {
+// GetCondition of this Role.
+func (mg *Role) GetCondition(ct xpv2.ConditionType) xpv2.Condition {
 	return mg.Status.GetCondition(ct)
 }
 
-// GetManagementPolicies of this LDAP.
-func (mg *LDAP) GetManagementPolicies() xpv2.ManagementPolicies {
+// GetManagementPolicies of this Role.
+func (mg *Role) GetManagementPolicies() xpv2.ManagementPolicies {
 	return mg.Spec.ManagementPolicies
 }
 
-// GetProviderConfigReference of this LDAP.
-func (mg *LDAP) GetProviderConfigReference() *xpv2.ProviderConfigReference {
+// GetProviderConfigReference of this Role.
+func (mg *Role) GetProviderConfigReference() *xpv2.ProviderConfigReference {
 	return mg.Spec.ProviderConfigReference
 }
 
-// GetWriteConnectionSecretToReference of this LDAP.
-func (mg *LDAP) GetWriteConnectionSecretToReference() *xpv2.LocalSecretReference {
+// GetWriteConnectionSecretToReference of this Role.
+func (mg *Role) GetWriteConnectionSecretToReference() *xpv2.LocalSecretReference {
 	return mg.Spec.WriteConnectionSecretToReference
 }
 
-// SetConditions of this LDAP.
-func (mg *LDAP) SetConditions(c ...xpv2.Condition) {
+// SetConditions of this Role.
+func (mg *Role) SetConditions(c ...xpv2.Condition) {
 	mg.Status.SetConditions(c...)
 }
 
-// SetManagementPolicies of this LDAP.
-func (mg *LDAP) SetManagementPolicies(r xpv2.ManagementPolicies) {
+// SetManagementPolicies of this Role.
+func (mg *Role) SetManagementPolicies(r xpv2.ManagementPolicies) {
 	mg.Spec.ManagementPolicies = r
 }
 
-// SetProviderConfigReference of this LDAP.
-func (mg *LDAP) SetProviderConfigReference(r *xpv2.ProviderConfigReference) {
+// SetProviderConfigReference of this Role.
+func (mg *Role) SetProviderConfigReference(r *xpv2.ProviderConfigReference) {
 	mg.Spec.ProviderConfigReference = r
 }
 
-// SetWriteConnectionSecretToReference of this LDAP.
-func (mg *LDAP) SetWriteConnectionSecretToReference(r *xpv2.LocalSecretReference) {
+// SetWriteConnectionSecretToReference of this Role.
+func (mg *Role) SetWriteConnectionSecretToReference(r *xpv2.LocalSecretReference) {
 	mg.Spec.WriteConnectionSecretToReference = r
 }
 
@@ -285,5 +205,85 @@ func (mg *SAML) SetProviderConfigReference(r *xpv2.ProviderConfigReference) {
 
 // SetWriteConnectionSecretToReference of this SAML.
 func (mg *SAML) SetWriteConnectionSecretToReference(r *xpv2.LocalSecretReference) {
+	mg.Spec.WriteConnectionSecretToReference = r
+}
+
+// GetCondition of this User.
+func (mg *User) GetCondition(ct xpv2.ConditionType) xpv2.Condition {
+	return mg.Status.GetCondition(ct)
+}
+
+// GetManagementPolicies of this User.
+func (mg *User) GetManagementPolicies() xpv2.ManagementPolicies {
+	return mg.Spec.ManagementPolicies
+}
+
+// GetProviderConfigReference of this User.
+func (mg *User) GetProviderConfigReference() *xpv2.ProviderConfigReference {
+	return mg.Spec.ProviderConfigReference
+}
+
+// GetWriteConnectionSecretToReference of this User.
+func (mg *User) GetWriteConnectionSecretToReference() *xpv2.LocalSecretReference {
+	return mg.Spec.WriteConnectionSecretToReference
+}
+
+// SetConditions of this User.
+func (mg *User) SetConditions(c ...xpv2.Condition) {
+	mg.Status.SetConditions(c...)
+}
+
+// SetManagementPolicies of this User.
+func (mg *User) SetManagementPolicies(r xpv2.ManagementPolicies) {
+	mg.Spec.ManagementPolicies = r
+}
+
+// SetProviderConfigReference of this User.
+func (mg *User) SetProviderConfigReference(r *xpv2.ProviderConfigReference) {
+	mg.Spec.ProviderConfigReference = r
+}
+
+// SetWriteConnectionSecretToReference of this User.
+func (mg *User) SetWriteConnectionSecretToReference(r *xpv2.LocalSecretReference) {
+	mg.Spec.WriteConnectionSecretToReference = r
+}
+
+// GetCondition of this UserTokenConfiguration.
+func (mg *UserTokenConfiguration) GetCondition(ct xpv2.ConditionType) xpv2.Condition {
+	return mg.Status.GetCondition(ct)
+}
+
+// GetManagementPolicies of this UserTokenConfiguration.
+func (mg *UserTokenConfiguration) GetManagementPolicies() xpv2.ManagementPolicies {
+	return mg.Spec.ManagementPolicies
+}
+
+// GetProviderConfigReference of this UserTokenConfiguration.
+func (mg *UserTokenConfiguration) GetProviderConfigReference() *xpv2.ProviderConfigReference {
+	return mg.Spec.ProviderConfigReference
+}
+
+// GetWriteConnectionSecretToReference of this UserTokenConfiguration.
+func (mg *UserTokenConfiguration) GetWriteConnectionSecretToReference() *xpv2.LocalSecretReference {
+	return mg.Spec.WriteConnectionSecretToReference
+}
+
+// SetConditions of this UserTokenConfiguration.
+func (mg *UserTokenConfiguration) SetConditions(c ...xpv2.Condition) {
+	mg.Status.SetConditions(c...)
+}
+
+// SetManagementPolicies of this UserTokenConfiguration.
+func (mg *UserTokenConfiguration) SetManagementPolicies(r xpv2.ManagementPolicies) {
+	mg.Spec.ManagementPolicies = r
+}
+
+// SetProviderConfigReference of this UserTokenConfiguration.
+func (mg *UserTokenConfiguration) SetProviderConfigReference(r *xpv2.ProviderConfigReference) {
+	mg.Spec.ProviderConfigReference = r
+}
+
+// SetWriteConnectionSecretToReference of this UserTokenConfiguration.
+func (mg *UserTokenConfiguration) SetWriteConnectionSecretToReference(r *xpv2.LocalSecretReference) {
 	mg.Spec.WriteConnectionSecretToReference = r
 }
