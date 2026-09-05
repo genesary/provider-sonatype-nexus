@@ -1,0 +1,92 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:best-practices",
+    ":assignAndReview(BoxBoxJason)",
+    ":combinePatchMinorReleases",
+    ":dependencyDashboard",
+    ":disableRateLimiting",
+    ":docker",
+    ":enableRenovate",
+    ":enableVulnerabilityAlertsWithAdditionalLabel(security)",
+    ":gitSignOff",
+    ":gomod",
+    ":ignoreModulesAndTests",
+    ":labels(deps,source::bot)",
+    ":rebaseStalePrs",
+    ":renovatePrefix",
+    ":semanticCommits",
+    ":semanticCommitScope(deps)",
+    ":semanticCommitType(chore)",
+    "group:all",
+    "helpers:githubDigestChangelogs",
+    "helpers:gitlabDigestChangelogs",
+    "helpers:goXPackagesNameLink",
+    "helpers:renovateChangelog",
+    "mergeConfidence:all-badges",
+    "security:openssf-scorecard",
+    "workarounds:all"
+  ],
+  "minimumReleaseAge": "7 days",
+  "minimumReleaseAgeBehaviour": "timestamp-optional",
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "updateInternalDeps": true,
+  "dependencyDashboardAutoclose": true,
+  "dependencyDashboardLabels": [
+    "deps",
+    "source::bot"
+  ],
+  "postUpdateOptions": [
+    "gomodTidy"
+  ],
+  "kubernetes": {
+    "managerFilePatterns": [
+      "/^e2e/manifests/[^/]+\\.ya?ml$/"
+    ]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update versions pinned as `<name> := <value>` (also `=` and `?=`) variables in the Makefile, annotated with a `# renovate: datasource=<ds> depName=<name> [versioning=<v>] [registryUrl=<url>] [extractVersion=<re>]` comment on the line directly above (golangci-lint, kindest/node, Crossplane chart, gomplate).",
+      "managerFilePatterns": [
+        "/(^|/)Makefile$/"
+      ],
+      "matchStrings": [
+        "# renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+registryUrl=(?<registryUrl>\\S+))?(?:\\s+extractVersion=(?<extractVersion>\\S+))?\\s*\\n\\s*[A-Za-z0-9_]+\\s*[:?]?=\\s*(?<currentValue>[^\\s#]+)"
+      ],
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{/if}}"
+    },
+    {
+      "customType": "regex",
+      "description": "Update tool versions pinned as `KEY: \"<value>\"` in GitHub Actions workflow `env:` blocks, annotated with a `# renovate: datasource=<ds> depName=<name> [versioning=<v>] [extractVersion=<re>]` comment on the line directly above (Go toolchain, golangci-lint, docker buildx).",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/[^/]+\\.ya?ml$/"
+      ],
+      "matchStrings": [
+        "# renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?(?:\\s+extractVersion=(?<extractVersion>\\S+))?\\s*\\n\\s*[A-Za-z0-9_]+:\\s*[\"']?(?<currentValue>[^\"'\\s#]+)[\"']?"
+      ],
+      "versioningTemplate": "{{#if versioning}}{{{versioning}}}{{/if}}"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "The custom-manager regexes capture no digest group, so a pinDigest update would rewrite the whole annotated line and break the file. CI service images stay digest-pinned via the github-actions and dockerfile managers.",
+      "matchManagers": [
+        "custom.regex"
+      ],
+      "pinDigests": false
+    },
+    {
+      "description": "Nexus in e2e/manifests is only an e2e test fixture; track its tag but don't add per-digest churn.",
+      "matchManagers": [
+        "kubernetes"
+      ],
+      "matchFileNames": [
+        "e2e/manifests/**"
+      ],
+      "pinDigests": false
+    }
+  ]
+}

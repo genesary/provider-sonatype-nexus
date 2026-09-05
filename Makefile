@@ -20,7 +20,8 @@ GO_STATIC_PACKAGES = $(GO_PROJECT)/cmd/provider
 GO_LDFLAGS += -X $(GO_PROJECT)/internal/version.Version=$(VERSION)
 GO_SUBDIRS += cmd internal apis
 GO111MODULE = on
-GOLANGCILINT_VERSION = 2.12.2
+# renovate: datasource=go depName=github.com/golangci/golangci-lint/v2
+GOLANGCILINT_VERSION = 2.13.2
 -include build/makelib/golang.mk
 
 # ====================================================================================
@@ -30,9 +31,12 @@ GOLANGCILINT_VERSION = 2.12.2
 # cluster/local/integration_tests.sh fails on `helm repo add`/`helm install`.
 USE_HELM := true
 
-# Default kindest/node tag. KIND v0.23.0 (the submodule's pinned version)
-# supports kindest/node tags up to v1.30.0. Override via env if needed.
-KIND_NODE_IMAGE_TAG ?= v1.30.0
+# Default kindest/node tag. Keep this in step with the KIND version pinned by
+# the build submodule (currently v0.23.0, which officially supports node images
+# up to v1.30.0) — bumping too far ahead of KIND can break `kind create cluster`.
+# Override via env if needed.
+# renovate: datasource=docker depName=docker.io/kindest/node versioning=docker
+KIND_NODE_IMAGE_TAG ?= v1.37.0
 
 -include build/makelib/k8s_tools.mk
 
@@ -99,7 +103,8 @@ KIND_CLUSTER_NAME ?= $(BUILD_REGISTRY)-inttests
 # Pin the Crossplane chart version. The submodule's controlplane.up runs
 # `helm install ... --version $(CROSSPLANE_VERSION)`, which fails with
 # "flag needs an argument" when CROSSPLANE_VERSION is empty.
-CROSSPLANE_VERSION ?= 2.2.1
+# renovate: datasource=helm depName=crossplane registryUrl=https://charts.crossplane.io/stable
+CROSSPLANE_VERSION ?= 2.4.0
 
 -include build/makelib/local.xpkg.mk
 -include build/makelib/controlplane.mk
@@ -134,7 +139,8 @@ e2e.test:
 # Special Targets
 
 # Install gomplate
-GOMPLATE_VERSION := 3.10.0
+# renovate: datasource=github-releases depName=hairyhenderson/gomplate extractVersion=^v(?<version>.+)$
+GOMPLATE_VERSION := 5.2.0
 GOMPLATE := $(TOOLS_HOST_DIR)/gomplate-$(GOMPLATE_VERSION)
 
 $(GOMPLATE):
