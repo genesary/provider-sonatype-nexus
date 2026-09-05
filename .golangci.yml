@@ -5,9 +5,11 @@ linters:
     - depguard
     - err113
     - exhaustruct
+    - exhaustruct_v5
     - gochecknoglobals
     - gochecknoinits
     - gomodguard
+    - gomodguard_v2
     - interfacebloat
     - ireturn
     - lll
@@ -16,6 +18,7 @@ linters:
     - testpackage
     - wrapcheck
     - wsl
+    - wsl_v5
   settings:
     copyloopvar:
       check-alias: true
@@ -126,12 +129,17 @@ linters:
       - linters:
           - staticcheck
         text: "SA3000:"
+      # crossplane-runtime's event.NewAPIRecorder still requires the old
+      # client-go record.EventRecorder API; GetEventRecorder (new events API)
+      # is type-incompatible until crossplane-runtime migrates.
       - linters:
           - staticcheck
-        text: "SA1019: mgr.GetEventRecorderFor is deprecated:"
+        text: "SA1019: .*GetEventRecorderFor is deprecated:"
+      # scheme.Builder is soft-deprecated; the provider scaffold still follows
+      # the upstream crossplane template which uses it.
       - linters:
           - staticcheck
-        text: "SA1019: scheme.Builder is deprecated:"
+        text: "SA1019: .*scheme\\.Builder is deprecated:"
       - linters:
           - gosec
         text: "G101:"
