@@ -1,20 +1,22 @@
-// Package repository contains the controller for Repository resources.
-// This controller manages Sonatype Nexus repositories of various formats.
+// Package repository contains the controller for Repository resources, which
+// manage Sonatype Nexus repositories of every supported format.
 //
-// Architecture:
-//   - repository.go: Main controller logic (this file)
-//   - handler.go: FormatHandler interface and registry
-//   - formats/: Format-specific handlers (maven, docker, npm, etc.)
-//   - shared.go: Shared configuration generators (will be removed)
+// Layout:
+//   - repository.go: the Crossplane controller (this file)
+//   - handler.go:    the format registry and the generic per-type operations
+//   - convert.go:    the spec to Nexus payload conversion shared by all formats
+//   - diff.go:       drift detection between the spec and what Nexus reports
+//   - format_*.go:   one registration table and payload builder set per format
 //
-// To add a new repository format:
-//  1. Create a new handler in formats/<format>.go
-//  2. Implement the FormatHandler interface
-//  3. Register the handler in formats/register.go
+// To add a repository format, add a format_<name>.go that calls
+// registerFormat with one binding per repository type the format supports.
+// Nothing else has to change: observation, drift detection, error handling and
+// the controller itself are format agnostic.
 package repository
 
 import (
 	"context"
+	"strings"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
@@ -23,15 +25,13 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
+	pkgrepository "github.com/datadrivers/go-nexus-client/nexus3/pkg/repository"
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	pkgrepository "github.com/datadrivers/go-nexus-client/nexus3/pkg/repository"
-
 	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
-
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
@@ -45,6 +45,8 @@ const (
 	errGetPC = "cannot get ProviderConfig"
 	// errNewClient is returned when creating the Nexus client fails.
 	errNewClient = "cannot create new Nexus client"
+	// errGetRepository is returned when reading the repository from Nexus fails.
+	errGetRepository = "cannot get repository from Nexus"
 	// errCreateRepository is returned when creating the repository in Nexus fails.
 	errCreateRepository = "cannot create repository in Nexus"
 	// errUpdateRepository is returned when updating the repository in Nexus fails.
@@ -56,27 +58,6 @@ const (
 	// secret fails.
 	errResolvePassword = "cannot resolve password from secret"
 )
-
-// contextKey is used for passing resolved values through context.
-type contextKey string
-
-// resolvedPasswordKey is the context key used to store the resolved HTTP
-// client password.
-const resolvedPasswordKey contextKey = "resolvedHTTPClientPassword"
-
-// withResolvedPassword stores a resolved password in the context.
-func withResolvedPassword(ctx context.Context, password string) context.Context {
-	return context.WithValue(ctx, resolvedPasswordKey, password)
-}
-
-// getResolvedPassword retrieves the resolved password from the context.
-func getResolvedPassword(ctx context.Context) string {
-	if val, isString := ctx.Value(resolvedPasswordKey).(string); isString {
-		return val
-	}
-
-	return ""
-}
 
 // Setup creates a controller for Repository resources.
 func Setup(mgr ctrl.Manager, opts controller.Options) error {
@@ -128,114 +109,114 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
-	nc, err := nexus.NewClient(creds)
+	nexusClient, err := nexus.NewClient(creds)
 	if err != nil {
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{client: nc.Repository, kube: c.kube, getHandler: GetHandler}, nil
+	return &external{
+		client:     nexusClient.Repository,
+		kube:       c.kube,
+		baseURL:    creds.URL,
+		getHandler: getHandler,
+	}, nil
 }
 
 // external implements managed.ExternalClient.
 type external struct {
-	client     *pkgrepository.RepositoryService
-	kube       client.Client
-	getHandler func(string) FormatHandler
+	// client is the Nexus repository API.
+	client *pkgrepository.RepositoryService
+	// kube resolves the secrets the spec references.
+	kube client.Client
+	// baseURL is the Nexus base URL, used to report the repository URL.
+	baseURL string
+	// getHandler resolves a repository format to its handler.
+	getHandler func(format string) formatHandler
 }
 
-// Observe checks if the Repository resource exists and is up-to-date.
+// Observe checks whether the Repository exists in Nexus and is up to date.
+//
+// The desired payload it diffs against is built without the HTTP client
+// password: Nexus never returns credentials, so they take no part in drift
+// detection and Observe does not need to read the secret on every poll.
 func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
 	repoCR, isRepo := managedRes.(*repositoryv1alpha1.Repository)
 	if !isRepo {
 		return managed.ExternalObservation{}, errors.New(errNotRepository)
 	}
 
-	name := meta.GetExternalName(repoCR)
-	if name == "" {
-		name = repoCR.Spec.ForProvider.Name
+	handler, err := e.handlerFor(repoCR)
+	if err != nil {
+		return managed.ExternalObservation{}, err
 	}
 
-	format := repoCR.Spec.ForProvider.Format
-	repoType := repoCR.Spec.ForProvider.Type
+	name := repositoryName(repoCR)
 
-	handler := e.getHandler(format)
-	if handler == nil {
-		return managed.ExternalObservation{}, errors.Errorf("unsupported format: %s", format)
+	state, err := handler.Observe(e.client, name, repoCR.Spec.ForProvider.Type, desiredRepo{repo: repoCR})
+	if err != nil {
+		return managed.ExternalObservation{}, errors.Wrap(err, errGetRepository)
 	}
 
-	exists, upToDate := handler.Observe(ctx, e.client, name, repoType, repoCR)
-	if !exists {
+	if !state.exists {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
+	meta.SetExternalName(repoCR, name)
+
+	repoCR.Status.AtProvider = generateRepositoryObservation(state.fields, e.repositoryURL(name))
 	repoCR.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: upToDate,
+		ResourceUpToDate: state.upToDate,
 	}, nil
 }
 
-// Create creates a new Repository resource.
+// Create creates the Repository in Nexus.
 func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
 	repoCR, isRepo := managedRes.(*repositoryv1alpha1.Repository)
 	if !isRepo {
 		return managed.ExternalCreation{}, errors.New(errNotRepository)
 	}
 
-	format := repoCR.Spec.ForProvider.Format
-	repoType := repoCR.Spec.ForProvider.Type
-
-	handler := e.getHandler(format)
-	if handler == nil {
-		return managed.ExternalCreation{}, errors.Errorf("unsupported format: %s", format)
-	}
-
-	password, err := e.resolveHTTPClientPassword(ctx, repoCR)
+	handler, err := e.handlerFor(repoCR)
 	if err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, errResolvePassword)
+		return managed.ExternalCreation{}, err
 	}
 
-	enrichedCtx := withResolvedPassword(ctx, password)
+	desired, err := e.desiredState(ctx, repoCR)
+	if err != nil {
+		return managed.ExternalCreation{}, err
+	}
 
-	err = handler.Create(enrichedCtx, e.client, repoCR, repoType)
+	err = handler.Create(e.client, repoCR.Spec.ForProvider.Type, desired)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateRepository)
 	}
 
-	meta.SetExternalName(repoCR, repoCR.Spec.ForProvider.Name)
+	meta.SetExternalName(repoCR, repositoryName(repoCR))
 
 	return managed.ExternalCreation{}, nil
 }
 
-// Update modifies an existing Repository resource.
+// Update reconciles the Repository in Nexus with the spec.
 func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
 	repoCR, isRepo := managedRes.(*repositoryv1alpha1.Repository)
 	if !isRepo {
 		return managed.ExternalUpdate{}, errors.New(errNotRepository)
 	}
 
-	name := meta.GetExternalName(repoCR)
-	if name == "" {
-		name = repoCR.Spec.ForProvider.Name
-	}
-
-	format := repoCR.Spec.ForProvider.Format
-	repoType := repoCR.Spec.ForProvider.Type
-
-	handler := e.getHandler(format)
-	if handler == nil {
-		return managed.ExternalUpdate{}, errors.Errorf("unsupported format: %s", format)
-	}
-
-	password, err := e.resolveHTTPClientPassword(ctx, repoCR)
+	handler, err := e.handlerFor(repoCR)
 	if err != nil {
-		return managed.ExternalUpdate{}, errors.Wrap(err, errResolvePassword)
+		return managed.ExternalUpdate{}, err
 	}
 
-	enrichedCtx := withResolvedPassword(ctx, password)
+	desired, err := e.desiredState(ctx, repoCR)
+	if err != nil {
+		return managed.ExternalUpdate{}, err
+	}
 
-	err = handler.Update(enrichedCtx, e.client, name, repoCR, repoType)
+	err = handler.Update(e.client, repositoryName(repoCR), repoCR.Spec.ForProvider.Type, desired)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateRepository)
 	}
@@ -243,27 +224,19 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 	return managed.ExternalUpdate{}, nil
 }
 
-// Delete removes an existing Repository resource.
+// Delete removes the Repository from Nexus.
 func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
 	repoCR, isRepo := managedRes.(*repositoryv1alpha1.Repository)
 	if !isRepo {
 		return managed.ExternalDelete{}, errors.New(errNotRepository)
 	}
 
-	name := meta.GetExternalName(repoCR)
-	if name == "" {
-		name = repoCR.Spec.ForProvider.Name
+	handler, err := e.handlerFor(repoCR)
+	if err != nil {
+		return managed.ExternalDelete{}, err
 	}
 
-	format := repoCR.Spec.ForProvider.Format
-	repoType := repoCR.Spec.ForProvider.Type
-
-	handler := e.getHandler(format)
-	if handler == nil {
-		return managed.ExternalDelete{}, errors.Errorf("unsupported format: %s", format)
-	}
-
-	err := handler.Delete(ctx, e.client, name, repoType)
+	err = handler.Delete(e.client, repositoryName(repoCR), repoCR.Spec.ForProvider.Type)
 	if err != nil && !helpers.IsNotFound(err) {
 		return managed.ExternalDelete{}, errors.Wrap(err, errDeleteRepository)
 	}
@@ -271,29 +244,68 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 	return managed.ExternalDelete{}, nil
 }
 
-// Disconnect from the provider.
-func (e *external) Disconnect(ctx context.Context) error {
+// Disconnect is a no-op; the Nexus HTTP client has no persistent connection.
+func (e *external) Disconnect(_ context.Context) error {
 	return nil
 }
 
+// handlerFor returns the handler registered for the repository's format.
+func (e *external) handlerFor(repoCR *repositoryv1alpha1.Repository) (formatHandler, error) {
+	handler := e.getHandler(repoCR.Spec.ForProvider.Format)
+	if handler == nil {
+		return nil, errors.Errorf("unsupported repository format %q, supported formats are %v", repoCR.Spec.ForProvider.Format, supportedFormats())
+	}
+
+	return handler, nil
+}
+
+// desiredState assembles the desired repository, resolving the secrets the
+// spec references.
+func (e *external) desiredState(ctx context.Context, repoCR *repositoryv1alpha1.Repository) (desiredRepo, error) {
+	password, err := e.resolveHTTPClientPassword(ctx, repoCR)
+	if err != nil {
+		return desiredRepo{}, errors.Wrap(err, errResolvePassword)
+	}
+
+	return desiredRepo{repo: repoCR, httpPassword: password}, nil
+}
+
+// repositoryURL returns the URL Nexus serves the repository under.
+func (e *external) repositoryURL(name string) string {
+	return strings.TrimSuffix(e.baseURL, "/") + "/repository/" + name
+}
+
 // resolveHTTPClientPassword resolves the password from a Kubernetes secret if
-// httpClient.authentication.passwordSecretRef is configured. The resolved
-// password is returned for use by shared HTTP client generation functions.
+// httpClient.authentication.passwordSecretRef is configured. It returns an
+// empty password when the spec references no secret.
 func (e *external) resolveHTTPClientPassword(ctx context.Context, repoCR *repositoryv1alpha1.Repository) (string, error) {
-	if repoCR.Spec.ForProvider.HTTPClient == nil ||
-		repoCR.Spec.ForProvider.HTTPClient.Authentication == nil ||
-		repoCR.Spec.ForProvider.HTTPClient.Authentication.PasswordSecretRef == nil {
+	httpClient := repoCR.Spec.ForProvider.HTTPClient
+	if httpClient == nil || httpClient.Authentication == nil || httpClient.Authentication.PasswordSecretRef == nil {
 		return "", nil
 	}
 
-	ref := repoCR.Spec.ForProvider.HTTPClient.Authentication.PasswordSecretRef
-
 	data, err := resource.ExtractSecret(ctx, e.kube, xpv2.CommonCredentialSelectors{
-		SecretRef: ref,
+		SecretRef: httpClient.Authentication.PasswordSecretRef,
 	})
 	if err != nil {
 		return "", err
 	}
 
 	return string(data), nil
+}
+
+// repositoryName returns the name that identifies the repository in Nexus.
+//
+// spec.forProvider.name is authoritative. crossplane-runtime seeds the
+// crossplane.io/external-name annotation from metadata.name, which is not
+// necessarily the repository name, and Nexus cannot rename a repository, so
+// trusting the annotation first would make the controller look up - and then
+// try to create - the wrong repository whenever the two names differ. The
+// annotation is only a fallback for a spec that carries no name at all.
+func repositoryName(repoCR *repositoryv1alpha1.Repository) string {
+	if repoCR.Spec.ForProvider.Name != "" {
+		return repoCR.Spec.ForProvider.Name
+	}
+
+	return meta.GetExternalName(repoCR)
 }
