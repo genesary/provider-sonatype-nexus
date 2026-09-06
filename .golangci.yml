@@ -123,6 +123,13 @@ linters:
           - gocritic
         path: _test\.go
         text: (unnamedResult|exitAfterDefer)
+      # One payload builder set per Nexus repository format. go-nexus-client
+      # models every format and repository type as its own Go struct, so the
+      # identical field lists cannot be shared between formats: a struct
+      # literal has to name its type.
+      - linters:
+          - dupl
+        path: internal/controller/content/repository/format_.*\.go
       - linters:
           - gocritic
         text: "(hugeParam|rangeValCopy):"

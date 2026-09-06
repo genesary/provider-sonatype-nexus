@@ -55,6 +55,31 @@ func (f *Framework) WaitForReady(ctx context.Context, obj Conditioned, timeout t
 	})
 }
 
+// WaitForNexus polls Nexus until reached reports that it observes the state
+// the spec asks for. Use it after updating a managed resource: the resource
+// can still carry Synced=True and Ready=True from the reconcile that preceded
+// the change, so its conditions say nothing about whether the change landed.
+// The last error returned by reached, if any, is reported on timeout.
+func (f *Framework) WaitForNexus(ctx context.Context, timeout time.Duration, reached func() (bool, error)) error {
+	var lastErr error
+
+	err := wait.PollUntilContextTimeout(ctx, pollInterval, timeout, true, func(context.Context) (bool, error) {
+		ok, err := reached()
+		if err != nil {
+			lastErr = err
+
+			return false, nil
+		}
+
+		return ok, nil
+	})
+	if err != nil && lastErr != nil {
+		return fmt.Errorf("%w (last error from Nexus: %w)", err, lastErr)
+	}
+
+	return err
+}
+
 // WaitForDeletion polls until obj is no longer present in the API server.
 func (f *Framework) WaitForDeletion(ctx context.Context, obj client.Object, timeout time.Duration) error {
 	key := client.ObjectKeyFromObject(obj)

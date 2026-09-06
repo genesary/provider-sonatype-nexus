@@ -179,6 +179,7 @@ spec:
                     - gitlfs
                     - p2
                     - cargo
+                    - huggingface
                     type: string
                   group:
                     description: Group configuration for group repositories.
@@ -487,11 +488,53 @@ spec:
             description: RepositoryStatus defines the observed state of Repository.
             properties:
               atProvider:
-                description: RepositoryObservation represents the observed state of
-                  a Repository.
+                description: |-
+                  RepositoryObservation represents the observed state of a Repository.
+
+                  Every field is reported for every format; a field a format has no concept of
+                  simply stays empty. A hosted repository reports no remoteUrl, a proxy
+                  repository reports no memberNames.
                 properties:
+                  blobStoreName:
+                    description: BlobStoreName is the blob store backing the repository.
+                    type: string
+                  cleanupPolicyNames:
+                    description: CleanupPolicyNames are the cleanup policies applied
+                      to the repository.
+                    items:
+                      type: string
+                    type: array
+                  memberNames:
+                    description: MemberNames are the members of a group repository.
+                    items:
+                      type: string
+                    type: array
+                  name:
+                    description: Name is the repository name observed in Nexus.
+                    type: string
+                  online:
+                    description: Online reports whether Nexus is currently serving
+                      the repository.
+                    type: boolean
+                  remoteUrl:
+                    description: RemoteURL is the remote repository a proxy repository
+                      proxies.
+                    type: string
+                  routingRuleName:
+                    description: RoutingRuleName is the routing rule assigned to the
+                      repository.
+                    type: string
+                  strictContentTypeValidation:
+                    description: |-
+                      StrictContentTypeValidation reports whether Nexus validates that
+                      uploaded content matches the format of the repository.
+                    type: boolean
                   url:
-                    description: URL is the URL of the repository.
+                    description: URL is the URL Nexus serves the repository at.
+                    type: string
+                  writePolicy:
+                    description: WritePolicy is the deployment policy of a hosted
+                      repository.
                     type: string
                 type: object
               conditions:

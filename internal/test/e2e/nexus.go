@@ -125,6 +125,21 @@ func (f *Framework) FetchPypiProxyRepo(name string) (*repository.PypiProxyReposi
 	return f.Nexus.Repository.Pypi.Proxy.Get(name)
 }
 
+// FetchAptHostedRepo returns the APT hosted repository with the given name.
+func (f *Framework) FetchAptHostedRepo(name string) (*repository.AptHostedRepository, error) {
+	return f.Nexus.Repository.Apt.Hosted.Get(name)
+}
+
+// FetchCargoHostedRepo returns the Cargo hosted repository with the given name.
+func (f *Framework) FetchCargoHostedRepo(name string) (*repository.CargoHostedRepository, error) {
+	return f.Nexus.Repository.Cargo.Hosted.Get(name)
+}
+
+// FetchCargoProxyRepo returns the Cargo proxy repository with the given name.
+func (f *Framework) FetchCargoProxyRepo(name string) (*repository.CargoProxyRepository, error) {
+	return f.Nexus.Repository.Cargo.Proxy.Get(name)
+}
+
 // FetchCapability returns the capability with the given ID, or (nil, nil) if absent.
 func (f *Framework) FetchCapability(id string) (*nexussdk.Capability, error) {
 	return f.Nexus.Capability.Get(id)

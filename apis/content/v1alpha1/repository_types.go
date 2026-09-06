@@ -15,7 +15,7 @@ type RepositoryParameters struct {
 	Name string `json:"name"`
 
 	// Format of the repository (maven2, npm, docker, raw, etc.).
-	// +kubebuilder:validation:Enum=maven2;npm;docker;raw;nuget;pypi;rubygems;yum;apt;helm;go;r;conan;conda;cocoapods;bower;gitlfs;p2;cargo
+	// +kubebuilder:validation:Enum=maven2;npm;docker;raw;nuget;pypi;rubygems;yum;apt;helm;go;r;conan;conda;cocoapods;bower;gitlfs;p2;cargo;huggingface
 	// +kubebuilder:validation:Required
 	Format string `json:"format"`
 
@@ -386,9 +386,41 @@ type CargoConfig struct {
 }
 
 // RepositoryObservation represents the observed state of a Repository.
+//
+// Every field is reported for every format; a field a format has no concept of
+// simply stays empty. A hosted repository reports no remoteUrl, a proxy
+// repository reports no memberNames.
 type RepositoryObservation struct {
-	// URL is the URL of the repository.
+	// URL is the URL Nexus serves the repository at.
 	URL *string `json:"url,omitempty"`
+
+	// Name is the repository name observed in Nexus.
+	Name string `json:"name,omitempty"`
+
+	// Online reports whether Nexus is currently serving the repository.
+	Online *bool `json:"online,omitempty"`
+
+	// BlobStoreName is the blob store backing the repository.
+	BlobStoreName string `json:"blobStoreName,omitempty"`
+
+	// StrictContentTypeValidation reports whether Nexus validates that
+	// uploaded content matches the format of the repository.
+	StrictContentTypeValidation *bool `json:"strictContentTypeValidation,omitempty"`
+
+	// WritePolicy is the deployment policy of a hosted repository.
+	WritePolicy string `json:"writePolicy,omitempty"`
+
+	// CleanupPolicyNames are the cleanup policies applied to the repository.
+	CleanupPolicyNames []string `json:"cleanupPolicyNames,omitempty"`
+
+	// RemoteURL is the remote repository a proxy repository proxies.
+	RemoteURL string `json:"remoteUrl,omitempty"`
+
+	// MemberNames are the members of a group repository.
+	MemberNames []string `json:"memberNames,omitempty"`
+
+	// RoutingRuleName is the routing rule assigned to the repository.
+	RoutingRuleName string `json:"routingRuleName,omitempty"`
 }
 
 // RepositorySpec defines the desired state of Repository.
