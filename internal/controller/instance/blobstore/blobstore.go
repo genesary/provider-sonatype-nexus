@@ -160,7 +160,7 @@ func observeTypedBlobStore[T any](
 	blobStore *instancev1alpha1.BlobStore,
 	ext *external,
 	getter func(string) (*T, error),
-	populate func(*instancev1alpha1.BlobStore, *T),
+	generate func(*T) instancev1alpha1.BlobStoreObservation,
 	checker func(*instancev1alpha1.BlobStore) bool,
 ) (managed.ExternalObservation, error) {
 	name := meta.GetExternalName(blobStore)
@@ -182,7 +182,11 @@ func observeTypedBlobStore[T any](
 	}
 
 	blobStore.SetConditions(nexusv1alpha1.Available())
-	populate(blobStore, result)
+
+	// The observation is replaced rather than updated field by field, so a
+	// setting removed from the blob store out of band leaves no stale value
+	// behind for the up to date check to match against.
+	blobStore.Status.AtProvider = generate(result)
 	ext.populateBlobStoreStats(blobStore)
 
 	return managed.ExternalObservation{
@@ -299,17 +303,18 @@ func (e *external) Disconnect(ctx context.Context) error {
 
 // observeFileBlobStore handles Observe for File-type blob stores.
 func (e *external) observeFileBlobStore(blobStore *instancev1alpha1.BlobStore) (managed.ExternalObservation, error) {
-	return observeTypedBlobStore(blobStore, e, e.fileClient.Get, populateFileBlobStoreObservation, isFileBlobStoreUpToDate)
+	return observeTypedBlobStore(blobStore, e, e.fileClient.Get, generateFileBlobStoreObservation, isFileBlobStoreUpToDate)
 }
 
 // observeS3BlobStore handles Observe for S3-type blob stores.
 func (e *external) observeS3BlobStore(blobStore *instancev1alpha1.BlobStore) (managed.ExternalObservation, error) {
-	return observeTypedBlobStore(blobStore, e, e.s3Client.Get, populateS3BlobStoreObservation, isS3BlobStoreUpToDate)
+	return observeTypedBlobStore(blobStore, e, e.s3Client.Get, generateS3BlobStoreObservation, isS3BlobStoreUpToDate)
 }
 
-// populateBlobStoreStats fetches stats from the list endpoint and
-// populates Status.AtProvider. Errors are silently ignored — stats are
-// best-effort and should not block reconciliation.
+// populateBlobStoreStats fetches the stats and the type from the list
+// endpoint and adds them to Status.AtProvider: neither is reported by the
+// typed endpoint the observation is otherwise built from. Errors are silently
+// ignored — these fields are best-effort and should not block reconciliation.
 func (e *external) populateBlobStoreStats(blobStore *instancev1alpha1.BlobStore) {
 	name := meta.GetExternalName(blobStore)
 	if name == "" {
@@ -330,6 +335,7 @@ func (e *external) populateBlobStoreStats(blobStore *instancev1alpha1.BlobStore)
 		total := int64(generic.TotalSizeInBytes)
 		count := int64(generic.BlobCount)
 
+		blobStore.Status.AtProvider.Type = generic.Type
 		blobStore.Status.AtProvider.AvailableSpaceInBytes = &available
 		blobStore.Status.AtProvider.TotalSizeInBytes = &total
 		blobStore.Status.AtProvider.BlobCount = &count
@@ -401,46 +407,57 @@ func generateS3BlobStore(blobStoreCR *instancev1alpha1.BlobStore) *blobstore.S3 
 	return s3BlobStore
 }
 
-// populateFileBlobStoreObservation copies File blob store config
-// fields into the observation for IsUpToDate comparison.
-func populateFileBlobStoreObservation(blobStore *instancev1alpha1.BlobStore, fileBlobStore *blobstore.File) {
+// generateFileBlobStoreObservation renders the File blob store Nexus reported
+// as the observed state of the managed resource.
+func generateFileBlobStoreObservation(fileBlobStore *blobstore.File) instancev1alpha1.BlobStoreObservation {
+	obs := instancev1alpha1.BlobStoreObservation{Name: fileBlobStore.Name}
+
 	if fileBlobStore.Path != "" {
 		path := fileBlobStore.Path
-		blobStore.Status.AtProvider.Path = &path
+		obs.Path = &path
 	}
 
-	if fileBlobStore.SoftQuota != nil {
-		quotaType := fileBlobStore.SoftQuota.Type
-		quotaLimit := fileBlobStore.SoftQuota.Limit
-		blobStore.Status.AtProvider.SoftQuotaType = &quotaType
-		blobStore.Status.AtProvider.SoftQuotaLimit = &quotaLimit
-	}
+	setSoftQuotaObservation(&obs, fileBlobStore.SoftQuota)
+
+	return obs
 }
 
-// populateS3BlobStoreObservation copies S3 blob store config fields into
-// the observation so that IsUpToDate can compare spec to observation.
-func populateS3BlobStoreObservation(blobStore *instancev1alpha1.BlobStore, s3BlobStore *blobstore.S3) {
-	if s3BlobStore.SoftQuota != nil {
-		quotaType := s3BlobStore.SoftQuota.Type
-		quotaLimit := s3BlobStore.SoftQuota.Limit
-		blobStore.Status.AtProvider.SoftQuotaType = &quotaType
-		blobStore.Status.AtProvider.SoftQuotaLimit = &quotaLimit
+// generateS3BlobStoreObservation renders the S3 blob store Nexus reported as
+// the observed state of the managed resource.
+func generateS3BlobStoreObservation(s3BlobStore *blobstore.S3) instancev1alpha1.BlobStoreObservation {
+	obs := instancev1alpha1.BlobStoreObservation{Name: s3BlobStore.Name}
+
+	setSoftQuotaObservation(&obs, s3BlobStore.SoftQuota)
+
+	bucket := s3BlobStore.BucketConfiguration.Bucket
+	if bucket.Name != "" {
+		obs.BucketName = &bucket.Name
 	}
 
-	bucketName := s3BlobStore.BucketConfiguration.Bucket.Name
-	if bucketName != "" {
-		blobStore.Status.AtProvider.BucketName = &bucketName
+	if bucket.Region != "" {
+		obs.BucketRegion = &bucket.Region
 	}
 
-	bucketRegion := s3BlobStore.BucketConfiguration.Bucket.Region
-	if bucketRegion != "" {
-		blobStore.Status.AtProvider.BucketRegion = &bucketRegion
+	if bucket.Prefix != "" {
+		obs.BucketPrefix = &bucket.Prefix
 	}
 
-	bucketPrefix := s3BlobStore.BucketConfiguration.Bucket.Prefix
-	if bucketPrefix != "" {
-		blobStore.Status.AtProvider.BucketPrefix = &bucketPrefix
+	obs.BucketExpirationDays = &bucket.Expiration
+
+	return obs
+}
+
+// setSoftQuotaObservation records the soft quota of a blob store, leaving the
+// observation untouched when the blob store has none.
+func setSoftQuotaObservation(obs *instancev1alpha1.BlobStoreObservation, softQuota *blobstore.SoftQuota) {
+	if softQuota == nil {
+		return
 	}
+
+	quotaType := softQuota.Type
+	quotaLimit := softQuota.Limit
+	obs.SoftQuotaType = &quotaType
+	obs.SoftQuotaLimit = &quotaLimit
 }
 
 // isFileBlobStoreUpToDate checks if a File blob store matches observed.
@@ -462,12 +479,15 @@ func isS3BlobStoreUpToDate(blobStoreCR *instancev1alpha1.BlobStore) bool {
 }
 
 // isSoftQuotaUpToDate checks if a blob store soft quota spec matches.
+//
+// A spec without a soft quota asks for a blob store without one: the payload
+// builders omit the block entirely, which is how Nexus is told to drop it.
 func isSoftQuotaUpToDate(blobStoreCR *instancev1alpha1.BlobStore) bool {
-	if blobStoreCR.Spec.ForProvider.SoftQuota == nil {
-		return true
-	}
-
 	obs := blobStoreCR.Status.AtProvider
+
+	if blobStoreCR.Spec.ForProvider.SoftQuota == nil {
+		return obs.SoftQuotaType == nil && obs.SoftQuotaLimit == nil
+	}
 
 	if obs.SoftQuotaType == nil || obs.SoftQuotaLimit == nil {
 		return false
@@ -488,27 +508,38 @@ func isSoftQuotaUpToDate(blobStoreCR *instancev1alpha1.BlobStore) bool {
 
 // isS3BucketConfigUpToDate checks if S3 blob store bucket config matches.
 func isS3BucketConfigUpToDate(blobStoreCR *instancev1alpha1.BlobStore) bool {
-	if blobStoreCR.Spec.ForProvider.S3Config == nil {
+	s3Config := blobStoreCR.Spec.ForProvider.S3Config
+	if s3Config == nil {
 		return true
 	}
 
 	obs := blobStoreCR.Status.AtProvider
 
-	if obs.BucketName == nil || *obs.BucketName != blobStoreCR.Spec.ForProvider.S3Config.Bucket {
+	if obs.BucketName == nil || *obs.BucketName != s3Config.Bucket {
 		return false
 	}
 
-	if blobStoreCR.Spec.ForProvider.S3Config.Region != nil {
-		if obs.BucketRegion == nil || *obs.BucketRegion != *blobStoreCR.Spec.ForProvider.S3Config.Region {
-			return false
-		}
+	return matchesOptionalString(s3Config.Region, obs.BucketRegion) &&
+		matchesOptionalString(s3Config.Prefix, obs.BucketPrefix) &&
+		matchesOptionalInt32(s3Config.ExpirationDays, obs.BucketExpirationDays)
+}
+
+// matchesOptionalString reports whether an observed value satisfies a spec
+// field that carries intent only when it is set.
+func matchesOptionalString(desired, observed *string) bool {
+	if desired == nil {
+		return true
 	}
 
-	if blobStoreCR.Spec.ForProvider.S3Config.Prefix != nil {
-		if obs.BucketPrefix == nil || *obs.BucketPrefix != *blobStoreCR.Spec.ForProvider.S3Config.Prefix {
-			return false
-		}
+	return observed != nil && *observed == *desired
+}
+
+// matchesOptionalInt32 reports whether an observed value satisfies a spec
+// field that carries intent only when it is set.
+func matchesOptionalInt32(desired, observed *int32) bool {
+	if desired == nil {
+		return true
 	}
 
-	return true
+	return observed != nil && *observed == *desired
 }

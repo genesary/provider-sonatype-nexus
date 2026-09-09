@@ -39,6 +39,9 @@ type RoleObservation struct {
 	// ReadOnly indicates if the role is read-only.
 	ReadOnly *bool `json:"readOnly,omitempty"`
 
+	// ID is the observed role ID.
+	ID string `json:"id,omitempty"`
+
 	// Name is the observed role name.
 	Name string `json:"name,omitempty"`
 

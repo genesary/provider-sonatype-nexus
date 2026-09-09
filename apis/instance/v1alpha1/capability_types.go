@@ -29,8 +29,20 @@ type CapabilityParameters struct {
 
 // CapabilityObservation represents the observed state of a Capability.
 type CapabilityObservation struct {
-	// ID is the server-assigned capability identifier.
+	// ID is the server-assigned capability ID.
 	ID string `json:"id,omitempty"`
+
+	// TypeId is the observed capability type.
+	TypeId string `json:"typeId,omitempty"`
+
+	// Enabled is the observed enabled state.
+	Enabled bool `json:"enabled,omitempty"`
+
+	// Notes are the observed free-form notes.
+	Notes string `json:"notes,omitempty"`
+
+	// Properties are the observed type-specific settings.
+	Properties map[string]string `json:"properties,omitempty"`
 }
 
 // CapabilitySpec defines the desired state of a Capability.

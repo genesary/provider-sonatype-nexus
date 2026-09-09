@@ -62,10 +62,27 @@ type PrivilegeParameters struct {
 type PrivilegeObservation struct {
 	// ReadOnly indicates if the privilege is read-only (built-in).
 	ReadOnly *bool `json:"readOnly,omitempty"`
+	// Name is the observed privilege name.
+	Name string `json:"name,omitempty"`
+	// Type is the observed privilege type.
+	Type string `json:"type,omitempty"`
 	// Description is the observed privilege description.
 	Description string `json:"description,omitempty"`
 	// Actions are the observed allowed actions.
 	Actions []string `json:"actions,omitempty"`
+	// Domain is the observed domain of an application privilege.
+	Domain string `json:"domain,omitempty"`
+	// Format is the observed format of a repository privilege.
+	Format string `json:"format,omitempty"`
+	// Repository is the observed repository of a repository privilege.
+	Repository string `json:"repository,omitempty"`
+	// ContentSelector is the observed content selector of a
+	// repository-content-selector privilege.
+	ContentSelector string `json:"contentSelector,omitempty"`
+	// ScriptName is the observed script name of a script privilege.
+	ScriptName string `json:"scriptName,omitempty"`
+	// Pattern is the observed pattern of a wildcard privilege.
+	Pattern string `json:"pattern,omitempty"`
 }
 
 // PrivilegeSpec defines the desired state of Privilege.

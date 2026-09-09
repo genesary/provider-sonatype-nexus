@@ -299,14 +299,66 @@ spec:
                   LDAPObservation represents the observed state of an LDAP server
                   configuration.
                 properties:
+                  authRealm:
+                    description: AuthRealm is the observed SASL realm.
+                    type: string
                   authScheme:
                     description: AuthScheme is the observed authentication scheme.
+                    type: string
+                  authUsername:
+                    description: |-
+                      AuthUsername is the observed bind username. The bind password is a
+                      credential and is never reported by Nexus.
+                    type: string
+                  connectionRetryDelaySeconds:
+                    description: ConnectionRetryDelaySeconds is the observed retry
+                      delay.
+                    format: int32
+                    type: integer
+                  connectionTimeoutSeconds:
+                    description: ConnectionTimeoutSeconds is the observed connection
+                      timeout.
+                    format: int32
+                    type: integer
+                  groupBaseDn:
+                    description: GroupBaseDN is the observed group base DN.
+                    type: string
+                  groupIdAttribute:
+                    description: GroupIDAttribute is the observed group ID attribute.
+                    type: string
+                  groupMemberAttribute:
+                    description: GroupMemberAttribute is the observed group member
+                      attribute.
+                    type: string
+                  groupMemberFormat:
+                    description: GroupMemberFormat is the observed group member format.
+                    type: string
+                  groupObjectClass:
+                    description: GroupObjectClass is the observed LDAP class for group
+                      objects.
+                    type: string
+                  groupSubtree:
+                    description: GroupSubtree is the observed group subtree setting.
+                    type: boolean
+                  groupType:
+                    description: GroupType is the observed group mapping type.
                     type: string
                   host:
                     description: Host is the observed LDAP server hostname.
                     type: string
                   id:
                     description: ID is the internal LDAP server ID.
+                    type: string
+                  ldapGroupsAsRoles:
+                    description: LDAPGroupsAsRoles is the observed group-mapping setting.
+                    type: boolean
+                  maxIncidentsCount:
+                    description: MaxIncidentCount is the observed maximum number of
+                      connection retries.
+                    format: int32
+                    type: integer
+                  name:
+                    description: Name is the observed LDAP server name.
                     type: string
                   port:
                     description: Port is the observed LDAP server port.
@@ -318,9 +370,41 @@ spec:
                   searchBase:
                     description: SearchBase is the observed LDAP search base DN.
                     type: string
+                  useTrustStore:
+                    description: UseTrustStore is the observed truststore setting.
+                    type: boolean
                   userBaseDn:
                     description: UserBaseDN is the observed user base DN.
                     type: string
+                  userEmailAddressAttribute:
+                    description: UserEmailAddressAttribute is the observed user email
+                      attribute.
+                    type: string
+                  userIdAttribute:
+                    description: UserIDAttribute is the observed user ID attribute.
+                    type: string
+                  userLdapFilter:
+                    description: UserLDAPFilter is the observed additional user search
+                      filter.
+                    type: string
+                  userMemberOfAttribute:
+                    description: UserMemberOfAttribute is the observed memberOf attribute.
+                    type: string
+                  userObjectClass:
+                    description: UserObjectClass is the observed LDAP class for user
+                      objects.
+                    type: string
+                  userPasswordAttribute:
+                    description: UserPasswordAttribute is the observed user password
+                      attribute.
+                    type: string
+                  userRealNameAttribute:
+                    description: UserRealNameAttribute is the observed user real name
+                      attribute.
+                    type: string
+                  userSubtree:
+                    description: UserSubtree is the observed user subtree setting.
+                    type: boolean
                 type: object
               conditions:
                 description: Conditions of the resource.

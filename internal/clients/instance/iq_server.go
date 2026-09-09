@@ -63,7 +63,9 @@ func IsIQServerUpToDate(cr *instancev1alpha1.IQServerConfiguration, observed *ne
 		return false
 	}
 
-	if !helpers.IsComparablePtrEqualComparable(observed.URL, params.URL) {
+	// The spec URL is required, so it is compared against whatever Nexus
+	// reports - including nothing at all.
+	if ptr.Deref(observed.URL, "") != params.URL {
 		return false
 	}
 

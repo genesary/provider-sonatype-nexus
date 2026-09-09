@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	nexusschema "github.com/datadrivers/go-nexus-client/nexus3/schema"
+	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 )
@@ -139,10 +140,11 @@ func TestIsRoutingRuleUpToDate_DescriptionMismatch(t *testing.T) {
 	}
 }
 
-// TestIsRoutingRuleUpToDate_NilDescriptionIgnored tests that
-// IsRoutingRuleUpToDate ignores a nil description in the CR spec
-// when comparing to the observed rule.
-func TestIsRoutingRuleUpToDate_NilDescriptionIgnored(t *testing.T) {
+// TestIsRoutingRuleUpToDate_NilDescriptionDropped tests that
+// IsRoutingRuleUpToDate reports drift when the CR spec sets no description but
+// the observed rule still carries one: GenerateRoutingRule submits an empty
+// description in that case, so the rule is not in the state the spec asks for.
+func TestIsRoutingRuleUpToDate_NilDescriptionDropped(t *testing.T) {
 	t.Parallel()
 
 	cr := newCR("r", "BLOCK", []string{".*"}, nil)
@@ -153,8 +155,26 @@ func TestIsRoutingRuleUpToDate_NilDescriptionIgnored(t *testing.T) {
 		Description: "some description",
 	}
 
+	if IsRoutingRuleUpToDate(&cr.Spec.ForProvider, observed) {
+		t.Error("a description dropped from the spec should be reported as drift")
+	}
+}
+
+// TestIsRoutingRuleUpToDate_NilDescriptionMatchesEmpty tests that
+// IsRoutingRuleUpToDate reports no drift when neither the CR spec nor the
+// observed rule carries a description.
+func TestIsRoutingRuleUpToDate_NilDescriptionMatchesEmpty(t *testing.T) {
+	t.Parallel()
+
+	cr := newCR("r", "BLOCK", []string{".*"}, nil)
+	observed := &contentv1alpha1.RoutingRuleObservation{
+		Name:     "r",
+		Mode:     "BLOCK",
+		Matchers: []string{".*"},
+	}
+
 	if !IsRoutingRuleUpToDate(&cr.Spec.ForProvider, observed) {
-		t.Error("nil description in CR should not cause out-of-date")
+		t.Error("an unset description matching an empty one should not be drift")
 	}
 }
 
@@ -202,5 +222,36 @@ func TestGenerateRoutingRuleObservation_Full(t *testing.T) {
 
 	if len(obs.Matchers) != 1 || obs.Matchers[0] != ".*-SNAPSHOT.*" {
 		t.Errorf("Matchers = %v, want [.*-SNAPSHOT.*]", obs.Matchers)
+	}
+}
+
+// ---- IsContentSelectorUpToDate ----
+
+// TestIsContentSelectorUpToDate_DescriptionDropped tests that removing the
+// description from the spec is reported as drift: GenerateContentSelector
+// submits an empty description, which is how Nexus is told to clear it.
+func TestIsContentSelectorUpToDate_DescriptionDropped(t *testing.T) {
+	t.Parallel()
+
+	cr := &contentv1alpha1.ContentSelector{}
+	cr.Spec.ForProvider = contentv1alpha1.ContentSelectorParameters{
+		Name:       "selector",
+		Expression: `format == "maven2"`,
+	}
+
+	observed := &security.ContentSelector{
+		Name:        "selector",
+		Expression:  `format == "maven2"`,
+		Description: "leftover",
+	}
+
+	if IsContentSelectorUpToDate(cr, observed) {
+		t.Error("IsContentSelectorUpToDate() = true, want false when the description was dropped")
+	}
+
+	observed.Description = ""
+
+	if !IsContentSelectorUpToDate(cr, observed) {
+		t.Error("IsContentSelectorUpToDate() = false, want true once the description is gone")
 	}
 }

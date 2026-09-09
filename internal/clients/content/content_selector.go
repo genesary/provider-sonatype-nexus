@@ -2,6 +2,7 @@ package content
 
 import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	"k8s.io/utils/ptr"
 
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
@@ -42,17 +43,17 @@ func GenerateContentSelector(cr *contentv1alpha1.ContentSelector) security.Conte
 }
 
 // IsContentSelectorUpToDate reports whether the CR is up to date.
+//
+// A spec without a description asks for a selector without one:
+// GenerateContentSelector submits an empty description in that case, and Nexus
+// stores it verbatim, so dropping the description from the spec has to be
+// reported as drift.
 func IsContentSelectorUpToDate(contentSel *contentv1alpha1.ContentSelector, observed *security.ContentSelector) bool {
 	if contentSel.Spec.ForProvider.Expression != observed.Expression {
 		return false
 	}
 
-	if contentSel.Spec.ForProvider.Description != nil &&
-		*contentSel.Spec.ForProvider.Description != observed.Description {
-		return false
-	}
-
-	return true
+	return ptr.Deref(contentSel.Spec.ForProvider.Description, "") == observed.Description
 }
 
 // GenerateContentSelectorObservation returns the observed selector state.

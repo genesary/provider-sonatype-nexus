@@ -3,10 +3,20 @@ package iam
 import (
 	nexuspkgsecurity "github.com/datadrivers/go-nexus-client/nexus3/pkg/security"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	"k8s.io/utils/ptr"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
+)
+
+const (
+	// defaultUserStatus is the account status Nexus is asked for when the
+	// spec sets none. It mirrors the CRD default.
+	defaultUserStatus = "active"
+	// defaultUserSource is the authentication source Nexus is asked for when
+	// the spec sets none. It mirrors the CRD default.
+	defaultUserSource = "default"
 )
 
 // UserClient manages Nexus users.
@@ -67,8 +77,8 @@ func GenerateUser(userRes *iamv1alpha1.User, password string) security.User {
 		LastName:     userRes.Spec.ForProvider.LastName,
 		EmailAddress: userRes.Spec.ForProvider.EmailAddress,
 		Password:     password,
-		Status:       "active",
-		Source:       "default",
+		Status:       defaultUserStatus,
+		Source:       defaultUserSource,
 		Roles:        userRes.Spec.ForProvider.Roles,
 	}
 
@@ -85,6 +95,8 @@ func GenerateUserObservation(observed *security.User) iamv1alpha1.UserObservatio
 	}
 
 	return iamv1alpha1.UserObservation{
+		UserID:       observed.UserID,
+		Source:       observed.Source,
 		FirstName:    observed.FirstName,
 		LastName:     observed.LastName,
 		EmailAddress: observed.EmailAddress,
@@ -109,7 +121,13 @@ func IsUserUpToDate(userRes *iamv1alpha1.User) bool {
 		return false
 	}
 
-	if !helpers.IsComparablePtrEqualComparable(userRes.Spec.ForProvider.Status, obs.Status) {
+	// GenerateUser falls back to the same defaults the CRD declares, so an
+	// unset status or source still carries an intent to compare against.
+	if ptr.Deref(userRes.Spec.ForProvider.Status, defaultUserStatus) != obs.Status {
+		return false
+	}
+
+	if ptr.Deref(userRes.Spec.ForProvider.Source, defaultUserSource) != obs.Source {
 		return false
 	}
 

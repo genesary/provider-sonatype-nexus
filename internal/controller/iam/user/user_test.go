@@ -118,6 +118,8 @@ func TestObserve(t *testing.T) {
 						FirstName:    "Alice",
 						LastName:     "Smith",
 						EmailAddress: "alice@example.com",
+						Status:       "active",
+						Source:       "default",
 					}, nil
 				}
 			},
@@ -135,6 +137,8 @@ func TestObserve(t *testing.T) {
 						FirstName:    "Alice",
 						LastName:     "OldLastName",
 						EmailAddress: "alice@example.com",
+						Status:       "active",
+						Source:       "default",
 					}, nil
 				}
 			},

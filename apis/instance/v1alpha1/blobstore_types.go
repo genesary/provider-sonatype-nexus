@@ -89,32 +89,43 @@ type S3Config struct {
 
 // BlobStoreObservation represents the observed state of a BlobStore.
 type BlobStoreObservation struct {
-	// AvailableSpaceInBytes is the available space in bytes.
+	// Name is the observed blob store name.
+	Name string `json:"name,omitempty"`
+
+	// Type is the observed blob store type, as reported by the blob store
+	// listing.
+	Type string `json:"type,omitempty"`
+
+	// AvailableSpaceInBytes is the free space reported by the blob store.
 	AvailableSpaceInBytes *int64 `json:"availableSpaceInBytes,omitempty"`
 
-	// TotalSizeInBytes is the total size in bytes.
+	// TotalSizeInBytes is the total size reported by the blob store.
 	TotalSizeInBytes *int64 `json:"totalSizeInBytes,omitempty"`
 
-	// BlobCount is the number of blobs in the store.
+	// BlobCount is the number of blobs held by the blob store.
 	BlobCount *int64 `json:"blobCount,omitempty"`
 
-	// Path is the observed filesystem path (File type only).
+	// Path is the observed path of a File blob store.
 	Path *string `json:"path,omitempty"`
 
 	// SoftQuotaType is the observed soft quota type.
 	SoftQuotaType *string `json:"softQuotaType,omitempty"`
 
-	// SoftQuotaLimit is the observed soft quota limit in bytes.
+	// SoftQuotaLimit is the observed soft quota limit.
 	SoftQuotaLimit *int64 `json:"softQuotaLimit,omitempty"`
 
-	// BucketName is the observed S3 bucket name (S3 type only).
+	// BucketName is the observed bucket name of an S3 blob store.
 	BucketName *string `json:"bucketName,omitempty"`
 
-	// BucketRegion is the observed S3 bucket region (S3 type only).
+	// BucketRegion is the observed bucket region of an S3 blob store.
 	BucketRegion *string `json:"bucketRegion,omitempty"`
 
-	// BucketPrefix is the observed S3 bucket prefix (S3 type only).
+	// BucketPrefix is the observed bucket prefix of an S3 blob store.
 	BucketPrefix *string `json:"bucketPrefix,omitempty"`
+
+	// BucketExpirationDays is the observed number of days before deleted
+	// blobs expire from the S3 bucket.
+	BucketExpirationDays *int32 `json:"bucketExpirationDays,omitempty"`
 }
 
 // BlobStoreSpec defines the desired state of BlobStore.

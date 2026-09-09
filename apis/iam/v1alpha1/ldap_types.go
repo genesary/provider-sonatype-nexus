@@ -159,6 +159,8 @@ type LDAPParameters struct {
 type LDAPObservation struct {
 	// ID is the internal LDAP server ID.
 	ID *string `json:"id,omitempty"`
+	// Name is the observed LDAP server name.
+	Name string `json:"name,omitempty"`
 	// Protocol is the observed connection protocol.
 	Protocol string `json:"protocol,omitempty"`
 	// Host is the observed LDAP server hostname.
@@ -169,8 +171,53 @@ type LDAPObservation struct {
 	SearchBase string `json:"searchBase,omitempty"`
 	// AuthScheme is the observed authentication scheme.
 	AuthScheme string `json:"authScheme,omitempty"`
+	// AuthUsername is the observed bind username. The bind password is a
+	// credential and is never reported by Nexus.
+	AuthUsername string `json:"authUsername,omitempty"`
+	// AuthRealm is the observed SASL realm.
+	AuthRealm string `json:"authRealm,omitempty"`
+	// ConnectionTimeoutSeconds is the observed connection timeout.
+	ConnectionTimeoutSeconds int32 `json:"connectionTimeoutSeconds,omitempty"`
+	// ConnectionRetryDelaySeconds is the observed retry delay.
+	ConnectionRetryDelaySeconds int32 `json:"connectionRetryDelaySeconds,omitempty"`
+	// MaxIncidentCount is the observed maximum number of connection retries.
+	MaxIncidentCount int32 `json:"maxIncidentsCount,omitempty"`
+	// UseTrustStore is the observed truststore setting.
+	UseTrustStore bool `json:"useTrustStore,omitempty"`
 	// UserBaseDN is the observed user base DN.
 	UserBaseDN string `json:"userBaseDn,omitempty"`
+	// UserSubtree is the observed user subtree setting.
+	UserSubtree bool `json:"userSubtree,omitempty"`
+	// UserObjectClass is the observed LDAP class for user objects.
+	UserObjectClass string `json:"userObjectClass,omitempty"`
+	// UserIDAttribute is the observed user ID attribute.
+	UserIDAttribute string `json:"userIdAttribute,omitempty"`
+	// UserRealNameAttribute is the observed user real name attribute.
+	UserRealNameAttribute string `json:"userRealNameAttribute,omitempty"`
+	// UserEmailAddressAttribute is the observed user email attribute.
+	UserEmailAddressAttribute string `json:"userEmailAddressAttribute,omitempty"`
+	// UserPasswordAttribute is the observed user password attribute.
+	UserPasswordAttribute string `json:"userPasswordAttribute,omitempty"`
+	// UserMemberOfAttribute is the observed memberOf attribute.
+	UserMemberOfAttribute string `json:"userMemberOfAttribute,omitempty"`
+	// UserLDAPFilter is the observed additional user search filter.
+	UserLDAPFilter string `json:"userLdapFilter,omitempty"`
+	// LDAPGroupsAsRoles is the observed group-mapping setting.
+	LDAPGroupsAsRoles bool `json:"ldapGroupsAsRoles,omitempty"`
+	// GroupType is the observed group mapping type.
+	GroupType string `json:"groupType,omitempty"`
+	// GroupBaseDN is the observed group base DN.
+	GroupBaseDN string `json:"groupBaseDn,omitempty"`
+	// GroupSubtree is the observed group subtree setting.
+	GroupSubtree bool `json:"groupSubtree,omitempty"`
+	// GroupObjectClass is the observed LDAP class for group objects.
+	GroupObjectClass string `json:"groupObjectClass,omitempty"`
+	// GroupIDAttribute is the observed group ID attribute.
+	GroupIDAttribute string `json:"groupIdAttribute,omitempty"`
+	// GroupMemberAttribute is the observed group member attribute.
+	GroupMemberAttribute string `json:"groupMemberAttribute,omitempty"`
+	// GroupMemberFormat is the observed group member format.
+	GroupMemberFormat string `json:"groupMemberFormat,omitempty"`
 }
 
 // LDAPSpec defines the desired state of LDAP.

@@ -90,7 +90,11 @@ func GenerateCapabilityObservation(observed *nexussdk.Capability) instancev1alph
 	}
 
 	return instancev1alpha1.CapabilityObservation{
-		ID: observed.ID,
+		ID:         observed.ID,
+		TypeId:     observed.Type,
+		Enabled:    observed.Enabled,
+		Notes:      observed.Notes,
+		Properties: maps.Clone(observed.Properties),
 	}
 }
 

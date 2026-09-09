@@ -239,40 +239,56 @@ spec:
                   a BlobStore.
                 properties:
                   availableSpaceInBytes:
-                    description: AvailableSpaceInBytes is the available space in bytes.
+                    description: AvailableSpaceInBytes is the free space reported
+                      by the blob store.
                     format: int64
                     type: integer
                   blobCount:
-                    description: BlobCount is the number of blobs in the store.
+                    description: BlobCount is the number of blobs held by the blob
+                      store.
                     format: int64
                     type: integer
+                  bucketExpirationDays:
+                    description: |-
+                      BucketExpirationDays is the observed number of days before deleted
+                      blobs expire from the S3 bucket.
+                    format: int32
+                    type: integer
                   bucketName:
-                    description: BucketName is the observed S3 bucket name (S3 type
-                      only).
+                    description: BucketName is the observed bucket name of an S3 blob
+                      store.
                     type: string
                   bucketPrefix:
-                    description: BucketPrefix is the observed S3 bucket prefix (S3
-                      type only).
+                    description: BucketPrefix is the observed bucket prefix of an
+                      S3 blob store.
                     type: string
                   bucketRegion:
-                    description: BucketRegion is the observed S3 bucket region (S3
-                      type only).
+                    description: BucketRegion is the observed bucket region of an
+                      S3 blob store.
+                    type: string
+                  name:
+                    description: Name is the observed blob store name.
                     type: string
                   path:
-                    description: Path is the observed filesystem path (File type only).
+                    description: Path is the observed path of a File blob store.
                     type: string
                   softQuotaLimit:
-                    description: SoftQuotaLimit is the observed soft quota limit in
-                      bytes.
+                    description: SoftQuotaLimit is the observed soft quota limit.
                     format: int64
                     type: integer
                   softQuotaType:
                     description: SoftQuotaType is the observed soft quota type.
                     type: string
                   totalSizeInBytes:
-                    description: TotalSizeInBytes is the total size in bytes.
+                    description: TotalSizeInBytes is the total size reported by the
+                      blob store.
                     format: int64
                     type: integer
+                  type:
+                    description: |-
+                      Type is the observed blob store type, as reported by the blob store
+                      listing.
+                    type: string
                 type: object
               conditions:
                 description: Conditions of the resource.

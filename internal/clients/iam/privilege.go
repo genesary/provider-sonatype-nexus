@@ -4,6 +4,7 @@ import (
 	"github.com/datadrivers/go-nexus-client/nexus3/pkg/security/privilege"
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 	"github.com/pkg/errors"
+	"k8s.io/utils/ptr"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
@@ -102,31 +103,84 @@ func (c *privilegeClientImpl) Delete(name string) error {
 }
 
 // GeneratePrivilegeObservation returns the observed Privilege state.
+//
+// Every field Nexus reports is recorded, including the type specific ones, so
+// that drift detection can compare them: a privilege whose repository or
+// content selector was changed out of band is otherwise indistinguishable from
+// one still matching its spec.
 func GeneratePrivilegeObservation(observed *security.Privilege) iamv1alpha1.PrivilegeObservation {
 	if observed == nil {
 		return iamv1alpha1.PrivilegeObservation{}
 	}
 
 	return iamv1alpha1.PrivilegeObservation{
-		ReadOnly:    &observed.ReadOnly,
-		Description: observed.Description,
-		Actions:     observed.Actions,
+		ReadOnly:        &observed.ReadOnly,
+		Name:            observed.Name,
+		Type:            observed.Type,
+		Description:     observed.Description,
+		Actions:         observed.Actions,
+		Domain:          observed.Domain,
+		Format:          observed.Format,
+		Repository:      observed.Repository,
+		ContentSelector: observed.ContentSelector,
+		ScriptName:      observed.ScriptName,
+		Pattern:         observed.Pattern,
 	}
 }
 
 // IsPrivilegeUpToDate reports whether the CR spec matches observed.
+//
+// Only the fields the privilege type actually carries are asserted: the payload
+// builders submit nothing else, and Nexus reports the rest as empty.
 func IsPrivilegeUpToDate(privCR *iamv1alpha1.Privilege) bool {
-	obs := privCR.Status.AtProvider
+	spec := &privCR.Spec.ForProvider
+	obs := &privCR.Status.AtProvider
 
-	if !helpers.IsComparablePtrEqualComparable(privCR.Spec.ForProvider.Description, obs.Description) {
+	if spec.Type != obs.Type {
 		return false
 	}
 
-	if !helpers.AreStringSlicesEqual(privCR.Spec.ForProvider.Actions, obs.Actions) {
+	// The payload builders submit an empty description when the spec sets
+	// none, which is how Nexus is told to drop it, so a description removed
+	// from the spec is drift.
+	if ptr.Deref(spec.Description, "") != obs.Description {
 		return false
 	}
 
-	return true
+	if !helpers.AreStringSlicesEqual(spec.Actions, obs.Actions) {
+		return false
+	}
+
+	return arePrivilegeTypeFieldsUpToDate(spec, obs)
+}
+
+// arePrivilegeTypeFieldsUpToDate reports whether the fields specific to the
+// privilege type match the observed privilege.
+func arePrivilegeTypeFieldsUpToDate(spec *iamv1alpha1.PrivilegeParameters, obs *iamv1alpha1.PrivilegeObservation) bool {
+	switch spec.Type {
+	case privilegeTypeApplication:
+		return helpers.IsComparablePtrEqualComparable(spec.Domain, obs.Domain)
+	case privilegeTypeRepoView, privilegeTypeRepoAdmin:
+		return areRepoPrivilegeFieldsUpToDate(spec, obs)
+	case privilegeTypeRepoContentSelector:
+		return areRepoPrivilegeFieldsUpToDate(spec, obs) &&
+			helpers.IsComparablePtrEqualComparable(spec.ContentSelector, obs.ContentSelector)
+	case privilegeTypeScript:
+		return helpers.IsComparablePtrEqualComparable(spec.ScriptName, obs.ScriptName)
+	case privilegeTypeWildcard:
+		return helpers.IsComparablePtrEqualComparable(spec.Pattern, obs.Pattern)
+	default:
+		// An unsupported type cannot be created either, so there is nothing
+		// left to compare; Create and Update report the error.
+		return true
+	}
+}
+
+// areRepoPrivilegeFieldsUpToDate reports whether the format and repository
+// shared by every repository privilege type match the observed privilege.
+func areRepoPrivilegeFieldsUpToDate(spec *iamv1alpha1.PrivilegeParameters, obs *iamv1alpha1.PrivilegeObservation) bool {
+	return helpers.IsComparablePtrEqualComparable(spec.Format, obs.Format) &&
+		helpers.IsComparablePtrEqualComparable(spec.Repository, obs.Repository)
 }
 
 // repoPrivilegeFields holds common fields shared by repository privilege types.

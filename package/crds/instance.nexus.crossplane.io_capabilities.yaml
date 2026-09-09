@@ -143,8 +143,22 @@ spec:
                 description: CapabilityObservation represents the observed state of
                   a Capability.
                 properties:
+                  enabled:
+                    description: Enabled is the observed enabled state.
+                    type: boolean
                   id:
-                    description: ID is the server-assigned capability identifier.
+                    description: ID is the server-assigned capability ID.
+                    type: string
+                  notes:
+                    description: Notes are the observed free-form notes.
+                    type: string
+                  properties:
+                    additionalProperties:
+                      type: string
+                    description: Properties are the observed type-specific settings.
+                    type: object
+                  typeId:
+                    description: TypeId is the observed capability type.
                     type: string
                 type: object
               conditions:

@@ -182,7 +182,12 @@ spec:
                     description: EmailAddress is the observed email address.
                     type: string
                   externalRoles:
-                    description: ExternalRoles are roles from external sources.
+                    description: |-
+                      ExternalRoles are roles from external sources.
+
+                      Nexus reports this field, but the upstream go-nexus-client
+                      security.User struct drops it, so it stays nil until the library
+                      exposes it.
                     items:
                       type: string
                     type: array
@@ -193,15 +198,27 @@ spec:
                     description: LastName is the observed last name.
                     type: string
                   readOnly:
-                    description: ReadOnly indicates if the user is read-only.
+                    description: |-
+                      ReadOnly indicates if the user is read-only.
+
+                      Nexus reports this field, but the upstream go-nexus-client
+                      security.User struct drops it, so it stays nil until the library
+                      exposes it.
                     type: boolean
                   roles:
                     description: Roles are the observed assigned roles.
                     items:
                       type: string
                     type: array
+                  source:
+                    description: Source is the observed authentication source of the
+                      user.
+                    type: string
                   status:
                     description: Status is the observed account status.
+                    type: string
+                  userId:
+                    description: UserID is the observed user ID.
                     type: string
                 type: object
               conditions:

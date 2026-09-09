@@ -2,6 +2,7 @@ package content
 
 import (
 	nexusschema "github.com/datadrivers/go-nexus-client/nexus3/schema"
+	"k8s.io/utils/ptr"
 
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
@@ -44,10 +45,14 @@ func GenerateRoutingRule(cr *contentv1alpha1.RoutingRule) *nexusschema.RoutingRu
 }
 
 // IsRoutingRuleUpToDate reports whether the CR spec matches the observed rule.
+//
+// A spec without a description asks for a rule without one: GenerateRoutingRule
+// submits an empty description in that case, and Nexus stores it verbatim, so
+// dropping the description from the spec has to be reported as drift.
 func IsRoutingRuleUpToDate(params *contentv1alpha1.RoutingRuleParameters, observed *contentv1alpha1.RoutingRuleObservation) bool {
 	return params.Mode == observed.Mode &&
 		helpers.AreStringSlicesEqual(params.Matchers, observed.Matchers) &&
-		helpers.IsComparablePtrEqualComparable(params.Description, observed.Description)
+		ptr.Deref(params.Description, "") == observed.Description
 }
 
 // GenerateRoutingRuleObservation converts an observed Nexus routing rule into

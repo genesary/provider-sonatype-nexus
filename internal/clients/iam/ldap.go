@@ -47,18 +47,48 @@ func GenerateLDAP(ldapCR *iamv1alpha1.LDAP, password string) security.LDAP {
 }
 
 // GenerateLDAPObservation returns the observed LDAP server state.
+//
+// Every field Nexus reports is recorded, not only the ones that identify the
+// server: drift detection compares the spec against this observation, so a
+// field left out of it can never be seen to drift.
+//
+// The bind password is deliberately absent - Nexus never returns it, so it
+// takes no part in the observation nor in drift detection.
 func GenerateLDAPObservation(observed *security.LDAP) iamv1alpha1.LDAPObservation {
 	if observed == nil {
 		return iamv1alpha1.LDAPObservation{}
 	}
 
 	obs := iamv1alpha1.LDAPObservation{
-		Protocol:   observed.Protocol,
-		Host:       observed.Host,
-		Port:       observed.Port,
-		SearchBase: observed.SearchBase,
-		AuthScheme: observed.AuthSchema,
-		UserBaseDN: observed.UserBaseDN,
+		Name:                        observed.Name,
+		Protocol:                    observed.Protocol,
+		Host:                        observed.Host,
+		Port:                        observed.Port,
+		SearchBase:                  observed.SearchBase,
+		AuthScheme:                  observed.AuthSchema,
+		AuthUsername:                observed.AuthUserName,
+		AuthRealm:                   observed.AuthRealm,
+		ConnectionTimeoutSeconds:    observed.ConnectionTimeoutSeconds,
+		ConnectionRetryDelaySeconds: observed.ConnectionRetryDelaySeconds,
+		MaxIncidentCount:            observed.MaxIncidentCount,
+		UseTrustStore:               observed.UseTrustStore,
+		UserBaseDN:                  observed.UserBaseDN,
+		UserSubtree:                 observed.UserSubtree,
+		UserObjectClass:             observed.UserObjectClass,
+		UserIDAttribute:             observed.UserIDAttribute,
+		UserRealNameAttribute:       observed.UserRealNameAttribute,
+		UserEmailAddressAttribute:   observed.UserEmailAddressAttribute,
+		UserPasswordAttribute:       observed.UserPasswordAttribute,
+		UserMemberOfAttribute:       observed.UserMemberOfAttribute,
+		UserLDAPFilter:              observed.UserLDAPFilter,
+		LDAPGroupsAsRoles:           observed.LDAPGroupsAsRoles,
+		GroupType:                   observed.GroupType,
+		GroupBaseDN:                 observed.GroupBaseDn,
+		GroupSubtree:                observed.GroupSubtree,
+		GroupObjectClass:            observed.GroupObjectClass,
+		GroupIDAttribute:            observed.GroupIDAttribute,
+		GroupMemberAttribute:        observed.GroupMemberAttribute,
+		GroupMemberFormat:           observed.GroupMemberFormat,
 	}
 
 	if observed.ID != "" {
@@ -69,34 +99,88 @@ func GenerateLDAPObservation(observed *security.LDAP) iamv1alpha1.LDAPObservatio
 }
 
 // IsLDAPUpToDate reports whether the CR spec matches the observed LDAP config.
+//
+// Optional fields are only asserted when the spec sets them: an unset optional
+// field carries no intent, and Nexus fills those in with its own defaults.
 func IsLDAPUpToDate(ldapCR *iamv1alpha1.LDAP) bool {
-	obs := ldapCR.Status.AtProvider
+	spec := &ldapCR.Spec.ForProvider
+	obs := &ldapCR.Status.AtProvider
 
-	if ldapCR.Spec.ForProvider.Protocol != obs.Protocol {
+	return isLDAPConnectionUpToDate(spec, obs) &&
+		isLDAPUserConfigUpToDate(spec, obs) &&
+		isLDAPGroupConfigUpToDate(spec, obs)
+}
+
+// isLDAPConnectionUpToDate reports whether the connection settings in the spec
+// match the observed LDAP config.
+func isLDAPConnectionUpToDate(spec *iamv1alpha1.LDAPParameters, obs *iamv1alpha1.LDAPObservation) bool {
+	return isLDAPEndpointUpToDate(spec, obs) && isLDAPRetryPolicyUpToDate(spec, obs)
+}
+
+// isLDAPEndpointUpToDate reports whether the address of the LDAP server and
+// the credentials used to bind to it match the observed LDAP config.
+func isLDAPEndpointUpToDate(spec *iamv1alpha1.LDAPParameters, obs *iamv1alpha1.LDAPObservation) bool {
+	if spec.Protocol != obs.Protocol ||
+		spec.Host != obs.Host ||
+		spec.Port != obs.Port {
 		return false
 	}
 
-	if ldapCR.Spec.ForProvider.Host != obs.Host {
+	if spec.SearchBase != obs.SearchBase || spec.AuthScheme != obs.AuthScheme {
 		return false
 	}
 
-	if ldapCR.Spec.ForProvider.Port != obs.Port {
+	return helpers.IsComparablePtrEqualComparable(spec.AuthUsername, obs.AuthUsername) &&
+		helpers.IsComparablePtrEqualComparable(spec.AuthRealm, obs.AuthRealm) &&
+		helpers.IsComparablePtrEqualComparable(spec.UseTrustStore, obs.UseTrustStore)
+}
+
+// isLDAPRetryPolicyUpToDate reports whether the timeout and retry settings in
+// the spec match the observed LDAP config.
+func isLDAPRetryPolicyUpToDate(spec *iamv1alpha1.LDAPParameters, obs *iamv1alpha1.LDAPObservation) bool {
+	return helpers.IsComparablePtrEqualComparable(spec.ConnectionTimeoutSeconds, obs.ConnectionTimeoutSeconds) &&
+		helpers.IsComparablePtrEqualComparable(spec.ConnectionRetryDelaySeconds, obs.ConnectionRetryDelaySeconds) &&
+		helpers.IsComparablePtrEqualComparable(spec.MaxIncidentCount, obs.MaxIncidentCount)
+}
+
+// isLDAPUserConfigUpToDate reports whether the user-mapping settings in the
+// spec match the observed LDAP config.
+func isLDAPUserConfigUpToDate(spec *iamv1alpha1.LDAPParameters, obs *iamv1alpha1.LDAPObservation) bool {
+	if spec.UserBaseDN != obs.UserBaseDN {
 		return false
 	}
 
-	if ldapCR.Spec.ForProvider.SearchBase != obs.SearchBase {
+	return helpers.IsComparablePtrEqualComparable(spec.UserSubtree, obs.UserSubtree) &&
+		helpers.IsComparablePtrEqualComparable(spec.UserObjectClass, obs.UserObjectClass) &&
+		helpers.IsComparablePtrEqualComparable(spec.UserIDAttribute, obs.UserIDAttribute) &&
+		helpers.IsComparablePtrEqualComparable(spec.UserRealNameAttribute, obs.UserRealNameAttribute) &&
+		helpers.IsComparablePtrEqualComparable(spec.UserEmailAddressAttribute, obs.UserEmailAddressAttribute) &&
+		helpers.IsComparablePtrEqualComparable(spec.UserPasswordAttribute, obs.UserPasswordAttribute) &&
+		helpers.IsComparablePtrEqualComparable(spec.UserMemberOfAttribute, obs.UserMemberOfAttribute) &&
+		helpers.IsComparablePtrEqualComparable(spec.UserLDAPFilter, obs.UserLDAPFilter)
+}
+
+// isLDAPGroupConfigUpToDate reports whether the group-mapping settings in the
+// spec match the observed LDAP config.
+//
+// The group settings are only submitted when ldapGroupsAsRoles is set, so a
+// spec that leaves it unset asks for nothing here - see applyLDAPGroupConfig.
+func isLDAPGroupConfigUpToDate(spec *iamv1alpha1.LDAPParameters, obs *iamv1alpha1.LDAPObservation) bool {
+	if spec.LDAPGroupsAsRoles == nil {
+		return true
+	}
+
+	if *spec.LDAPGroupsAsRoles != obs.LDAPGroupsAsRoles {
 		return false
 	}
 
-	if ldapCR.Spec.ForProvider.AuthScheme != obs.AuthScheme {
-		return false
-	}
-
-	if ldapCR.Spec.ForProvider.UserBaseDN != obs.UserBaseDN {
-		return false
-	}
-
-	return true
+	return helpers.IsComparablePtrEqualComparable(spec.GroupType, obs.GroupType) &&
+		helpers.IsComparablePtrEqualComparable(spec.GroupBaseDN, obs.GroupBaseDN) &&
+		helpers.IsComparablePtrEqualComparable(spec.GroupSubtree, obs.GroupSubtree) &&
+		helpers.IsComparablePtrEqualComparable(spec.GroupObjectClass, obs.GroupObjectClass) &&
+		helpers.IsComparablePtrEqualComparable(spec.GroupIDAttribute, obs.GroupIDAttribute) &&
+		helpers.IsComparablePtrEqualComparable(spec.GroupMemberAttribute, obs.GroupMemberAttribute) &&
+		helpers.IsComparablePtrEqualComparable(spec.GroupMemberFormat, obs.GroupMemberFormat)
 }
 
 // applyLDAPConnection applies connection-related fields from the spec to the

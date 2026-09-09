@@ -49,10 +49,24 @@ type UserParameters struct {
 // UserObservation is the observed state of a User.
 type UserObservation struct {
 	// ReadOnly indicates if the user is read-only.
+	//
+	// Nexus reports this field, but the upstream go-nexus-client
+	// security.User struct drops it, so it stays nil until the library
+	// exposes it.
 	ReadOnly *bool `json:"readOnly,omitempty"`
 
 	// ExternalRoles are roles from external sources.
+	//
+	// Nexus reports this field, but the upstream go-nexus-client
+	// security.User struct drops it, so it stays nil until the library
+	// exposes it.
 	ExternalRoles []string `json:"externalRoles,omitempty"`
+
+	// UserID is the observed user ID.
+	UserID string `json:"userId,omitempty"`
+
+	// Source is the observed authentication source of the user.
+	Source string `json:"source,omitempty"`
 
 	// FirstName is the observed first name.
 	FirstName string `json:"firstName,omitempty"`

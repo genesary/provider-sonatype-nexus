@@ -185,13 +185,41 @@ spec:
                     items:
                       type: string
                     type: array
+                  contentSelector:
+                    description: |-
+                      ContentSelector is the observed content selector of a
+                      repository-content-selector privilege.
+                    type: string
                   description:
                     description: Description is the observed privilege description.
+                    type: string
+                  domain:
+                    description: Domain is the observed domain of an application privilege.
+                    type: string
+                  format:
+                    description: Format is the observed format of a repository privilege.
+                    type: string
+                  name:
+                    description: Name is the observed privilege name.
+                    type: string
+                  pattern:
+                    description: Pattern is the observed pattern of a wildcard privilege.
                     type: string
                   readOnly:
                     description: ReadOnly indicates if the privilege is read-only
                       (built-in).
                     type: boolean
+                  repository:
+                    description: Repository is the observed repository of a repository
+                      privilege.
+                    type: string
+                  scriptName:
+                    description: ScriptName is the observed script name of a script
+                      privilege.
+                    type: string
+                  type:
+                    description: Type is the observed privilege type.
+                    type: string
                 type: object
               conditions:
                 description: Conditions of the resource.

@@ -2,6 +2,7 @@ package iam
 
 import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	"k8s.io/utils/ptr"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
@@ -51,6 +52,7 @@ func GenerateRoleObservation(observed *security.Role) iamv1alpha1.RoleObservatio
 	}
 
 	return iamv1alpha1.RoleObservation{
+		ID:          observed.ID,
 		Name:        observed.Name,
 		Description: observed.Description,
 		Privileges:  observed.Privileges,
@@ -66,7 +68,9 @@ func IsRoleUpToDate(roleRes *iamv1alpha1.Role) bool {
 		return false
 	}
 
-	if !helpers.IsComparablePtrEqualComparable(roleRes.Spec.ForProvider.Description, obs.Description) {
+	// GenerateRole submits an empty description when the spec sets none, and
+	// Nexus stores it verbatim, so dropping the description is drift.
+	if ptr.Deref(roleRes.Spec.ForProvider.Description, "") != obs.Description {
 		return false
 	}
 

@@ -149,6 +149,9 @@ spec:
                   description:
                     description: Description is the observed role description.
                     type: string
+                  id:
+                    description: ID is the observed role ID.
+                    type: string
                   name:
                     description: Name is the observed role name.
                     type: string

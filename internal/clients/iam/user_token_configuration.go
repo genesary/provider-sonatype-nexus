@@ -2,6 +2,7 @@ package iam
 
 import (
 	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	"k8s.io/utils/ptr"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
@@ -55,25 +56,25 @@ func GenerateUserTokenConfigObservation(config *security.UserTokenConfiguration)
 }
 
 // IsUserTokenConfigUpToDate reports whether the CR spec matches observed.
+//
+// The Nexus payload carries every setting on every write, so an unset optional
+// still submits its zero value: turning one off by removing it from the spec
+// has to be reported as drift.
 func IsUserTokenConfigUpToDate(userTokenCfg *iamv1alpha1.UserTokenConfiguration) bool {
+	spec := userTokenCfg.Spec.ForProvider
 	obs := userTokenCfg.Status.AtProvider
 
-	if userTokenCfg.Spec.ForProvider.Enabled != obs.Enabled {
+	if spec.Enabled != obs.Enabled {
 		return false
 	}
 
-	if !helpers.IsComparablePtrEqualComparable(userTokenCfg.Spec.ForProvider.ProtectContent, obs.ProtectContent) {
+	if ptr.Deref(spec.ProtectContent, false) != obs.ProtectContent {
 		return false
 	}
 
-	if !helpers.IsComparablePtrEqualComparable(userTokenCfg.Spec.ForProvider.ExpirationEnabled, obs.ExpirationEnabled) {
+	if ptr.Deref(spec.ExpirationEnabled, false) != obs.ExpirationEnabled {
 		return false
 	}
 
-	if userTokenCfg.Spec.ForProvider.ExpirationDays != nil &&
-		int(*userTokenCfg.Spec.ForProvider.ExpirationDays) != obs.ExpirationDays {
-		return false
-	}
-
-	return true
+	return int(ptr.Deref(spec.ExpirationDays, 0)) == obs.ExpirationDays
 }
