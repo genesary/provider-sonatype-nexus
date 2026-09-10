@@ -1,7 +1,8 @@
-apiVersion: iam.nexus.crossplane.io/v1alpha1
+apiVersion: instance.nexus.crossplane.io/v1alpha1
 kind: SecuritySSLTruststore
 metadata:
   name: ldap-server-cert
+  namespace: default
 spec:
   forProvider:
     pem: |
