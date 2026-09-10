@@ -95,7 +95,7 @@ spec:
       key: password
 EOF
 
-log "Applying ClusterProviderConfig '${NEXUS_PROVIDERCONFIG_NAME}' (for cluster-scoped resources)"
+log "Applying ClusterProviderConfig '${NEXUS_PROVIDERCONFIG_NAME}' (usable by any namespace)"
 "${KUBECTL}" apply -f - <<EOF
 apiVersion: nexus.crossplane.io/v1alpha1
 kind: ClusterProviderConfig

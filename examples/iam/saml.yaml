@@ -2,6 +2,7 @@ apiVersion: iam.nexus.crossplane.io/v1alpha1
 kind: SAML
 metadata:
   name: saml-config
+  namespace: default
 spec:
   forProvider:
     idpMetadata: |

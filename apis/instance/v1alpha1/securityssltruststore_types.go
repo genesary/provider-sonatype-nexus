@@ -93,7 +93,7 @@ type SecuritySSLTruststoreStatus struct {
 // +kubebuilder:printcolumn:name="EXTERNAL-NAME",type="string",JSONPath=".metadata.annotations.crossplane\\.io/external-name"
 // +kubebuilder:printcolumn:name="SUBJECT",type="string",JSONPath=".status.atProvider.subjectCommonName"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,nexus}
+// +kubebuilder:resource:scope=Namespaced,categories={crossplane,managed,nexus}
 
 // SecuritySSLTruststore is the Schema for the security SSL truststore API.
 // Each instance represents a certificate in the Nexus truststore.

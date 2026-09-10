@@ -2,6 +2,7 @@ apiVersion: iam.nexus.crossplane.io/v1alpha1
 kind: AnonymousAccess
 metadata:
   name: anonymous-settings
+  namespace: default
 spec:
   forProvider:
     enabled: true

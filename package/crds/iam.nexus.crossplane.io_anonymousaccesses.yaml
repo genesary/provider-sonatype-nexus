@@ -16,7 +16,7 @@ spec:
     listKind: AnonymousAccessList
     plural: anonymousaccesses
     singular: anonymousaccess
-  scope: Cluster
+  scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.conditions[?(@.type=='Ready')].status

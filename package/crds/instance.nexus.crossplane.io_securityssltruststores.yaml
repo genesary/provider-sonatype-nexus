@@ -16,7 +16,7 @@ spec:
     listKind: SecuritySSLTruststoreList
     plural: securityssltruststores
     singular: securityssltruststore
-  scope: Cluster
+  scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.conditions[?(@.type=='Ready')].status

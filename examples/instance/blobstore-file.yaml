@@ -1,6 +1,6 @@
 ---
 # File-based BlobStore example
-apiVersion: content.nexus.crossplane.io/v1alpha1
+apiVersion: instance.nexus.crossplane.io/v1alpha1
 kind: BlobStore
 metadata:
   name: my-file-blobstore

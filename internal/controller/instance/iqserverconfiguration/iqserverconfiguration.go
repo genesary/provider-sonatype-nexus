@@ -49,7 +49,7 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		resource.ManagedKind(instancev1alpha1.IQServerConfigurationGroupVersionKind),
 		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
-			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ClusterProviderConfigUsage{}),
+			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
 		managed.WithLogger(opts.Logger.WithValues("controller", name)),
 		managed.WithPollInterval(opts.PollInterval),

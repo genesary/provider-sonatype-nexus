@@ -45,11 +45,11 @@ func TestSecuritySSLTruststoreCRUD(t *testing.T) {
 	pemCert := generateSelfSignedCert(t)
 
 	cert := &iamv1alpha1.SecuritySSLTruststore{
-		ObjectMeta: metav1.ObjectMeta{Name: "e2e-test-ssl-cert"},
+		ObjectMeta: metav1.ObjectMeta{Name: "e2e-test-ssl-cert", Namespace: "default"},
 		Spec: iamv1alpha1.SecuritySSLTruststoreSpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: &xpv2.ProviderConfigReference{
-					Kind: "ClusterProviderConfig",
+					Kind: "ProviderConfig",
 					Name: f.ProviderConfigName,
 				},
 			},

@@ -16,7 +16,7 @@ spec:
     listKind: SAMLList
     plural: samls
     singular: saml
-  scope: Cluster
+  scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.conditions[?(@.type=='Ready')].status

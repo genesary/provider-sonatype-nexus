@@ -28,8 +28,9 @@ const (
 )
 
 // localSecretNamespace returns the namespace for a connection secret referenced
-// via LocalSecretReference. For cluster-scoped resources whose GetNamespace
-// returns "" it falls back to metav1.NamespaceDefault.
+// via LocalSecretReference. Every managed resource in this provider is
+// namespace-scoped, so GetNamespace is normally set; the
+// metav1.NamespaceDefault fallback only guards against an unset namespace.
 func localSecretNamespace(managed resource.Managed) string {
 	if namespace := managed.GetNamespace(); namespace != "" {
 		return namespace
