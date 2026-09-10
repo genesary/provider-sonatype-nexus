@@ -42,7 +42,7 @@ func TestSecurityRealmCRUD(t *testing.T) {
 		Spec: iamv1alpha1.SecurityRealmSpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: &xpv2.ProviderConfigReference{
-					Kind: "ClusterProviderConfig",
+					Kind: "ProviderConfig",
 					Name: f.ProviderConfigName,
 				},
 			},

@@ -105,6 +105,7 @@ type IQServerConfigurationStatus struct {
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Namespaced,categories={crossplane,managed,nexus}
 
 // IQServerConfiguration is the Schema for the IQ Server configuration API.
 type IQServerConfiguration struct {

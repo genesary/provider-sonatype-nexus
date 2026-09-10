@@ -16,7 +16,7 @@ spec:
     listKind: UserTokenConfigurationList
     plural: usertokenconfigurations
     singular: usertokenconfiguration
-  scope: Cluster
+  scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.conditions[?(@.type=='Ready')].status

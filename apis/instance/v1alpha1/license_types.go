@@ -91,7 +91,7 @@ type LicenseStatus struct {
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="EXPIRATION",type="string",JSONPath=".status.atProvider.expirationDate"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,nexus}
+// +kubebuilder:resource:scope=Namespaced,categories={crossplane,managed,nexus}
 
 // License manages the Sonatype Nexus instance license.
 // It is a singleton resource: one License CR per Nexus instance.

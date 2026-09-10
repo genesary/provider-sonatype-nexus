@@ -53,7 +53,7 @@ type AnonymousAccessStatus struct {
 // +kubebuilder:printcolumn:name="SYNCED",type="string",JSONPath=".status.conditions[?(@.type=='Synced')].status"
 // +kubebuilder:printcolumn:name="ENABLED",type="boolean",JSONPath=".spec.forProvider.enabled"
 // +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:resource:scope=Cluster,categories={crossplane,managed,nexus}
+// +kubebuilder:resource:scope=Namespaced,categories={crossplane,managed,nexus}
 
 // AnonymousAccess configures anonymous access settings.
 // This is a singleton resource managing Nexus anonymous access.

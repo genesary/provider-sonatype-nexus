@@ -63,11 +63,11 @@ func TestLicenseCR(t *testing.T) {
 	})
 
 	license := &iamv1alpha1.License{
-		ObjectMeta: metav1.ObjectMeta{Name: crName},
+		ObjectMeta: metav1.ObjectMeta{Name: crName, Namespace: "default"},
 		Spec: iamv1alpha1.LicenseSpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				ProviderConfigReference: &xpv2.ProviderConfigReference{
-					Kind: "ClusterProviderConfig",
+					Kind: "ProviderConfig",
 					Name: f.ProviderConfigName,
 				},
 			},

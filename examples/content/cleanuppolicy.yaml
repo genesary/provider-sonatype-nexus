@@ -3,6 +3,7 @@ apiVersion: content.nexus.crossplane.io/v1alpha1
 kind: CleanupPolicy
 metadata:
   name: example-cleanup-policy
+  namespace: default
 spec:
   forProvider:
     name: example-cleanup-policy

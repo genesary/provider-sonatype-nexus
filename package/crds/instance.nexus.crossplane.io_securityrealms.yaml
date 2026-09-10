@@ -16,7 +16,7 @@ spec:
     listKind: SecurityRealmList
     plural: securityrealms
     singular: securityrealm
-  scope: Cluster
+  scope: Namespaced
   versions:
   - additionalPrinterColumns:
     - jsonPath: .status.conditions[?(@.type=='Ready')].status

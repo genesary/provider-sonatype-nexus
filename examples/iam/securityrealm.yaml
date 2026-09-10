@@ -1,7 +1,8 @@
-apiVersion: iam.nexus.crossplane.io/v1alpha1
+apiVersion: instance.nexus.crossplane.io/v1alpha1
 kind: SecurityRealm
 metadata:
   name: nexus-realms
+  namespace: default
 spec:
   forProvider:
     activeRealms:

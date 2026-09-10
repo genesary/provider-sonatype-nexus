@@ -3,6 +3,7 @@ apiVersion: content.nexus.crossplane.io/v1alpha1
 kind: RoutingRule
 metadata:
   name: example-routing-rule
+  namespace: default
 spec:
   forProvider:
     name: example-routing-rule

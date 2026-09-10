@@ -2,6 +2,7 @@ apiVersion: iam.nexus.crossplane.io/v1alpha1
 kind: UserTokenConfiguration
 metadata:
   name: user-tokens
+  namespace: default
 spec:
   forProvider:
     enabled: true
