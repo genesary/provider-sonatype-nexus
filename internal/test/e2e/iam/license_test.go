@@ -27,8 +27,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/test/e2e"
@@ -39,7 +39,7 @@ import (
 // that the controller attempts reconciliation (Synced condition is set), not
 // that the license is actually installed in Nexus.
 //
-// This test is NOT parallel since License is a cluster-scoped singleton.
+// This test is NOT parallel since License is a per-instance singleton.
 func TestLicenseCR(t *testing.T) {
 	f := e2e.New(t)
 
@@ -91,7 +91,7 @@ func TestLicenseCR(t *testing.T) {
 	// Wait for the Synced condition to be set (any status) — the placeholder
 	// license is invalid so Ready=True is not expected.
 	ctx := context.Background()
-	key := types.NamespacedName{Name: crName}
+	key := client.ObjectKeyFromObject(license)
 	err := wait.PollUntilContextTimeout(ctx, 2*time.Second, 2*time.Minute, true, func(ctx context.Context) (bool, error) {
 		if err := f.Kube.Get(ctx, key, license); err != nil {
 			return false, err
