@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
@@ -469,5 +471,74 @@ func TestIsLicenseUpToDate_UpToDate(t *testing.T) {
 
 	if !instanceclient.IsLicenseUpToDate(cr, hash) {
 		t.Error("IsLicenseUpToDate() = false when fingerprint set and hashes match")
+	}
+}
+
+// TestGetLicense_OversizedResponse verifies that a license response larger
+// than nexus.MaxResponseBytes is rejected instead of buffered.
+func TestGetLicense_OversizedResponse(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = fmt.Fprintf(w, `{"contactEmail":%q}`, strings.Repeat("A", nexus.MaxResponseBytes))
+	}))
+	defer server.Close()
+
+	_, err := newTestLicenseClient(t, server.URL).GetLicense(context.Background())
+	if err == nil || !strings.Contains(err.Error(), nexus.ErrResponseTooLarge) {
+		t.Fatalf("GetLicense() error = %v, want %q", err, nexus.ErrResponseTooLarge)
+	}
+}
+
+// TestInstallLicense_ErrorBodyTruncated verifies that only a bounded prefix
+// of an error response is quoted in the returned error.
+func TestInstallLicense_ErrorBodyTruncated(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(strings.Repeat("E", 64*nexus.MaxErrorBodyBytes)))
+	}))
+	defer server.Close()
+
+	err := newTestLicenseClient(t, server.URL).InstallLicense(context.Background(), []byte("license"))
+	if err == nil {
+		t.Fatal("InstallLicense() expected error, got nil")
+	}
+
+	if len(err.Error()) > 2*nexus.MaxErrorBodyBytes {
+		t.Fatalf("InstallLicense() error is %d bytes long, want it truncated", len(err.Error()))
+	}
+}
+
+// TestNewLicenseClient_ReusesConnections verifies that license clients built
+// on every Connect share keep-alive connections instead of each leaking its
+// own transport.
+func TestNewLicenseClient_ReusesConnections(t *testing.T) {
+	t.Parallel()
+
+	var newConns atomic.Int32
+
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateNew {
+			newConns.Add(1)
+		}
+	}
+	server.Start()
+	defer server.Close()
+
+	for range 20 {
+		_, err := newTestLicenseClient(t, server.URL).GetLicense(context.Background())
+		if !isErrNoLicense(err) {
+			t.Fatalf("GetLicense() error = %v, want ErrNoLicense", err)
+		}
+	}
+
+	if got := newConns.Load(); got != 1 {
+		t.Fatalf("20 clients opened %d connections, want 1", got)
 	}
 }

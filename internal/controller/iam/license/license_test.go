@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync/atomic"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -890,5 +892,75 @@ func TestEndpointRequest_NonOKStatus(t *testing.T) {
 	_, err := e.doEndpointRequest(context.Background(), "default", server.URL, nil)
 	if err == nil {
 		t.Fatal("doEndpointRequest() expected error on 403, got nil")
+	}
+}
+
+// TestEndpointRequest_OversizedResponse verifies that an endpoint streaming
+// more than maxLicenseBytes is rejected instead of buffered.
+func TestEndpointRequest_OversizedResponse(t *testing.T) {
+	t.Parallel()
+
+	chunk := bytes.Repeat([]byte("A"), 64<<10)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for range 4 * maxLicenseBytes / len(chunk) {
+			if r.Context().Err() != nil {
+				return
+			}
+
+			_, _ = w.Write(chunk)
+		}
+	}))
+	defer server.Close()
+
+	e := &external{kube: crfake.NewClientBuilder().WithScheme(newTestScheme(t)).Build()}
+
+	data, err := e.doEndpointRequest(context.Background(), "default", server.URL, nil)
+	if err == nil || !strings.Contains(err.Error(), nexus.ErrResponseTooLarge) {
+		t.Fatalf("doEndpointRequest() error = %v, want %q", err, nexus.ErrResponseTooLarge)
+	}
+
+	if data != nil {
+		t.Fatalf("doEndpointRequest() returned %d bytes alongside an error", len(data))
+	}
+}
+
+// TestEndpointRequest_RedirectNotFollowed verifies that a redirect is
+// reported as a failure and never followed, so the endpoint credentials are
+// not forwarded to the redirect target.
+func TestEndpointRequest_RedirectNotFollowed(t *testing.T) {
+	t.Parallel()
+
+	var targetHit atomic.Bool
+
+	target := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+		targetHit.Store(true)
+	}))
+	defer target.Close()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL, http.StatusFound)
+	}))
+	defer server.Close()
+
+	e := &external{kube: crfake.NewClientBuilder().WithScheme(newTestScheme(t)).Build()}
+
+	_, err := e.doEndpointRequest(context.Background(), "default", server.URL, nil)
+	if err == nil || !strings.Contains(err.Error(), "status 302") {
+		t.Fatalf("doEndpointRequest() error = %v, want status 302", err)
+	}
+
+	if targetHit.Load() {
+		t.Fatal("doEndpointRequest() followed the redirect")
+	}
+}
+
+// TestEndpointClientTimeout verifies that the endpoint client bounds every
+// request.
+func TestEndpointClientTimeout(t *testing.T) {
+	t.Parallel()
+
+	if endpointClient.Timeout == 0 {
+		t.Fatal("endpointClient has no timeout")
 	}
 }
