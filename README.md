@@ -138,6 +138,11 @@ spec:
       key: password
 ```
 
+Secret references on namespaced objects (ProviderConfig and every managed
+resource) must point at Secrets in the object's own namespace; the provider
+rejects any other namespace. Only a ClusterProviderConfig may reference
+Secrets in another namespace.
+
 ## Usage Examples
 
 ### BlobStore
@@ -212,6 +217,7 @@ apiVersion: nexus.crossplane.io/v1alpha1
 kind: User
 metadata:
   name: developer-user
+  namespace: default
 spec:
   forProvider:
     userId: developer
@@ -223,7 +229,7 @@ spec:
       - nx-repository-view-maven2-*-read
     passwordSecretRef:
       name: user-password-secret
-      namespace: crossplane-system
+      namespace: default
       key: password
   providerConfigRef:
     name: nexus-provider-config

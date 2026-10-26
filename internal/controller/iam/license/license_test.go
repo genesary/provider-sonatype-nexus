@@ -874,7 +874,7 @@ func TestGetSecretBytes_MissingKey(t *testing.T) {
 		Key: "missing-key",
 	}
 
-	_, err := nexus.GetSecretBytes(context.Background(), kubeClient, sel)
+	_, err := nexus.GetSecretBytes(context.Background(), kubeClient, "default", sel)
 	if err == nil {
 		t.Fatal("GetSecretBytes() expected error for missing key, got nil")
 	}
@@ -892,7 +892,7 @@ func TestEndpointRequest_NonOKStatus(t *testing.T) {
 	kubeClient := crfake.NewClientBuilder().WithScheme(newTestScheme(t)).Build()
 	e := &external{kube: kubeClient}
 
-	_, err := e.doEndpointRequest(context.Background(), server.URL, nil)
+	_, err := e.doEndpointRequest(context.Background(), "default", server.URL, nil)
 	if err == nil {
 		t.Fatal("doEndpointRequest() expected error on 403, got nil")
 	}

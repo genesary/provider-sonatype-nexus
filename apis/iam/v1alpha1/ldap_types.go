@@ -43,7 +43,7 @@ type LDAPParameters struct {
 	AuthUsername *string `json:"authUsername,omitempty"`
 
 	// AuthPasswordSecretRef is a reference to a secret containing the auth
-	// password.
+	// password. The secret must be in the same namespace as the LDAP.
 	// +kubebuilder:validation:Optional
 	AuthPasswordSecretRef *xpv2.SecretKeySelector `json:"authPasswordSecretRef,omitempty"`
 

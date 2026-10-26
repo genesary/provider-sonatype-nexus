@@ -112,7 +112,8 @@ spec:
                   licenseSecretRef:
                     description: |-
                       LicenseSecretRef references a Kubernetes secret containing the license
-                      data (Behavior 1). Mutually exclusive with EndpointURL.
+                      data (Behavior 1). Mutually exclusive with EndpointURL. The secret must
+                      be in the same namespace as the License.
                     properties:
                       key:
                         description: The key to select.

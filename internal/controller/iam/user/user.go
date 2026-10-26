@@ -11,8 +11,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -247,26 +245,10 @@ func (e *external) getPassword(
 		return "", nil
 	}
 
-	secretRef := userRes.Spec.ForProvider.PasswordSecretRef
-	secret := &corev1.Secret{}
-
-	err := e.kube.Get(ctx, types.NamespacedName{
-		Name:      secretRef.Name,
-		Namespace: secretRef.Namespace,
-	}, secret)
-	if err != nil {
-		return "", err
+	secretRef := *userRes.Spec.ForProvider.PasswordSecretRef
+	if secretRef.Key == "" {
+		secretRef.Key = defaultPasswordKey
 	}
 
-	secretKey := secretRef.Key
-	if secretKey == "" {
-		secretKey = defaultPasswordKey
-	}
-
-	data, hasKey := secret.Data[secretKey]
-	if !hasKey {
-		return "", errors.Errorf("secret does not contain key %q", secretKey)
-	}
-
-	return string(data), nil
+	return nexus.GetSecretValue(ctx, e.kube, userRes.GetNamespace(), &secretRef)
 }

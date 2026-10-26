@@ -66,7 +66,9 @@ func GetCredentials(ctx context.Context, kube kubeclient.Client, managed interfa
 			return Credentials{}, errors.Wrap(err, "cannot get ClusterProviderConfig")
 		}
 
-		return GetCredentialsFromSpec(ctx, kube, cpc.Spec)
+		// A ClusterProviderConfig is cluster-scoped and authored by cluster
+		// administrators, so its selectors may name any namespace.
+		return GetCredentialsFromSpec(ctx, kube, "", cpc.Spec)
 	}
 
 	providerConfig := &v1alpha1.ProviderConfig{}
@@ -76,11 +78,13 @@ func GetCredentials(ctx context.Context, kube kubeclient.Client, managed interfa
 		return Credentials{}, errors.Wrap(err, "cannot get ProviderConfig")
 	}
 
-	return GetCredentialsFromSpec(ctx, kube, providerConfig.Spec)
+	return GetCredentialsFromSpec(ctx, kube, providerConfig.GetNamespace(), providerConfig.Spec)
 }
 
 // GetCredentialsFromSpec extracts Nexus credentials from a ProviderConfigSpec.
-func GetCredentialsFromSpec(ctx context.Context, kube kubeclient.Client, spec v1alpha1.ProviderConfigSpec) (Credentials, error) {
+// namespace is the namespace of the ProviderConfig that holds spec, or empty
+// for a ClusterProviderConfig; Secret selectors are bound to it.
+func GetCredentialsFromSpec(ctx context.Context, kube kubeclient.Client, namespace string, spec v1alpha1.ProviderConfigSpec) (Credentials, error) {
 	if spec.Username.Source != xpv2.CredentialsSourceSecret {
 		return Credentials{}, errors.Errorf("credentials source %q for username is not supported", spec.Username.Source)
 	}
@@ -97,12 +101,12 @@ func GetCredentialsFromSpec(ctx context.Context, kube kubeclient.Client, spec v1
 		return Credentials{}, errors.New("secretRef is required for password")
 	}
 
-	username, err := GetSecretValue(ctx, kube, spec.Username.SecretRef)
+	username, err := GetSecretValue(ctx, kube, namespace, spec.Username.SecretRef)
 	if err != nil {
 		return Credentials{}, errors.Wrap(err, "cannot get username from secret")
 	}
 
-	password, err := GetSecretValue(ctx, kube, spec.Password.SecretRef)
+	password, err := GetSecretValue(ctx, kube, namespace, spec.Password.SecretRef)
 	if err != nil {
 		return Credentials{}, errors.Wrap(err, "cannot get password from secret")
 	}
@@ -115,28 +119,19 @@ func GetCredentialsFromSpec(ctx context.Context, kube kubeclient.Client, spec v1
 	}, nil
 }
 
-// GetCredentialsFromSecret extracts Nexus credentials from a
-// Kubernetes secret.
-//
-// Deprecated: Use GetCredentials which correctly handles both
-// ProviderConfig (namespace-scoped) and ClusterProviderConfig (cluster-scoped).
-func GetCredentialsFromSecret(ctx context.Context, kube kubeclient.Client, providerConfig *v1alpha1.ProviderConfig) (Credentials, error) {
-	return GetCredentialsFromSpec(ctx, kube, providerConfig.Spec)
-}
-
 // GetSecretValue retrieves a value from a Kubernetes secret using a
-// SecretKeySelector.
-func GetSecretValue(ctx context.Context, kube kubeclient.Client, selector *xpv2.SecretKeySelector) (string, error) {
-	if selector == nil {
-		return "", errors.New("secretKeySelector is nil")
+// SecretKeySelector. namespace is the namespace of the object that declares
+// selector (empty for cluster-scoped objects); see secretObjectKey for how the
+// two are reconciled.
+func GetSecretValue(ctx context.Context, kube kubeclient.Client, namespace string, selector *xpv2.SecretKeySelector) (string, error) {
+	key, err := secretObjectKey(namespace, selector)
+	if err != nil {
+		return "", err
 	}
 
 	secret := &corev1.Secret{}
 
-	err := kube.Get(ctx, types.NamespacedName{
-		Name:      selector.Name,
-		Namespace: selector.Namespace,
-	}, secret)
+	err = kube.Get(ctx, key, secret)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get secret")
 	}

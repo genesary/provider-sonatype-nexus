@@ -4,7 +4,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: nexus-user-password
-  namespace: crossplane-system
+  namespace: default
 type: Opaque
 stringData:
   password: "securePassword123!"
@@ -27,7 +27,7 @@ spec:
       - nx-repository-view-npm-*-read
     passwordSecretRef:
       name: nexus-user-password
-      namespace: crossplane-system
+      namespace: default
       key: password
   providerConfigRef:
     kind: ProviderConfig

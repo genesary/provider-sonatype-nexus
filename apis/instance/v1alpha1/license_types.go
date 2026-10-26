@@ -9,7 +9,8 @@ import (
 )
 
 // LicenseEndpointCredentials holds optional HTTP credentials
-// for the license endpoint.
+// for the license endpoint. The secrets must be in the same namespace as the
+// License.
 type LicenseEndpointCredentials struct {
 	// UsernameSecretRef references a secret key with the HTTP username.
 	// +kubebuilder:validation:Optional
@@ -24,7 +25,8 @@ type LicenseEndpointCredentials struct {
 // LicenseParameters defines the desired state of License.
 type LicenseParameters struct {
 	// LicenseSecretRef references a Kubernetes secret containing the license
-	// data (Behavior 1). Mutually exclusive with EndpointURL.
+	// data (Behavior 1). Mutually exclusive with EndpointURL. The secret must
+	// be in the same namespace as the License.
 	// +kubebuilder:validation:Optional
 	LicenseSecretRef *xpv2.SecretKeySelector `json:"licenseSecretRef,omitempty"`
 

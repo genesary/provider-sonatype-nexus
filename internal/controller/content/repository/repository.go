@@ -24,7 +24,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	pkgrepository "github.com/datadrivers/go-nexus-client/nexus3/pkg/repository"
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -284,14 +283,7 @@ func (e *external) resolveHTTPClientPassword(ctx context.Context, repoCR *reposi
 		return "", nil
 	}
 
-	data, err := resource.ExtractSecret(ctx, e.kube, xpv2.CommonCredentialSelectors{
-		SecretRef: httpClient.Authentication.PasswordSecretRef,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	return string(data), nil
+	return nexus.GetSecretValue(ctx, e.kube, repoCR.GetNamespace(), httpClient.Authentication.PasswordSecretRef)
 }
 
 // repositoryName returns the name that identifies the repository in Nexus.

@@ -256,6 +256,7 @@ type HTTPClientAuthentication struct {
 	Username *string `json:"username,omitempty"`
 
 	// PasswordSecretRef is a reference to a secret containing the password.
+	// The secret must be in the same namespace as the Repository.
 	// +kubebuilder:validation:Optional
 	PasswordSecretRef *xpv2.SecretKeySelector `json:"passwordSecretRef,omitempty"`
 

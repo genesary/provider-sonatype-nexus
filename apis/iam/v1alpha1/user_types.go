@@ -37,6 +37,7 @@ type UserParameters struct {
 	Roles []string `json:"roles,omitempty"`
 
 	// PasswordSecretRef is a reference to a secret with the user password.
+	// The secret must be in the same namespace as the User.
 	// +kubebuilder:validation:Optional
 	PasswordSecretRef *xpv2.SecretKeySelector `json:"passwordSecretRef,omitempty"`
 

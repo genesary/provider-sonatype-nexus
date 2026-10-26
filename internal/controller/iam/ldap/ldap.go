@@ -231,5 +231,5 @@ func (e *external) getAuthPassword(
 		return "", nil
 	}
 
-	return nexus.GetSecretValue(ctx, e.kube, ldapCR.Spec.ForProvider.AuthPasswordSecretRef)
+	return nexus.GetSecretValue(ctx, e.kube, ldapCR.GetNamespace(), ldapCR.Spec.ForProvider.AuthPasswordSecretRef)
 }

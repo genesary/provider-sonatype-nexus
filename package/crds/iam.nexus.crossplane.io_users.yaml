@@ -69,8 +69,9 @@ spec:
                     description: LastName of the user.
                     type: string
                   passwordSecretRef:
-                    description: PasswordSecretRef is a reference to a secret with
-                      the user password.
+                    description: |-
+                      PasswordSecretRef is a reference to a secret with the user password.
+                      The secret must be in the same namespace as the User.
                     properties:
                       key:
                         description: The key to select.

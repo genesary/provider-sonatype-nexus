@@ -235,7 +235,7 @@ func (e *external) fetchDesiredLicense(ctx context.Context, licenseCR *iamv1alph
 	params := licenseCR.Spec.ForProvider
 
 	if params.LicenseSecretRef != nil {
-		return nexus.GetSecretBytes(ctx, e.kube, params.LicenseSecretRef)
+		return nexus.GetSecretBytes(ctx, e.kube, licenseCR.GetNamespace(), params.LicenseSecretRef)
 	}
 
 	if params.EndpointURL != nil {
@@ -251,7 +251,7 @@ func (e *external) fetchDesiredLicense(ctx context.Context, licenseCR *iamv1alph
 func (e *external) fetchFromEndpoint(ctx context.Context, licenseCR *iamv1alpha1.License) ([]byte, error) {
 	params := licenseCR.Spec.ForProvider
 
-	data, endpointErr := e.doEndpointRequest(ctx, *params.EndpointURL, params.EndpointCredentials)
+	data, endpointErr := e.doEndpointRequest(ctx, licenseCR.GetNamespace(), *params.EndpointURL, params.EndpointCredentials)
 	if endpointErr == nil {
 		return data, nil
 	}
@@ -268,14 +268,15 @@ func (e *external) fetchFromEndpoint(ctx context.Context, licenseCR *iamv1alpha1
 	return nil, errors.Wrap(endpointErr, "endpoint unavailable and no cached license")
 }
 
-// doEndpointRequest performs the HTTP GET for the license file.
-func (e *external) doEndpointRequest(ctx context.Context, url string, creds *iamv1alpha1.LicenseEndpointCredentials) ([]byte, error) {
+// doEndpointRequest performs the HTTP GET for the license file. namespace is
+// the License namespace, which the credential secret selectors are bound to.
+func (e *external) doEndpointRequest(ctx context.Context, namespace, url string, creds *iamv1alpha1.LicenseEndpointCredentials) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot build endpoint request")
 	}
 
-	err = e.applyEndpointCredentials(ctx, req, creds)
+	err = e.applyEndpointCredentials(ctx, namespace, req, creds)
 	if err != nil {
 		return nil, err
 	}
@@ -300,18 +301,18 @@ func (e *external) doEndpointRequest(ctx context.Context, url string, creds *iam
 }
 
 // applyEndpointCredentials sets HTTP auth headers on the request.
-func (e *external) applyEndpointCredentials(ctx context.Context, req *http.Request, creds *iamv1alpha1.LicenseEndpointCredentials) error {
+func (e *external) applyEndpointCredentials(ctx context.Context, namespace string, req *http.Request, creds *iamv1alpha1.LicenseEndpointCredentials) error {
 	if creds == nil {
 		return nil
 	}
 
 	if creds.UsernameSecretRef != nil && creds.PasswordSecretRef != nil {
-		username, err := nexus.GetSecretValue(ctx, e.kube, creds.UsernameSecretRef)
+		username, err := nexus.GetSecretValue(ctx, e.kube, namespace, creds.UsernameSecretRef)
 		if err != nil {
 			return errors.Wrap(err, "cannot get endpoint username")
 		}
 
-		password, err := nexus.GetSecretValue(ctx, e.kube, creds.PasswordSecretRef)
+		password, err := nexus.GetSecretValue(ctx, e.kube, namespace, creds.PasswordSecretRef)
 		if err != nil {
 			return errors.Wrap(err, "cannot get endpoint password")
 		}
@@ -322,7 +323,7 @@ func (e *external) applyEndpointCredentials(ctx context.Context, req *http.Reque
 	}
 
 	if creds.PasswordSecretRef != nil {
-		token, err := nexus.GetSecretValue(ctx, e.kube, creds.PasswordSecretRef)
+		token, err := nexus.GetSecretValue(ctx, e.kube, namespace, creds.PasswordSecretRef)
 		if err != nil {
 			return errors.Wrap(err, "cannot get endpoint token")
 		}

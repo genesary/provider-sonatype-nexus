@@ -22,7 +22,9 @@ type ProviderConfigSpec struct {
 	Password ProviderCredentials `json:"password"`
 }
 
-// ProviderCredentials defines the credentials for Nexus authentication.
+// ProviderCredentials defines the credentials for Nexus authentication. The
+// secretRef of a namespaced ProviderConfig must be in the ProviderConfig's
+// namespace; a ClusterProviderConfig may reference any namespace.
 type ProviderCredentials struct {
 	// +kubebuilder:validation:Optional
 	xpv2.CommonCredentialSelectors `json:",inline"`

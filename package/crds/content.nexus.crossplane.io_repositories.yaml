@@ -207,8 +207,9 @@ spec:
                             description: NTLMHost is the NTLM host.
                             type: string
                           passwordSecretRef:
-                            description: PasswordSecretRef is a reference to a secret
-                              containing the password.
+                            description: |-
+                              PasswordSecretRef is a reference to a secret containing the password.
+                              The secret must be in the same namespace as the Repository.
                             properties:
                               key:
                                 description: The key to select.

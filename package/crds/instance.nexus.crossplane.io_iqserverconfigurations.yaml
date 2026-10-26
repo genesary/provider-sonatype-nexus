@@ -67,8 +67,9 @@ spec:
                       If unset, will default to false.
                     type: boolean
                   passwordSecretRef:
-                    description: PasswordSecretRef references the Kubernetes Secret
-                      key holding the IQ Server password.
+                    description: |-
+                      PasswordSecretRef references the Kubernetes Secret key holding the IQ Server password.
+                      The secret must be in the same namespace as the IQServerConfiguration.
                     properties:
                       key:
                         description: The key to select.
@@ -108,8 +109,9 @@ spec:
                       trust store for the IQ Server URL.
                     type: boolean
                   usernameSecretRef:
-                    description: UsernameSecretRef references the Kubernetes Secret
-                      key holding the IQ Server username.
+                    description: |-
+                      UsernameSecretRef references the Kubernetes Secret key holding the IQ Server username.
+                      The secret must be in the same namespace as the IQServerConfiguration.
                     properties:
                       key:
                         description: The key to select.
