@@ -41,6 +41,9 @@ const (
 	// errGetAuthPassword is returned when reading the auth password secret
 	// fails.
 	errGetAuthPassword = "cannot get auth password from secret"
+	// errFingerprint is returned when the auth password Secret cannot be
+	// fingerprinted.
+	errFingerprint = "cannot fingerprint auth password secret"
 )
 
 // Setup adds a controller that reconciles LDAP resources.
@@ -132,13 +135,20 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
+	credentialsUpToDate, err := e.credentialsUpToDate(ctx, ldapCR)
+	if err != nil {
+		return managed.ExternalObservation{}, err
+	}
+
 	ldapCR.SetConditions(nexusv1alpha1.Available())
 
+	appliedFingerprint := ldapCR.Status.AtProvider.CredentialsFingerprint
 	ldapCR.Status.AtProvider = iamclient.GenerateLDAPObservation(observed)
+	ldapCR.Status.AtProvider.CredentialsFingerprint = appliedFingerprint
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsLDAPUpToDate(ldapCR),
+		ResourceUpToDate: credentialsUpToDate && iamclient.IsLDAPUpToDate(ldapCR),
 	}, nil
 }
 
@@ -147,6 +157,14 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 	ldapCR, isLDAP := managedRes.(*iamv1alpha1.LDAP)
 	if !isLDAP {
 		return managed.ExternalCreation{}, errors.New(errNotLDAP)
+	}
+
+	// Fingerprint before reading the password: if the Secret changes in
+	// between, the recorded fingerprint is the older one and the next Observe
+	// re-applies the password.
+	fingerprint, err := e.credentialsFingerprint(ctx, ldapCR)
+	if err != nil {
+		return managed.ExternalCreation{}, err
 	}
 
 	password, err := e.getAuthPassword(ctx, ldapCR)
@@ -163,6 +181,14 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 	meta.SetExternalName(ldapCR, ldapCR.Spec.ForProvider.Name)
 
+	if fingerprint != "" {
+		// Non-fatal: without a recorded fingerprint the next Observe reports
+		// drift and Update re-applies the password.
+		_ = nexus.PatchStatus(ctx, e.kube, ldapCR, func(l *iamv1alpha1.LDAP) {
+			l.Status.AtProvider.CredentialsFingerprint = fingerprint
+		})
+	}
+
 	return managed.ExternalCreation{}, nil
 }
 
@@ -178,6 +204,11 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		ldapName = ldapCR.Spec.ForProvider.Name
 	}
 
+	fingerprint, err := e.credentialsFingerprint(ctx, ldapCR)
+	if err != nil {
+		return managed.ExternalUpdate{}, err
+	}
+
 	password, err := e.getAuthPassword(ctx, ldapCR)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errGetAuthPassword)
@@ -189,6 +220,8 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateLDAP)
 	}
+
+	ldapCR.Status.AtProvider.CredentialsFingerprint = fingerprint
 
 	return managed.ExternalUpdate{}, nil
 }
@@ -220,6 +253,32 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 // Disconnect is a no-op; the Nexus HTTP client has no persistent connection.
 func (e *external) Disconnect(_ context.Context) error {
 	return nil
+}
+
+// credentialsFingerprint fingerprints the auth password Secret the LDAP
+// connection references.
+func (e *external) credentialsFingerprint(ctx context.Context, ldapCR *iamv1alpha1.LDAP) (string, error) {
+	fingerprint, err := nexus.CredentialsFingerprint(ctx, e.kube, ldapCR.GetNamespace(), nil, ldapCR.Spec.ForProvider.AuthPasswordSecretRef)
+
+	return fingerprint, errors.Wrap(err, errFingerprint)
+}
+
+// credentialsUpToDate reports whether the auth password last applied to Nexus
+// is still the one the LDAP connection references. Nexus never returns the
+// bind password, so this is the only way a rotated or repointed Secret is
+// detected. An LDAP connection being deleted is always up to date, so that a
+// deleted Secret cannot block its deletion.
+func (e *external) credentialsUpToDate(ctx context.Context, ldapCR *iamv1alpha1.LDAP) (bool, error) {
+	if meta.WasDeleted(ldapCR) {
+		return true, nil
+	}
+
+	fingerprint, err := e.credentialsFingerprint(ctx, ldapCR)
+	if err != nil {
+		return false, err
+	}
+
+	return fingerprint == ldapCR.Status.AtProvider.CredentialsFingerprint, nil
 }
 
 // getAuthPassword retrieves the LDAP auth password from the referenced secret.

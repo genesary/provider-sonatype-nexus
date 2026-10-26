@@ -422,6 +422,11 @@ type RepositoryObservation struct {
 
 	// RoutingRuleName is the routing rule assigned to the repository.
 	RoutingRuleName string `json:"routingRuleName,omitempty"`
+
+	// CredentialsFingerprint identifies the credentials last applied to
+	// Nexus, which Nexus never reports back. It changes when a referenced
+	// Secret changes or is repointed, which triggers an update.
+	CredentialsFingerprint string `json:"credentialsFingerprint,omitempty"`
 }
 
 // RepositorySpec defines the desired state of Repository.

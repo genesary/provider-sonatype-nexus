@@ -42,6 +42,9 @@ const (
 	errGetPassword = "cannot get password from secret"
 	// errChangePassword is returned when changing the user password fails.
 	errChangePassword = "cannot change user password"
+	// errFingerprint is returned when the password Secret cannot be
+	// fingerprinted.
+	errFingerprint = "cannot fingerprint password secret"
 
 	// defaultPasswordKey is the default key used when reading a password
 	// secret and no explicit key is specified in the SecretKeySelector.
@@ -137,13 +140,20 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
+	credentialsUpToDate, err := e.credentialsUpToDate(ctx, userRes)
+	if err != nil {
+		return managed.ExternalObservation{}, err
+	}
+
 	userRes.SetConditions(nexusv1alpha1.Available())
 
+	appliedFingerprint := userRes.Status.AtProvider.CredentialsFingerprint
 	userRes.Status.AtProvider = iamclient.GenerateUserObservation(observed)
+	userRes.Status.AtProvider.CredentialsFingerprint = appliedFingerprint
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsUserUpToDate(userRes),
+		ResourceUpToDate: credentialsUpToDate && iamclient.IsUserUpToDate(userRes),
 	}, nil
 }
 
@@ -152,6 +162,14 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 	userRes, isUser := managedRes.(*iamv1alpha1.User)
 	if !isUser {
 		return managed.ExternalCreation{}, errors.New(errNotUser)
+	}
+
+	// Fingerprint before reading the password: if the Secret changes in
+	// between, the recorded fingerprint is the older one and the next Observe
+	// re-applies the password.
+	fingerprint, err := e.credentialsFingerprint(ctx, userRes)
+	if err != nil {
+		return managed.ExternalCreation{}, err
 	}
 
 	password, err := e.getPassword(ctx, userRes)
@@ -168,6 +186,14 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 	meta.SetExternalName(userRes, userRes.Spec.ForProvider.UserID)
 
+	if fingerprint != "" {
+		// Non-fatal: without a recorded fingerprint the next Observe reports
+		// drift and Update re-applies the password.
+		_ = nexus.PatchStatus(ctx, e.kube, userRes, func(u *iamv1alpha1.User) {
+			u.Status.AtProvider.CredentialsFingerprint = fingerprint
+		})
+	}
+
 	return managed.ExternalCreation{}, nil
 }
 
@@ -183,9 +209,14 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		userID = userRes.Spec.ForProvider.UserID
 	}
 
+	fingerprint, err := e.credentialsFingerprint(ctx, userRes)
+	if err != nil {
+		return managed.ExternalUpdate{}, err
+	}
+
 	userData := iamclient.GenerateUser(userRes, "")
 
-	err := e.client.Update(userID, userData)
+	err = e.client.Update(userID, userData)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateUser)
 	}
@@ -203,6 +234,8 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 			}
 		}
 	}
+
+	userRes.Status.AtProvider.CredentialsFingerprint = fingerprint
 
 	return managed.ExternalUpdate{}, nil
 }
@@ -234,6 +267,31 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 // Disconnect is a no-op; the Nexus HTTP client has no persistent connection.
 func (e *external) Disconnect(_ context.Context) error {
 	return nil
+}
+
+// credentialsFingerprint fingerprints the password Secret the User references.
+func (e *external) credentialsFingerprint(ctx context.Context, userRes *iamv1alpha1.User) (string, error) {
+	fingerprint, err := nexus.CredentialsFingerprint(ctx, e.kube, userRes.GetNamespace(), nil, userRes.Spec.ForProvider.PasswordSecretRef)
+
+	return fingerprint, errors.Wrap(err, errFingerprint)
+}
+
+// credentialsUpToDate reports whether the password last applied to Nexus is
+// still the one the User references. Nexus never returns passwords, so this
+// is the only way a rotated or repointed Secret is detected. A User being
+// deleted is always up to date, so that a deleted Secret cannot block its
+// deletion.
+func (e *external) credentialsUpToDate(ctx context.Context, userRes *iamv1alpha1.User) (bool, error) {
+	if meta.WasDeleted(userRes) {
+		return true, nil
+	}
+
+	fingerprint, err := e.credentialsFingerprint(ctx, userRes)
+	if err != nil {
+		return false, err
+	}
+
+	return fingerprint == userRes.Status.AtProvider.CredentialsFingerprint, nil
 }
 
 // getPassword retrieves the password from the referenced secret.

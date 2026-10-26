@@ -189,6 +189,12 @@ spec:
                     description: AuthenticationType is the observed authentication
                       type.
                     type: string
+                  credentialsFingerprint:
+                    description: |-
+                      CredentialsFingerprint identifies the credentials last applied to
+                      Nexus, which Nexus never reports back. It changes when a referenced
+                      Secret changes or is repointed, which triggers an update.
+                    type: string
                   enabled:
                     description: Enabled reflects whether the IQ Server integration
                       is enabled.

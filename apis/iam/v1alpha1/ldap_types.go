@@ -218,6 +218,11 @@ type LDAPObservation struct {
 	GroupMemberAttribute string `json:"groupMemberAttribute,omitempty"`
 	// GroupMemberFormat is the observed group member format.
 	GroupMemberFormat string `json:"groupMemberFormat,omitempty"`
+
+	// CredentialsFingerprint identifies the credentials last applied to
+	// Nexus, which Nexus never reports back. It changes when a referenced
+	// Secret changes or is repointed, which triggers an update.
+	CredentialsFingerprint string `json:"credentialsFingerprint,omitempty"`
 }
 
 // LDAPSpec defines the desired state of LDAP.
