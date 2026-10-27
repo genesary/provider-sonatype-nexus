@@ -108,16 +108,16 @@ type credentialSource struct {
 
 // resolveCredentials reads the Secrets selected by usernameSrc and passwordSrc.
 func resolveCredentials(ctx context.Context, kube kubeclient.Client, url string, insecure *bool, usernameSrc, passwordSrc credentialSource) (Credentials, error) {
-	for _, c := range []struct {
+	for _, cred := range []struct {
 		name string
 		src  credentialSource
 	}{{"username", usernameSrc}, {"password", passwordSrc}} {
-		if c.src.source != xpv2.CredentialsSourceSecret {
-			return Credentials{}, errors.Errorf("credentials source %q for %s is not supported", c.src.source, c.name)
+		if cred.src.source != xpv2.CredentialsSourceSecret {
+			return Credentials{}, errors.Errorf("credentials source %q for %s is not supported", cred.src.source, cred.name)
 		}
 
-		if c.src.selector == nil {
-			return Credentials{}, errors.Errorf("secretRef is required for %s", c.name)
+		if cred.src.selector == nil {
+			return Credentials{}, errors.Errorf("secretRef is required for %s", cred.name)
 		}
 	}
 

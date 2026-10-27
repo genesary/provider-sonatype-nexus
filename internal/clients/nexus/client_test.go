@@ -72,7 +72,8 @@ func newSelector(namespace, key string) *xpv2.SecretKeySelector {
 	}
 }
 
-// newLocalSelector selects key in the nexus-creds Secret of the owner's namespace.
+// newLocalSelector selects key in the nexus-creds Secret of the owner's
+// namespace.
 func newLocalSelector(key string) *xpv2.LocalSecretKeySelector {
 	return &xpv2.LocalSecretKeySelector{
 		LocalSecretReference: xpv2.LocalSecretReference{Name: "nexus-creds"},
@@ -95,7 +96,8 @@ func newSpec() v1alpha1.ProviderConfigSpec {
 	}
 }
 
-// newClusterSpec returns a cluster spec whose credentials live in secretNamespace.
+// newClusterSpec returns a cluster spec whose credentials live in
+// secretNamespace.
 func newClusterSpec(secretNamespace string) v1alpha1.ClusterProviderConfigSpec {
 	return v1alpha1.ClusterProviderConfigSpec{
 		URL: "https://nexus.example.com",
