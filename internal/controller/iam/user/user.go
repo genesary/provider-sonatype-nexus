@@ -184,8 +184,6 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateUser)
 	}
 
-	meta.SetExternalName(userRes, userRes.Spec.ForProvider.UserID)
-
 	if fingerprint != "" {
 		// Non-fatal: without a recorded fingerprint the next Observe reports
 		// drift and Update re-applies the password.
@@ -193,6 +191,10 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 			u.Status.AtProvider.CredentialsFingerprint = fingerprint
 		})
 	}
+
+	// Set after the status patch, which overwrites in-memory metadata with the
+	// server response.
+	meta.SetExternalName(userRes, userRes.Spec.ForProvider.UserID)
 
 	return managed.ExternalCreation{}, nil
 }
