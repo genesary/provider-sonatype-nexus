@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -890,5 +891,72 @@ func TestEndpointRequest_NonOKStatus(t *testing.T) {
 	_, err := e.doEndpointRequest(context.Background(), "default", server.URL, nil)
 	if err == nil {
 		t.Fatal("doEndpointRequest() expected error on 403, got nil")
+	}
+}
+
+// TestEndpointRequest_OversizedResponse verifies that an endpoint streaming
+// more than maxLicenseBytes is rejected instead of buffered.
+func TestEndpointRequest_OversizedResponse(t *testing.T) {
+	t.Parallel()
+
+	chunk := bytes.Repeat([]byte("A"), 64<<10)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for range 4 * maxLicenseBytes / len(chunk) {
+			if r.Context().Err() != nil {
+				return
+			}
+
+			_, _ = w.Write(chunk)
+		}
+	}))
+	defer server.Close()
+
+	e := &external{kube: crfake.NewClientBuilder().WithScheme(newTestScheme(t)).Build()}
+
+	data, err := e.doEndpointRequest(context.Background(), "default", server.URL, nil)
+	if err == nil || !strings.Contains(err.Error(), nexus.ErrResponseTooLarge) {
+		t.Fatalf("doEndpointRequest() error = %v, want %q", err, nexus.ErrResponseTooLarge)
+	}
+
+	if data != nil {
+		t.Fatalf("doEndpointRequest() returned %d bytes alongside an error", len(data))
+	}
+}
+
+// TestEndpointRequest_RedirectFollowed verifies that a redirect from the
+// endpoint is followed and the target's body is returned.
+func TestEndpointRequest_RedirectFollowed(t *testing.T) {
+	t.Parallel()
+
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("license-bytes"))
+	}))
+	defer target.Close()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL, http.StatusFound)
+	}))
+	defer server.Close()
+
+	e := &external{kube: crfake.NewClientBuilder().WithScheme(newTestScheme(t)).Build()}
+
+	got, err := e.doEndpointRequest(context.Background(), "default", server.URL, nil)
+	if err != nil {
+		t.Fatalf("doEndpointRequest() error = %v", err)
+	}
+
+	if string(got) != "license-bytes" {
+		t.Fatalf("doEndpointRequest() = %q, want %q", got, "license-bytes")
+	}
+}
+
+// TestEndpointClientTimeout verifies that the endpoint client bounds every
+// request.
+func TestEndpointClientTimeout(t *testing.T) {
+	t.Parallel()
+
+	if endpointClient.Timeout == 0 {
+		t.Fatal("endpointClient has no timeout")
 	}
 }

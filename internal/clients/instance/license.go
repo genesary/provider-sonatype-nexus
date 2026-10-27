@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
-	"io"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -51,19 +49,14 @@ type licenseHTTPClient struct {
 
 // NewLicenseClient creates a LicenseClient from Nexus credentials.
 func NewLicenseClient(creds nexus.Credentials) LicenseClient {
-	transport := http.DefaultTransport
-
-	if creds.Insecure {
-		transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // user opt-in
-		}
-	}
-
 	return &licenseHTTPClient{
-		baseURL:    creds.URL,
-		username:   creds.Username,
-		password:   creds.Password,
-		httpClient: &http.Client{Transport: transport},
+		baseURL:  creds.URL,
+		username: creds.Username,
+		password: creds.Password,
+		httpClient: &http.Client{
+			Transport: nexus.Transport(creds.Insecure),
+			Timeout:   nexus.RequestTimeout,
+		},
 	}
 }
 
@@ -93,9 +86,14 @@ func (c *licenseHTTPClient) GetLicense(ctx context.Context) (*LicenseInfo, error
 		return nil, errors.Errorf("GET license returned status %d", resp.StatusCode)
 	}
 
+	body, err := nexus.ReadLimited(resp.Body, nexus.MaxResponseBytes)
+	if err != nil {
+		return nil, errors.Wrap(err, "cannot read license response")
+	}
+
 	var info LicenseInfo
 
-	err = json.NewDecoder(resp.Body).Decode(&info)
+	err = json.Unmarshal(body, &info)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot decode license response")
 	}
@@ -121,9 +119,7 @@ func (c *licenseHTTPClient) InstallLicense(ctx context.Context, licenseData []by
 	defer resp.Body.Close() //nolint:errcheck // response body close error is not actionable here
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent {
-		body, _ := io.ReadAll(resp.Body)
-
-		return errors.Errorf("POST license returned status %d: %s", resp.StatusCode, string(body))
+		return errors.Errorf("POST license returned status %d: %s", resp.StatusCode, nexus.ErrorBody(resp.Body))
 	}
 
 	return nil

@@ -3,7 +3,6 @@ package license
 
 import (
 	"context"
-	"io"
 	"net/http"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
@@ -24,6 +23,17 @@ import (
 // licenseSecretCacheKey is the data key used when caching the license in the
 // writeConnectionSecretToRef secret.
 const licenseSecretCacheKey = "license"
+
+// maxLicenseBytes caps the license file fetched from endpointUrl. Nexus
+// license files are a few kilobytes.
+const maxLicenseBytes = 1 << 20
+
+// endpointClient fetches license files from endpointUrl. It bounds each fetch
+// with a timeout and follows redirects like the default client.
+var endpointClient = &http.Client{
+	Transport: nexus.Transport(false),
+	Timeout:   nexus.RequestTimeout,
+}
 
 const (
 	// errNotLicense means the managed resource is not a License.
@@ -281,7 +291,7 @@ func (e *external) doEndpointRequest(ctx context.Context, namespace, url string,
 		return nil, err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := endpointClient.Do(req)
 	if err != nil {
 		return nil, errors.Wrap(err, "endpoint request failed")
 	}
@@ -292,7 +302,7 @@ func (e *external) doEndpointRequest(ctx context.Context, namespace, url string,
 		return nil, errors.Errorf("endpoint returned status %d", resp.StatusCode)
 	}
 
-	data, err := io.ReadAll(resp.Body)
+	data, err := nexus.ReadLimited(resp.Body, maxLicenseBytes)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot read endpoint response")
 	}
