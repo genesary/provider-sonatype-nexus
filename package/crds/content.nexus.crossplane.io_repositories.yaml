@@ -500,6 +500,12 @@ spec:
                     items:
                       type: string
                     type: array
+                  credentialsFingerprint:
+                    description: |-
+                      CredentialsFingerprint identifies the credentials last applied to
+                      Nexus, which Nexus never reports back. It changes when a referenced
+                      Secret changes or is repointed, which triggers an update.
+                    type: string
                   memberNames:
                     description: MemberNames are the members of a group repository.
                     items:

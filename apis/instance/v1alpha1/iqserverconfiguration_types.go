@@ -87,6 +87,11 @@ type IQServerConfigurationObservation struct {
 
 	// FailOpenModeEnabled reflects whether fail open mode is enabled.
 	FailOpenModeEnabled bool `json:"failOpenModeEnabled"`
+
+	// CredentialsFingerprint identifies the credentials last applied to
+	// Nexus, which Nexus never reports back. It changes when a referenced
+	// Secret changes or is repointed, which triggers an update.
+	CredentialsFingerprint string `json:"credentialsFingerprint,omitempty"`
 }
 
 // IQServerConfigurationSpec defines the desired IQ Server state.

@@ -83,6 +83,11 @@ type UserObservation struct {
 
 	// Roles are the observed assigned roles.
 	Roles []string `json:"roles,omitempty"`
+
+	// CredentialsFingerprint identifies the credentials last applied to
+	// Nexus, which Nexus never reports back. It changes when a referenced
+	// Secret changes or is repointed, which triggers an update.
+	CredentialsFingerprint string `json:"credentialsFingerprint,omitempty"`
 }
 
 // UserSpec defines the desired state of User.

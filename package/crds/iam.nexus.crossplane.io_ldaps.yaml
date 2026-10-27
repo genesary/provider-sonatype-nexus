@@ -315,6 +315,12 @@ spec:
                       timeout.
                     format: int32
                     type: integer
+                  credentialsFingerprint:
+                    description: |-
+                      CredentialsFingerprint identifies the credentials last applied to
+                      Nexus, which Nexus never reports back. It changes when a referenced
+                      Secret changes or is repointed, which triggers an update.
+                    type: string
                   groupBaseDn:
                     description: GroupBaseDN is the observed group base DN.
                     type: string

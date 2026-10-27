@@ -24,6 +24,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	pkgrepository "github.com/datadrivers/go-nexus-client/nexus3/pkg/repository"
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -56,6 +57,9 @@ const (
 	// errResolvePassword is returned when resolving the password from a
 	// secret fails.
 	errResolvePassword = "cannot resolve password from secret"
+	// errFingerprint is returned when the repository credentials cannot be
+	// fingerprinted.
+	errFingerprint = "cannot fingerprint repository credentials"
 )
 
 // Setup creates a controller for Repository resources.
@@ -137,7 +141,8 @@ type external struct {
 //
 // The desired payload it diffs against is built without the HTTP client
 // password: Nexus never returns credentials, so they take no part in drift
-// detection and Observe does not need to read the secret on every poll.
+// detection. Credentials are compared through the fingerprint recorded when
+// they were last applied instead, which needs the Secret's metadata only.
 func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
 	repoCR, isRepo := managedRes.(*repositoryv1alpha1.Repository)
 	if !isRepo {
@@ -160,14 +165,21 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
+	credentialsUpToDate, err := e.credentialsUpToDate(ctx, repoCR)
+	if err != nil {
+		return managed.ExternalObservation{}, err
+	}
+
 	meta.SetExternalName(repoCR, name)
 
+	appliedFingerprint := repoCR.Status.AtProvider.CredentialsFingerprint
 	repoCR.Status.AtProvider = generateRepositoryObservation(state.fields, e.repositoryURL(name))
+	repoCR.Status.AtProvider.CredentialsFingerprint = appliedFingerprint
 	repoCR.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: state.upToDate,
+		ResourceUpToDate: credentialsUpToDate && state.upToDate,
 	}, nil
 }
 
@@ -183,6 +195,14 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, err
 	}
 
+	// Fingerprint before reading the password: if the Secret changes in
+	// between, the recorded fingerprint is the older one and the next Observe
+	// re-applies the credentials.
+	fingerprint, err := e.credentialsFingerprint(ctx, repoCR)
+	if err != nil {
+		return managed.ExternalCreation{}, err
+	}
+
 	desired, err := e.desiredState(ctx, repoCR)
 	if err != nil {
 		return managed.ExternalCreation{}, err
@@ -193,6 +213,16 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateRepository)
 	}
 
+	if fingerprint != "" {
+		// Non-fatal: without a recorded fingerprint the next Observe reports
+		// drift and Update re-applies the credentials.
+		_ = nexus.PatchStatus(ctx, e.kube, repoCR, func(r *repositoryv1alpha1.Repository) {
+			r.Status.AtProvider.CredentialsFingerprint = fingerprint
+		})
+	}
+
+	// Set after the status patch, which overwrites in-memory metadata with the
+	// server response.
 	meta.SetExternalName(repoCR, repositoryName(repoCR))
 
 	return managed.ExternalCreation{}, nil
@@ -210,6 +240,11 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalUpdate{}, err
 	}
 
+	fingerprint, err := e.credentialsFingerprint(ctx, repoCR)
+	if err != nil {
+		return managed.ExternalUpdate{}, err
+	}
+
 	desired, err := e.desiredState(ctx, repoCR)
 	if err != nil {
 		return managed.ExternalUpdate{}, err
@@ -219,6 +254,8 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateRepository)
 	}
+
+	repoCR.Status.AtProvider.CredentialsFingerprint = fingerprint
 
 	return managed.ExternalUpdate{}, nil
 }
@@ -272,6 +309,54 @@ func (e *external) desiredState(ctx context.Context, repoCR *repositoryv1alpha1.
 // repositoryURL returns the URL Nexus serves the repository under.
 func (e *external) repositoryURL(name string) string {
 	return strings.TrimSuffix(e.baseURL, "/") + "/repository/" + name
+}
+
+// credentialsFingerprint fingerprints the credentials the Repository applies
+// that Nexus redacts on read: the HTTP client authentication, including its
+// password Secret, and the APT and Yum signing keys.
+func (e *external) credentialsFingerprint(ctx context.Context, repoCR *repositoryv1alpha1.Repository) (string, error) {
+	params := repoCR.Spec.ForProvider
+
+	var authentication *repositoryv1alpha1.HTTPClientAuthentication
+	if params.HTTPClient != nil {
+		authentication = params.HTTPClient.Authentication
+	}
+
+	var spec any
+	if authentication != nil || params.AptSigning != nil || params.YumSigning != nil {
+		spec = struct {
+			Authentication *repositoryv1alpha1.HTTPClientAuthentication `json:"authentication,omitempty"`
+			AptSigning     *repositoryv1alpha1.AptSigningConfig         `json:"aptSigning,omitempty"`
+			YumSigning     *repositoryv1alpha1.YumSigningConfig         `json:"yumSigning,omitempty"`
+		}{authentication, params.AptSigning, params.YumSigning}
+	}
+
+	var passwordRef *xpv2.LocalSecretKeySelector
+	if authentication != nil {
+		passwordRef = authentication.PasswordSecretRef
+	}
+
+	fingerprint, err := nexus.CredentialsFingerprint(ctx, e.kube, repoCR.GetNamespace(), spec, passwordRef)
+
+	return fingerprint, errors.Wrap(err, errFingerprint)
+}
+
+// credentialsUpToDate reports whether the credentials last applied to Nexus
+// are still the ones the Repository declares. Nexus redacts them on read, so
+// this is the only way a rotated Secret, a repointed reference or a new
+// signing key is detected. A Repository being deleted is always up to date,
+// so that a deleted Secret cannot block its deletion.
+func (e *external) credentialsUpToDate(ctx context.Context, repoCR *repositoryv1alpha1.Repository) (bool, error) {
+	if meta.WasDeleted(repoCR) {
+		return true, nil
+	}
+
+	fingerprint, err := e.credentialsFingerprint(ctx, repoCR)
+	if err != nil {
+		return false, err
+	}
+
+	return fingerprint == repoCR.Status.AtProvider.CredentialsFingerprint, nil
 }
 
 // resolveHTTPClientPassword resolves the password from a Kubernetes secret if

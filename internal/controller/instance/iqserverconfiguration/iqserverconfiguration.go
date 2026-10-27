@@ -6,6 +6,7 @@ import (
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
@@ -39,6 +40,9 @@ const (
 	errGetPassword = "cannot get IQ Server password from secret"
 	// errGetUsername is returned when reading the IQ Server username fails.
 	errGetUsername = "cannot get IQ Server username from secret"
+	// errFingerprint is returned when the credential Secrets cannot be
+	// fingerprinted.
+	errFingerprint = "cannot fingerprint IQ Server credential secrets"
 )
 
 // Setup adds a controller that reconciles IQServerConfiguration resources.
@@ -121,12 +125,19 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
+	credentialsUpToDate, err := e.credentialsUpToDate(ctx, iqConfig)
+	if err != nil {
+		return managed.ExternalObservation{}, err
+	}
+
+	appliedFingerprint := iqConfig.Status.AtProvider.CredentialsFingerprint
 	iqConfig.Status.AtProvider = instanceclient.GenerateIQServerObservation(observed)
+	iqConfig.Status.AtProvider.CredentialsFingerprint = appliedFingerprint
 	iqConfig.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: instanceclient.IsIQServerUpToDate(iqConfig, observed),
+		ResourceUpToDate: credentialsUpToDate && instanceclient.IsIQServerUpToDate(iqConfig, observed),
 	}, nil
 }
 
@@ -138,9 +149,17 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotIQServerConfiguration)
 	}
 
-	err := e.applyConfig(ctx, iqConfig)
+	fingerprint, err := e.applyConfig(ctx, iqConfig)
 	if err != nil {
 		return managed.ExternalCreation{}, err
+	}
+
+	if fingerprint != "" {
+		// Non-fatal: without a recorded fingerprint the next Observe reports
+		// drift and Update re-applies the credentials.
+		_ = nexus.PatchStatus(ctx, e.kube, iqConfig, func(c *instancev1alpha1.IQServerConfiguration) {
+			c.Status.AtProvider.CredentialsFingerprint = fingerprint
+		})
 	}
 
 	return managed.ExternalCreation{}, nil
@@ -153,10 +172,12 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalUpdate{}, errors.New(errNotIQServerConfiguration)
 	}
 
-	err := e.applyConfig(ctx, iqConfig)
+	fingerprint, err := e.applyConfig(ctx, iqConfig)
 	if err != nil {
 		return managed.ExternalUpdate{}, err
 	}
+
+	iqConfig.Status.AtProvider.CredentialsFingerprint = fingerprint
 
 	return managed.ExternalUpdate{}, nil
 }
@@ -182,21 +203,58 @@ func (e *external) Disconnect(_ context.Context) error {
 	return nil
 }
 
-// applyConfig resolves credentials and pushes the config to Nexus.
-func (e *external) applyConfig(ctx context.Context, iqConfig *instancev1alpha1.IQServerConfiguration) error {
+// applyConfig resolves credentials and pushes the config to Nexus. It returns
+// the fingerprint of the credentials it applied.
+func (e *external) applyConfig(ctx context.Context, iqConfig *instancev1alpha1.IQServerConfiguration) (string, error) {
+	// Fingerprint before reading the credentials: if a Secret changes in
+	// between, the recorded fingerprint is the older one and the next Observe
+	// re-applies the credentials.
+	fingerprint, err := e.credentialsFingerprint(ctx, iqConfig)
+	if err != nil {
+		return "", err
+	}
+
 	username, password, err := e.resolveCredentials(ctx, iqConfig)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	config := instanceclient.GenerateIQServerUpdate(&iqConfig.Spec.ForProvider, username, password)
 
 	err = e.client.Update(config)
 	if err != nil {
-		return errors.Wrap(err, errUpdateIQServer)
+		return "", errors.Wrap(err, errUpdateIQServer)
 	}
 
-	return nil
+	return fingerprint, nil
+}
+
+// credentialsFingerprint fingerprints the credential Secrets the IQ Server
+// configuration references.
+func (e *external) credentialsFingerprint(ctx context.Context, iqConfig *instancev1alpha1.IQServerConfiguration) (string, error) {
+	params := iqConfig.Spec.ForProvider
+
+	fingerprint, err := nexus.CredentialsFingerprint(ctx, e.kube, iqConfig.GetNamespace(), nil, params.UsernameSecretRef, params.PasswordSecretRef)
+
+	return fingerprint, errors.Wrap(err, errFingerprint)
+}
+
+// credentialsUpToDate reports whether the credentials last applied to Nexus
+// are still the ones the IQ Server configuration references. Nexus never
+// returns the password, so this is the only way a rotated or repointed Secret
+// is detected. A configuration being deleted is always up to date, so that a
+// deleted Secret cannot block its deletion.
+func (e *external) credentialsUpToDate(ctx context.Context, iqConfig *instancev1alpha1.IQServerConfiguration) (bool, error) {
+	if meta.WasDeleted(iqConfig) {
+		return true, nil
+	}
+
+	fingerprint, err := e.credentialsFingerprint(ctx, iqConfig)
+	if err != nil {
+		return false, err
+	}
+
+	return fingerprint == iqConfig.Status.AtProvider.CredentialsFingerprint, nil
 }
 
 // resolveCredentials reads username and password from Kubernetes Secrets.
