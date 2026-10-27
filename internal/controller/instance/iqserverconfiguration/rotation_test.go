@@ -32,13 +32,13 @@ func TestCredentialRotation(t *testing.T) {
 
 	cr := newTestIQServer(true)
 	cr.Namespace = "default"
-	cr.Spec.ForProvider.UsernameSecretRef = &xpv2.SecretKeySelector{
-		SecretReference: xpv2.SecretReference{Name: "iq-credentials", Namespace: "default"},
-		Key:             "username",
+	cr.Spec.ForProvider.UsernameSecretRef = &xpv2.LocalSecretKeySelector{
+		LocalSecretReference: xpv2.LocalSecretReference{Name: "iq-credentials"},
+		Key:                  "username",
 	}
-	cr.Spec.ForProvider.PasswordSecretRef = &xpv2.SecretKeySelector{
-		SecretReference: xpv2.SecretReference{Name: "iq-credentials", Namespace: "default"},
-		Key:             "password",
+	cr.Spec.ForProvider.PasswordSecretRef = &xpv2.LocalSecretKeySelector{
+		LocalSecretReference: xpv2.LocalSecretReference{Name: "iq-credentials"},
+		Key:                  "password",
 	}
 
 	secret := &corev1.Secret{

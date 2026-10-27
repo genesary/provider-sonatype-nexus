@@ -31,9 +31,9 @@ func TestPasswordRotation(t *testing.T) {
 
 	cr := newTestUser("alice", "Alice", "Smith")
 	cr.Namespace = "default"
-	cr.Spec.ForProvider.PasswordSecretRef = &xpv2.SecretKeySelector{
-		SecretReference: xpv2.SecretReference{Name: "alice-v1", Namespace: "default"},
-		Key:             defaultPasswordKey,
+	cr.Spec.ForProvider.PasswordSecretRef = &xpv2.LocalSecretKeySelector{
+		LocalSecretReference: xpv2.LocalSecretReference{Name: "alice-v1"},
+		Key:                  defaultPasswordKey,
 	}
 
 	secret := newSecret("alice-v1", "old-password")

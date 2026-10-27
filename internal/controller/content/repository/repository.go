@@ -329,7 +329,7 @@ func (e *external) credentialsFingerprint(ctx context.Context, repoCR *repositor
 		}{authentication, params.AptSigning, params.YumSigning}
 	}
 
-	var passwordRef *xpv2.SecretKeySelector
+	var passwordRef *xpv2.LocalSecretKeySelector
 	if authentication != nil {
 		passwordRef = authentication.PasswordSecretRef
 	}

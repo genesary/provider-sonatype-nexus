@@ -31,9 +31,9 @@ func TestAuthPasswordRotation(t *testing.T) {
 
 	cr := newTestLDAP("corp-ldap", "ldap.example.com")
 	cr.Namespace = "default"
-	cr.Spec.ForProvider.AuthPasswordSecretRef = &xpv2.SecretKeySelector{
-		SecretReference: xpv2.SecretReference{Name: "bind-v1", Namespace: "default"},
-		Key:             "password",
+	cr.Spec.ForProvider.AuthPasswordSecretRef = &xpv2.LocalSecretKeySelector{
+		LocalSecretReference: xpv2.LocalSecretReference{Name: "bind-v1"},
+		Key:                  "password",
 	}
 
 	secret := newSecret("bind-v1", "old-password")

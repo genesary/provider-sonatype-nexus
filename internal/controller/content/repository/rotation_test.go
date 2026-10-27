@@ -42,9 +42,9 @@ func TestCredentialRotation(t *testing.T) {
 		Authentication: &repositoryv1alpha1.HTTPClientAuthentication{
 			Type:     new("username"),
 			Username: new("upstream"),
-			PasswordSecretRef: &xpv2.SecretKeySelector{
-				SecretReference: xpv2.SecretReference{Name: "upstream", Namespace: "default"},
-				Key:             "password",
+			PasswordSecretRef: &xpv2.LocalSecretKeySelector{
+				LocalSecretReference: xpv2.LocalSecretReference{Name: "upstream"},
+				Key:                  "password",
 			},
 		},
 	}

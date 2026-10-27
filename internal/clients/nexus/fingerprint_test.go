@@ -17,9 +17,9 @@ func TestCredentialsFingerprint(t *testing.T) {
 
 	ctx := context.Background()
 	kube := newKube(t)
-	password := newSelector(tenantNamespace, "password")
+	password := newLocalSelector("password")
 
-	fingerprint := func(spec any, selectors ...*xpv2.SecretKeySelector) string {
+	fingerprint := func(spec any, selectors ...*xpv2.LocalSecretKeySelector) string {
 		t.Helper()
 
 		got, err := CredentialsFingerprint(ctx, kube, tenantNamespace, spec, selectors...)
@@ -51,7 +51,7 @@ func TestCredentialsFingerprint(t *testing.T) {
 		t.Errorf("fingerprint is not stable: %q then %q", base, got)
 	}
 
-	if got := fingerprint(nil, newSelector(tenantNamespace, "username")); got == base {
+	if got := fingerprint(nil, newLocalSelector("username")); got == base {
 		t.Error("fingerprint did not change when the selector key changed")
 	}
 
@@ -82,18 +82,17 @@ func TestCredentialsFingerprint(t *testing.T) {
 	}
 }
 
-// TestCredentialsFingerprintErrors verifies that a missing or cross-namespace
-// Secret is reported instead of being fingerprinted as absent.
+// TestCredentialsFingerprintErrors verifies that a missing Secret is
+// reported instead of being fingerprinted as absent.
 func TestCredentialsFingerprintErrors(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		selector *xpv2.SecretKeySelector
+		selector *xpv2.LocalSecretKeySelector
 		wantErr  string
 	}{
-		"CrossNamespace": {selector: newSelector(victimNamespace, "password"), wantErr: ErrSecretNamespaceMismatch},
 		"MissingSecret": {
-			selector: &xpv2.SecretKeySelector{SecretReference: xpv2.SecretReference{Name: "missing"}, Key: "password"},
+			selector: &xpv2.LocalSecretKeySelector{LocalSecretReference: xpv2.LocalSecretReference{Name: "missing"}, Key: "password"},
 			wantErr:  "cannot get secret",
 		},
 	}

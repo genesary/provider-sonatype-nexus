@@ -9,6 +9,7 @@ import (
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	kubeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -32,7 +33,7 @@ func CredentialsFingerprint(
 	kube kubeclient.Client,
 	namespace string,
 	spec any,
-	selectors ...*xpv2.SecretKeySelector,
+	selectors ...*xpv2.LocalSecretKeySelector,
 ) (string, error) {
 	type secretIdentity struct {
 		Namespace       string `json:"namespace"`
@@ -50,14 +51,11 @@ func CredentialsFingerprint(
 			continue
 		}
 
-		key, err := secretObjectKey(namespace, selector)
-		if err != nil {
-			return "", err
-		}
+		key := types.NamespacedName{Namespace: secretNamespace(namespace), Name: selector.Name}
 
 		secret := &corev1.Secret{}
 
-		err = kube.Get(ctx, key, secret)
+		err := kube.Get(ctx, key, secret)
 		if err != nil {
 			return "", errors.Wrap(err, "cannot get secret")
 		}
