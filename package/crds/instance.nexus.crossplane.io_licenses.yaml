@@ -72,36 +72,26 @@ spec:
                           or bearer token.
                         properties:
                           key:
-                            description: The key to select.
                             type: string
                           name:
                             description: Name of the secret.
                             type: string
-                          namespace:
-                            description: Namespace of the secret.
-                            type: string
                         required:
                         - key
                         - name
-                        - namespace
                         type: object
                       usernameSecretRef:
                         description: UsernameSecretRef references a secret key with
                           the HTTP username.
                         properties:
                           key:
-                            description: The key to select.
                             type: string
                           name:
                             description: Name of the secret.
                             type: string
-                          namespace:
-                            description: Namespace of the secret.
-                            type: string
                         required:
                         - key
                         - name
-                        - namespace
                         type: object
                     type: object
                   endpointUrl:
@@ -112,21 +102,17 @@ spec:
                   licenseSecretRef:
                     description: |-
                       LicenseSecretRef references a Kubernetes secret containing the license
-                      data (Behavior 1). Mutually exclusive with EndpointURL.
+                      data (Behavior 1). Mutually exclusive with EndpointURL. The secret must
+                      be in the same namespace as the License.
                     properties:
                       key:
-                        description: The key to select.
                         type: string
                       name:
                         description: Name of the secret.
                         type: string
-                      namespace:
-                        description: Namespace of the secret.
-                        type: string
                     required:
                     - key
                     - name
-                    - namespace
                     type: object
                 type: object
               managementPolicies:

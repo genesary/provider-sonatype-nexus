@@ -225,7 +225,7 @@ func (in *LDAPParameters) DeepCopyInto(out *LDAPParameters) {
 	}
 	if in.AuthPasswordSecretRef != nil {
 		in, out := &in.AuthPasswordSecretRef, &out.AuthPasswordSecretRef
-		*out = new(v2.SecretKeySelector)
+		*out = new(v2.LocalSecretKeySelector)
 		**out = **in
 	}
 	if in.AuthRealm != nil {
@@ -997,7 +997,7 @@ func (in *UserParameters) DeepCopyInto(out *UserParameters) {
 	}
 	if in.PasswordSecretRef != nil {
 		in, out := &in.PasswordSecretRef, &out.PasswordSecretRef
-		*out = new(v2.SecretKeySelector)
+		*out = new(v2.LocalSecretKeySelector)
 		**out = **in
 	}
 	if in.Source != nil {

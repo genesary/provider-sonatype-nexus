@@ -51,7 +51,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ProviderConfigSpec defines the desired state of ProviderConfig.
+            description: ClusterProviderConfigSpec defines the desired state of ClusterProviderConfig.
             properties:
               insecureSkipVerify:
                 description: InsecureSkipVerify indicates whether to skip TLS certificate

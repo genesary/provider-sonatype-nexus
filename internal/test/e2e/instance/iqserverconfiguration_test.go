@@ -53,18 +53,16 @@ func TestIQServerConfigurationUpdate(t *testing.T) {
 				ShowLink:           ptr.To(false),
 				URL:                "http://iq-server:8070",
 				AuthenticationType: ptr.To("USER"),
-				UsernameSecretRef: &xpv2.SecretKeySelector{
+				UsernameSecretRef: &xpv2.LocalSecretKeySelector{
 					Key: "username",
-					SecretReference: xpv2.SecretReference{
-						Name:      secretName,
-						Namespace: "default",
+					LocalSecretReference: xpv2.LocalSecretReference{
+						Name: secretName,
 					},
 				},
-				PasswordSecretRef: &xpv2.SecretKeySelector{
+				PasswordSecretRef: &xpv2.LocalSecretKeySelector{
 					Key: "password",
-					SecretReference: xpv2.SecretReference{
-						Name:      secretName,
-						Namespace: "default",
+					LocalSecretReference: xpv2.LocalSecretReference{
+						Name: secretName,
 					},
 				},
 			},

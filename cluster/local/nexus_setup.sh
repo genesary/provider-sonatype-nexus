@@ -5,7 +5,10 @@
 #   1. apply Deployment + Service from e2e/manifests/nexus.yaml
 #   2. wait for the Deployment to become Available
 #   3. poll localhost:8081 (mapped via kind NodePort) until Nexus reports ready
-#   4. write username and password each to their own Kubernetes Secret in crossplane-system
+#   4. write username and password each to their own Kubernetes Secret, in
+#      crossplane-system (for the ClusterProviderConfig) and in the
+#      ProviderConfig namespace (a namespaced ProviderConfig may only
+#      reference Secrets in its own namespace)
 #   5. apply a ProviderConfig and ClusterProviderConfig wired to the in-cluster Service
 #
 # Required environment:
@@ -59,17 +62,23 @@ if ! curl -sf -o /dev/null "${NEXUS_LOCAL_URL}/service/rest/v1/status"; then
     exit 1
 fi
 
-log "Writing username Secret ${NEXUS_SECRET_NAMESPACE}/${NEXUS_USERNAME_SECRET_NAME}"
-"${KUBECTL}" create secret generic "${NEXUS_USERNAME_SECRET_NAME}" \
-    --namespace="${NEXUS_SECRET_NAMESPACE}" \
-    --from-literal=username="${NEXUS_ADMIN_USER}" \
-    --dry-run=client -o yaml | "${KUBECTL}" apply -f -
+# Namespaced resources read their Secrets from their own namespace, so write
+# the credentials to every namespace the e2e resources run in. Extra
+# namespaces can be listed (space separated) in NEXUS_EXTRA_SECRET_NAMESPACES.
+secret_namespaces=$(printf '%s\n' "${NEXUS_SECRET_NAMESPACE}" "${NEXUS_PROVIDERCONFIG_NAMESPACE}" ${NEXUS_EXTRA_SECRET_NAMESPACES:-} | sort -u)
+for secret_namespace in ${secret_namespaces}; do
+    log "Writing username Secret ${secret_namespace}/${NEXUS_USERNAME_SECRET_NAME}"
+    "${KUBECTL}" create secret generic "${NEXUS_USERNAME_SECRET_NAME}" \
+        --namespace="${secret_namespace}" \
+        --from-literal=username="${NEXUS_ADMIN_USER}" \
+        --dry-run=client -o yaml | "${KUBECTL}" apply -f -
 
-log "Writing password Secret ${NEXUS_SECRET_NAMESPACE}/${NEXUS_PASSWORD_SECRET_NAME}"
-"${KUBECTL}" create secret generic "${NEXUS_PASSWORD_SECRET_NAME}" \
-    --namespace="${NEXUS_SECRET_NAMESPACE}" \
-    --from-literal=password="${NEXUS_ADMIN_PASS}" \
-    --dry-run=client -o yaml | "${KUBECTL}" apply -f -
+    log "Writing password Secret ${secret_namespace}/${NEXUS_PASSWORD_SECRET_NAME}"
+    "${KUBECTL}" create secret generic "${NEXUS_PASSWORD_SECRET_NAME}" \
+        --namespace="${secret_namespace}" \
+        --from-literal=password="${NEXUS_ADMIN_PASS}" \
+        --dry-run=client -o yaml | "${KUBECTL}" apply -f -
+done
 
 log "Applying ProviderConfig '${NEXUS_PROVIDERCONFIG_NAME}' in namespace '${NEXUS_PROVIDERCONFIG_NAMESPACE}'"
 "${KUBECTL}" apply -f - <<EOF
@@ -85,13 +94,11 @@ spec:
     source: Secret
     secretRef:
       name: ${NEXUS_USERNAME_SECRET_NAME}
-      namespace: ${NEXUS_SECRET_NAMESPACE}
       key: username
   password:
     source: Secret
     secretRef:
       name: ${NEXUS_PASSWORD_SECRET_NAME}
-      namespace: ${NEXUS_SECRET_NAMESPACE}
       key: password
 EOF
 

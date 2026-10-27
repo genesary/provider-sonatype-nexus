@@ -12,11 +12,9 @@ spec:
     authenticationType: USER
     usernameSecretRef:
       name: iq-credentials
-      namespace: crossplane-system
       key: username
     passwordSecretRef:
       name: iq-credentials
-      namespace: crossplane-system
       key: password
     useTrustStoreForUrl: false
     timeoutSeconds: 60

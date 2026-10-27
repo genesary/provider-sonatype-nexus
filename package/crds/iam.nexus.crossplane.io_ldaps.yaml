@@ -66,21 +66,16 @@ spec:
                   authPasswordSecretRef:
                     description: |-
                       AuthPasswordSecretRef is a reference to a secret containing the auth
-                      password.
+                      password. The secret must be in the same namespace as the LDAP.
                     properties:
                       key:
-                        description: The key to select.
                         type: string
                       name:
                         description: Name of the secret.
                         type: string
-                      namespace:
-                        description: Namespace of the secret.
-                        type: string
                     required:
                     - key
                     - name
-                    - namespace
                     type: object
                   authRealm:
                     description: AuthRealm is the SASL realm for DIGEST-MD5/CRAM-MD5

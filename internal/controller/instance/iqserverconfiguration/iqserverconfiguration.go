@@ -202,14 +202,14 @@ func (e *external) applyConfig(ctx context.Context, iqConfig *instancev1alpha1.I
 // resolveCredentials reads username and password from Kubernetes Secrets.
 func (e *external) resolveCredentials(ctx context.Context, iqConfig *instancev1alpha1.IQServerConfiguration) (username, password string, err error) {
 	if iqConfig.Spec.ForProvider.UsernameSecretRef != nil {
-		username, err = nexus.GetSecretValue(ctx, e.kube, iqConfig.Spec.ForProvider.UsernameSecretRef)
+		username, err = nexus.GetSecretValue(ctx, e.kube, iqConfig.GetNamespace(), iqConfig.Spec.ForProvider.UsernameSecretRef)
 		if err != nil {
 			return "", "", errors.Wrap(err, errGetUsername)
 		}
 	}
 
 	if iqConfig.Spec.ForProvider.PasswordSecretRef != nil {
-		password, err = nexus.GetSecretValue(ctx, e.kube, iqConfig.Spec.ForProvider.PasswordSecretRef)
+		password, err = nexus.GetSecretValue(ctx, e.kube, iqConfig.GetNamespace(), iqConfig.Spec.ForProvider.PasswordSecretRef)
 		if err != nil {
 			return "", "", errors.Wrap(err, errGetPassword)
 		}

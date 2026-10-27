@@ -32,12 +32,14 @@ type IQServerConfigurationParameters struct {
 	AuthenticationType *string `json:"authenticationType"`
 
 	// UsernameSecretRef references the Kubernetes Secret key holding the IQ Server username.
+	// The secret must be in the same namespace as the IQServerConfiguration.
 	// +kubebuilder:validation:Optional
-	UsernameSecretRef *xpv2.SecretKeySelector `json:"usernameSecretRef"`
+	UsernameSecretRef *xpv2.LocalSecretKeySelector `json:"usernameSecretRef"`
 
 	// PasswordSecretRef references the Kubernetes Secret key holding the IQ Server password.
+	// The secret must be in the same namespace as the IQServerConfiguration.
 	// +kubebuilder:validation:Optional
-	PasswordSecretRef *xpv2.SecretKeySelector `json:"passwordSecretRef"`
+	PasswordSecretRef *xpv2.LocalSecretKeySelector `json:"passwordSecretRef"`
 
 	// UseTrustStoreForURL indicates whether to use the trust store for the IQ Server URL.
 	// +kubebuilder:validation:Optional

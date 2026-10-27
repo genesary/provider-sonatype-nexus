@@ -72,11 +72,10 @@ func TestLicenseCR(t *testing.T) {
 				},
 			},
 			ForProvider: iamv1alpha1.LicenseParameters{
-				LicenseSecretRef: &xpv2.SecretKeySelector{
+				LicenseSecretRef: &xpv2.LocalSecretKeySelector{
 					Key: "license.lic",
-					SecretReference: xpv2.SecretReference{
-						Name:      secretName,
-						Namespace: "default",
+					LocalSecretReference: xpv2.LocalSecretReference{
+						Name: secretName,
 					},
 				},
 			},

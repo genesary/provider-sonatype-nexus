@@ -43,9 +43,9 @@ type LDAPParameters struct {
 	AuthUsername *string `json:"authUsername,omitempty"`
 
 	// AuthPasswordSecretRef is a reference to a secret containing the auth
-	// password.
+	// password. The secret must be in the same namespace as the LDAP.
 	// +kubebuilder:validation:Optional
-	AuthPasswordSecretRef *xpv2.SecretKeySelector `json:"authPasswordSecretRef,omitempty"`
+	AuthPasswordSecretRef *xpv2.LocalSecretKeySelector `json:"authPasswordSecretRef,omitempty"`
 
 	// AuthRealm is the SASL realm for DIGEST-MD5/CRAM-MD5 authentication.
 	// +kubebuilder:validation:Optional
