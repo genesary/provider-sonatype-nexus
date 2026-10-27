@@ -515,7 +515,7 @@ func TestInstallLicense_ErrorBodyTruncated(t *testing.T) {
 // TestNewLicenseClient_ReusesConnections verifies that license clients built
 // on every Connect share keep-alive connections instead of each leaking its
 // own transport.
-func TestNewLicenseClient_ReusesConnections(t *testing.T) {
+func TestNewLicenseClient_ReusesConnections(t *testing.T) { //nolint:paralleltest // exclusive use of the shared transport
 	// Not parallel: the shared transport's idle pool must not be contended.
 	var newConns atomic.Int32
 
