@@ -14,12 +14,12 @@ import (
 type LicenseEndpointCredentials struct {
 	// UsernameSecretRef references a secret key with the HTTP username.
 	// +kubebuilder:validation:Optional
-	UsernameSecretRef *xpv2.SecretKeySelector `json:"usernameSecretRef,omitempty"`
+	UsernameSecretRef *xpv2.LocalSecretKeySelector `json:"usernameSecretRef,omitempty"`
 
 	// PasswordSecretRef references a secret key with the HTTP password
 	// or bearer token.
 	// +kubebuilder:validation:Optional
-	PasswordSecretRef *xpv2.SecretKeySelector `json:"passwordSecretRef,omitempty"`
+	PasswordSecretRef *xpv2.LocalSecretKeySelector `json:"passwordSecretRef,omitempty"`
 }
 
 // LicenseParameters defines the desired state of License.
@@ -28,7 +28,7 @@ type LicenseParameters struct {
 	// data (Behavior 1). Mutually exclusive with EndpointURL. The secret must
 	// be in the same namespace as the License.
 	// +kubebuilder:validation:Optional
-	LicenseSecretRef *xpv2.SecretKeySelector `json:"licenseSecretRef,omitempty"`
+	LicenseSecretRef *xpv2.LocalSecretKeySelector `json:"licenseSecretRef,omitempty"`
 
 	// EndpointURL is the URL from which the license file is fetched
 	// (Behavior 2). Mutually exclusive with LicenseSecretRef.

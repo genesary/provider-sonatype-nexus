@@ -212,18 +212,13 @@ spec:
                               The secret must be in the same namespace as the Repository.
                             properties:
                               key:
-                                description: The key to select.
                                 type: string
                               name:
                                 description: Name of the secret.
                                 type: string
-                              namespace:
-                                description: Namespace of the secret.
-                                type: string
                             required:
                             - key
                             - name
-                            - namespace
                             type: object
                           type:
                             description: Type of authentication.

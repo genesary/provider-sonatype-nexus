@@ -71,9 +71,9 @@ func TestUserCRUD(t *testing.T) {
 				LastName:     "Test",
 				EmailAddress: "e2e-user-crud@example.com",
 				Status:       ptr.To("active"),
-				PasswordSecretRef: &xpv2.SecretKeySelector{
+				PasswordSecretRef: &xpv2.LocalSecretKeySelector{
 					Key: "password",
-					SecretReference: xpv2.SecretReference{
+					LocalSecretReference: xpv2.LocalSecretReference{
 						Name:      secretName,
 						Namespace: "default",
 					},

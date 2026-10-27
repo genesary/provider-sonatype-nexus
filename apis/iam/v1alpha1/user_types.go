@@ -39,7 +39,7 @@ type UserParameters struct {
 	// PasswordSecretRef is a reference to a secret with the user password.
 	// The secret must be in the same namespace as the User.
 	// +kubebuilder:validation:Optional
-	PasswordSecretRef *xpv2.SecretKeySelector `json:"passwordSecretRef,omitempty"`
+	PasswordSecretRef *xpv2.LocalSecretKeySelector `json:"passwordSecretRef,omitempty"`
 
 	// Source of the user (default is "default" for local users).
 	// +kubebuilder:default="default"

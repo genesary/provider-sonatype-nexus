@@ -32,13 +32,11 @@ spec:
     source: Secret
     secretRef:
       name: nexus-username
-      namespace: crossplane-system
       key: username
   password:
     source: Secret
     secretRef:
       name: nexus-password
-      namespace: crossplane-system
       key: password
 ---
 # Cluster-scoped ProviderConfig

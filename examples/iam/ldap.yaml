@@ -14,7 +14,6 @@ spec:
     authUsername: cn=admin,dc=example,dc=com
     authPasswordSecretRef:
       name: ldap-credentials
-      namespace: default
       key: password
     userBaseDn: ou=people
     userObjectClass: inetOrgPerson

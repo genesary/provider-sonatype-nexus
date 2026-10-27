@@ -432,12 +432,12 @@ func (in *IQServerConfigurationParameters) DeepCopyInto(out *IQServerConfigurati
 	}
 	if in.UsernameSecretRef != nil {
 		in, out := &in.UsernameSecretRef, &out.UsernameSecretRef
-		*out = new(v2.SecretKeySelector)
+		*out = new(v2.LocalSecretKeySelector)
 		**out = **in
 	}
 	if in.PasswordSecretRef != nil {
 		in, out := &in.PasswordSecretRef, &out.PasswordSecretRef
-		*out = new(v2.SecretKeySelector)
+		*out = new(v2.LocalSecretKeySelector)
 		**out = **in
 	}
 	if in.UseTrustStoreForURL != nil {
@@ -538,12 +538,12 @@ func (in *LicenseEndpointCredentials) DeepCopyInto(out *LicenseEndpointCredentia
 	*out = *in
 	if in.UsernameSecretRef != nil {
 		in, out := &in.UsernameSecretRef, &out.UsernameSecretRef
-		*out = new(v2.SecretKeySelector)
+		*out = new(v2.LocalSecretKeySelector)
 		**out = **in
 	}
 	if in.PasswordSecretRef != nil {
 		in, out := &in.PasswordSecretRef, &out.PasswordSecretRef
-		*out = new(v2.SecretKeySelector)
+		*out = new(v2.LocalSecretKeySelector)
 		**out = **in
 	}
 }
@@ -610,7 +610,7 @@ func (in *LicenseParameters) DeepCopyInto(out *LicenseParameters) {
 	*out = *in
 	if in.LicenseSecretRef != nil {
 		in, out := &in.LicenseSecretRef, &out.LicenseSecretRef
-		*out = new(v2.SecretKeySelector)
+		*out = new(v2.LocalSecretKeySelector)
 		**out = **in
 	}
 	if in.EndpointURL != nil {
@@ -709,12 +709,12 @@ func (in *S3Config) DeepCopyInto(out *S3Config) {
 	}
 	if in.AccessKeyIDSecretRef != nil {
 		in, out := &in.AccessKeyIDSecretRef, &out.AccessKeyIDSecretRef
-		*out = new(v2.SecretKeySelector)
+		*out = new(v2.LocalSecretKeySelector)
 		**out = **in
 	}
 	if in.SecretAccessKeySecretRef != nil {
 		in, out := &in.SecretAccessKeySecretRef, &out.SecretAccessKeySecretRef
-		*out = new(v2.SecretKeySelector)
+		*out = new(v2.LocalSecretKeySelector)
 		**out = **in
 	}
 	if in.AssumeRole != nil {
@@ -724,7 +724,7 @@ func (in *S3Config) DeepCopyInto(out *S3Config) {
 	}
 	if in.SessionTokenSecretRef != nil {
 		in, out := &in.SessionTokenSecretRef, &out.SessionTokenSecretRef
-		*out = new(v2.SecretKeySelector)
+		*out = new(v2.LocalSecretKeySelector)
 		**out = **in
 	}
 	if in.ForcePathStyle != nil {

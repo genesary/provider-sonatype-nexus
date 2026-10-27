@@ -72,15 +72,38 @@ func newSelector(namespace, key string) *xpv2.SecretKeySelector {
 	}
 }
 
-// newSpec returns a spec whose credentials live in secretNamespace.
-func newSpec(secretNamespace string) v1alpha1.ProviderConfigSpec {
+// newLocalSelector selects key in the nexus-creds Secret of the owner's namespace.
+func newLocalSelector(key string) *xpv2.LocalSecretKeySelector {
+	return &xpv2.LocalSecretKeySelector{
+		LocalSecretReference: xpv2.LocalSecretReference{Name: "nexus-creds"},
+		Key:                  key,
+	}
+}
+
+// newSpec returns a namespaced spec whose credentials are local references.
+func newSpec() v1alpha1.ProviderConfigSpec {
 	return v1alpha1.ProviderConfigSpec{
 		URL: "https://nexus.example.com",
 		Username: v1alpha1.ProviderCredentials{
+			Source:    xpv2.CredentialsSourceSecret,
+			SecretRef: newLocalSelector("username"),
+		},
+		Password: v1alpha1.ProviderCredentials{
+			Source:    xpv2.CredentialsSourceSecret,
+			SecretRef: newLocalSelector("password"),
+		},
+	}
+}
+
+// newClusterSpec returns a cluster spec whose credentials live in secretNamespace.
+func newClusterSpec(secretNamespace string) v1alpha1.ClusterProviderConfigSpec {
+	return v1alpha1.ClusterProviderConfigSpec{
+		URL: "https://nexus.example.com",
+		Username: v1alpha1.ClusterProviderCredentials{
 			Source:                    xpv2.CredentialsSourceSecret,
 			CommonCredentialSelectors: xpv2.CommonCredentialSelectors{SecretRef: newSelector(secretNamespace, "username")},
 		},
-		Password: v1alpha1.ProviderCredentials{
+		Password: v1alpha1.ClusterProviderCredentials{
 			Source:                    xpv2.CredentialsSourceSecret,
 			CommonCredentialSelectors: xpv2.CommonCredentialSelectors{SecretRef: newSelector(secretNamespace, "password")},
 		},
@@ -97,47 +120,21 @@ func newKube(t *testing.T, objs ...kubeclient.Object) kubeclient.Client {
 	return fake.NewClientBuilder().WithScheme(newTestScheme(t)).WithObjects(objs...).Build()
 }
 
-// TestGetSecretValueNamespaceBinding verifies that selectors declared by a
-// namespaced object cannot leave that namespace.
-func TestGetSecretValueNamespaceBinding(t *testing.T) {
+// TestGetSecretValueUsesOwnerNamespace verifies that a local selector is
+// always resolved in the namespace of the object that declares it.
+func TestGetSecretValueUsesOwnerNamespace(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
 		name      string
 		namespace string
-		selector  *xpv2.SecretKeySelector
+		selector  *xpv2.LocalSecretKeySelector
 		want      string
 		wantErr   string
 	}{
-		{
-			name:      "SameNamespace",
-			namespace: tenantNamespace,
-			selector:  newSelector(tenantNamespace, "password"),
-			want:      "secret-" + tenantNamespace,
-		},
-		{
-			name:      "EmptySelectorNamespaceDefaultsToOwner",
-			namespace: tenantNamespace,
-			selector:  newSelector("", "password"),
-			want:      "secret-" + tenantNamespace,
-		},
-		{
-			name:      "CrossNamespaceRejected",
-			namespace: tenantNamespace,
-			selector:  newSelector(victimNamespace, "password"),
-			wantErr:   ErrSecretNamespaceMismatch,
-		},
-		{
-			name:      "ClusterScopedOwnerUsesSelectorNamespace",
-			namespace: "",
-			selector:  newSelector(victimNamespace, "password"),
-			want:      "secret-" + victimNamespace,
-		},
-		{
-			name:      "NilSelector",
-			namespace: tenantNamespace,
-			wantErr:   "secretKeySelector is nil",
-		},
+		{name: "OwnerNamespace", namespace: tenantNamespace, selector: newLocalSelector("password"), want: "secret-" + tenantNamespace},
+		{name: "OtherNamespace", namespace: victimNamespace, selector: newLocalSelector("password"), want: "secret-" + victimNamespace},
+		{name: "NilSelector", namespace: tenantNamespace, wantErr: "secretKeySelector is nil"},
 	}
 
 	for _, tc := range tests {
@@ -181,8 +178,8 @@ func assertSecretResult(t *testing.T, fn, got string, err error, want, wantErr s
 }
 
 // TestGetCredentialsNamespaceBinding verifies that a namespaced ProviderConfig
-// can only use Secrets from its own namespace, while a ClusterProviderConfig
-// keeps its explicit selector namespace.
+// reads Secrets from its own namespace, while a ClusterProviderConfig keeps its
+// explicit selector namespace.
 func TestGetCredentialsNamespaceBinding(t *testing.T) {
 	t.Parallel()
 
@@ -191,31 +188,21 @@ func TestGetCredentialsNamespaceBinding(t *testing.T) {
 		obj          kubeclient.Object
 		ref          xpv2.ProviderConfigReference
 		wantPassword string
-		wantErr      string
 	}{
 		{
-			name: "ProviderConfigSameNamespace",
+			name: "ProviderConfig",
 			obj: &v1alpha1.ProviderConfig{
 				ObjectMeta: metav1.ObjectMeta{Name: "pc", Namespace: tenantNamespace},
-				Spec:       newSpec(tenantNamespace),
+				Spec:       newSpec(),
 			},
 			ref:          xpv2.ProviderConfigReference{Kind: "ProviderConfig", Name: "pc"},
 			wantPassword: "secret-" + tenantNamespace,
 		},
 		{
-			name: "ProviderConfigCrossNamespaceRejected",
-			obj: &v1alpha1.ProviderConfig{
-				ObjectMeta: metav1.ObjectMeta{Name: "pc", Namespace: tenantNamespace},
-				Spec:       newSpec(victimNamespace),
-			},
-			ref:     xpv2.ProviderConfigReference{Kind: "ProviderConfig", Name: "pc"},
-			wantErr: ErrSecretNamespaceMismatch,
-		},
-		{
 			name: "ClusterProviderConfigAnyNamespace",
 			obj: &v1alpha1.ClusterProviderConfig{
 				ObjectMeta: metav1.ObjectMeta{Name: "default"},
-				Spec:       newSpec(victimNamespace),
+				Spec:       newClusterSpec(victimNamespace),
 			},
 			ref:          xpv2.ProviderConfigReference{Kind: clusterProviderConfigKind, Name: "default"},
 			wantPassword: "secret-" + victimNamespace,
@@ -229,7 +216,7 @@ func TestGetCredentialsNamespaceBinding(t *testing.T) {
 			mg := testManaged{namespace: tenantNamespace, ref: &tc.ref}
 
 			creds, err := GetCredentials(context.Background(), newKube(t, tc.obj), mg)
-			assertSecretResult(t, "GetCredentials", creds.Password, err, tc.wantPassword, tc.wantErr)
+			assertSecretResult(t, "GetCredentials", creds.Password, err, tc.wantPassword, "")
 		})
 	}
 }

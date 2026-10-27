@@ -12,11 +12,9 @@ spec:
     authenticationType: USER
     usernameSecretRef:
       name: iq-credentials
-      namespace: default
       key: username
     passwordSecretRef:
       name: iq-credentials
-      namespace: default
       key: password
     useTrustStoreForUrl: false
     timeoutSeconds: 60

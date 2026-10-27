@@ -23,9 +23,37 @@ type ProviderConfigSpec struct {
 }
 
 // ProviderCredentials defines the credentials for Nexus authentication. The
-// secretRef of a namespaced ProviderConfig must be in the ProviderConfig's
-// namespace; a ClusterProviderConfig may reference any namespace.
+// referenced Secret is always in the ProviderConfig's namespace.
 type ProviderCredentials struct {
+	// Source of the provider credentials.
+	// +kubebuilder:validation:Enum=None;Secret
+	Source xpv2.CredentialsSource `json:"source"`
+
+	// SecretRef selects a key of a Secret in the ProviderConfig's namespace.
+	// +kubebuilder:validation:Optional
+	SecretRef *xpv2.LocalSecretKeySelector `json:"secretRef,omitempty"`
+}
+
+// ClusterProviderConfigSpec defines the desired state of ClusterProviderConfig.
+type ClusterProviderConfigSpec struct {
+	// URL is the URL of the Nexus instance.
+	// +kubebuilder:validation:Required
+	URL string `json:"url"`
+
+	// InsecureSkipVerify indicates whether to skip TLS certificate verification.
+	// +kubebuilder:validation:Optional
+	InsecureSkipVerify *bool `json:"insecureSkipVerify,omitempty"`
+
+	// Username credentials to authenticate with Nexus.
+	Username ClusterProviderCredentials `json:"username"`
+
+	// Password credentials to authenticate with Nexus.
+	Password ClusterProviderCredentials `json:"password"`
+}
+
+// ClusterProviderCredentials defines the credentials for Nexus authentication
+// of a cluster-scoped config, whose secretRef names its own namespace.
+type ClusterProviderCredentials struct {
 	// +kubebuilder:validation:Optional
 	xpv2.CommonCredentialSelectors `json:",inline"`
 
@@ -104,8 +132,8 @@ type ClusterProviderConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ProviderConfigSpec   `json:"spec"`
-	Status ProviderConfigStatus `json:"status,omitempty"`
+	Spec   ClusterProviderConfigSpec `json:"spec"`
+	Status ProviderConfigStatus      `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true

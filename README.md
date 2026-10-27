@@ -128,20 +128,17 @@ spec:
     source: Secret
     secretRef:
       name: nexus-username
-      namespace: crossplane-system
       key: username
   password:
     source: Secret
     secretRef:
       name: nexus-password
-      namespace: crossplane-system
       key: password
 ```
 
 Secret references on namespaced objects (ProviderConfig and every managed
-resource) must point at Secrets in the object's own namespace; the provider
-rejects any other namespace. Only a ClusterProviderConfig may reference
-Secrets in another namespace.
+resource) have no `namespace` field: they always refer to Secrets in the object's own
+namespace. Only a ClusterProviderConfig names the namespace of its Secrets.
 
 ## Usage Examples
 
@@ -229,7 +226,6 @@ spec:
       - nx-repository-view-maven2-*-read
     passwordSecretRef:
       name: user-password-secret
-      namespace: default
       key: password
   providerConfigRef:
     name: nexus-provider-config

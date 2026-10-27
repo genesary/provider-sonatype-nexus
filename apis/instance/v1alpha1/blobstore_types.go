@@ -68,11 +68,11 @@ type S3Config struct {
 
 	// AccessKeyIDSecretRef is a reference to a secret containing the access key ID.
 	// +kubebuilder:validation:Optional
-	AccessKeyIDSecretRef *xpv2.SecretKeySelector `json:"accessKeyIdSecretRef,omitempty"`
+	AccessKeyIDSecretRef *xpv2.LocalSecretKeySelector `json:"accessKeyIdSecretRef,omitempty"`
 
 	// SecretAccessKeySecretRef is a reference to a secret containing the secret access key.
 	// +kubebuilder:validation:Optional
-	SecretAccessKeySecretRef *xpv2.SecretKeySelector `json:"secretAccessKeySecretRef,omitempty"`
+	SecretAccessKeySecretRef *xpv2.LocalSecretKeySelector `json:"secretAccessKeySecretRef,omitempty"`
 
 	// AssumeRole for S3 access.
 	// +kubebuilder:validation:Optional
@@ -80,7 +80,7 @@ type S3Config struct {
 
 	// SessionToken for S3 access.
 	// +kubebuilder:validation:Optional
-	SessionTokenSecretRef *xpv2.SecretKeySelector `json:"sessionTokenSecretRef,omitempty"`
+	SessionTokenSecretRef *xpv2.LocalSecretKeySelector `json:"sessionTokenSecretRef,omitempty"`
 
 	// ForcePathStyle enables path-style access for S3.
 	// +kubebuilder:validation:Optional

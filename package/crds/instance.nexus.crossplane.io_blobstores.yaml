@@ -74,18 +74,13 @@ spec:
                           containing the access key ID.
                         properties:
                           key:
-                            description: The key to select.
                             type: string
                           name:
                             description: Name of the secret.
                             type: string
-                          namespace:
-                            description: Namespace of the secret.
-                            type: string
                         required:
                         - key
                         - name
-                        - namespace
                         type: object
                       assumeRole:
                         description: AssumeRole for S3 access.
@@ -115,35 +110,25 @@ spec:
                           secret containing the secret access key.
                         properties:
                           key:
-                            description: The key to select.
                             type: string
                           name:
                             description: Name of the secret.
                             type: string
-                          namespace:
-                            description: Namespace of the secret.
-                            type: string
                         required:
                         - key
                         - name
-                        - namespace
                         type: object
                       sessionTokenSecretRef:
                         description: SessionToken for S3 access.
                         properties:
                           key:
-                            description: The key to select.
                             type: string
                           name:
                             description: Name of the secret.
                             type: string
-                          namespace:
-                            description: Namespace of the secret.
-                            type: string
                         required:
                         - key
                         - name
-                        - namespace
                         type: object
                     required:
                     - bucket

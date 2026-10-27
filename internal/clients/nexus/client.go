@@ -66,9 +66,7 @@ func GetCredentials(ctx context.Context, kube kubeclient.Client, managed interfa
 			return Credentials{}, errors.Wrap(err, "cannot get ClusterProviderConfig")
 		}
 
-		// A ClusterProviderConfig is cluster-scoped and authored by cluster
-		// administrators, so its selectors may name any namespace.
-		return GetCredentialsFromSpec(ctx, kube, "", cpc.Spec)
+		return getCredentialsFromClusterSpec(ctx, kube, cpc.Spec)
 	}
 
 	providerConfig := &v1alpha1.ProviderConfig{}
@@ -82,56 +80,96 @@ func GetCredentials(ctx context.Context, kube kubeclient.Client, managed interfa
 }
 
 // GetCredentialsFromSpec extracts Nexus credentials from a ProviderConfigSpec.
-// namespace is the namespace of the ProviderConfig that holds spec, or empty
-// for a ClusterProviderConfig; Secret selectors are bound to it.
+// namespace is the namespace of the ProviderConfig that holds spec; its
+// Secrets are always read from there.
 func GetCredentialsFromSpec(ctx context.Context, kube kubeclient.Client, namespace string, spec v1alpha1.ProviderConfigSpec) (Credentials, error) {
-	if spec.Username.Source != xpv2.CredentialsSourceSecret {
-		return Credentials{}, errors.Errorf("credentials source %q for username is not supported", spec.Username.Source)
+	return resolveCredentials(ctx, kube, resolvedSpec{
+		url:      spec.URL,
+		insecure: spec.InsecureSkipVerify,
+		username: credentialSource{source: spec.Username.Source, selector: toSelector(spec.Username.SecretRef, namespace)},
+		password: credentialSource{source: spec.Password.Source, selector: toSelector(spec.Password.SecretRef, namespace)},
+	})
+}
+
+// getCredentialsFromClusterSpec extracts Nexus credentials from a
+// ClusterProviderConfigSpec. It is cluster-scoped and authored by cluster
+// administrators, so its selectors name the namespace of their Secret.
+func getCredentialsFromClusterSpec(ctx context.Context, kube kubeclient.Client, spec v1alpha1.ClusterProviderConfigSpec) (Credentials, error) {
+	return resolveCredentials(ctx, kube, resolvedSpec{
+		url:      spec.URL,
+		insecure: spec.InsecureSkipVerify,
+		username: credentialSource{source: spec.Username.Source, selector: spec.Username.SecretRef},
+		password: credentialSource{source: spec.Password.Source, selector: spec.Password.SecretRef},
+	})
+}
+
+// credentialSource is one credential of a provider config, with its Secret
+// selector already bound to a namespace.
+type credentialSource struct {
+	source   xpv2.CredentialsSource
+	selector *xpv2.SecretKeySelector
+}
+
+// resolvedSpec is the part of a provider config spec shared by the namespaced
+// and cluster-scoped variants.
+type resolvedSpec struct {
+	url      string
+	insecure *bool
+	username credentialSource
+	password credentialSource
+}
+
+// resolveCredentials reads the Secrets selected by spec.
+func resolveCredentials(ctx context.Context, kube kubeclient.Client, spec resolvedSpec) (Credentials, error) {
+	if spec.username.source != xpv2.CredentialsSourceSecret {
+		return Credentials{}, errors.Errorf("credentials source %q for username is not supported", spec.username.source)
 	}
 
-	if spec.Password.Source != xpv2.CredentialsSourceSecret {
-		return Credentials{}, errors.Errorf("credentials source %q for password is not supported", spec.Password.Source)
+	if spec.password.source != xpv2.CredentialsSourceSecret {
+		return Credentials{}, errors.Errorf("credentials source %q for password is not supported", spec.password.source)
 	}
 
-	if spec.Username.SecretRef == nil {
+	if spec.username.selector == nil {
 		return Credentials{}, errors.New("secretRef is required for username")
 	}
 
-	if spec.Password.SecretRef == nil {
+	if spec.password.selector == nil {
 		return Credentials{}, errors.New("secretRef is required for password")
 	}
 
-	username, err := GetSecretValue(ctx, kube, namespace, spec.Username.SecretRef)
+	username, err := readSecretValue(ctx, kube, spec.username.selector)
 	if err != nil {
 		return Credentials{}, errors.Wrap(err, "cannot get username from secret")
 	}
 
-	password, err := GetSecretValue(ctx, kube, namespace, spec.Password.SecretRef)
+	password, err := readSecretValue(ctx, kube, spec.password.selector)
 	if err != nil {
 		return Credentials{}, errors.Wrap(err, "cannot get password from secret")
 	}
 
 	return Credentials{
-		URL:      spec.URL,
+		URL:      spec.url,
 		Username: username,
 		Password: password,
-		Insecure: ptr.Deref(spec.InsecureSkipVerify, false),
+		Insecure: ptr.Deref(spec.insecure, false),
 	}, nil
 }
 
-// GetSecretValue retrieves a value from a Kubernetes secret using a
-// SecretKeySelector. namespace is the namespace of the object that declares
-// selector (empty for cluster-scoped objects); see secretObjectKey for how the
-// two are reconciled.
-func GetSecretValue(ctx context.Context, kube kubeclient.Client, namespace string, selector *xpv2.SecretKeySelector) (string, error) {
-	key, err := secretObjectKey(namespace, selector)
-	if err != nil {
-		return "", err
+// GetSecretValue retrieves a value from a Secret in namespace, the namespace
+// of the object that declares selector.
+func GetSecretValue(ctx context.Context, kube kubeclient.Client, namespace string, selector *xpv2.LocalSecretKeySelector) (string, error) {
+	if selector == nil {
+		return "", errors.New("secretKeySelector is nil")
 	}
 
+	return readSecretValue(ctx, kube, selector.ToSecretKeySelector(namespace))
+}
+
+// readSecretValue retrieves the value selected by selector.
+func readSecretValue(ctx context.Context, kube kubeclient.Client, selector *xpv2.SecretKeySelector) (string, error) {
 	secret := &corev1.Secret{}
 
-	err = kube.Get(ctx, key, secret)
+	err := kube.Get(ctx, types.NamespacedName{Name: selector.Name, Namespace: selector.Namespace}, secret)
 	if err != nil {
 		return "", errors.Wrap(err, "failed to get secret")
 	}
@@ -142,4 +180,13 @@ func GetSecretValue(ctx context.Context, kube kubeclient.Client, namespace strin
 	}
 
 	return string(data), nil
+}
+
+// toSelector binds a local selector to namespace; a nil selector stays nil.
+func toSelector(local *xpv2.LocalSecretKeySelector, namespace string) *xpv2.SecretKeySelector {
+	if local == nil {
+		return nil
+	}
+
+	return local.ToSecretKeySelector(namespace)
 }

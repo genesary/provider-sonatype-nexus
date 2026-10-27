@@ -72,18 +72,13 @@ spec:
                       The secret must be in the same namespace as the IQServerConfiguration.
                     properties:
                       key:
-                        description: The key to select.
                         type: string
                       name:
                         description: Name of the secret.
                         type: string
-                      namespace:
-                        description: Namespace of the secret.
-                        type: string
                     required:
                     - key
                     - name
-                    - namespace
                     type: object
                   properties:
                     description: Properties is a string of properties to set for the
@@ -114,18 +109,13 @@ spec:
                       The secret must be in the same namespace as the IQServerConfiguration.
                     properties:
                       key:
-                        description: The key to select.
                         type: string
                       name:
                         description: Name of the secret.
                         type: string
-                      namespace:
-                        description: Namespace of the secret.
-                        type: string
                     required:
                     - key
                     - name
-                    - namespace
                     type: object
                 required:
                 - url

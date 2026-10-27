@@ -27,13 +27,12 @@ import (
 // newTestLicense creates a License CR backed by a Kubernetes secret.
 func newTestLicense(name, secretName, secretNS, secretKey string) *iamv1alpha1.License {
 	return &iamv1alpha1.License{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
+		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: secretNS},
 		Spec: iamv1alpha1.LicenseSpec{
 			ForProvider: iamv1alpha1.LicenseParameters{
-				LicenseSecretRef: &xpv2.SecretKeySelector{
-					SecretReference: xpv2.SecretReference{
-						Name:      secretName,
-						Namespace: secretNS,
+				LicenseSecretRef: &xpv2.LocalSecretKeySelector{
+					LocalSecretReference: xpv2.LocalSecretReference{
+						Name: secretName,
 					},
 					Key: secretKey,
 				},
@@ -443,7 +442,7 @@ func TestCreate_WithEndpointAndCache(t *testing.T) {
 
 	endpointURL := server.URL
 	cr := &iamv1alpha1.License{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-license"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test-license", Namespace: "default"},
 		Spec: iamv1alpha1.LicenseSpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				WriteConnectionSecretToReference: &xpv2.LocalSecretReference{
@@ -491,7 +490,7 @@ func TestCreate_EndpointFallbackToCache(t *testing.T) {
 
 	endpointURL := "http://127.0.0.1:1" // unreachable port
 	cr := &iamv1alpha1.License{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-license"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test-license", Namespace: "default"},
 		Spec: iamv1alpha1.LicenseSpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				WriteConnectionSecretToReference: &xpv2.LocalSecretReference{
@@ -528,7 +527,7 @@ func TestCreate_EndpointFailsNoCacheFails(t *testing.T) {
 
 	endpointURL := "http://127.0.0.1:1" // unreachable
 	cr := &iamv1alpha1.License{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-license"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test-license", Namespace: "default"},
 		Spec: iamv1alpha1.LicenseSpec{
 			ForProvider: iamv1alpha1.LicenseParameters{
 				EndpointURL: &endpointURL,
@@ -572,22 +571,20 @@ func TestCreate_WithBasicAuthEndpoint(t *testing.T) {
 
 	endpointURL := server.URL
 	cr := &iamv1alpha1.License{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-license"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test-license", Namespace: "default"},
 		Spec: iamv1alpha1.LicenseSpec{
 			ForProvider: iamv1alpha1.LicenseParameters{
 				EndpointURL: &endpointURL,
 				EndpointCredentials: &iamv1alpha1.LicenseEndpointCredentials{
-					UsernameSecretRef: &xpv2.SecretKeySelector{
-						SecretReference: xpv2.SecretReference{
-							Name:      "ep-creds",
-							Namespace: "default",
+					UsernameSecretRef: &xpv2.LocalSecretKeySelector{
+						LocalSecretReference: xpv2.LocalSecretReference{
+							Name: "ep-creds",
 						},
 						Key: "username",
 					},
-					PasswordSecretRef: &xpv2.SecretKeySelector{
-						SecretReference: xpv2.SecretReference{
-							Name:      "ep-creds-pw",
-							Namespace: "default",
+					PasswordSecretRef: &xpv2.LocalSecretKeySelector{
+						LocalSecretReference: xpv2.LocalSecretReference{
+							Name: "ep-creds-pw",
 						},
 						Key: "password",
 					},
@@ -635,15 +632,14 @@ func TestCreate_WithBearerTokenEndpoint(t *testing.T) {
 
 	endpointURL := server.URL
 	cr := &iamv1alpha1.License{
-		ObjectMeta: metav1.ObjectMeta{Name: "test-license"},
+		ObjectMeta: metav1.ObjectMeta{Name: "test-license", Namespace: "default"},
 		Spec: iamv1alpha1.LicenseSpec{
 			ForProvider: iamv1alpha1.LicenseParameters{
 				EndpointURL: &endpointURL,
 				EndpointCredentials: &iamv1alpha1.LicenseEndpointCredentials{
-					PasswordSecretRef: &xpv2.SecretKeySelector{
-						SecretReference: xpv2.SecretReference{
-							Name:      "ep-token",
-							Namespace: "default",
+					PasswordSecretRef: &xpv2.LocalSecretKeySelector{
+						LocalSecretReference: xpv2.LocalSecretReference{
+							Name: "ep-token",
 						},
 						Key: "token",
 					},
@@ -866,10 +862,9 @@ func TestGetSecretBytes_MissingKey(t *testing.T) {
 		WithObjects(secret).
 		Build()
 
-	sel := &xpv2.SecretKeySelector{
-		SecretReference: xpv2.SecretReference{
-			Name:      "license-secret",
-			Namespace: "default",
+	sel := &xpv2.LocalSecretKeySelector{
+		LocalSecretReference: xpv2.LocalSecretReference{
+			Name: "license-secret",
 		},
 		Key: "missing-key",
 	}

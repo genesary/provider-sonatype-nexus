@@ -27,7 +27,6 @@ spec:
       - nx-repository-view-npm-*-read
     passwordSecretRef:
       name: nexus-user-password
-      namespace: default
       key: password
   providerConfigRef:
     kind: ProviderConfig

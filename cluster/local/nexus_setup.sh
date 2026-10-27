@@ -90,13 +90,11 @@ spec:
     source: Secret
     secretRef:
       name: ${NEXUS_USERNAME_SECRET_NAME}
-      namespace: ${NEXUS_PROVIDERCONFIG_NAMESPACE}
       key: username
   password:
     source: Secret
     secretRef:
       name: ${NEXUS_PASSWORD_SECRET_NAME}
-      namespace: ${NEXUS_PROVIDERCONFIG_NAMESPACE}
       key: password
 EOF
 

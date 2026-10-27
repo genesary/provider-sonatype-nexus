@@ -300,10 +300,10 @@ func TestCreate_WithPassword(t *testing.T) {
 	}
 
 	cr := newTestLDAP("corp-ldap", "ldap.example.com")
-	cr.Spec.ForProvider.AuthPasswordSecretRef = &xpv2.SecretKeySelector{
-		SecretReference: xpv2.SecretReference{
-			Name:      "ldap-secret",
-			Namespace: "default",
+	cr.Namespace = "default"
+	cr.Spec.ForProvider.AuthPasswordSecretRef = &xpv2.LocalSecretKeySelector{
+		LocalSecretReference: xpv2.LocalSecretReference{
+			Name: "ldap-secret",
 		},
 		Key: "password",
 	}
@@ -516,6 +516,7 @@ func TestConnect_TrackError(t *testing.T) {
 	usage := resource.NewProviderConfigUsageTracker(fakeClient, &nexusv1alpha1.ProviderConfigUsage{})
 
 	cr := newTestLDAP("corp-ldap", "ldap.example.com")
+	cr.Namespace = "default"
 	cr.SetProviderConfigReference(&xpv2.ProviderConfigReference{Name: "default"})
 
 	conn := &connector{kube: fakeClient, usage: usage}
@@ -534,6 +535,7 @@ func TestConnect_GetProviderConfigError(t *testing.T) {
 	usage := resource.NewProviderConfigUsageTracker(fakeClient, &nexusv1alpha1.ProviderConfigUsage{})
 
 	cr := newTestLDAP("corp-ldap", "ldap.example.com")
+	cr.Namespace = "default"
 	cr.UID = types.UID("test-uid-1234")
 	cr.SetProviderConfigReference(&xpv2.ProviderConfigReference{
 		Name: "default",
