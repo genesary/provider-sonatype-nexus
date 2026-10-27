@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 // TestReadLimited verifies that a body is read in full up to the limit and
@@ -94,8 +95,19 @@ func TestErrorBody(t *testing.T) {
 	t.Parallel()
 
 	got := ErrorBody(strings.NewReader(strings.Repeat("x", 4*MaxErrorBodyBytes)))
-	if len(got) != MaxErrorBodyBytes {
-		t.Fatalf("ErrorBody() length = %d, want %d", len(got), MaxErrorBodyBytes)
+	if want := strings.Repeat("x", MaxErrorBodyBytes) + "..."; got != want {
+		t.Fatalf("ErrorBody() length = %d, want %d", len(got), len(want))
+	}
+}
+
+// TestErrorBody_ValidUTF8 verifies that truncating inside a multi-byte
+// character does not leave invalid UTF-8 behind.
+func TestErrorBody_ValidUTF8(t *testing.T) {
+	t.Parallel()
+
+	got := ErrorBody(strings.NewReader(strings.Repeat("é", MaxErrorBodyBytes)))
+	if !utf8.ValidString(got) {
+		t.Fatalf("ErrorBody() returned invalid UTF-8")
 	}
 }
 

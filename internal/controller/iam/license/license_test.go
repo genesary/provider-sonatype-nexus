@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
-	"sync/atomic"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -925,16 +924,13 @@ func TestEndpointRequest_OversizedResponse(t *testing.T) {
 	}
 }
 
-// TestEndpointRequest_RedirectNotFollowed verifies that a redirect is
-// reported as a failure and never followed, so the endpoint credentials are
-// not forwarded to the redirect target.
-func TestEndpointRequest_RedirectNotFollowed(t *testing.T) {
+// TestEndpointRequest_RedirectFollowed verifies that a redirect from the
+// endpoint is followed and the target's body is returned.
+func TestEndpointRequest_RedirectFollowed(t *testing.T) {
 	t.Parallel()
 
-	var targetHit atomic.Bool
-
-	target := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
-		targetHit.Store(true)
+	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("license-bytes"))
 	}))
 	defer target.Close()
 
@@ -945,13 +941,13 @@ func TestEndpointRequest_RedirectNotFollowed(t *testing.T) {
 
 	e := &external{kube: crfake.NewClientBuilder().WithScheme(newTestScheme(t)).Build()}
 
-	_, err := e.doEndpointRequest(context.Background(), "default", server.URL, nil)
-	if err == nil || !strings.Contains(err.Error(), "status 302") {
-		t.Fatalf("doEndpointRequest() error = %v, want status 302", err)
+	got, err := e.doEndpointRequest(context.Background(), "default", server.URL, nil)
+	if err != nil {
+		t.Fatalf("doEndpointRequest() error = %v", err)
 	}
 
-	if targetHit.Load() {
-		t.Fatal("doEndpointRequest() followed the redirect")
+	if string(got) != "license-bytes" {
+		t.Fatalf("doEndpointRequest() = %q, want %q", got, "license-bytes")
 	}
 }
 

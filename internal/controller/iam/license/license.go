@@ -29,14 +29,10 @@ const licenseSecretCacheKey = "license"
 const maxLicenseBytes = 1 << 20
 
 // endpointClient fetches license files from endpointUrl. It bounds each fetch
-// with a timeout and does not follow redirects, so that the endpoint
-// credentials are never forwarded to another location.
+// with a timeout and follows redirects like the default client.
 var endpointClient = &http.Client{
 	Transport: nexus.Transport(false),
 	Timeout:   nexus.RequestTimeout,
-	CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-		return http.ErrUseLastResponse
-	},
 }
 
 const (

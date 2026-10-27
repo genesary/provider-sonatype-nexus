@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -77,10 +78,20 @@ func ReadLimited(r io.Reader, limit int64) ([]byte, error) {
 	return data, nil
 }
 
-// ErrorBody returns at most MaxErrorBodyBytes of r, for quoting a response
-// body in an error.
+// ErrorBody returns at most MaxErrorBodyBytes of r as valid UTF-8, for quoting
+// a response body in an error. Truncated bodies end with an ellipsis.
 func ErrorBody(r io.Reader) string {
-	data, _ := io.ReadAll(io.LimitReader(r, MaxErrorBodyBytes))
+	data, _ := io.ReadAll(io.LimitReader(r, MaxErrorBodyBytes+1))
 
-	return string(data)
+	truncated := int64(len(data)) > MaxErrorBodyBytes
+	if truncated {
+		data = data[:MaxErrorBodyBytes]
+	}
+
+	body := strings.ToValidUTF8(string(data), "")
+	if truncated {
+		body += "..."
+	}
+
+	return body
 }

@@ -516,8 +516,7 @@ func TestInstallLicense_ErrorBodyTruncated(t *testing.T) {
 // on every Connect share keep-alive connections instead of each leaking its
 // own transport.
 func TestNewLicenseClient_ReusesConnections(t *testing.T) {
-	t.Parallel()
-
+	// Not parallel: the shared transport's idle pool must not be contended.
 	var newConns atomic.Int32
 
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
