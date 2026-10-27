@@ -56,15 +56,13 @@ func TestIQServerConfigurationUpdate(t *testing.T) {
 				UsernameSecretRef: &xpv2.LocalSecretKeySelector{
 					Key: "username",
 					LocalSecretReference: xpv2.LocalSecretReference{
-						Name:      secretName,
-						Namespace: "default",
+						Name: secretName,
 					},
 				},
 				PasswordSecretRef: &xpv2.LocalSecretKeySelector{
 					Key: "password",
 					LocalSecretReference: xpv2.LocalSecretReference{
-						Name:      secretName,
-						Namespace: "default",
+						Name: secretName,
 					},
 				},
 			},

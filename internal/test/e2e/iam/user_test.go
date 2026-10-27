@@ -74,8 +74,7 @@ func TestUserCRUD(t *testing.T) {
 				PasswordSecretRef: &xpv2.LocalSecretKeySelector{
 					Key: "password",
 					LocalSecretReference: xpv2.LocalSecretReference{
-						Name:      secretName,
-						Namespace: "default",
+						Name: secretName,
 					},
 				},
 			},

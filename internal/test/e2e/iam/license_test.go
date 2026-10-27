@@ -75,8 +75,7 @@ func TestLicenseCR(t *testing.T) {
 				LicenseSecretRef: &xpv2.LocalSecretKeySelector{
 					Key: "license.lic",
 					LocalSecretReference: xpv2.LocalSecretReference{
-						Name:      secretName,
-						Namespace: "default",
+						Name: secretName,
 					},
 				},
 			},
