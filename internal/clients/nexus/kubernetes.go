@@ -32,11 +32,32 @@ const (
 // namespace-scoped, so GetNamespace is normally set; the
 // metav1.NamespaceDefault fallback only guards against an unset namespace.
 func localSecretNamespace(managed resource.Managed) string {
-	if namespace := managed.GetNamespace(); namespace != "" {
+	return secretNamespace(managed.GetNamespace())
+}
+
+// secretNamespace returns namespace, or metav1.NamespaceDefault when it is
+// unset.
+func secretNamespace(namespace string) string {
+	if namespace != "" {
 		return namespace
 	}
 
 	return metav1.NamespaceDefault
+}
+
+// WithDefaultKey returns a copy of selector whose empty Key is set to key. A
+// nil selector stays nil.
+func WithDefaultKey(selector *xpv2.LocalSecretKeySelector, key string) *xpv2.LocalSecretKeySelector {
+	if selector == nil {
+		return nil
+	}
+
+	out := *selector
+	if out.Key == "" {
+		out.Key = key
+	}
+
+	return &out
 }
 
 // GetSecretBytes retrieves raw bytes from the specified key of a Kubernetes
@@ -51,7 +72,7 @@ func GetSecretBytes(
 		return nil, errors.New("secretKeySelector is nil")
 	}
 
-	key := types.NamespacedName{Name: selector.Name, Namespace: namespace}
+	key := types.NamespacedName{Name: selector.Name, Namespace: secretNamespace(namespace)}
 	secret := &corev1.Secret{}
 
 	err := kube.Get(ctx, key, secret)

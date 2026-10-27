@@ -245,10 +245,7 @@ func (e *external) getPassword(
 		return "", nil
 	}
 
-	secretRef := *userRes.Spec.ForProvider.PasswordSecretRef
-	if secretRef.Key == "" {
-		secretRef.Key = defaultPasswordKey
-	}
+	secretRef := nexus.WithDefaultKey(userRes.Spec.ForProvider.PasswordSecretRef, defaultPasswordKey)
 
-	return nexus.GetSecretValue(ctx, e.kube, userRes.GetNamespace(), &secretRef)
+	return nexus.GetSecretValue(ctx, e.kube, userRes.GetNamespace(), secretRef)
 }

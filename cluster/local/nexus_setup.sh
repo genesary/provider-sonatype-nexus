@@ -62,7 +62,11 @@ if ! curl -sf -o /dev/null "${NEXUS_LOCAL_URL}/service/rest/v1/status"; then
     exit 1
 fi
 
-for secret_namespace in $(printf '%s\n' "${NEXUS_SECRET_NAMESPACE}" "${NEXUS_PROVIDERCONFIG_NAMESPACE}" | sort -u); do
+# Namespaced resources read their Secrets from their own namespace, so write
+# the credentials to every namespace the e2e resources run in. Extra
+# namespaces can be listed (space separated) in NEXUS_EXTRA_SECRET_NAMESPACES.
+secret_namespaces=$(printf '%s\n' "${NEXUS_SECRET_NAMESPACE}" "${NEXUS_PROVIDERCONFIG_NAMESPACE}" ${NEXUS_EXTRA_SECRET_NAMESPACES:-} | sort -u)
+for secret_namespace in ${secret_namespaces}; do
     log "Writing username Secret ${secret_namespace}/${NEXUS_USERNAME_SECRET_NAME}"
     "${KUBECTL}" create secret generic "${NEXUS_USERNAME_SECRET_NAME}" \
         --namespace="${secret_namespace}" \

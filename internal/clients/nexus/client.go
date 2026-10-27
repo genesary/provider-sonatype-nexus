@@ -83,24 +83,20 @@ func GetCredentials(ctx context.Context, kube kubeclient.Client, managed interfa
 // namespace is the namespace of the ProviderConfig that holds spec; its
 // Secrets are always read from there.
 func GetCredentialsFromSpec(ctx context.Context, kube kubeclient.Client, namespace string, spec v1alpha1.ProviderConfigSpec) (Credentials, error) {
-	return resolveCredentials(ctx, kube, resolvedSpec{
-		url:      spec.URL,
-		insecure: spec.InsecureSkipVerify,
-		username: credentialSource{source: spec.Username.Source, selector: toSelector(spec.Username.SecretRef, namespace)},
-		password: credentialSource{source: spec.Password.Source, selector: toSelector(spec.Password.SecretRef, namespace)},
-	})
+	return resolveCredentials(ctx, kube, spec.URL, spec.InsecureSkipVerify,
+		credentialSource{source: spec.Username.Source, selector: toSelector(spec.Username.SecretRef, namespace)},
+		credentialSource{source: spec.Password.Source, selector: toSelector(spec.Password.SecretRef, namespace)},
+	)
 }
 
 // getCredentialsFromClusterSpec extracts Nexus credentials from a
 // ClusterProviderConfigSpec. It is cluster-scoped and authored by cluster
 // administrators, so its selectors name the namespace of their Secret.
 func getCredentialsFromClusterSpec(ctx context.Context, kube kubeclient.Client, spec v1alpha1.ClusterProviderConfigSpec) (Credentials, error) {
-	return resolveCredentials(ctx, kube, resolvedSpec{
-		url:      spec.URL,
-		insecure: spec.InsecureSkipVerify,
-		username: credentialSource{source: spec.Username.Source, selector: spec.Username.SecretRef},
-		password: credentialSource{source: spec.Password.Source, selector: spec.Password.SecretRef},
-	})
+	return resolveCredentials(ctx, kube, spec.URL, spec.InsecureSkipVerify,
+		credentialSource{source: spec.Username.Source, selector: spec.Username.SecretRef},
+		credentialSource{source: spec.Password.Source, selector: spec.Password.SecretRef},
+	)
 }
 
 // credentialSource is one credential of a provider config, with its Secret
@@ -110,48 +106,36 @@ type credentialSource struct {
 	selector *xpv2.SecretKeySelector
 }
 
-// resolvedSpec is the part of a provider config spec shared by the namespaced
-// and cluster-scoped variants.
-type resolvedSpec struct {
-	url      string
-	insecure *bool
-	username credentialSource
-	password credentialSource
-}
+// resolveCredentials reads the Secrets selected by usernameSrc and passwordSrc.
+func resolveCredentials(ctx context.Context, kube kubeclient.Client, url string, insecure *bool, usernameSrc, passwordSrc credentialSource) (Credentials, error) {
+	for _, c := range []struct {
+		name string
+		src  credentialSource
+	}{{"username", usernameSrc}, {"password", passwordSrc}} {
+		if c.src.source != xpv2.CredentialsSourceSecret {
+			return Credentials{}, errors.Errorf("credentials source %q for %s is not supported", c.src.source, c.name)
+		}
 
-// resolveCredentials reads the Secrets selected by spec.
-func resolveCredentials(ctx context.Context, kube kubeclient.Client, spec resolvedSpec) (Credentials, error) {
-	if spec.username.source != xpv2.CredentialsSourceSecret {
-		return Credentials{}, errors.Errorf("credentials source %q for username is not supported", spec.username.source)
+		if c.src.selector == nil {
+			return Credentials{}, errors.Errorf("secretRef is required for %s", c.name)
+		}
 	}
 
-	if spec.password.source != xpv2.CredentialsSourceSecret {
-		return Credentials{}, errors.Errorf("credentials source %q for password is not supported", spec.password.source)
-	}
-
-	if spec.username.selector == nil {
-		return Credentials{}, errors.New("secretRef is required for username")
-	}
-
-	if spec.password.selector == nil {
-		return Credentials{}, errors.New("secretRef is required for password")
-	}
-
-	username, err := readSecretValue(ctx, kube, spec.username.selector)
+	username, err := readSecretValue(ctx, kube, usernameSrc.selector)
 	if err != nil {
 		return Credentials{}, errors.Wrap(err, "cannot get username from secret")
 	}
 
-	password, err := readSecretValue(ctx, kube, spec.password.selector)
+	password, err := readSecretValue(ctx, kube, passwordSrc.selector)
 	if err != nil {
 		return Credentials{}, errors.Wrap(err, "cannot get password from secret")
 	}
 
 	return Credentials{
-		URL:      spec.url,
+		URL:      url,
 		Username: username,
 		Password: password,
-		Insecure: ptr.Deref(spec.insecure, false),
+		Insecure: ptr.Deref(insecure, false),
 	}, nil
 }
 
@@ -162,7 +146,7 @@ func GetSecretValue(ctx context.Context, kube kubeclient.Client, namespace strin
 		return "", errors.New("secretKeySelector is nil")
 	}
 
-	return readSecretValue(ctx, kube, selector.ToSecretKeySelector(namespace))
+	return readSecretValue(ctx, kube, selector.ToSecretKeySelector(secretNamespace(namespace)))
 }
 
 // readSecretValue retrieves the value selected by selector.
