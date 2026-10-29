@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -16,6 +15,8 @@ import (
 
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	contentclient "github.com/genesary/provider-sonatype-nexus/internal/clients/content"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	contentmocks "github.com/genesary/provider-sonatype-nexus/test/mocks/content"
 )
 
@@ -67,8 +68,8 @@ func TestObserve(t *testing.T) {
 			name: "NotFound_404",
 			cr:   newTestCleanupPolicy("my-policy", "maven2"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
-				mc.GetFn = func(_ string) (*cleanuppolicies.CleanupPolicy, error) {
-					return nil, errors.New("404 not found")
+				mc.GetFn = func(_ string) (*contentclient.CleanupPolicy, error) {
+					return nil, nexus.ErrNotFound
 				}
 			},
 			wantExists:   false,
@@ -76,22 +77,22 @@ func TestObserve(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name: "NotFound_NotFoundText",
+			name: "ErrorMentioningNotFoundIsNotAbsence",
 			cr:   newTestCleanupPolicy("my-policy", "npm"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
-				mc.GetFn = func(_ string) (*cleanuppolicies.CleanupPolicy, error) {
-					return nil, errors.New("resource not found")
+				mc.GetFn = func(_ string) (*contentclient.CleanupPolicy, error) {
+					return nil, errors.New("500 Internal Server Error: blob store not found")
 				}
 			},
 			wantExists:   false,
 			wantUpToDate: false,
-			wantErr:      false,
+			wantErr:      true,
 		},
 		{
 			name: "NilPolicyReturned",
 			cr:   newTestCleanupPolicy("my-policy", "docker"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
-				mc.GetFn = func(_ string) (*cleanuppolicies.CleanupPolicy, error) {
+				mc.GetFn = func(_ string) (*contentclient.CleanupPolicy, error) {
 					//nolint:nilnil // intentionally testing nil policy with nil error case
 					return nil, nil
 				}
@@ -104,7 +105,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestCleanupPolicy("my-policy", "raw"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
-				mc.GetFn = func(_ string) (*cleanuppolicies.CleanupPolicy, error) {
+				mc.GetFn = func(_ string) (*contentclient.CleanupPolicy, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -116,10 +117,10 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestCleanupPolicy("my-policy", "maven2"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
-				mc.GetFn = func(_ string) (*cleanuppolicies.CleanupPolicy, error) {
-					return &cleanuppolicies.CleanupPolicy{
+				mc.GetFn = func(_ string) (*contentclient.CleanupPolicy, error) {
+					return &contentclient.CleanupPolicy{
 						Name:   "my-policy",
-						Format: cleanuppolicies.RepositoryFormatMaven2,
+						Format: "maven2",
 					}, nil
 				}
 			},
@@ -131,10 +132,10 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated",
 			cr:   newTestCleanupPolicy("my-policy", "maven2"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
-				mc.GetFn = func(_ string) (*cleanuppolicies.CleanupPolicy, error) {
-					return &cleanuppolicies.CleanupPolicy{
+				mc.GetFn = func(_ string) (*contentclient.CleanupPolicy, error) {
+					return &contentclient.CleanupPolicy{
 						Name:   "my-policy",
-						Format: cleanuppolicies.RepositoryFormatNpm,
+						Format: "npm",
 					}, nil
 				}
 			},
@@ -153,14 +154,14 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
-				mc.GetFn = func(name string) (*cleanuppolicies.CleanupPolicy, error) {
+				mc.GetFn = func(name string) (*contentclient.CleanupPolicy, error) {
 					if name != "external-name" {
 						return nil, errors.New("wrong name called")
 					}
 
-					return &cleanuppolicies.CleanupPolicy{
+					return &contentclient.CleanupPolicy{
 						Name:   "external-name",
-						Format: cleanuppolicies.RepositoryFormatPypi,
+						Format: "pypi",
 					}, nil
 				}
 			},
@@ -226,7 +227,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestCleanupPolicy("new-policy", "npm"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
-				mc.CreateFn = func(_ *cleanuppolicies.CleanupPolicy) error {
+				mc.CreateFn = func(_ *contentclient.CleanupPolicy) error {
 					return nil
 				}
 			},
@@ -247,7 +248,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestCleanupPolicy("new-policy", "npm"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
-				mc.CreateFn = func(_ *cleanuppolicies.CleanupPolicy) error {
+				mc.CreateFn = func(_ *contentclient.CleanupPolicy) error {
 					return errors.New("create failed")
 				}
 			},
@@ -305,7 +306,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestCleanupPolicy("existing-policy", "docker"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
-				mc.UpdateFn = func(_ *cleanuppolicies.CleanupPolicy) error {
+				mc.UpdateFn = func(_ *contentclient.CleanupPolicy) error {
 					return nil
 				}
 			},
@@ -322,7 +323,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestCleanupPolicy("existing-policy", "docker"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
-				mc.UpdateFn = func(_ *cleanuppolicies.CleanupPolicy) error {
+				mc.UpdateFn = func(_ *contentclient.CleanupPolicy) error {
 					return errors.New("update failed")
 				}
 			},
@@ -402,20 +403,20 @@ func TestDelete(t *testing.T) {
 			cr:   newTestCleanupPolicy("old-policy", "helm"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
 				mc.DeleteFn = func(_ string) error {
-					return errors.New("404 not found")
+					return nexus.ErrNotFound
 				}
 			},
 			wantErr: false,
 		},
 		{
-			name: "DeleteNotFoundDoesNotExist",
+			name: "DeleteErrorMentioningDoesNotExistIsNotAbsence",
 			cr:   newTestCleanupPolicy("old-policy", "helm"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
 				mc.DeleteFn = func(_ string) error {
-					return errors.New("does not exist")
+					return errors.New("400 Bad Request: format does not exist")
 				}
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name: "DeleteError",
@@ -585,12 +586,12 @@ func TestObserve_UpdatesAtProvider(t *testing.T) {
 	notes := "some notes"
 
 	mc := contentmocks.NewMockCleanupPolicyClient()
-	mc.GetFn = func(_ string) (*cleanuppolicies.CleanupPolicy, error) {
-		return &cleanuppolicies.CleanupPolicy{
+	mc.GetFn = func(_ string) (*contentclient.CleanupPolicy, error) {
+		return &contentclient.CleanupPolicy{
 			Name:   "my-policy",
-			Format: cleanuppolicies.RepositoryFormatMaven2,
+			Format: "maven2",
 			Notes:  &notes,
-			Retain: 5,
+			Retain: new(int32(5)),
 		}, nil
 	}
 

@@ -1,7 +1,9 @@
 package iam
 
 import (
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	"context"
+
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
 )
@@ -10,12 +12,12 @@ var _ iamclient.SAMLClient = &MockSAMLClient{}
 
 // MockSAMLClient is a mock of iamclient.SAMLClient.
 type MockSAMLClient struct {
-	ReadFn   func() (*security.SAML, error)
-	ApplyFn  func(saml security.SAML) error
+	ReadFn   func() (*v395.SamlConfigurationXO, error)
+	ApplyFn  func(saml v395.SamlConfigurationXO) error
 	DeleteFn func() error
 
 	ReadCalls   int
-	ApplyCalls  []security.SAML
+	ApplyCalls  []v395.SamlConfigurationXO
 	DeleteCalls int
 }
 
@@ -25,7 +27,7 @@ func NewMockSAMLClient() *MockSAMLClient {
 }
 
 // Read mock implementation.
-func (m *MockSAMLClient) Read() (*security.SAML, error) {
+func (m *MockSAMLClient) Read(_ context.Context) (*v395.SamlConfigurationXO, error) {
 	m.ReadCalls++
 
 	if m.ReadFn != nil {
@@ -36,7 +38,7 @@ func (m *MockSAMLClient) Read() (*security.SAML, error) {
 }
 
 // Apply mock implementation.
-func (m *MockSAMLClient) Apply(saml security.SAML) error {
+func (m *MockSAMLClient) Apply(_ context.Context, saml v395.SamlConfigurationXO) error {
 	m.ApplyCalls = append(m.ApplyCalls, saml)
 
 	if m.ApplyFn != nil {
@@ -47,7 +49,7 @@ func (m *MockSAMLClient) Apply(saml security.SAML) error {
 }
 
 // Delete mock implementation.
-func (m *MockSAMLClient) Delete() error {
+func (m *MockSAMLClient) Delete(_ context.Context) error {
 	m.DeleteCalls++
 
 	if m.DeleteFn != nil {

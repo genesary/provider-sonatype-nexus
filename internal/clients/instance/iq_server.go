@@ -1,7 +1,9 @@
 package instance
 
 import (
-	nexussdk "github.com/datadrivers/go-nexus-client/nexus3/schema/iq"
+	"context"
+
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	"k8s.io/utils/ptr"
 
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
@@ -11,9 +13,19 @@ import (
 
 // IQServerClient provides methods for the Nexus IQ Server config.
 type IQServerClient interface {
-	Get() (*nexussdk.IQServerConfiguration, error)
-	Update(config nexussdk.IQServerConfiguration) error
-	Disable() error
+	Get(ctx context.Context) (*v395.IqConnectionXo, error)
+	Update(ctx context.Context, config v395.IqConnectionXo) error
+	Disable(ctx context.Context) error
+}
+
+// defaultIQAuthenticationType is the IQ Server authentication type submitted
+// when the spec sets none. Nexus requires one on every write, and defaults to
+// it in its own UI.
+const defaultIQAuthenticationType = "USER"
+
+// iqServerClient implements IQServerClient over the Nexus API.
+type iqServerClient struct {
+	api *v395.ManageSonatypeRepositoryFirewallConfigurationAPIService
 }
 
 // NewIQServerClient creates an IQServerClient for a live Nexus connection.
@@ -23,21 +35,42 @@ func NewIQServerClient(creds nexus.Credentials) (IQServerClient, error) {
 		return nil, err
 	}
 
-	return nc.IQServer, nil
+	return &iqServerClient{api: nc.ManageSonatypeRepositoryFirewallConfigurationAPI}, nil
+}
+
+// Get returns the IQ Server connection.
+func (c *iqServerClient) Get(ctx context.Context) (*v395.IqConnectionXo, error) {
+	config, resp, err := c.api.ListIq(ctx).Execute()
+	if err != nil {
+		return nil, nexus.APIError(resp, err)
+	}
+
+	return config, nil
+}
+
+// Update replaces the IQ Server connection.
+func (c *iqServerClient) Update(ctx context.Context, config v395.IqConnectionXo) error {
+	_, resp, err := c.api.UpdateIq(ctx).IqConnectionXo(config).Execute()
+
+	return nexus.APIError(resp, err)
+}
+
+// Disable disables the IQ Server connection.
+func (c *iqServerClient) Disable(ctx context.Context) error {
+	return nexus.APIError(c.api.CreateIqDisable(ctx).Execute())
 }
 
 // GenerateIQServerUpdate builds an IQServerConfiguration from the CR spec.
-func GenerateIQServerUpdate(params *instancev1alpha1.IQServerConfigurationParameters, username, password string) nexussdk.IQServerConfiguration {
-	url := params.URL
-	config := nexussdk.IQServerConfiguration{
-		Enabled:             ptr.Deref(params.Enabled, true),
-		ShowLink:            ptr.Deref(params.ShowLink, false),
-		URL:                 &url,
-		AuthenticationType:  params.AuthenticationType,
-		UseTrustStoreForURL: ptr.Deref(params.UseTrustStoreForURL, false),
-		TimeoutSeconds:      params.TimeoutSeconds,
+func GenerateIQServerUpdate(params *instancev1alpha1.IQServerConfigurationParameters, username, password string) v395.IqConnectionXo {
+	config := v395.IqConnectionXo{
+		Enabled:             new(ptr.Deref(params.Enabled, true)),
+		ShowLink:            new(ptr.Deref(params.ShowLink, false)),
+		Url:                 params.URL,
+		AuthenticationType:  ptr.Deref(params.AuthenticationType, defaultIQAuthenticationType),
+		UseTrustStoreForUrl: new(ptr.Deref(params.UseTrustStoreForURL, false)),
+		TimeoutSeconds:      toInt32Ptr(params.TimeoutSeconds),
 		Properties:          params.Properties,
-		FailOpenModeEnabled: ptr.Deref(params.FailOpenModeEnabled, false),
+		FailOpenModeEnabled: new(ptr.Deref(params.FailOpenModeEnabled, false)),
 	}
 
 	if username != "" {
@@ -52,32 +85,32 @@ func GenerateIQServerUpdate(params *instancev1alpha1.IQServerConfigurationParame
 }
 
 // IsIQServerUpToDate returns true when Nexus IQ Server matches CR spec.
-func IsIQServerUpToDate(cr *instancev1alpha1.IQServerConfiguration, observed *nexussdk.IQServerConfiguration) bool {
+func IsIQServerUpToDate(cr *instancev1alpha1.IQServerConfiguration, observed *v395.IqConnectionXo) bool {
 	params := cr.Spec.ForProvider
 
-	if ptr.Deref(params.Enabled, true) != observed.Enabled {
+	if ptr.Deref(params.Enabled, true) != observed.GetEnabled() {
 		return false
 	}
 
-	if ptr.Deref(params.ShowLink, false) != observed.ShowLink {
+	if ptr.Deref(params.ShowLink, false) != observed.GetShowLink() {
 		return false
 	}
 
 	// The spec URL is required, so it is compared against whatever Nexus
 	// reports - including nothing at all.
-	if ptr.Deref(observed.URL, "") != params.URL {
+	if observed.Url != params.URL {
 		return false
 	}
 
-	if !helpers.IsComparablePtrEqualComparablePtr(params.AuthenticationType, observed.AuthenticationType) {
+	if !helpers.IsComparablePtrEqualComparable(params.AuthenticationType, observed.AuthenticationType) {
 		return false
 	}
 
-	if ptr.Deref(params.UseTrustStoreForURL, false) != observed.UseTrustStoreForURL {
+	if ptr.Deref(params.UseTrustStoreForURL, false) != observed.GetUseTrustStoreForUrl() {
 		return false
 	}
 
-	if !helpers.IsComparablePtrEqualComparablePtr(params.TimeoutSeconds, observed.TimeoutSeconds) {
+	if !helpers.IsComparablePtrEqualComparablePtr(toInt32Ptr(params.TimeoutSeconds), observed.TimeoutSeconds) {
 		return false
 	}
 
@@ -85,7 +118,7 @@ func IsIQServerUpToDate(cr *instancev1alpha1.IQServerConfiguration, observed *ne
 		return false
 	}
 
-	if ptr.Deref(params.FailOpenModeEnabled, false) != observed.FailOpenModeEnabled {
+	if ptr.Deref(params.FailOpenModeEnabled, false) != observed.GetFailOpenModeEnabled() {
 		return false
 	}
 
@@ -93,19 +126,28 @@ func IsIQServerUpToDate(cr *instancev1alpha1.IQServerConfiguration, observed *ne
 }
 
 // GenerateIQServerObservation converts an IQ Server config to observation.
-func GenerateIQServerObservation(observed *nexussdk.IQServerConfiguration) instancev1alpha1.IQServerConfigurationObservation {
+func GenerateIQServerObservation(observed *v395.IqConnectionXo) instancev1alpha1.IQServerConfigurationObservation {
 	if observed == nil {
 		return instancev1alpha1.IQServerConfigurationObservation{}
 	}
 
 	return instancev1alpha1.IQServerConfigurationObservation{
-		Enabled:             observed.Enabled,
-		ShowLink:            observed.ShowLink,
-		URL:                 ptr.Deref(observed.URL, ""),
-		AuthenticationType:  ptr.Deref(observed.AuthenticationType, ""),
-		UseTrustStoreForURL: observed.UseTrustStoreForURL,
-		TimeoutSeconds:      ptr.Deref(observed.TimeoutSeconds, 0),
-		Properties:          ptr.Deref(observed.Properties, ""),
-		FailOpenModeEnabled: observed.FailOpenModeEnabled,
+		Enabled:             observed.GetEnabled(),
+		ShowLink:            observed.GetShowLink(),
+		URL:                 observed.Url,
+		AuthenticationType:  observed.AuthenticationType,
+		UseTrustStoreForURL: observed.GetUseTrustStoreForUrl(),
+		TimeoutSeconds:      int(observed.GetTimeoutSeconds()),
+		Properties:          observed.GetProperties(),
+		FailOpenModeEnabled: observed.GetFailOpenModeEnabled(),
 	}
+}
+
+// toInt32Ptr narrows an optional int, keeping nil as nil.
+func toInt32Ptr(value *int) *int32 {
+	if value == nil {
+		return nil
+	}
+
+	return new(helpers.ClampInt32(*value))
 }

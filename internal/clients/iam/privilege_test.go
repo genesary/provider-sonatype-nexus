@@ -3,7 +3,6 @@ package iam
 import (
 	"testing"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 	"k8s.io/utils/ptr"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
@@ -23,17 +22,17 @@ func newPrivilegeCR(privType string, mutate func(*iamv1alpha1.PrivilegeParameter
 	mutate(&cr.Spec.ForProvider)
 
 	spec := cr.Spec.ForProvider
-	cr.Status.AtProvider = GeneratePrivilegeObservation(&security.Privilege{
+	cr.Status.AtProvider = GeneratePrivilegeObservation(&Privilege{
 		Name:            spec.Name,
 		Type:            spec.Type,
-		Description:     ptr.Deref(spec.Description, ""),
+		Description:     new(ptr.Deref(spec.Description, "")),
 		Actions:         spec.Actions,
-		Domain:          ptr.Deref(spec.Domain, ""),
-		Format:          ptr.Deref(spec.Format, ""),
-		Repository:      ptr.Deref(spec.Repository, ""),
-		ContentSelector: ptr.Deref(spec.ContentSelector, ""),
-		ScriptName:      ptr.Deref(spec.ScriptName, ""),
-		Pattern:         ptr.Deref(spec.Pattern, ""),
+		Domain:          new(ptr.Deref(spec.Domain, "")),
+		Format:          new(ptr.Deref(spec.Format, "")),
+		Repository:      new(ptr.Deref(spec.Repository, "")),
+		ContentSelector: new(ptr.Deref(spec.ContentSelector, "")),
+		ScriptName:      new(ptr.Deref(spec.ScriptName, "")),
+		Pattern:         new(ptr.Deref(spec.Pattern, "")),
 	})
 
 	return cr
@@ -55,15 +54,15 @@ func TestGeneratePrivilegeObservation_Nil(t *testing.T) {
 func TestGeneratePrivilegeObservation_TypeSpecificFields(t *testing.T) {
 	t.Parallel()
 
-	obs := GeneratePrivilegeObservation(&security.Privilege{
+	obs := GeneratePrivilegeObservation(&Privilege{
 		Name:            "priv",
 		Type:            "repository-content-selector",
-		Description:     "a privilege",
+		Description:     new("a privilege"),
 		Actions:         []string{"READ"},
-		Format:          "maven2",
-		Repository:      "maven-central",
-		ContentSelector: "selector",
-		ReadOnly:        true,
+		Format:          new("maven2"),
+		Repository:      new("maven-central"),
+		ContentSelector: new("selector"),
+		ReadOnly:        new(true),
 	})
 
 	if obs.Name != "priv" || obs.Type != "repository-content-selector" {

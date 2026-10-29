@@ -2,53 +2,29 @@
 package content
 
 import (
-	nexuspkgcleanup "github.com/datadrivers/go-nexus-client/nexus3/pkg/cleanup"
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
+	"context"
+
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
+// CleanupPolicy is the Nexus representation of a cleanup policy.
+type CleanupPolicy = v395.CleanupPolicyResourceXO
+
 // CleanupPolicyClient defines the interface for cleanup policy operations.
 type CleanupPolicyClient interface {
-	Get(name string) (*cleanuppolicies.CleanupPolicy, error)
-	Create(policy *cleanuppolicies.CleanupPolicy) error
-	Update(policy *cleanuppolicies.CleanupPolicy) error
-	Delete(name string) error
+	Get(ctx context.Context, name string) (*CleanupPolicy, error)
+	Create(ctx context.Context, policy *CleanupPolicy) error
+	Update(ctx context.Context, policy *CleanupPolicy) error
+	Delete(ctx context.Context, name string) error
 }
 
-// withListFallback wraps CleanupPolicyService to fall back to a list-and-filter
-// search when the per-name GET returns 404. Some Nexus deployments serve
-// cleanup policies only through the list endpoint.
-type withListFallback struct {
-	*nexuspkgcleanup.CleanupPolicyService
-}
-
-// Get tries the individual GET endpoint first; on a not-found error it lists
-// all policies and returns the one whose name matches.
-func (w *withListFallback) Get(name string) (*cleanuppolicies.CleanupPolicy, error) {
-	policy, err := w.CleanupPolicyService.Get(name)
-	if err == nil {
-		return policy, nil
-	}
-
-	if !helpers.IsNotFound(err) {
-		return nil, err
-	}
-
-	all, listErr := w.List()
-	if listErr != nil {
-		return nil, err
-	}
-
-	for _, p := range all {
-		if p != nil && p.Name == name {
-			return p, nil
-		}
-	}
-
-	return nil, err
+// cleanupPolicyClient implements CleanupPolicyClient over the Nexus API.
+type cleanupPolicyClient struct {
+	api *v395.CleanupPoliciesAPIService
 }
 
 // NewCleanupPolicyClient creates a CleanupPolicyClient from credentials.
@@ -58,39 +34,79 @@ func NewCleanupPolicyClient(creds nexus.Credentials) (CleanupPolicyClient, error
 		return nil, err
 	}
 
-	return &withListFallback{nc.CleanupPolicy}, nil
+	return &cleanupPolicyClient{api: nc.CleanupPoliciesAPI}, nil
+}
+
+// Get tries the individual GET endpoint first; on a not-found error it lists
+// all policies and returns the one whose name matches. Some Nexus deployments
+// serve cleanup policies only through the list endpoint.
+func (c *cleanupPolicyClient) Get(ctx context.Context, name string) (*CleanupPolicy, error) {
+	policy, resp, err := c.api.GetCleanupPolicies(ctx, name).Execute()
+
+	err = nexus.APIError(resp, err)
+	if err == nil {
+		return policy, nil
+	}
+
+	if !nexus.IsNotFound(err) {
+		return nil, err
+	}
+
+	all, _, listErr := c.api.ListCleanupPolicies(ctx).Execute()
+	if listErr != nil {
+		return nil, err
+	}
+
+	for i := range all {
+		if all[i].Name == name {
+			return &all[i], nil
+		}
+	}
+
+	return nil, err
+}
+
+// Create creates a cleanup policy.
+func (c *cleanupPolicyClient) Create(ctx context.Context, policy *CleanupPolicy) error {
+	return nexus.APIError(c.api.CreateCleanupPolicies(ctx).CleanupPolicyResourceXO(*policy).Execute())
+}
+
+// Update updates the cleanup policy named by policy.
+func (c *cleanupPolicyClient) Update(ctx context.Context, policy *CleanupPolicy) error {
+	return nexus.APIError(c.api.UpdateCleanupPolicies(ctx, policy.Name).CleanupPolicyResourceXO(*policy).Execute())
+}
+
+// Delete deletes the cleanup policy with the given name.
+func (c *cleanupPolicyClient) Delete(ctx context.Context, name string) error {
+	return nexus.APIError(c.api.DeleteCleanupPolicies(ctx, name).Execute())
 }
 
 // GenerateCleanupPolicy builds a Nexus CleanupPolicy object from a CR spec.
-func GenerateCleanupPolicy(cr *contentv1alpha1.CleanupPolicy) *cleanuppolicies.CleanupPolicy {
+func GenerateCleanupPolicy(cr *contentv1alpha1.CleanupPolicy) *CleanupPolicy {
 	params := cr.Spec.ForProvider
 
-	policy := &cleanuppolicies.CleanupPolicy{
+	policy := &CleanupPolicy{
 		Name:                    params.Name,
-		Format:                  cleanuppolicies.RepositoryFormat(params.Format),
+		Format:                  params.Format,
 		Notes:                   params.Notes,
-		CriteriaLastBlobUpdated: params.CriteriaLastBlobUpdated,
-		CriteriaLastDownloaded:  params.CriteriaLastDownloaded,
+		CriteriaLastBlobUpdated: toInt64Ptr(params.CriteriaLastBlobUpdated),
+		CriteriaLastDownloaded:  toInt64Ptr(params.CriteriaLastDownloaded),
+		CriteriaReleaseType:     params.CriteriaReleaseType,
 		CriteriaAssetRegex:      params.CriteriaAssetRegex,
 	}
 
-	if params.CriteriaReleaseType != nil {
-		rt := cleanuppolicies.CriteriaReleaseType(*params.CriteriaReleaseType)
-		policy.CriteriaReleaseType = &rt
-	}
-
 	if params.Retain != nil {
-		policy.Retain = *params.Retain
+		policy.Retain = new(helpers.ClampInt32(*params.Retain))
 	}
 
 	return policy
 }
 
 // IsCleanupPolicyUpToDate reports whether the CR matches the observed policy.
-func IsCleanupPolicyUpToDate(cr *contentv1alpha1.CleanupPolicy, observed *cleanuppolicies.CleanupPolicy) bool {
+func IsCleanupPolicyUpToDate(cr *contentv1alpha1.CleanupPolicy, observed *CleanupPolicy) bool {
 	params := cr.Spec.ForProvider
 
-	if string(observed.Format) != params.Format {
+	if observed.Format != params.Format {
 		return false
 	}
 
@@ -98,50 +114,42 @@ func IsCleanupPolicyUpToDate(cr *contentv1alpha1.CleanupPolicy, observed *cleanu
 		return false
 	}
 
-	return helpers.IsComparablePtrEqualComparablePtr(params.CriteriaReleaseType, (*string)(observed.CriteriaReleaseType)) &&
-		helpers.IsComparablePtrEqualComparable(params.Retain, observed.Retain)
+	return helpers.IsComparablePtrEqualComparablePtr(params.CriteriaReleaseType, observed.CriteriaReleaseType) &&
+		helpers.IsComparablePtrEqualComparable(params.Retain, int(observed.GetRetain()))
 }
 
 // GenerateCleanupPolicyObservation returns the observed policy state.
-func GenerateCleanupPolicyObservation(observed *cleanuppolicies.CleanupPolicy) contentv1alpha1.CleanupPolicyObservation {
+func GenerateCleanupPolicyObservation(observed *CleanupPolicy) contentv1alpha1.CleanupPolicyObservation {
 	if observed == nil {
 		return contentv1alpha1.CleanupPolicyObservation{}
 	}
 
-	obs := contentv1alpha1.CleanupPolicyObservation{
-		Name:   observed.Name,
-		Format: string(observed.Format),
-		Retain: observed.Retain,
+	return contentv1alpha1.CleanupPolicyObservation{
+		Name:                    observed.Name,
+		Format:                  observed.Format,
+		Retain:                  int(observed.GetRetain()),
+		Notes:                   observed.GetNotes(),
+		CriteriaLastBlobUpdated: int(observed.GetCriteriaLastBlobUpdated()),
+		CriteriaLastDownloaded:  int(observed.GetCriteriaLastDownloaded()),
+		CriteriaReleaseType:     observed.GetCriteriaReleaseType(),
+		CriteriaAssetRegex:      observed.GetCriteriaAssetRegex(),
 	}
-
-	if observed.Notes != nil {
-		obs.Notes = *observed.Notes
-	}
-
-	if observed.CriteriaLastBlobUpdated != nil {
-		obs.CriteriaLastBlobUpdated = *observed.CriteriaLastBlobUpdated
-	}
-
-	if observed.CriteriaLastDownloaded != nil {
-		obs.CriteriaLastDownloaded = *observed.CriteriaLastDownloaded
-	}
-
-	if observed.CriteriaReleaseType != nil {
-		obs.CriteriaReleaseType = string(*observed.CriteriaReleaseType)
-	}
-
-	if observed.CriteriaAssetRegex != nil {
-		obs.CriteriaAssetRegex = *observed.CriteriaAssetRegex
-	}
-
-	return obs
 }
 
 // areCriteriaFieldsEqual reports whether the notes and criteria fields in the
 // CR spec match the observed policy.
-func areCriteriaFieldsEqual(params contentv1alpha1.CleanupPolicyParameters, observed *cleanuppolicies.CleanupPolicy) bool {
+func areCriteriaFieldsEqual(params contentv1alpha1.CleanupPolicyParameters, observed *CleanupPolicy) bool {
 	return helpers.IsComparablePtrEqualComparablePtr(params.Notes, observed.Notes) &&
-		helpers.IsComparablePtrEqualComparablePtr(params.CriteriaLastBlobUpdated, observed.CriteriaLastBlobUpdated) &&
-		helpers.IsComparablePtrEqualComparablePtr(params.CriteriaLastDownloaded, observed.CriteriaLastDownloaded) &&
+		helpers.IsComparablePtrEqualComparablePtr(toInt64Ptr(params.CriteriaLastBlobUpdated), observed.CriteriaLastBlobUpdated) &&
+		helpers.IsComparablePtrEqualComparablePtr(toInt64Ptr(params.CriteriaLastDownloaded), observed.CriteriaLastDownloaded) &&
 		helpers.IsComparablePtrEqualComparablePtr(params.CriteriaAssetRegex, observed.CriteriaAssetRegex)
+}
+
+// toInt64Ptr widens an optional int, keeping nil as nil.
+func toInt64Ptr(value *int) *int64 {
+	if value == nil {
+		return nil
+	}
+
+	return new(int64(*value))
 }

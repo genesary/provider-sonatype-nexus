@@ -2,9 +2,10 @@
 package instance
 
 import (
+	"context"
 	"reflect"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 
@@ -13,9 +14,14 @@ import (
 
 // SecurityRealmClient defines the interface for realm management.
 type SecurityRealmClient interface {
-	ListActive() ([]string, error)
-	ListAvailable() ([]security.Realm, error)
-	Activate(ids []string) error
+	ListActive(ctx context.Context) ([]string, error)
+	ListAvailable(ctx context.Context) ([]v395.RealmApiXO, error)
+	Activate(ctx context.Context, ids []string) error
+}
+
+// securityRealmClient implements SecurityRealmClient over the Nexus API.
+type securityRealmClient struct {
+	api *v395.SecurityManagementRealmsAPIService
 }
 
 // NewSecurityRealmClient creates a SecurityRealmClient from credentials.
@@ -25,11 +31,36 @@ func NewSecurityRealmClient(creds nexus.Credentials) (SecurityRealmClient, error
 		return nil, err
 	}
 
-	return nc.Security.Realm, nil
+	return &securityRealmClient{api: nc.SecurityManagementRealmsAPI}, nil
+}
+
+// ListActive returns the IDs of the active realms, in priority order.
+func (c *securityRealmClient) ListActive(ctx context.Context) ([]string, error) {
+	realms, resp, err := c.api.ListSecurityRealmsActive(ctx).Execute()
+	if err != nil {
+		return nil, nexus.APIError(resp, err)
+	}
+
+	return realms, nil
+}
+
+// ListAvailable returns every realm Nexus offers.
+func (c *securityRealmClient) ListAvailable(ctx context.Context) ([]v395.RealmApiXO, error) {
+	realms, resp, err := c.api.ListSecurityRealmsAvailable(ctx).Execute()
+	if err != nil {
+		return nil, nexus.APIError(resp, err)
+	}
+
+	return realms, nil
+}
+
+// Activate sets the active realms, in priority order.
+func (c *securityRealmClient) Activate(ctx context.Context, ids []string) error {
+	return nexus.APIError(c.api.UpdateSecurityRealmsActive(ctx).RequestBody(ids).Execute())
 }
 
 // GenerateSecurityRealmObservation returns the observed realm state.
-func GenerateSecurityRealmObservation(availableRealms []security.Realm, activeRealms []string) instancev1alpha1.SecurityRealmObservation {
+func GenerateSecurityRealmObservation(availableRealms []v395.RealmApiXO, activeRealms []string) instancev1alpha1.SecurityRealmObservation {
 	obs := instancev1alpha1.SecurityRealmObservation{
 		ActiveRealms: activeRealms,
 	}
@@ -41,8 +72,8 @@ func GenerateSecurityRealmObservation(availableRealms []security.Realm, activeRe
 	realmInfos := make([]instancev1alpha1.RealmInfo, len(availableRealms))
 	for idx, realmItem := range availableRealms {
 		realmInfos[idx] = instancev1alpha1.RealmInfo{
-			ID:   realmItem.ID,
-			Name: realmItem.Name,
+			ID:   realmItem.GetId(),
+			Name: realmItem.GetName(),
 		}
 	}
 

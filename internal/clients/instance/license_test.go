@@ -20,12 +20,17 @@ import (
 func newTestLicenseClient(t *testing.T, serverURL string) instanceclient.LicenseClient {
 	t.Helper()
 
-	return instanceclient.NewLicenseClient(nexus.Credentials{
+	client, err := instanceclient.NewLicenseClient(nexus.Credentials{
 		URL:      serverURL,
 		Username: "admin",
 		Password: "password",
 		Insecure: true,
 	})
+	if err != nil {
+		t.Fatalf("NewLicenseClient() unexpected error: %v", err)
+	}
+
+	return client
 }
 
 // isErrNoLicense checks whether err wraps instanceclient.ErrNoLicense.
@@ -47,17 +52,29 @@ func TestGetLicense_Success(t *testing.T) {
 		ContactEmail:   "admin@example.com",
 		ContactCompany: "ACME Corp",
 		ContactName:    "Jane Doe",
-		EffectiveDate:  "2024-01-01",
-		ExpirationDate: "2025-01-01",
+		EffectiveDate:  "2024-01-01T00:00:00Z",
+		ExpirationDate: "2025-01-01T00:00:00Z",
 		LicenseType:    "Enterprise",
 		LicensedUsers:  "100",
+	}
+
+	// The dates use the format Nexus 3.96 serializes them in.
+	body := map[string]string{
+		"fingerprint":    want.Fingerprint,
+		"contactEmail":   want.ContactEmail,
+		"contactCompany": want.ContactCompany,
+		"contactName":    want.ContactName,
+		"effectiveDate":  "2024-01-01T00:00:00.000+00:00",
+		"expirationDate": "2025-01-01T00:00:00.000+00:00",
+		"licenseType":    want.LicenseType,
+		"licensedUsers":  want.LicensedUsers,
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet && r.URL.Path == "/service/rest/v1/system/license" {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			_ = json.NewEncoder(w).Encode(want)
+			_ = json.NewEncoder(w).Encode(body)
 
 			return
 		}
@@ -81,29 +98,37 @@ func TestGetLicense_Success(t *testing.T) {
 		t.Errorf("ContactEmail = %q, want %q", got.ContactEmail, want.ContactEmail)
 	}
 
+	if got.EffectiveDate != want.EffectiveDate {
+		t.Errorf("EffectiveDate = %q, want %q", got.EffectiveDate, want.EffectiveDate)
+	}
+
 	if got.ExpirationDate != want.ExpirationDate {
 		t.Errorf("ExpirationDate = %q, want %q", got.ExpirationDate, want.ExpirationDate)
 	}
 }
 
-// TestGetLicense_NoLicense verifies GetLicense returns ErrNoLicense on 404.
+// TestGetLicense_NoLicense verifies GetLicense returns ErrNoLicense when
+// Nexus reports no license: 402 Payment Required from Nexus 3.96 Community,
+// 404 from older versions.
 func TestGetLicense_NoLicense(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer server.Close()
+	for _, status := range []int{http.StatusPaymentRequired, http.StatusNotFound} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			t.Parallel()
 
-	c := newTestLicenseClient(t, server.URL)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(status)
+				_, _ = w.Write([]byte(`{"id":"*","message":"\"Missing or invalid license\""}`))
+			}))
+			defer server.Close()
 
-	_, err := c.GetLicense(context.Background())
-	if err == nil {
-		t.Fatal("GetLicense() expected ErrNoLicense, got nil")
-	}
-
-	if !isErrNoLicense(err) {
-		t.Errorf("GetLicense() error = %v, want ErrNoLicense", err)
+			_, err := newTestLicenseClient(t, server.URL).GetLicense(context.Background())
+			if err == nil || !isErrNoLicense(err) {
+				t.Errorf("GetLicense() error = %v, want ErrNoLicense", err)
+			}
+		})
 	}
 }
 

@@ -1,30 +1,36 @@
 package repository
 
 import (
-	schema "github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 )
 
 // init registers the Cargo repository format.
 func init() {
 	registerFormat("cargo",
 		hosted(
-			func(svc *nexusAPI) repoAPI[schema.CargoHostedRepository] { return svc.Cargo.Hosted },
+			get[v395.CargoHostedApiRepository]((*nexusAPI).GetCargoHostedRepository),
+			create((*nexusAPI).CreateCargoHostedRepository, v395.ApiCreateCargoHostedRepositoryRequest.CargoHostedRepositoryApiRequest),
+			update((*nexusAPI).UpdateCargoHostedRepository, v395.ApiUpdateCargoHostedRepositoryRequest.CargoHostedRepositoryApiRequest),
 			buildCargoHosted,
 		),
 		proxy(
-			func(svc *nexusAPI) repoAPI[schema.CargoProxyRepository] { return svc.Cargo.Proxy },
+			get[v395.CargoProxyApiRepository]((*nexusAPI).GetCargoProxyRepository),
+			create((*nexusAPI).CreateCargoProxyRepository, v395.ApiCreateCargoProxyRepositoryRequest.CargoProxyRepositoryApiRequest),
+			update((*nexusAPI).UpdateCargoProxyRepository, v395.ApiUpdateCargoProxyRepositoryRequest.CargoProxyRepositoryApiRequest),
 			buildCargoProxy,
 		),
 		group(
-			func(svc *nexusAPI) repoAPI[schema.CargoGroupRepository] { return svc.Cargo.Group },
+			get[v395.CargoGroupApiRepository]((*nexusAPI).GetCargoGroupRepository),
+			create((*nexusAPI).CreateCargoGroupRepository, v395.ApiCreateCargoGroupRepositoryRequest.CargoGroupRepositoryApiRequest),
+			update((*nexusAPI).UpdateCargoGroupRepository, v395.ApiUpdateCargoGroupRepositoryRequest.CargoGroupRepositoryApiRequest),
 			buildCargoGroup,
 		),
 	)
 }
 
 // buildCargoHosted renders a Cargo hosted repository payload.
-func buildCargoHosted(desired desiredRepo) schema.CargoHostedRepository {
-	return schema.CargoHostedRepository{
+func buildCargoHosted(desired desiredRepo) v395.CargoHostedRepositoryApiRequest {
+	return v395.CargoHostedRepositoryApiRequest{
 		Name:    desired.name(),
 		Online:  desired.online(),
 		Storage: desired.hostedStorage(),
@@ -33,23 +39,23 @@ func buildCargoHosted(desired desiredRepo) schema.CargoHostedRepository {
 }
 
 // buildCargoProxy renders a Cargo proxy repository payload.
-func buildCargoProxy(desired desiredRepo) schema.CargoProxyRepository {
-	return schema.CargoProxyRepository{
-		Name:          desired.name(),
-		Online:        desired.online(),
-		Storage:       desired.storage(),
-		Proxy:         desired.proxy(),
-		NegativeCache: desired.negativeCache(),
-		HTTPClient:    desired.httpClient(),
-		Cargo:         desired.cargo(),
-		RoutingRule:   desired.routingRule(),
-		Cleanup:       desired.cleanup(),
+func buildCargoProxy(desired desiredRepo) v395.CargoProxyRepositoryApiRequest {
+	return v395.CargoProxyRepositoryApiRequest{
+		Name:            desired.name(),
+		Online:          desired.online(),
+		Storage:         desired.storage(),
+		Proxy:           desired.proxy(),
+		NegativeCache:   desired.negativeCache(),
+		HttpClient:      desired.httpClient(),
+		RoutingRuleName: desired.routingRule(),
+		Cargo:           desired.cargo(),
+		Cleanup:         desired.cleanup(),
 	}
 }
 
 // buildCargoGroup renders a Cargo group repository payload.
-func buildCargoGroup(desired desiredRepo) schema.CargoGroupRepository {
-	return schema.CargoGroupRepository{
+func buildCargoGroup(desired desiredRepo) v395.CargoGroupRepositoryApiRequest {
+	return v395.CargoGroupRepositoryApiRequest{
 		Name:    desired.name(),
 		Online:  desired.online(),
 		Storage: desired.storage(),

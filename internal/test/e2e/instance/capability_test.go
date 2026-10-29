@@ -71,11 +71,11 @@ func TestCapabilityCRUD(t *testing.T) {
 		t.Fatalf("capability %q not found in Nexus", cr.Status.AtProvider.ID)
 	}
 
-	if got.Type != cr.Spec.ForProvider.TypeId {
-		t.Errorf("capability type = %q, want %q", got.Type, cr.Spec.ForProvider.TypeId)
+	if got.GetType() != cr.Spec.ForProvider.TypeId {
+		t.Errorf("capability type = %q, want %q", got.GetType(), cr.Spec.ForProvider.TypeId)
 	}
 
-	if !got.Enabled {
+	if !got.GetEnabled() {
 		t.Error("capability should be enabled")
 	}
 }

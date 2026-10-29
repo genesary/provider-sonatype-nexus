@@ -1,7 +1,9 @@
 package content
 
 import (
-	nexusschema "github.com/datadrivers/go-nexus-client/nexus3/schema"
+	"context"
+
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	contentclient "github.com/genesary/provider-sonatype-nexus/internal/clients/content"
 )
@@ -10,14 +12,14 @@ var _ contentclient.RoutingRuleClient = &MockRoutingRuleClient{}
 
 // MockRoutingRuleClient is a test double for contentclient.RoutingRuleClient.
 type MockRoutingRuleClient struct {
-	GetFn    func(name string) (*nexusschema.RoutingRule, error)
-	CreateFn func(rule *nexusschema.RoutingRule) error
-	UpdateFn func(rule *nexusschema.RoutingRule) error
+	GetFn    func(name string) (*v395.RoutingRuleXO, error)
+	CreateFn func(rule *v395.RoutingRuleXO) error
+	UpdateFn func(rule *v395.RoutingRuleXO) error
 	DeleteFn func(name string) error
 
 	GetCalls    []string
-	CreateCalls []*nexusschema.RoutingRule
-	UpdateCalls []*nexusschema.RoutingRule
+	CreateCalls []*v395.RoutingRuleXO
+	UpdateCalls []*v395.RoutingRuleXO
 	DeleteCalls []string
 }
 
@@ -27,7 +29,7 @@ func NewMockRoutingRuleClient() *MockRoutingRuleClient {
 }
 
 // Get mock implementation.
-func (m *MockRoutingRuleClient) Get(name string) (*nexusschema.RoutingRule, error) {
+func (m *MockRoutingRuleClient) Get(_ context.Context, name string) (*v395.RoutingRuleXO, error) {
 	m.GetCalls = append(m.GetCalls, name)
 
 	if m.GetFn != nil {
@@ -38,7 +40,7 @@ func (m *MockRoutingRuleClient) Get(name string) (*nexusschema.RoutingRule, erro
 }
 
 // Create mock implementation.
-func (m *MockRoutingRuleClient) Create(rule *nexusschema.RoutingRule) error {
+func (m *MockRoutingRuleClient) Create(_ context.Context, rule *v395.RoutingRuleXO) error {
 	m.CreateCalls = append(m.CreateCalls, rule)
 
 	if m.CreateFn != nil {
@@ -49,7 +51,7 @@ func (m *MockRoutingRuleClient) Create(rule *nexusschema.RoutingRule) error {
 }
 
 // Update mock implementation.
-func (m *MockRoutingRuleClient) Update(rule *nexusschema.RoutingRule) error {
+func (m *MockRoutingRuleClient) Update(_ context.Context, rule *v395.RoutingRuleXO) error {
 	m.UpdateCalls = append(m.UpdateCalls, rule)
 
 	if m.UpdateFn != nil {
@@ -60,7 +62,7 @@ func (m *MockRoutingRuleClient) Update(rule *nexusschema.RoutingRule) error {
 }
 
 // Delete mock implementation.
-func (m *MockRoutingRuleClient) Delete(name string) error {
+func (m *MockRoutingRuleClient) Delete(_ context.Context, name string) error {
 	m.DeleteCalls = append(m.DeleteCalls, name)
 
 	if m.DeleteFn != nil {

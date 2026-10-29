@@ -27,18 +27,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	nexus3 "github.com/datadrivers/go-nexus-client/nexus3"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	"github.com/genesary/provider-sonatype-nexus/apis"
+	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
+	instanceclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	nexusclient "github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
 // Environment variable names recognised by the framework.
 const (
-	EnvNexusURL        = "NEXUS_URL"
-	EnvNexusUser       = "NEXUS_USER"
-	EnvNexusPass       = "NEXUS_PASS"
-	EnvProviderConfig  = "NEXUS_PROVIDERCONFIG"
+	EnvNexusURL       = "NEXUS_URL"
+	EnvNexusUser      = "NEXUS_USER"
+	EnvNexusPass      = "NEXUS_PASS"
+	EnvProviderConfig = "NEXUS_PROVIDERCONFIG"
 )
 
 // DefaultProviderConfigName is used when EnvProviderConfig is unset.
@@ -52,9 +54,15 @@ type Framework struct {
 	Kube client.Client
 	// Nexus talks to the Nexus REST API directly, used to verify the
 	// state the provider reconciled into Nexus.
-	Nexus *nexus3.NexusClient
+	Nexus *v395.APIClient
 	// ProviderConfigName is the ProviderConfig managed resources should reference.
 	ProviderConfigName string
+
+	// users and capabilities are the provider's own clients, for the
+	// resources Nexus cannot read by ID, so tests look them up the same way
+	// the controllers do.
+	users        iamclient.UserClient
+	capabilities instanceclient.CapabilityClient
 }
 
 // New constructs a Framework, failing the test immediately on missing config
@@ -84,14 +92,26 @@ func New(t *testing.T) *Framework {
 		t.Fatalf("building kube client: %v", err)
 	}
 
-	nc, err := nexusclient.NewClient(nexusclient.Credentials{
+	creds := nexusclient.Credentials{
 		URL:      url,
 		Username: user,
 		Password: pass,
 		Insecure: true,
-	})
+	}
+
+	nc, err := nexusclient.NewClient(creds)
 	if err != nil {
 		t.Fatalf("building nexus client: %v", err)
+	}
+
+	users, err := iamclient.NewUserClient(creds)
+	if err != nil {
+		t.Fatalf("building nexus user client: %v", err)
+	}
+
+	capabilities, err := instanceclient.NewCapabilityClient(creds)
+	if err != nil {
+		t.Fatalf("building nexus capability client: %v", err)
 	}
 
 	pc := os.Getenv(EnvProviderConfig)
@@ -103,6 +123,8 @@ func New(t *testing.T) *Framework {
 		Kube:               kc,
 		Nexus:              nc,
 		ProviderConfigName: pc,
+		users:              users,
+		capabilities:       capabilities,
 	}
 }
 

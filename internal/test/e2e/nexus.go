@@ -19,132 +19,154 @@ limitations under the License.
 package e2e
 
 import (
-	"github.com/datadrivers/go-nexus-client/nexus3/schema"
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
-	nexussdk "github.com/datadrivers/go-nexus-client/nexus3/schema/capability"
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	"context"
+	"net/http"
+
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
+
+	nexusclient "github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
+// absentAsNil turns the outcome of a generated client read into the value it
+// read, (nil, nil) when Nexus answered 404, or the error otherwise.
+func absentAsNil[T any](value *T, resp *http.Response, err error) (*T, error) {
+	return ignoreAbsent(value, nexusclient.APIError(resp, err))
+}
+
+// ignoreAbsent returns (nil, nil) when err stems from Nexus not having the
+// resource, (nil, err) on any other error, and (value, nil) otherwise.
+func ignoreAbsent[T any](value *T, err error) (*T, error) {
+	if nexusclient.IsNotFound(err) {
+		return nil, nil
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
 // FetchUser returns the Nexus user with the given ID, or (nil, nil) if absent.
-func (f *Framework) FetchUser(userID string) (*security.User, error) {
-	return f.Nexus.Security.User.Get(userID, nil)
+func (f *Framework) FetchUser(userID string) (*v395.ApiUser, error) {
+	return ignoreAbsent(f.users.Get(context.Background(), userID))
 }
 
 // FetchRole returns the Nexus role with the given ID, or (nil, nil) if absent.
-func (f *Framework) FetchRole(roleID string) (*security.Role, error) {
-	return f.Nexus.Security.Role.Get(roleID)
+func (f *Framework) FetchRole(roleID string) (*v395.RoleXOResponse, error) {
+	return absentAsNil(f.Nexus.SecurityManagementRolesAPI.GetSecurityRoles(context.Background(), roleID).Execute())
 }
 
 // FetchPrivilege returns the Nexus privilege with the given name, or (nil, nil) if absent.
-func (f *Framework) FetchPrivilege(name string) (*security.Privilege, error) {
-	return f.Nexus.Security.Privilege.Get(name)
+func (f *Framework) FetchPrivilege(name string) (*v395.ApiPrivilegeRequest, error) {
+	return absentAsNil(f.Nexus.SecurityManagementPrivilegesAPI.GetSecurityPrivileges(context.Background(), name).Execute())
 }
 
 // FetchAnonymousAccess returns the current anonymous access settings from Nexus.
-func (f *Framework) FetchAnonymousAccess() (*security.AnonymousAccessSettings, error) {
-	return f.Nexus.Security.Anonymous.Read()
+func (f *Framework) FetchAnonymousAccess() (*v395.AnonymousAccessSettingsXO, error) {
+	settings, resp, err := f.Nexus.SecurityManagementAnonymousAccessAPI.ListSecurityAnonymous(context.Background()).Execute()
+
+	return settings, nexusclient.APIError(resp, err)
 }
 
 // ListActiveRealms returns the list of active realm IDs from Nexus.
 func (f *Framework) ListActiveRealms() ([]string, error) {
-	return f.Nexus.Security.Realm.ListActive()
+	realms, resp, err := f.Nexus.SecurityManagementRealmsAPI.ListSecurityRealmsActive(context.Background()).Execute()
+
+	return realms, nexusclient.APIError(resp, err)
 }
 
 // ListSSLCertificates returns all certificates in the Nexus truststore.
-func (f *Framework) ListSSLCertificates() ([]security.SSLCertificate, error) {
-	result, err := f.Nexus.Security.SSL.ListCertificates()
-	if err != nil || result == nil {
-		return nil, err
-	}
+func (f *Framework) ListSSLCertificates() ([]v395.ApiCertificate, error) {
+	certs, resp, err := f.Nexus.SecurityCertificatesAPI.ListSecuritySslTruststore(context.Background()).Execute()
 
-	return *result, nil
+	return certs, nexusclient.APIError(resp, err)
 }
 
 // CleanupPoliciesAvailable returns true if the Nexus instance exposes the
 // cleanup-policies REST API (Nexus Repository Pro feature).
 func (f *Framework) CleanupPoliciesAvailable() bool {
-	_, err := f.Nexus.CleanupPolicy.List()
+	_, _, err := f.Nexus.CleanupPoliciesAPI.ListCleanupPolicies(context.Background()).Execute()
 
 	return err == nil
 }
 
 // FetchCleanupPolicy returns the cleanup policy with the given name, or (nil, nil) if absent.
-func (f *Framework) FetchCleanupPolicy(name string) (*cleanuppolicies.CleanupPolicy, error) {
-	return f.Nexus.CleanupPolicy.Get(name)
+func (f *Framework) FetchCleanupPolicy(name string) (*v395.CleanupPolicyResourceXO, error) {
+	return absentAsNil(f.Nexus.CleanupPoliciesAPI.GetCleanupPolicies(context.Background(), name).Execute())
 }
 
 // FetchContentSelector returns the content selector with the given name, or (nil, nil) if absent.
-func (f *Framework) FetchContentSelector(name string) (*security.ContentSelector, error) {
-	return f.Nexus.Security.ContentSelector.Get(name)
+func (f *Framework) FetchContentSelector(name string) (*v395.ContentSelectorApiResponse, error) {
+	return absentAsNil(f.Nexus.ContentSelectorsAPI.GetSecurityContentSelectors(context.Background(), name).Execute())
 }
 
 // FetchBlobStoreFile returns the file-type blobstore with the given name, or (nil, nil) if absent.
-func (f *Framework) FetchBlobStoreFile(name string) (*blobstore.File, error) {
-	return f.Nexus.BlobStore.File.Get(name)
+func (f *Framework) FetchBlobStoreFile(name string) (*v395.FileBlobStoreApiModel, error) {
+	return absentAsNil(f.Nexus.BlobStoreAPI.GetBlobstoresFile(context.Background(), name).Execute())
 }
 
 // FetchMavenHostedRepo returns the Maven hosted repository with the given name.
-func (f *Framework) FetchMavenHostedRepo(name string) (*repository.MavenHostedRepository, error) {
-	return f.Nexus.Repository.Maven.Hosted.Get(name)
+func (f *Framework) FetchMavenHostedRepo(name string) (*v395.MavenHostedApiRepository, error) {
+	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetMavenHostedRepository(context.Background(), name).Execute())
 }
 
 // FetchMavenProxyRepo returns the Maven proxy repository with the given name.
-func (f *Framework) FetchMavenProxyRepo(name string) (*repository.MavenProxyRepository, error) {
-	return f.Nexus.Repository.Maven.Proxy.Get(name)
+func (f *Framework) FetchMavenProxyRepo(name string) (*v395.MavenProxyApiRepository, error) {
+	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetMavenProxyRepository(context.Background(), name).Execute())
 }
 
 // FetchMavenGroupRepo returns the Maven group repository with the given name.
-func (f *Framework) FetchMavenGroupRepo(name string) (*repository.MavenGroupRepository, error) {
-	return f.Nexus.Repository.Maven.Group.Get(name)
+func (f *Framework) FetchMavenGroupRepo(name string) (*v395.MavenGroupApiRepository, error) {
+	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetMavenGroupRepository(context.Background(), name).Execute())
 }
 
 // FetchDockerHostedRepo returns the Docker hosted repository with the given name.
-func (f *Framework) FetchDockerHostedRepo(name string) (*repository.DockerHostedRepository, error) {
-	return f.Nexus.Repository.Docker.Hosted.Get(name)
+func (f *Framework) FetchDockerHostedRepo(name string) (*v395.DockerHostedApiRepository, error) {
+	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetDockerHostedRepository(context.Background(), name).Execute())
 }
 
 // FetchNpmHostedRepo returns the npm hosted repository with the given name.
-func (f *Framework) FetchNpmHostedRepo(name string) (*repository.NpmHostedRepository, error) {
-	return f.Nexus.Repository.Npm.Hosted.Get(name)
+func (f *Framework) FetchNpmHostedRepo(name string) (*v395.NpmHostedApiRepository, error) {
+	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetNpmHostedRepository(context.Background(), name).Execute())
 }
 
 // FetchHelmHostedRepo returns the Helm hosted repository with the given name.
-func (f *Framework) FetchHelmHostedRepo(name string) (*repository.HelmHostedRepository, error) {
-	return f.Nexus.Repository.Helm.Hosted.Get(name)
+func (f *Framework) FetchHelmHostedRepo(name string) (*v395.HelmHostedApiRepository, error) {
+	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetHelmHostedRepository(context.Background(), name).Execute())
 }
 
 // FetchHelmProxyRepo returns the Helm proxy repository with the given name.
-func (f *Framework) FetchHelmProxyRepo(name string) (*repository.HelmProxyRepository, error) {
-	return f.Nexus.Repository.Helm.Proxy.Get(name)
+func (f *Framework) FetchHelmProxyRepo(name string) (*v395.HelmProxyApiRepository, error) {
+	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetHelmProxyRepository(context.Background(), name).Execute())
 }
 
 // FetchPypiProxyRepo returns the PyPI proxy repository with the given name.
-func (f *Framework) FetchPypiProxyRepo(name string) (*repository.PypiProxyRepository, error) {
-	return f.Nexus.Repository.Pypi.Proxy.Get(name)
+func (f *Framework) FetchPypiProxyRepo(name string) (*v395.PyPiProxyApiRepository, error) {
+	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetPypiProxyRepository(context.Background(), name).Execute())
 }
 
 // FetchAptHostedRepo returns the APT hosted repository with the given name.
-func (f *Framework) FetchAptHostedRepo(name string) (*repository.AptHostedRepository, error) {
-	return f.Nexus.Repository.Apt.Hosted.Get(name)
+func (f *Framework) FetchAptHostedRepo(name string) (*v395.AptHostedApiRepository, error) {
+	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetAptHostedRepository(context.Background(), name).Execute())
 }
 
 // FetchCargoHostedRepo returns the Cargo hosted repository with the given name.
-func (f *Framework) FetchCargoHostedRepo(name string) (*repository.CargoHostedRepository, error) {
-	return f.Nexus.Repository.Cargo.Hosted.Get(name)
+func (f *Framework) FetchCargoHostedRepo(name string) (*v395.CargoHostedApiRepository, error) {
+	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetCargoHostedRepository(context.Background(), name).Execute())
 }
 
 // FetchCargoProxyRepo returns the Cargo proxy repository with the given name.
-func (f *Framework) FetchCargoProxyRepo(name string) (*repository.CargoProxyRepository, error) {
-	return f.Nexus.Repository.Cargo.Proxy.Get(name)
+func (f *Framework) FetchCargoProxyRepo(name string) (*v395.CargoProxyApiRepository, error) {
+	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetCargoProxyRepository(context.Background(), name).Execute())
 }
 
 // FetchCapability returns the capability with the given ID, or (nil, nil) if absent.
-func (f *Framework) FetchCapability(id string) (*nexussdk.Capability, error) {
-	return f.Nexus.Capability.Get(id)
+func (f *Framework) FetchCapability(id string) (*v395.CapabilityDTO, error) {
+	return ignoreAbsent(f.capabilities.Get(context.Background(), id))
 }
 
-func (f *Framework) FetchRoutingRule(name string) (*schema.RoutingRule, error) {
-	return f.Nexus.RoutingRule.Get(name)
+// FetchRoutingRule returns the routing rule with the given name, or (nil, nil) if absent.
+func (f *Framework) FetchRoutingRule(name string) (*v395.RoutingRuleXO, error) {
+	return absentAsNil(f.Nexus.RoutingRulesAPI.GetRoutingRules(context.Background(), name).Execute())
 }

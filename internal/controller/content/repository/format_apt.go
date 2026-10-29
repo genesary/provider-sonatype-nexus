@@ -1,46 +1,50 @@
 package repository
 
 import (
-	schema "github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 )
 
-// init registers the APT repository format, which has no group type.
+// init registers the APT repository format.
 func init() {
 	registerFormat("apt",
 		hosted(
-			func(svc *nexusAPI) repoAPI[schema.AptHostedRepository] { return svc.Apt.Hosted },
+			get[v395.AptHostedApiRepository]((*nexusAPI).GetAptHostedRepository),
+			create((*nexusAPI).CreateAptHostedRepository, v395.ApiCreateAptHostedRepositoryRequest.AptHostedRepositoryApiRequest),
+			update((*nexusAPI).UpdateAptHostedRepository, v395.ApiUpdateAptHostedRepositoryRequest.AptHostedRepositoryApiRequest),
 			buildAptHosted,
 		),
 		proxy(
-			func(svc *nexusAPI) repoAPI[schema.AptProxyRepository] { return svc.Apt.Proxy },
+			get[v395.AptProxyApiRepository]((*nexusAPI).GetAptProxyRepository),
+			create((*nexusAPI).CreateAptProxyRepository, v395.ApiCreateAptProxyRepositoryRequest.AptProxyRepositoryApiRequest),
+			update((*nexusAPI).UpdateAptProxyRepository, v395.ApiUpdateAptProxyRepositoryRequest.AptProxyRepositoryApiRequest),
 			buildAptProxy,
 		),
 	)
 }
 
-// buildAptHosted renders an APT hosted repository payload.
-func buildAptHosted(desired desiredRepo) schema.AptHostedRepository {
-	return schema.AptHostedRepository{
+// buildAptHosted renders a APT hosted repository payload.
+func buildAptHosted(desired desiredRepo) v395.AptHostedRepositoryApiRequest {
+	return v395.AptHostedRepositoryApiRequest{
 		Name:       desired.name(),
 		Online:     desired.online(),
 		Storage:    desired.hostedStorage(),
+		Cleanup:    desired.cleanup(),
 		Apt:        desired.apt(),
 		AptSigning: desired.aptSigning(),
-		Cleanup:    desired.cleanup(),
 	}
 }
 
-// buildAptProxy renders an APT proxy repository payload.
-func buildAptProxy(desired desiredRepo) schema.AptProxyRepository {
-	return schema.AptProxyRepository{
-		Name:          desired.name(),
-		Online:        desired.online(),
-		Storage:       desired.storage(),
-		Proxy:         desired.proxy(),
-		NegativeCache: desired.negativeCache(),
-		HTTPClient:    desired.httpClient(),
-		Apt:           desired.aptProxy(),
-		RoutingRule:   desired.routingRule(),
-		Cleanup:       desired.cleanup(),
+// buildAptProxy renders a APT proxy repository payload.
+func buildAptProxy(desired desiredRepo) v395.AptProxyRepositoryApiRequest {
+	return v395.AptProxyRepositoryApiRequest{
+		Name:            desired.name(),
+		Online:          desired.online(),
+		Storage:         desired.storage(),
+		Proxy:           desired.proxy(),
+		NegativeCache:   desired.negativeCache(),
+		HttpClient:      desired.httpClient(),
+		RoutingRuleName: desired.routingRule(),
+		Apt:             desired.aptProxy(),
+		Cleanup:         desired.cleanup(),
 	}
 }

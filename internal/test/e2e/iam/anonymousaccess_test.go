@@ -63,7 +63,7 @@ func TestAnonymousAccessCRUD(t *testing.T) {
 	if got == nil {
 		t.Fatalf("anonymous access settings not found in Nexus")
 	}
-	if !got.Enabled {
+	if !got.GetEnabled() {
 		t.Errorf("anonymous access enabled = false, want true")
 	}
 }

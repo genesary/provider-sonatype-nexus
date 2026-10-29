@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -95,8 +95,8 @@ func TestObserve(t *testing.T) {
 				mc.ListActiveFn = func() ([]string, error) {
 					return []string{"NexusAuthenticatingRealm"}, nil
 				}
-				mc.ListAvailableFn = func() ([]security.Realm, error) {
-					return []security.Realm{{ID: "NexusAuthenticatingRealm", Name: "Local Authenticating Realm"}}, nil
+				mc.ListAvailableFn = func() ([]v395.RealmApiXO, error) {
+					return []v395.RealmApiXO{{Id: new("NexusAuthenticatingRealm"), Name: new("Local Authenticating Realm")}}, nil
 				}
 			},
 			wantExists:   true,
@@ -110,7 +110,7 @@ func TestObserve(t *testing.T) {
 				mc.ListActiveFn = func() ([]string, error) {
 					return []string{"NexusAuthenticatingRealm"}, nil
 				}
-				mc.ListAvailableFn = func() ([]security.Realm, error) {
+				mc.ListAvailableFn = func() ([]v395.RealmApiXO, error) {
 					return nil, nil
 				}
 			},
@@ -125,7 +125,7 @@ func TestObserve(t *testing.T) {
 				mc.ListActiveFn = func() ([]string, error) {
 					return []string{"NexusAuthenticatingRealm"}, nil
 				}
-				mc.ListAvailableFn = func() ([]security.Realm, error) {
+				mc.ListAvailableFn = func() ([]v395.RealmApiXO, error) {
 					return nil, errors.New("unavailable")
 				}
 			},
@@ -186,10 +186,10 @@ func TestObserve_PopulatesAtProvider(t *testing.T) {
 	mc.ListActiveFn = func() ([]string, error) {
 		return []string{"NexusAuthenticatingRealm"}, nil
 	}
-	mc.ListAvailableFn = func() ([]security.Realm, error) {
-		return []security.Realm{
-			{ID: "NexusAuthenticatingRealm", Name: "Local Authenticating Realm"},
-			{ID: "LdapRealm", Name: "LDAP Realm"},
+	mc.ListAvailableFn = func() ([]v395.RealmApiXO, error) {
+		return []v395.RealmApiXO{
+			{Id: new("NexusAuthenticatingRealm"), Name: new("Local Authenticating Realm")},
+			{Id: new("LdapRealm"), Name: new("LDAP Realm")},
 		}, nil
 	}
 

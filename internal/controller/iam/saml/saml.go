@@ -17,7 +17,6 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -107,9 +106,9 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{}, errors.New(errNotSAML)
 	}
 
-	observed, err := e.client.Read()
+	observed, err := e.client.Read(ctx)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
 
@@ -136,7 +135,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotSAML)
 	}
 
-	err := e.client.Apply(iamclient.GenerateSAML(samlCR))
+	err := e.client.Apply(ctx, iamclient.GenerateSAML(samlCR))
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errApplySAML)
 	}
@@ -151,7 +150,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalUpdate{}, errors.New(errNotSAML)
 	}
 
-	err := e.client.Apply(iamclient.GenerateSAML(samlCR))
+	err := e.client.Apply(ctx, iamclient.GenerateSAML(samlCR))
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errApplySAML)
 	}
@@ -166,9 +165,9 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalDelete{}, errors.New(errNotSAML)
 	}
 
-	err := e.client.Delete()
+	err := e.client.Delete(ctx)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
 		}
 

@@ -19,8 +19,8 @@ package helpers
 
 import (
 	"io"
+	"math"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
@@ -247,16 +247,16 @@ func NewStringSetFromSlice(slice []string) map[string]struct{} {
 	return set
 }
 
-// IsNotFound reports whether an error indicates the resource was not found.
-func IsNotFound(err error) bool {
-	if err == nil {
-		return false
+// ClampInt32 converts value to an int32, saturating at the int32 bounds rather
+// than wrapping around.
+func ClampInt32(value int) int32 {
+	if value > math.MaxInt32 {
+		return math.MaxInt32
 	}
 
-	msg := strings.ToLower(err.Error())
+	if value < math.MinInt32 {
+		return math.MinInt32
+	}
 
-	return strings.Contains(msg, "404") ||
-		strings.Contains(msg, "not found") ||
-		strings.Contains(msg, "did not find") ||
-		strings.Contains(msg, "does not exist")
+	return int32(value)
 }

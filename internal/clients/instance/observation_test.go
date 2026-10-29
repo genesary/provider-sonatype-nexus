@@ -3,8 +3,7 @@ package instance
 import (
 	"testing"
 
-	nexuscapability "github.com/datadrivers/go-nexus-client/nexus3/schema/capability"
-	nexusiq "github.com/datadrivers/go-nexus-client/nexus3/schema/iq"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 )
@@ -14,12 +13,12 @@ import (
 func TestGenerateCapabilityObservation_AllFields(t *testing.T) {
 	t.Parallel()
 
-	obs := GenerateCapabilityObservation(&nexuscapability.Capability{
-		ID:         "cap-1",
-		Type:       "baseurl",
-		Notes:      "managed by crossplane",
-		Enabled:    true,
-		Properties: map[string]string{"url": "https://nexus.example.com"},
+	obs := GenerateCapabilityObservation(&Capability{
+		Id:         new("cap-1"),
+		Type:       new("baseurl"),
+		Notes:      new("managed by crossplane"),
+		Enabled:    new(true),
+		Properties: new(map[string]string{"url": "https://nexus.example.com"}),
 	})
 
 	if obs.ID != "cap-1" || obs.TypeId != "baseurl" {
@@ -42,7 +41,7 @@ func TestGenerateCapabilityObservation_PropertiesAreCopied(t *testing.T) {
 
 	properties := map[string]string{"url": "https://nexus.example.com"}
 
-	obs := GenerateCapabilityObservation(&nexuscapability.Capability{Properties: properties})
+	obs := GenerateCapabilityObservation(&Capability{Properties: new(properties)})
 	properties["url"] = "https://other.example.com"
 
 	if obs.Properties["url"] != "https://nexus.example.com" {
@@ -61,23 +60,23 @@ func TestIsIQServerUpToDate_URLDrift(t *testing.T) {
 		Enabled: new(true),
 	}
 
-	matching := &nexusiq.IQServerConfiguration{
-		Enabled: true,
-		URL:     new("https://iq.example.com"),
+	matching := &v395.IqConnectionXo{
+		Enabled: new(true),
+		Url:     "https://iq.example.com",
 	}
 	if !IsIQServerUpToDate(cr, matching) {
 		t.Fatal("IsIQServerUpToDate() = false, want true for a matching URL")
 	}
 
-	drifted := &nexusiq.IQServerConfiguration{
-		Enabled: true,
-		URL:     new("https://other.example.com"),
+	drifted := &v395.IqConnectionXo{
+		Enabled: new(true),
+		Url:     "https://other.example.com",
 	}
 	if IsIQServerUpToDate(cr, drifted) {
 		t.Error("IsIQServerUpToDate() = true, want false for a differing URL")
 	}
 
-	unreported := &nexusiq.IQServerConfiguration{Enabled: true}
+	unreported := &v395.IqConnectionXo{Enabled: new(true)}
 	if IsIQServerUpToDate(cr, unreported) {
 		t.Error("IsIQServerUpToDate() = true, want false when Nexus reports no URL")
 	}

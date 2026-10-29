@@ -2,9 +2,8 @@
 package content
 
 import (
+	"context"
 	"errors"
-
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/cleanuppolicies"
 
 	contentclient "github.com/genesary/provider-sonatype-nexus/internal/clients/content"
 )
@@ -16,14 +15,14 @@ var _ contentclient.CleanupPolicyClient = &MockCleanupPolicyClient{}
 
 // MockCleanupPolicyClient is a mock of contentclient.CleanupPolicyClient.
 type MockCleanupPolicyClient struct {
-	GetFn    func(name string) (*cleanuppolicies.CleanupPolicy, error)
-	CreateFn func(policy *cleanuppolicies.CleanupPolicy) error
-	UpdateFn func(policy *cleanuppolicies.CleanupPolicy) error
+	GetFn    func(name string) (*contentclient.CleanupPolicy, error)
+	CreateFn func(policy *contentclient.CleanupPolicy) error
+	UpdateFn func(policy *contentclient.CleanupPolicy) error
 	DeleteFn func(name string) error
 
 	GetCalls    []string
-	CreateCalls []*cleanuppolicies.CleanupPolicy
-	UpdateCalls []*cleanuppolicies.CleanupPolicy
+	CreateCalls []*contentclient.CleanupPolicy
+	UpdateCalls []*contentclient.CleanupPolicy
 	DeleteCalls []string
 }
 
@@ -33,7 +32,7 @@ func NewMockCleanupPolicyClient() *MockCleanupPolicyClient {
 }
 
 // Get mock implementation.
-func (m *MockCleanupPolicyClient) Get(name string) (*cleanuppolicies.CleanupPolicy, error) {
+func (m *MockCleanupPolicyClient) Get(_ context.Context, name string) (*contentclient.CleanupPolicy, error) {
 	m.GetCalls = append(m.GetCalls, name)
 
 	if m.GetFn != nil {
@@ -44,7 +43,7 @@ func (m *MockCleanupPolicyClient) Get(name string) (*cleanuppolicies.CleanupPoli
 }
 
 // Create mock implementation.
-func (m *MockCleanupPolicyClient) Create(policy *cleanuppolicies.CleanupPolicy) error {
+func (m *MockCleanupPolicyClient) Create(_ context.Context, policy *contentclient.CleanupPolicy) error {
 	m.CreateCalls = append(m.CreateCalls, policy)
 
 	if m.CreateFn != nil {
@@ -55,7 +54,7 @@ func (m *MockCleanupPolicyClient) Create(policy *cleanuppolicies.CleanupPolicy) 
 }
 
 // Update mock implementation.
-func (m *MockCleanupPolicyClient) Update(policy *cleanuppolicies.CleanupPolicy) error {
+func (m *MockCleanupPolicyClient) Update(_ context.Context, policy *contentclient.CleanupPolicy) error {
 	m.UpdateCalls = append(m.UpdateCalls, policy)
 
 	if m.UpdateFn != nil {
@@ -66,7 +65,7 @@ func (m *MockCleanupPolicyClient) Update(policy *cleanuppolicies.CleanupPolicy) 
 }
 
 // Delete mock implementation.
-func (m *MockCleanupPolicyClient) Delete(name string) error {
+func (m *MockCleanupPolicyClient) Delete(_ context.Context, name string) error {
 	m.DeleteCalls = append(m.DeleteCalls, name)
 
 	if m.DeleteFn != nil {
