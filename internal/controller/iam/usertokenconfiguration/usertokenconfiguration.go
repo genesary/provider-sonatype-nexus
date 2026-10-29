@@ -110,7 +110,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	config, err := e.client.Get()
+	config, err := e.client.Get(ctx)
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetUserTokenConfig)
 	}
@@ -133,7 +133,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 	config := iamclient.GenerateUserTokenConfiguration(userTokenCfg)
 
-	err := e.client.Configure(config)
+	err := e.client.Configure(ctx, config)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errUpdateUserTokenConfig)
 	}
@@ -150,7 +150,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 	config := iamclient.GenerateUserTokenConfiguration(userTokenCfg)
 
-	err := e.client.Configure(config)
+	err := e.client.Configure(ctx, config)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateUserTokenConfig)
 	}
@@ -159,7 +159,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete is a no-op; UserTokenConfiguration is a singleton.
-func (e *external) Delete(_ context.Context, _ resource.Managed) (managed.ExternalDelete, error) {
+func (e *external) Delete(ctx context.Context, _ resource.Managed) (managed.ExternalDelete, error) {
 	return managed.ExternalDelete{}, nil
 }
 

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -68,7 +68,7 @@ func TestObserve(t *testing.T) {
 			name: "NotFound_404",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.ReadFn = func() (*security.SAML, error) {
+				mc.ReadFn = func() (*v395.SamlConfigurationXO, error) {
 					return nil, errors.New("404 not found")
 				}
 			},
@@ -80,7 +80,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.ReadFn = func() (*security.SAML, error) {
+				mc.ReadFn = func() (*v395.SamlConfigurationXO, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -92,7 +92,7 @@ func TestObserve(t *testing.T) {
 			name: "NilSAMLReturned",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.ReadFn = func() (*security.SAML, error) {
+				mc.ReadFn = func() (*v395.SamlConfigurationXO, error) {
 					//nolint:nilnil // intentionally testing nil SAML with nil error
 					return nil, nil
 				}
@@ -105,10 +105,10 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.ReadFn = func() (*security.SAML, error) {
-					return &security.SAML{
+				mc.ReadFn = func() (*v395.SamlConfigurationXO, error) {
+					return &v395.SamlConfigurationXO{
 						IdpMetadata:       "metadata-xml",
-						EntityId:          "nexus-entity",
+						EntityId:          new("nexus-entity"),
 						UsernameAttribute: "username",
 					}, nil
 				}
@@ -121,10 +121,10 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.ReadFn = func() (*security.SAML, error) {
-					return &security.SAML{
+				mc.ReadFn = func() (*v395.SamlConfigurationXO, error) {
+					return &v395.SamlConfigurationXO{
 						IdpMetadata:       "different-metadata",
-						EntityId:          "nexus-entity",
+						EntityId:          new("nexus-entity"),
 						UsernameAttribute: "username",
 					}, nil
 				}
@@ -191,7 +191,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.ApplyFn = func(_ security.SAML) error {
+				mc.ApplyFn = func(_ v395.SamlConfigurationXO) error {
 					return nil
 				}
 			},
@@ -203,8 +203,8 @@ func TestCreate(t *testing.T) {
 					t.Errorf("expected 1 ApplySAML call, got %d", len(mc.ApplyCalls))
 				}
 
-				if mc.ApplyCalls[0].EntityId != "nexus-entity" {
-					t.Errorf("wrong entity ID: %v", mc.ApplyCalls[0].EntityId)
+				if mc.ApplyCalls[0].GetEntityId() != "nexus-entity" {
+					t.Errorf("wrong entity ID: %v", mc.ApplyCalls[0].GetEntityId())
 				}
 			},
 		},
@@ -212,7 +212,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.ApplyFn = func(_ security.SAML) error {
+				mc.ApplyFn = func(_ v395.SamlConfigurationXO) error {
 					return errors.New("apply failed")
 				}
 			},
@@ -270,7 +270,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.ApplyFn = func(_ security.SAML) error {
+				mc.ApplyFn = func(_ v395.SamlConfigurationXO) error {
 					return nil
 				}
 			},
@@ -287,7 +287,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestSAML(),
 			mockSetup: func(mc *iammocks.MockSAMLClient) {
-				mc.ApplyFn = func(_ security.SAML) error {
+				mc.ApplyFn = func(_ v395.SamlConfigurationXO) error {
 					return errors.New("apply failed")
 				}
 			},

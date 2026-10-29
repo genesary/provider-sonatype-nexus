@@ -1,30 +1,36 @@
 package repository
 
 import (
-	schema "github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 )
 
 // init registers the Docker repository format.
 func init() {
 	registerFormat("docker",
 		hosted(
-			func(svc *nexusAPI) repoAPI[schema.DockerHostedRepository] { return svc.Docker.Hosted },
+			get[v395.DockerHostedApiRepository]((*nexusAPI).GetDockerHostedRepository),
+			create((*nexusAPI).CreateDockerHostedRepository, v395.ApiCreateDockerHostedRepositoryRequest.DockerHostedRepositoryApiRequest),
+			update((*nexusAPI).UpdateDockerHostedRepository, v395.ApiUpdateDockerHostedRepositoryRequest.DockerHostedRepositoryApiRequest),
 			buildDockerHosted,
 		),
 		proxy(
-			func(svc *nexusAPI) repoAPI[schema.DockerProxyRepository] { return svc.Docker.Proxy },
+			get[v395.DockerProxyApiRepository]((*nexusAPI).GetDockerProxyRepository),
+			create((*nexusAPI).CreateDockerProxyRepository, v395.ApiCreateDockerProxyRepositoryRequest.DockerProxyRepositoryApiRequest),
+			update((*nexusAPI).UpdateDockerProxyRepository, v395.ApiUpdateDockerProxyRepositoryRequest.DockerProxyRepositoryApiRequest),
 			buildDockerProxy,
 		),
 		group(
-			func(svc *nexusAPI) repoAPI[schema.DockerGroupRepository] { return svc.Docker.Group },
+			get[v395.DockerGroupApiRepository]((*nexusAPI).GetDockerGroupRepository),
+			create((*nexusAPI).CreateDockerGroupRepository, v395.ApiCreateDockerGroupRepositoryRequest.DockerGroupRepositoryApiRequest),
+			update((*nexusAPI).UpdateDockerGroupRepository, v395.ApiUpdateDockerGroupRepositoryRequest.DockerGroupRepositoryApiRequest),
 			buildDockerGroup,
 		),
 	)
 }
 
 // buildDockerHosted renders a Docker hosted repository payload.
-func buildDockerHosted(desired desiredRepo) schema.DockerHostedRepository {
-	return schema.DockerHostedRepository{
+func buildDockerHosted(desired desiredRepo) v395.DockerHostedRepositoryApiRequest {
+	return v395.DockerHostedRepositoryApiRequest{
 		Name:    desired.name(),
 		Online:  desired.online(),
 		Storage: desired.dockerHostedStorage(),
@@ -34,24 +40,24 @@ func buildDockerHosted(desired desiredRepo) schema.DockerHostedRepository {
 }
 
 // buildDockerProxy renders a Docker proxy repository payload.
-func buildDockerProxy(desired desiredRepo) schema.DockerProxyRepository {
-	return schema.DockerProxyRepository{
-		Name:          desired.name(),
-		Online:        desired.online(),
-		Storage:       desired.storage(),
-		Proxy:         desired.proxy(),
-		NegativeCache: desired.negativeCache(),
-		HTTPClient:    desired.httpClient(),
-		Docker:        desired.docker(),
-		DockerProxy:   desired.dockerProxy(),
-		RoutingRule:   desired.routingRule(),
-		Cleanup:       desired.cleanup(),
+func buildDockerProxy(desired desiredRepo) v395.DockerProxyRepositoryApiRequest {
+	return v395.DockerProxyRepositoryApiRequest{
+		Name:            desired.name(),
+		Online:          desired.online(),
+		Storage:         desired.storage(),
+		Proxy:           desired.proxy(),
+		NegativeCache:   desired.negativeCache(),
+		HttpClient:      desired.httpClient(),
+		RoutingRuleName: desired.routingRule(),
+		Docker:          desired.docker(),
+		DockerProxy:     desired.dockerProxy(),
+		Cleanup:         desired.cleanup(),
 	}
 }
 
 // buildDockerGroup renders a Docker group repository payload.
-func buildDockerGroup(desired desiredRepo) schema.DockerGroupRepository {
-	return schema.DockerGroupRepository{
+func buildDockerGroup(desired desiredRepo) v395.DockerGroupRepositoryApiRequest {
+	return v395.DockerGroupRepositoryApiRequest{
 		Name:    desired.name(),
 		Online:  desired.online(),
 		Storage: desired.storage(),

@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	"k8s.io/utils/ptr"
 
 	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
@@ -26,6 +26,21 @@ const (
 	// defaultNugetQueryCacheItemMaxAge is the default NuGet query cache max
 	// age, in seconds. It mirrors the default of the CRD field.
 	defaultNugetQueryCacheItemMaxAge = 3600
+	// defaultNugetVersion is the NuGet protocol version of a proxy repository
+	// whose spec sets none.
+	defaultNugetVersion = "V3"
+	// defaultWritePolicy is the write policy of a hosted repository whose
+	// spec sets none.
+	defaultWritePolicy = "ALLOW"
+	// defaultMavenVersionPolicy is the Maven version policy used when the
+	// spec sets none.
+	defaultMavenVersionPolicy = "RELEASE"
+	// defaultStrictPolicy is both the Maven layout policy and the Yum deploy
+	// policy used when the spec sets none.
+	defaultStrictPolicy = "STRICT"
+	// defaultDockerIndexType is the Docker index of a Docker proxy repository
+	// whose spec sets none.
+	defaultDockerIndexType = "HUB"
 )
 
 // desiredRepo is the input every payload builder works from: the desired state
@@ -68,7 +83,7 @@ func (d desiredRepo) online() bool {
 // included, so that removing every policy from the spec removes it from Nexus
 // too. The list is never sent as null: Nexus rejects a null policyNames with
 // an internal error rather than treating it as empty.
-func (d desiredRepo) cleanup() *repository.Cleanup {
+func (d desiredRepo) cleanup() *v395.CleanupPolicyAttributes {
 	spec := d.params().Cleanup
 	if spec == nil {
 		return nil
@@ -79,7 +94,7 @@ func (d desiredRepo) cleanup() *repository.Cleanup {
 		policies = []string{}
 	}
 
-	return &repository.Cleanup{PolicyNames: policies}
+	return &v395.CleanupPolicyAttributes{PolicyNames: policies}
 }
 
 // routingRule converts the routing rule assigned to a proxy repository.
@@ -88,11 +103,11 @@ func (d desiredRepo) routingRule() *string {
 }
 
 // hostedStorage converts the storage configuration of a hosted repository.
-func (d desiredRepo) hostedStorage() repository.HostedStorage {
-	storage := repository.HostedStorage{
+func (d desiredRepo) hostedStorage() v395.HostedStorageAttributes {
+	storage := v395.HostedStorageAttributes{
 		BlobStoreName:               defaultBlobStoreName,
 		StrictContentTypeValidation: true,
-		WritePolicy:                 new(repository.StorageWritePolicyAllow),
+		WritePolicy:                 defaultWritePolicy,
 	}
 
 	spec := d.params().Storage
@@ -102,30 +117,27 @@ func (d desiredRepo) hostedStorage() repository.HostedStorage {
 
 	storage.BlobStoreName = spec.BlobStoreName
 	storage.StrictContentTypeValidation = ptr.Deref(spec.StrictContentTypeValidation, true)
-
-	if spec.WritePolicy != nil {
-		storage.WritePolicy = new(repository.StorageWritePolicy(*spec.WritePolicy))
-	}
+	storage.WritePolicy = ptr.Deref(spec.WritePolicy, defaultWritePolicy)
 
 	return storage
 }
 
 // dockerHostedStorage converts the storage configuration of a hosted Docker
-// repository, which carries the write policy as a plain value.
-func (d desiredRepo) dockerHostedStorage() repository.DockerHostedStorage {
+// repository.
+func (d desiredRepo) dockerHostedStorage() v395.DockerHostedStorageAttributes {
 	hosted := d.hostedStorage()
 
-	return repository.DockerHostedStorage{
+	return v395.DockerHostedStorageAttributes{
 		BlobStoreName:               hosted.BlobStoreName,
 		StrictContentTypeValidation: hosted.StrictContentTypeValidation,
-		WritePolicy:                 ptr.Deref(hosted.WritePolicy, repository.StorageWritePolicyAllow),
+		WritePolicy:                 hosted.WritePolicy,
 	}
 }
 
 // storage converts the storage configuration of a proxy or group repository,
 // neither of which has a write policy.
-func (d desiredRepo) storage() repository.Storage {
-	storage := repository.Storage{
+func (d desiredRepo) storage() v395.StorageAttributes {
+	storage := v395.StorageAttributes{
 		BlobStoreName:               defaultBlobStoreName,
 		StrictContentTypeValidation: true,
 	}
@@ -142,8 +154,8 @@ func (d desiredRepo) storage() repository.Storage {
 }
 
 // proxy converts the remote target configuration of a proxy repository.
-func (d desiredRepo) proxy() repository.Proxy {
-	proxy := repository.Proxy{
+func (d desiredRepo) proxy() v395.ProxyAttributes {
+	proxy := v395.ProxyAttributes{
 		ContentMaxAge:  defaultMaxAge,
 		MetadataMaxAge: defaultMaxAge,
 	}
@@ -153,19 +165,19 @@ func (d desiredRepo) proxy() repository.Proxy {
 		return proxy
 	}
 
-	proxy.RemoteURL = spec.RemoteURL
-	proxy.ContentMaxAge = int(ptr.Deref(spec.ContentMaxAge, defaultMaxAge))
-	proxy.MetadataMaxAge = int(ptr.Deref(spec.MetadataMaxAge, defaultMaxAge))
+	proxy.RemoteUrl = spec.RemoteURL
+	proxy.ContentMaxAge = ptr.Deref(spec.ContentMaxAge, defaultMaxAge)
+	proxy.MetadataMaxAge = ptr.Deref(spec.MetadataMaxAge, defaultMaxAge)
 
 	return proxy
 }
 
 // negativeCache converts the negative cache configuration of a proxy
 // repository.
-func (d desiredRepo) negativeCache() repository.NegativeCache {
-	negativeCache := repository.NegativeCache{
-		Enabled: true,
-		TTL:     defaultNegativeCacheTTL,
+func (d desiredRepo) negativeCache() v395.NegativeCacheAttributes {
+	negativeCache := v395.NegativeCacheAttributes{
+		Enabled:    true,
+		TimeToLive: defaultNegativeCacheTTL,
 	}
 
 	spec := d.params().NegativeCache
@@ -174,32 +186,32 @@ func (d desiredRepo) negativeCache() repository.NegativeCache {
 	}
 
 	negativeCache.Enabled = ptr.Deref(spec.Enabled, true)
-	negativeCache.TTL = int(ptr.Deref(spec.TimeToLive, defaultNegativeCacheTTL))
+	negativeCache.TimeToLive = ptr.Deref(spec.TimeToLive, defaultNegativeCacheTTL)
 
 	return negativeCache
 }
 
 // httpClient converts the outbound HTTP client configuration of a proxy
 // repository.
-func (d desiredRepo) httpClient() repository.HTTPClient {
-	client := repository.HTTPClient{Blocked: false, AutoBlock: true}
+func (d desiredRepo) httpClient() v395.HttpClientAttributes {
+	client := v395.HttpClientAttributes{Blocked: new(false), AutoBlock: new(true)}
 
 	spec := d.params().HTTPClient
 	if spec == nil {
 		return client
 	}
 
-	client.Blocked = ptr.Deref(spec.Blocked, false)
-	client.AutoBlock = ptr.Deref(spec.AutoBlock, true)
+	client.Blocked = new(ptr.Deref(spec.Blocked, false))
+	client.AutoBlock = new(ptr.Deref(spec.AutoBlock, true))
 	client.Connection = d.httpConnection()
 
 	auth := d.httpAuth()
 	if auth != nil {
-		client.Authentication = &repository.HTTPClientAuthentication{
+		client.Authentication = &v395.HttpClientConnectionAuthenticationAttributes{
 			Type:       auth.Type,
 			Username:   auth.Username,
-			NTLMHost:   auth.NTLMHost,
-			NTLMDomain: auth.NTLMDomain,
+			NtlmHost:   auth.NtlmHost,
+			NtlmDomain: auth.NtlmDomain,
 			Password:   auth.Password,
 		}
 	}
@@ -209,24 +221,20 @@ func (d desiredRepo) httpClient() repository.HTTPClient {
 
 // httpClientWithPreemptiveAuth converts the outbound HTTP client configuration
 // of a proxy repository whose format also accepts pre-emptive authentication.
-func (d desiredRepo) httpClientWithPreemptiveAuth() repository.HTTPClientWithPreemptiveAuth {
+func (d desiredRepo) httpClientWithPreemptiveAuth() v395.HttpClientAttributesWithPreemptiveAuth {
 	client := d.httpClient()
-	preemptive := repository.HTTPClientWithPreemptiveAuth{
-		Blocked:    client.Blocked,
-		AutoBlock:  client.AutoBlock,
-		Connection: client.Connection,
-	}
 
-	if client.Authentication != nil {
-		preemptive.Authentication = d.httpAuth()
+	return v395.HttpClientAttributesWithPreemptiveAuth{
+		Blocked:        client.Blocked,
+		AutoBlock:      client.AutoBlock,
+		Connection:     client.Connection,
+		Authentication: d.httpAuth(),
 	}
-
-	return preemptive
 }
 
 // httpConnection converts the connection tuning of a proxy repository's HTTP
 // client.
-func (d desiredRepo) httpConnection() *repository.HTTPClientConnection {
+func (d desiredRepo) httpConnection() *v395.HttpClientConnectionAttributes {
 	if d.params().HTTPClient == nil {
 		return nil
 	}
@@ -236,68 +244,60 @@ func (d desiredRepo) httpConnection() *repository.HTTPClientConnection {
 		return nil
 	}
 
-	connection := &repository.HTTPClientConnection{
-		UserAgentSuffix:         ptr.Deref(spec.UserAgentSuffix, ""),
+	return &v395.HttpClientConnectionAttributes{
+		UserAgentSuffix:         new(ptr.Deref(spec.UserAgentSuffix, "")),
 		EnableCircularRedirects: spec.EnableCircularRedirects,
 		EnableCookies:           spec.EnableCookies,
 		UseTrustStore:           spec.UseTrustStore,
+		Retries:                 spec.Retries,
+		Timeout:                 spec.Timeout,
 	}
-
-	if spec.Retries != nil {
-		connection.Retries = new(int(*spec.Retries))
-	}
-
-	if spec.Timeout != nil {
-		connection.Timeout = new(int(*spec.Timeout))
-	}
-
-	return connection
 }
 
 // httpAuth converts the credentials of a proxy repository's HTTP client. The
 // password is the one the controller resolved from the referenced secret.
-func (d desiredRepo) httpAuth() *repository.HTTPClientAuthenticationWithPreemptive {
+func (d desiredRepo) httpAuth() *v395.HttpClientConnectionAuthenticationAttributesWithPreemptive {
 	if d.params().HTTPClient == nil || d.params().HTTPClient.Authentication == nil {
 		return nil
 	}
 
 	spec := d.params().HTTPClient.Authentication
 
-	return &repository.HTTPClientAuthenticationWithPreemptive{
-		Type:       repository.HTTPClientAuthenticationType(ptr.Deref(spec.Type, "")),
-		Username:   ptr.Deref(spec.Username, ""),
-		NTLMHost:   ptr.Deref(spec.NTLMHost, ""),
-		NTLMDomain: ptr.Deref(spec.NTLMDomain, ""),
-		Password:   d.httpPassword,
+	return &v395.HttpClientConnectionAuthenticationAttributesWithPreemptive{
+		Type:       ptr.Deref(spec.Type, ""),
+		Username:   new(ptr.Deref(spec.Username, "")),
+		NtlmHost:   new(ptr.Deref(spec.NTLMHost, "")),
+		NtlmDomain: new(ptr.Deref(spec.NTLMDomain, "")),
+		Password:   new(d.httpPassword),
 	}
 }
 
 // group converts the membership of a group repository.
-func (d desiredRepo) group() repository.Group {
+func (d desiredRepo) group() v395.GroupAttributes {
 	spec := d.params().Group
 	if spec == nil {
-		return repository.Group{}
+		return v395.GroupAttributes{}
 	}
 
-	return repository.Group{MemberNames: spec.MemberNames}
+	return v395.GroupAttributes{MemberNames: spec.MemberNames}
 }
 
 // groupDeploy converts the membership of a group repository whose format also
 // supports a writable member.
-func (d desiredRepo) groupDeploy() repository.GroupDeploy {
+func (d desiredRepo) groupDeploy() v395.GroupDeployAttributes {
 	spec := d.params().Group
 	if spec == nil {
-		return repository.GroupDeploy{}
+		return v395.GroupDeployAttributes{}
 	}
 
-	return repository.GroupDeploy{MemberNames: spec.MemberNames, WritableMember: spec.WritableMember}
+	return v395.GroupDeployAttributes{MemberNames: spec.MemberNames, WritableMember: spec.WritableMember}
 }
 
 // maven converts the Maven specific configuration.
-func (d desiredRepo) maven() repository.Maven {
-	maven := repository.Maven{
-		VersionPolicy: repository.MavenVersionPolicyRelease,
-		LayoutPolicy:  repository.MavenLayoutPolicyStrict,
+func (d desiredRepo) maven() v395.MavenAttributes {
+	maven := v395.MavenAttributes{
+		VersionPolicy: defaultMavenVersionPolicy,
+		LayoutPolicy:  defaultStrictPolicy,
 	}
 
 	spec := d.params().Maven
@@ -305,24 +305,16 @@ func (d desiredRepo) maven() repository.Maven {
 		return maven
 	}
 
-	if spec.VersionPolicy != nil {
-		maven.VersionPolicy = repository.MavenVersionPolicy(*spec.VersionPolicy)
-	}
-
-	if spec.LayoutPolicy != nil {
-		maven.LayoutPolicy = repository.MavenLayoutPolicy(*spec.LayoutPolicy)
-	}
-
-	if spec.ContentDisposition != nil {
-		maven.ContentDisposition = new(repository.MavenContentDisposition(*spec.ContentDisposition))
-	}
+	maven.VersionPolicy = ptr.Deref(spec.VersionPolicy, defaultMavenVersionPolicy)
+	maven.LayoutPolicy = ptr.Deref(spec.LayoutPolicy, defaultStrictPolicy)
+	maven.ContentDisposition = spec.ContentDisposition
 
 	return maven
 }
 
 // docker converts the Docker specific configuration.
-func (d desiredRepo) docker() repository.Docker {
-	docker := repository.Docker{V1Enabled: false, ForceBasicAuth: true}
+func (d desiredRepo) docker() v395.DockerAttributes {
+	docker := v395.DockerAttributes{V1Enabled: false, ForceBasicAuth: true}
 
 	spec := d.params().Docker
 	if spec == nil {
@@ -332,118 +324,93 @@ func (d desiredRepo) docker() repository.Docker {
 	docker.V1Enabled = ptr.Deref(spec.V1Enabled, false)
 	docker.ForceBasicAuth = ptr.Deref(spec.ForceBasicAuth, true)
 	docker.Subdomain = spec.Subdomain
-
-	if spec.HTTPPort != nil {
-		docker.HTTPPort = new(int(*spec.HTTPPort))
-	}
-
-	if spec.HTTPSPort != nil {
-		docker.HTTPSPort = new(int(*spec.HTTPSPort))
-	}
+	docker.HttpPort = spec.HTTPPort
+	docker.HttpsPort = spec.HTTPSPort
 
 	return docker
 }
 
 // dockerProxy converts the Docker index configuration of a Docker proxy
 // repository.
-func (d desiredRepo) dockerProxy() repository.DockerProxy {
-	dockerProxy := repository.DockerProxy{IndexType: repository.DockerProxyIndexTypeHub}
+func (d desiredRepo) dockerProxy() v395.DockerProxyAttributes {
+	dockerProxy := v395.DockerProxyAttributes{IndexType: defaultDockerIndexType}
 
 	spec := d.params().DockerProxy
 	if spec == nil {
 		return dockerProxy
 	}
 
-	if spec.IndexType != nil {
-		dockerProxy.IndexType = repository.DockerProxyIndexType(*spec.IndexType)
-	}
-
-	dockerProxy.IndexURL = spec.IndexURL
+	dockerProxy.IndexType = ptr.Deref(spec.IndexType, defaultDockerIndexType)
+	dockerProxy.IndexUrl = spec.IndexURL
 	dockerProxy.CacheForeignLayers = spec.CacheForeignLayers
 	dockerProxy.ForeignLayerUrlWhitelist = spec.ForeignLayerUrlWhitelist
 
 	return dockerProxy
 }
 
-// npm converts the npm specific configuration of a proxy repository.
-func (d desiredRepo) npm() *repository.Npm {
-	spec := d.params().Npm
-	if spec == nil {
-		return nil
-	}
-
-	return &repository.Npm{
-		RemoveNonCataloged: ptr.Deref(spec.RemoveNonCataloged, false),
-		RemoveQuarantined:  ptr.Deref(spec.RemoveQuarantined, false),
-	}
-}
-
 // apt converts the APT specific configuration of a hosted repository.
-func (d desiredRepo) apt() repository.AptHosted {
+func (d desiredRepo) apt() v395.AptHostedRepositoriesAttributes {
 	spec := d.params().Apt
 	if spec == nil {
-		return repository.AptHosted{}
+		return v395.AptHostedRepositoriesAttributes{}
 	}
 
-	return repository.AptHosted{Distribution: ptr.Deref(spec.Distribution, "")}
+	return v395.AptHostedRepositoriesAttributes{Distribution: ptr.Deref(spec.Distribution, "")}
 }
 
 // aptProxy converts the APT specific configuration of a proxy repository.
-func (d desiredRepo) aptProxy() repository.AptProxy {
+func (d desiredRepo) aptProxy() v395.AptProxyRepositoriesAttributes {
 	spec := d.params().Apt
 	if spec == nil {
-		return repository.AptProxy{}
+		return v395.AptProxyRepositoriesAttributes{}
 	}
 
-	return repository.AptProxy{
-		Distribution: ptr.Deref(spec.Distribution, ""),
+	return v395.AptProxyRepositoriesAttributes{
+		Distribution: new(ptr.Deref(spec.Distribution, "")),
 		Flat:         ptr.Deref(spec.Flat, false),
 	}
 }
 
 // aptSigning converts the APT signing key of a hosted repository.
-func (d desiredRepo) aptSigning() repository.AptSigning {
+func (d desiredRepo) aptSigning() v395.AptSigningRepositoriesAttributes {
 	spec := d.params().AptSigning
 	if spec == nil {
-		return repository.AptSigning{}
+		return v395.AptSigningRepositoriesAttributes{}
 	}
 
-	return repository.AptSigning{Keypair: spec.Keypair, Passphrase: spec.Passphrase}
+	return v395.AptSigningRepositoriesAttributes{Keypair: new(spec.Keypair), Passphrase: spec.Passphrase}
 }
 
 // yum converts the Yum specific configuration of a hosted repository.
-func (d desiredRepo) yum() repository.Yum {
-	yum := repository.Yum{}
+func (d desiredRepo) yum() v395.YumAttributes {
+	yum := v395.YumAttributes{DeployPolicy: defaultStrictPolicy}
 
 	spec := d.params().Yum
 	if spec == nil {
 		return yum
 	}
 
-	yum.RepodataDepth = int(ptr.Deref(spec.RepodataDepth, 0))
-
-	if spec.DeployPolicy != nil {
-		yum.DeployPolicy = new(repository.YumDeployPolicy(*spec.DeployPolicy))
-	}
+	yum.RepodataDepth = ptr.Deref(spec.RepodataDepth, 0)
+	yum.DeployPolicy = ptr.Deref(spec.DeployPolicy, defaultStrictPolicy)
 
 	return yum
 }
 
 // yumSigning converts the Yum signing key of a proxy or group repository.
-func (d desiredRepo) yumSigning() *repository.YumSigning {
+func (d desiredRepo) yumSigning() *v395.YumSigningRepositoriesAttributes {
 	spec := d.params().YumSigning
 	if spec == nil {
 		return nil
 	}
 
-	return &repository.YumSigning{Keypair: spec.Keypair, Passphrase: spec.Passphrase}
+	return &v395.YumSigningRepositoriesAttributes{Keypair: ptr.Deref(spec.Keypair, ""), Passphrase: spec.Passphrase}
 }
 
 // nugetProxy converts the NuGet specific configuration of a proxy repository.
-func (d desiredRepo) nugetProxy() repository.NugetProxy {
-	nugetProxy := repository.NugetProxy{
-		QueryCacheItemMaxAge: defaultNugetQueryCacheItemMaxAge,
-		NugetVersion:         repository.NugetVersion3,
+func (d desiredRepo) nugetProxy() v395.NugetAttributes {
+	nugetProxy := v395.NugetAttributes{
+		QueryCacheItemMaxAge: new(int32(defaultNugetQueryCacheItemMaxAge)),
+		NugetVersion:         new(defaultNugetVersion),
 	}
 
 	spec := d.params().NugetProxy
@@ -451,31 +418,18 @@ func (d desiredRepo) nugetProxy() repository.NugetProxy {
 		return nugetProxy
 	}
 
-	nugetProxy.QueryCacheItemMaxAge = int(ptr.Deref(spec.QueryCacheItemMaxAge, defaultNugetQueryCacheItemMaxAge))
-
-	if spec.NugetVersion != nil {
-		nugetProxy.NugetVersion = repository.NugetVersion(*spec.NugetVersion)
-	}
+	nugetProxy.QueryCacheItemMaxAge = new(ptr.Deref(spec.QueryCacheItemMaxAge, defaultNugetQueryCacheItemMaxAge))
+	nugetProxy.NugetVersion = new(ptr.Deref(spec.NugetVersion, defaultNugetVersion))
 
 	return nugetProxy
 }
 
-// bower converts the Bower specific configuration of a proxy repository.
-func (d desiredRepo) bower() repository.Bower {
-	spec := d.params().Bower
-	if spec == nil {
-		return repository.Bower{}
-	}
-
-	return repository.Bower{RewritePackageUrls: ptr.Deref(spec.RewritePackageUrls, false)}
-}
-
 // cargo converts the Cargo specific configuration.
-func (d desiredRepo) cargo() repository.Cargo {
+func (d desiredRepo) cargo() *v395.CargoAttributes {
 	spec := d.params().Cargo
 	if spec == nil {
-		return repository.Cargo{}
+		return &v395.CargoAttributes{RequireAuthentication: new(false)}
 	}
 
-	return repository.Cargo{RequireAuthentication: ptr.Deref(spec.RequireAuthentication, false)}
+	return &v395.CargoAttributes{RequireAuthentication: new(ptr.Deref(spec.RequireAuthentication, false))}
 }

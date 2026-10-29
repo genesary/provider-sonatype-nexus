@@ -27,7 +27,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
-	nexus3 "github.com/datadrivers/go-nexus-client/nexus3"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	"github.com/genesary/provider-sonatype-nexus/apis"
 	nexusclient "github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
@@ -35,10 +35,10 @@ import (
 
 // Environment variable names recognised by the framework.
 const (
-	EnvNexusURL        = "NEXUS_URL"
-	EnvNexusUser       = "NEXUS_USER"
-	EnvNexusPass       = "NEXUS_PASS"
-	EnvProviderConfig  = "NEXUS_PROVIDERCONFIG"
+	EnvNexusURL       = "NEXUS_URL"
+	EnvNexusUser      = "NEXUS_USER"
+	EnvNexusPass      = "NEXUS_PASS"
+	EnvProviderConfig = "NEXUS_PROVIDERCONFIG"
 )
 
 // DefaultProviderConfigName is used when EnvProviderConfig is unset.
@@ -52,7 +52,7 @@ type Framework struct {
 	Kube client.Client
 	// Nexus talks to the Nexus REST API directly, used to verify the
 	// state the provider reconciled into Nexus.
-	Nexus *nexus3.NexusClient
+	Nexus *v395.APIClient
 	// ProviderConfigName is the ProviderConfig managed resources should reference.
 	ProviderConfigName string
 }

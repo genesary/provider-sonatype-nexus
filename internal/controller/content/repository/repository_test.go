@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
-	pkgrepository "github.com/datadrivers/go-nexus-client/nexus3/pkg/repository"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
@@ -27,26 +26,26 @@ type mockHandler struct {
 }
 
 // Observe implements formatHandler.
-func (m *mockHandler) Observe(_ *pkgrepository.RepositoryService, name, _ string, _ desiredRepo) (repoState, error) {
+func (m *mockHandler) Observe(_ context.Context, _ *nexusAPI, name, _ string, _ desiredRepo) (repoState, error) {
 	m.observedName = name
 
 	return repoState{exists: m.exists, upToDate: m.upToDate, fields: m.fields}, m.observeErr
 }
 
 // Create implements formatHandler.
-func (m *mockHandler) Create(_ *pkgrepository.RepositoryService, _ string, _ desiredRepo) error {
+func (m *mockHandler) Create(_ context.Context, _ *nexusAPI, _ string, _ desiredRepo) error {
 	return m.createErr
 }
 
 // Update implements formatHandler.
-func (m *mockHandler) Update(_ *pkgrepository.RepositoryService, name, _ string, _ desiredRepo) error {
+func (m *mockHandler) Update(_ context.Context, _ *nexusAPI, name, _ string, _ desiredRepo) error {
 	m.observedName = name
 
 	return m.updateErr
 }
 
 // Delete implements formatHandler.
-func (m *mockHandler) Delete(_ *pkgrepository.RepositoryService, name, _ string) error {
+func (m *mockHandler) Delete(_ context.Context, _ *nexusAPI, name, _ string) error {
 	m.observedName = name
 
 	return m.deleteErr

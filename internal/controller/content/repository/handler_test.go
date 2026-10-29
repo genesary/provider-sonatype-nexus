@@ -1,60 +1,62 @@
 package repository
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"testing"
 
-	schema "github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
+	pkgerrors "github.com/pkg/errors"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
 	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
-// fakeAPI is a repoAPI backed by an in-memory repository.
+// fakeAPI is an in-memory Nexus serving a single raw hosted repository.
 type fakeAPI struct {
-	repo   *schema.RawHostedRepository
+	repo   *v395.RawHostedApiRepository
 	getErr error
-	// updated records the payload the last Update call submitted.
-	updated *schema.RawHostedRepository
+	// updated records the payload the last update submitted.
+	updated *v395.RawHostedRepositoryApiRequest
 }
 
-// Get implements repoAPI.
-func (f *fakeAPI) Get(_ string) (*schema.RawHostedRepository, error) {
-	if f.getErr != nil {
-		return nil, f.getErr
+// store records repo the way Nexus reports it back.
+func (f *fakeAPI) store(repo v395.RawHostedRepositoryApiRequest) {
+	f.repo = &v395.RawHostedApiRepository{
+		Name:    repo.Name,
+		Online:  repo.Online,
+		Storage: repo.Storage,
+		Cleanup: repo.Cleanup,
+		Format:  "raw",
+		Type:    repoTypeHosted,
+		Url:     "https://nexus.example.com/repository/" + repo.Name,
 	}
-
-	return f.repo, nil
-}
-
-// Create implements repoAPI.
-func (f *fakeAPI) Create(repo schema.RawHostedRepository) error {
-	f.repo = &repo
-
-	return nil
-}
-
-// Update implements repoAPI.
-func (f *fakeAPI) Update(_ string, repo schema.RawHostedRepository) error {
-	f.updated = &repo
-	f.repo = &repo
-
-	return nil
-}
-
-// Delete implements repoAPI.
-func (f *fakeAPI) Delete(_ string) error {
-	f.repo = nil
-
-	return nil
 }
 
 // newRawOps builds typedOps for raw hosted repositories backed by api.
-func newRawOps(api *fakeAPI) typedOps[schema.RawHostedRepository] {
-	return typedOps[schema.RawHostedRepository]{
-		api:   func(_ *nexusAPI) repoAPI[schema.RawHostedRepository] { return api },
+func newRawOps(api *fakeAPI) typedOps[v395.RawHostedRepositoryApiRequest, v395.RawHostedApiRepository] {
+	return typedOps[v395.RawHostedRepositoryApiRequest, v395.RawHostedApiRepository]{
+		get: func(_ context.Context, _ *nexusAPI, _ string) (*v395.RawHostedApiRepository, error) {
+			if api.getErr != nil {
+				return nil, api.getErr
+			}
+
+			return api.repo, nil
+		},
+		create: func(_ context.Context, _ *nexusAPI, _ string, repo v395.RawHostedRepositoryApiRequest) error {
+			api.store(repo)
+
+			return nil
+		},
+		update: func(_ context.Context, _ *nexusAPI, _ string, repo v395.RawHostedRepositoryApiRequest) error {
+			api.updated = &repo
+			api.store(repo)
+
+			return nil
+		},
 		build: buildRawHosted,
 	}
 }
@@ -89,7 +91,7 @@ func TestTypedOpsObserveDistinguishesMissingFromFailing(t *testing.T) {
 	}{
 		{
 			name: "Missing",
-			api:  &fakeAPI{getErr: errors.New("could not read repository 'raw-hosted': HTTP: 404, Repository not found")},
+			api:  &fakeAPI{getErr: pkgerrors.Wrap(nexus.ErrNotFound, "404 Not Found")},
 		},
 		{
 			name:    "Unreachable",
@@ -98,12 +100,12 @@ func TestTypedOpsObserveDistinguishesMissingFromFailing(t *testing.T) {
 		},
 		{
 			name:    "Unauthorized",
-			api:     &fakeAPI{getErr: errors.New("could not read repository 'raw-hosted': HTTP: 401, ")},
+			api:     &fakeAPI{getErr: errors.New("401 Unauthorized")},
 			wantErr: true,
 		},
 		{
 			name:       "Present",
-			api:        &fakeAPI{repo: &schema.RawHostedRepository{Name: "raw-hosted"}},
+			api:        &fakeAPI{repo: &v395.RawHostedApiRepository{Name: "raw-hosted"}},
 			wantExists: true,
 		},
 		{
@@ -116,7 +118,7 @@ func TestTypedOpsObserveDistinguishesMissingFromFailing(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			state, err := newRawOps(tt.api).Observe(nil, "raw-hosted", newRawDesired("default"))
+			state, err := newRawOps(tt.api).Observe(context.Background(), nil, "raw-hosted", newRawDesired("default"))
 
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("Observe() error = %v, wantErr %v", err, tt.wantErr)
@@ -137,12 +139,12 @@ func TestTypedOpsRoundTrip(t *testing.T) {
 	api := &fakeAPI{}
 	ops := newRawOps(api)
 
-	err := ops.Create(nil, newRawDesired("default"))
+	err := ops.Create(context.Background(), nil, newRawDesired("default"))
 	if err != nil {
 		t.Fatalf("Create() error = %v", err)
 	}
 
-	state, err := ops.Observe(nil, "raw-hosted", newRawDesired("default"))
+	state, err := ops.Observe(context.Background(), nil, "raw-hosted", newRawDesired("default"))
 	if err != nil || !state.exists || !state.upToDate {
 		t.Fatalf("Observe() after create = %+v (err %v), want exists and up to date", state, err)
 	}
@@ -151,7 +153,7 @@ func TestTypedOpsRoundTrip(t *testing.T) {
 		t.Errorf("observation blobStoreName = %q, want %q", got.BlobStoreName, "default")
 	}
 
-	state, err = ops.Observe(nil, "raw-hosted", newRawDesired("other-blobstore"))
+	state, err = ops.Observe(context.Background(), nil, "raw-hosted", newRawDesired("other-blobstore"))
 	if err != nil {
 		t.Fatalf("Observe() error = %v", err)
 	}
@@ -160,7 +162,7 @@ func TestTypedOpsRoundTrip(t *testing.T) {
 		t.Fatal("Observe() upToDate = true, want false: the blob store changed")
 	}
 
-	err = ops.Update(nil, "raw-hosted", newRawDesired("other-blobstore"))
+	err = ops.Update(context.Background(), nil, "raw-hosted", newRawDesired("other-blobstore"))
 	if err != nil {
 		t.Fatalf("Update() error = %v", err)
 	}
@@ -169,7 +171,7 @@ func TestTypedOpsRoundTrip(t *testing.T) {
 		t.Fatalf("Update() submitted %+v, want blobStoreName other-blobstore", api.updated)
 	}
 
-	state, err = ops.Observe(nil, "raw-hosted", newRawDesired("other-blobstore"))
+	state, err = ops.Observe(context.Background(), nil, "raw-hosted", newRawDesired("other-blobstore"))
 	if err != nil || !state.upToDate {
 		t.Errorf("Observe() after update = %+v (err %v), want up to date", state, err)
 	}
@@ -185,7 +187,7 @@ func TestDispatcherRejectsUnsupportedType(t *testing.T) {
 		t.Fatal("gitlfs is not registered")
 	}
 
-	err := handler.Delete(nil, "lfs", repoTypeGroup)
+	err := handler.Delete(context.Background(), nil, "lfs", repoTypeGroup)
 	if err == nil {
 		t.Fatal("Delete() on an unsupported type returned no error")
 	}
@@ -202,7 +204,6 @@ func TestRegisteredFormats(t *testing.T) {
 
 	wantTypes := map[string][]string{
 		"apt":         {repoTypeHosted, repoTypeProxy},
-		"bower":       {repoTypeGroup, repoTypeHosted, repoTypeProxy},
 		"cargo":       {repoTypeGroup, repoTypeHosted, repoTypeProxy},
 		"cocoapods":   {repoTypeProxy},
 		"conan":       {repoTypeHosted, repoTypeProxy},
@@ -258,7 +259,6 @@ func TestBuildersApplyFormatSpecificSettings(t *testing.T) {
 			ForProvider: repositoryv1alpha1.RepositoryParameters{
 				Name:        "repo",
 				Cargo:       &repositoryv1alpha1.CargoConfig{RequireAuthentication: new(true)},
-				Npm:         &repositoryv1alpha1.NpmConfig{RemoveQuarantined: new(true)},
 				YumSigning:  &repositoryv1alpha1.YumSigningConfig{Keypair: new("key")},
 				RoutingRule: new("block-all"),
 				DockerProxy: &repositoryv1alpha1.DockerProxyConfig{
@@ -270,32 +270,28 @@ func TestBuildersApplyFormatSpecificSettings(t *testing.T) {
 		},
 	}}
 
-	if got := buildCargoProxy(desired); !got.RequireAuthentication {
+	if got := buildCargoProxy(desired); !got.Cargo.GetRequireAuthentication() {
 		t.Error("buildCargoProxy() dropped cargo.requireAuthentication")
 	}
 
-	if got := buildCargoGroup(desired); !got.RequireAuthentication {
+	if got := buildCargoGroup(desired); !got.Cargo.GetRequireAuthentication() {
 		t.Error("buildCargoGroup() dropped cargo.requireAuthentication")
 	}
 
-	if got := buildNpmProxy(desired); got.Npm == nil || !got.RemoveQuarantined {
-		t.Error("buildNpmProxy() dropped npm.removeQuarantined")
-	}
-
-	if got := buildYumProxy(desired); got.YumSigning == nil || ptr.Deref(got.Keypair, "") != "key" {
+	if got := buildYumProxy(desired); got.YumSigning == nil || got.YumSigning.Keypair != "key" {
 		t.Error("buildYumProxy() dropped yumSigning.keypair")
 	}
 
-	if got := buildAptProxy(desired); ptr.Deref(got.RoutingRule, "") != "block-all" {
+	if got := buildAptProxy(desired); ptr.Deref(got.RoutingRuleName, "") != "block-all" {
 		t.Error("buildAptProxy() dropped routingRule")
 	}
 
-	dockerProxy := buildDockerProxy(desired)
-	if dockerProxy.IndexType != schema.DockerProxyIndexTypeCustom {
+	dockerProxy := buildDockerProxy(desired).DockerProxy
+	if dockerProxy.IndexType != "CUSTOM" {
 		t.Errorf("buildDockerProxy() indexType = %q, want CUSTOM", dockerProxy.IndexType)
 	}
 
-	if ptr.Deref(dockerProxy.IndexURL, "") != "https://index.example.com" {
+	if ptr.Deref(dockerProxy.IndexUrl, "") != "https://index.example.com" {
 		t.Error("buildDockerProxy() dropped dockerProxy.indexUrl")
 	}
 
@@ -325,20 +321,20 @@ func TestBuildersApplyDefaults(t *testing.T) {
 	}
 
 	proxyRepo := buildRawProxy(desired)
-	if proxyRepo.ContentMaxAge != defaultMaxAge || proxyRepo.MetadataMaxAge != defaultMaxAge {
+	if proxyRepo.Proxy.ContentMaxAge != defaultMaxAge || proxyRepo.Proxy.MetadataMaxAge != defaultMaxAge {
 		t.Errorf("buildRawProxy() proxy = %+v, want the default max ages", proxyRepo.Proxy)
 	}
 
-	if !proxyRepo.Enabled || proxyRepo.TTL != defaultNegativeCacheTTL {
+	if !proxyRepo.NegativeCache.Enabled || proxyRepo.NegativeCache.TimeToLive != defaultNegativeCacheTTL {
 		t.Errorf("buildRawProxy() negativeCache = %+v, want enabled with the default TTL", proxyRepo.NegativeCache)
 	}
 
-	if !proxyRepo.AutoBlock || proxyRepo.Blocked {
-		t.Errorf("buildRawProxy() httpClient = %+v, want autoBlock and not blocked", proxyRepo.HTTPClient)
+	if !proxyRepo.HttpClient.GetAutoBlock() || proxyRepo.HttpClient.GetBlocked() {
+		t.Errorf("buildRawProxy() httpClient = %+v, want autoBlock and not blocked", proxyRepo.HttpClient)
 	}
 
-	nugetRepo := buildNugetProxy(desired)
-	if nugetRepo.QueryCacheItemMaxAge != defaultNugetQueryCacheItemMaxAge || nugetRepo.NugetVersion != schema.NugetVersion3 {
-		t.Errorf("buildNugetProxy() nugetProxy = %+v, want the CRD defaults", nugetRepo.NugetProxy)
+	nugetRepo := buildNugetProxy(desired).NugetProxy
+	if nugetRepo.GetQueryCacheItemMaxAge() != defaultNugetQueryCacheItemMaxAge || nugetRepo.GetNugetVersion() != defaultNugetVersion {
+		t.Errorf("buildNugetProxy() nugetProxy = %+v, want the CRD defaults", nugetRepo)
 	}
 }

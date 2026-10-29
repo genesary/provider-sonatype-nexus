@@ -104,7 +104,7 @@ type external struct {
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
-func (e *external) Observe(_ context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
+func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
 	routingRule, ok := managedRes.(*contentv1alpha1.RoutingRule)
 	if !ok {
 		return managed.ExternalObservation{}, errors.New(errNotRoutingRule)
@@ -115,7 +115,7 @@ func (e *external) Observe(_ context.Context, managedRes resource.Managed) (mana
 		name = routingRule.Spec.ForProvider.Name
 	}
 
-	observed, err := e.client.Get(name)
+	observed, err := e.client.Get(ctx, name)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
@@ -138,13 +138,13 @@ func (e *external) Observe(_ context.Context, managedRes resource.Managed) (mana
 }
 
 // Create creates the external resource.
-func (e *external) Create(_ context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
+func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
 	routingRule, ok := managedRes.(*contentv1alpha1.RoutingRule)
 	if !ok {
 		return managed.ExternalCreation{}, errors.New(errNotRoutingRule)
 	}
 
-	err := e.client.Create(contentclient.GenerateRoutingRule(routingRule))
+	err := e.client.Create(ctx, contentclient.GenerateRoutingRule(routingRule))
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateRoutingRule)
 	}
@@ -155,13 +155,13 @@ func (e *external) Create(_ context.Context, managedRes resource.Managed) (manag
 }
 
 // Update updates the external resource to match the desired state.
-func (e *external) Update(_ context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
+func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
 	routingRule, ok := managedRes.(*contentv1alpha1.RoutingRule)
 	if !ok {
 		return managed.ExternalUpdate{}, errors.New(errNotRoutingRule)
 	}
 
-	err := e.client.Update(contentclient.GenerateRoutingRule(routingRule))
+	err := e.client.Update(ctx, contentclient.GenerateRoutingRule(routingRule))
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateRoutingRule)
 	}
@@ -170,7 +170,7 @@ func (e *external) Update(_ context.Context, managedRes resource.Managed) (manag
 }
 
 // Delete deletes the external resource.
-func (e *external) Delete(_ context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
+func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
 	routingRule, ok := managedRes.(*contentv1alpha1.RoutingRule)
 	if !ok {
 		return managed.ExternalDelete{}, errors.New(errNotRoutingRule)
@@ -181,7 +181,7 @@ func (e *external) Delete(_ context.Context, managedRes resource.Managed) (manag
 		name = routingRule.Spec.ForProvider.Name
 	}
 
-	err := e.client.Delete(name)
+	err := e.client.Delete(ctx, name)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil

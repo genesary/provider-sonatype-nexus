@@ -541,7 +541,7 @@ func TestCargoRepositoryUpdate(t *testing.T) {
 		if err != nil || observed == nil {
 			return false, err
 		}
-		return observed.ContentMaxAge == 60 && observed.RequireAuthentication, nil
+		return observed.Proxy.ContentMaxAge == 60 && observed.Cargo.GetRequireAuthentication(), nil
 	})
 	if err != nil {
 		observed, _ := f.FetchCargoProxyRepo(repoName)

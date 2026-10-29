@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -82,7 +82,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestAnonymousAccess(true, "anonymous", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.ReadFn = func() (*security.AnonymousAccessSettings, error) {
+				mc.ReadFn = func() (*v395.AnonymousAccessSettingsXO, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -94,10 +94,10 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestAnonymousAccess(true, "anonymous", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.ReadFn = func() (*security.AnonymousAccessSettings, error) {
-					return &security.AnonymousAccessSettings{
-						Enabled:   true,
-						UserID:    "anonymous",
+				mc.ReadFn = func() (*v395.AnonymousAccessSettingsXO, error) {
+					return &v395.AnonymousAccessSettingsXO{
+						Enabled:   new(true),
+						UserId:    "anonymous",
 						RealmName: "NexusAuthorizingRealm",
 					}, nil
 				}
@@ -110,10 +110,10 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButEnabledDiffers",
 			cr:   newTestAnonymousAccess(false, "anonymous", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.ReadFn = func() (*security.AnonymousAccessSettings, error) {
-					return &security.AnonymousAccessSettings{
-						Enabled:   true,
-						UserID:    "anonymous",
+				mc.ReadFn = func() (*v395.AnonymousAccessSettingsXO, error) {
+					return &v395.AnonymousAccessSettingsXO{
+						Enabled:   new(true),
+						UserId:    "anonymous",
 						RealmName: "NexusAuthorizingRealm",
 					}, nil
 				}
@@ -126,10 +126,10 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButUserIDDiffers",
 			cr:   newTestAnonymousAccess(true, "guest", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.ReadFn = func() (*security.AnonymousAccessSettings, error) {
-					return &security.AnonymousAccessSettings{
-						Enabled:   true,
-						UserID:    "anonymous",
+				mc.ReadFn = func() (*v395.AnonymousAccessSettingsXO, error) {
+					return &v395.AnonymousAccessSettingsXO{
+						Enabled:   new(true),
+						UserId:    "anonymous",
 						RealmName: "NexusAuthorizingRealm",
 					}, nil
 				}
@@ -196,7 +196,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestAnonymousAccess(true, "anonymous", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.UpdateFn = func(_ security.AnonymousAccessSettings) error {
+				mc.UpdateFn = func(_ v395.AnonymousAccessSettingsXO) error {
 					return nil
 				}
 			},
@@ -208,7 +208,7 @@ func TestCreate(t *testing.T) {
 					t.Errorf("expected 1 Update call, got %d", len(mc.UpdateCalls))
 				}
 
-				if !mc.UpdateCalls[0].Enabled {
+				if !mc.UpdateCalls[0].GetEnabled() {
 					t.Error("expected Enabled=true in Update call")
 				}
 			},
@@ -217,7 +217,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestAnonymousAccess(true, "anonymous", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.UpdateFn = func(_ security.AnonymousAccessSettings) error {
+				mc.UpdateFn = func(_ v395.AnonymousAccessSettingsXO) error {
 					return errors.New("update failed")
 				}
 			},
@@ -275,7 +275,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestAnonymousAccess(false, "anonymous", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.UpdateFn = func(_ security.AnonymousAccessSettings) error {
+				mc.UpdateFn = func(_ v395.AnonymousAccessSettingsXO) error {
 					return nil
 				}
 			},
@@ -292,7 +292,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestAnonymousAccess(true, "anonymous", "NexusAuthorizingRealm"),
 			mockSetup: func(mc *iammocks.MockAnonymousAccessClient) {
-				mc.UpdateFn = func(_ security.AnonymousAccessSettings) error {
+				mc.UpdateFn = func(_ v395.AnonymousAccessSettingsXO) error {
 					return errors.New("update failed")
 				}
 			},

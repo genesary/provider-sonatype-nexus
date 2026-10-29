@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -46,21 +46,21 @@ func TestPasswordRotation(t *testing.T) {
 	var applied []string
 
 	mc := iammocks.NewMockUserClient()
-	mc.CreateFn = func(user security.User) error {
+	mc.CreateFn = func(user v395.ApiCreateUser) error {
 		applied = append(applied, user.Password)
 
 		return nil
 	}
-	mc.UpdateFn = func(_ string, _ security.User) error { return nil }
+	mc.UpdateFn = func(_ string, _ v395.ApiUser) error { return nil }
 	mc.ChangePasswordFn = func(_, password string) error {
 		applied = append(applied, password)
 
 		return nil
 	}
-	mc.GetFn = func(_ string) (*security.User, error) {
-		return &security.User{
-			UserID: "alice", FirstName: "Alice", LastName: "Smith",
-			EmailAddress: "alice@example.com", Status: "active", Source: "default",
+	mc.GetFn = func(_ string) (*v395.ApiUser, error) {
+		return &v395.ApiUser{
+			UserId: "alice", FirstName: *v395.NewNullableString(new("Alice")), LastName: *v395.NewNullableString(new("Smith")),
+			EmailAddress: *v395.NewNullableString(new("alice@example.com")), Status: "active", Source: "default",
 		}, nil
 	}
 

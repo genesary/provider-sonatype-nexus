@@ -39,7 +39,9 @@ type LicenseClient interface {
 	DeleteLicense(ctx context.Context) error
 }
 
-// licenseHTTPClient implements LicenseClient using raw HTTP calls.
+// licenseHTTPClient implements LicenseClient using raw HTTP calls. The
+// generated Nexus client is not used here: it models the license upload as a
+// JSON object, whereas Nexus expects the raw license file as an octet stream.
 type licenseHTTPClient struct {
 	baseURL    string
 	username   string

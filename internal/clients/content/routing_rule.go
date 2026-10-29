@@ -1,7 +1,9 @@
 package content
 
 import (
-	nexusschema "github.com/datadrivers/go-nexus-client/nexus3/schema"
+	"context"
+
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	"k8s.io/utils/ptr"
 
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
@@ -11,10 +13,15 @@ import (
 
 // RoutingRuleClient defines the interface for routing rule operations.
 type RoutingRuleClient interface {
-	Get(name string) (*nexusschema.RoutingRule, error)
-	Create(rule *nexusschema.RoutingRule) error
-	Update(rule *nexusschema.RoutingRule) error
-	Delete(name string) error
+	Get(ctx context.Context, name string) (*v395.RoutingRuleXO, error)
+	Create(ctx context.Context, rule *v395.RoutingRuleXO) error
+	Update(ctx context.Context, rule *v395.RoutingRuleXO) error
+	Delete(ctx context.Context, name string) error
+}
+
+// routingRuleClient implements RoutingRuleClient over the Nexus API.
+type routingRuleClient struct {
+	api *v395.RoutingRulesAPIService
 }
 
 // NewRoutingRuleClient creates a RoutingRuleClient from credentials.
@@ -24,24 +31,44 @@ func NewRoutingRuleClient(creds nexus.Credentials) (RoutingRuleClient, error) {
 		return nil, err
 	}
 
-	return nc.RoutingRule, nil
+	return &routingRuleClient{api: nc.RoutingRulesAPI}, nil
+}
+
+// Get returns the routing rule with the given name.
+func (c *routingRuleClient) Get(ctx context.Context, name string) (*v395.RoutingRuleXO, error) {
+	rule, resp, err := c.api.GetRoutingRules(ctx, name).Execute()
+	if err != nil {
+		return nil, nexus.APIError(resp, err)
+	}
+
+	return rule, nil
+}
+
+// Create creates a routing rule.
+func (c *routingRuleClient) Create(ctx context.Context, rule *v395.RoutingRuleXO) error {
+	return nexus.APIError(c.api.CreateRoutingRules(ctx).RoutingRuleXO(*rule).Execute())
+}
+
+// Update updates the routing rule named by rule.
+func (c *routingRuleClient) Update(ctx context.Context, rule *v395.RoutingRuleXO) error {
+	return nexus.APIError(c.api.UpdateRoutingRules(ctx, rule.GetName()).RoutingRuleXO(*rule).Execute())
+}
+
+// Delete deletes the routing rule with the given name.
+func (c *routingRuleClient) Delete(ctx context.Context, name string) error {
+	return nexus.APIError(c.api.DeleteRoutingRules(ctx, name).Execute())
 }
 
 // GenerateRoutingRule builds a Nexus RoutingRule from a CR spec.
-func GenerateRoutingRule(cr *contentv1alpha1.RoutingRule) *nexusschema.RoutingRule {
+func GenerateRoutingRule(cr *contentv1alpha1.RoutingRule) *v395.RoutingRuleXO {
 	params := cr.Spec.ForProvider
 
-	rule := &nexusschema.RoutingRule{
-		Name:     params.Name,
-		Mode:     nexusschema.RoutingRuleMode(params.Mode),
-		Matchers: params.Matchers,
+	return &v395.RoutingRuleXO{
+		Name:        new(params.Name),
+		Mode:        new(params.Mode),
+		Matchers:    params.Matchers,
+		Description: new(ptr.Deref(params.Description, "")),
 	}
-
-	if params.Description != nil {
-		rule.Description = *params.Description
-	}
-
-	return rule
 }
 
 // IsRoutingRuleUpToDate reports whether the CR spec matches the observed rule.
@@ -57,15 +84,15 @@ func IsRoutingRuleUpToDate(params *contentv1alpha1.RoutingRuleParameters, observ
 
 // GenerateRoutingRuleObservation converts an observed Nexus routing rule into
 // a CRD observation type.
-func GenerateRoutingRuleObservation(observed *nexusschema.RoutingRule) contentv1alpha1.RoutingRuleObservation {
+func GenerateRoutingRuleObservation(observed *v395.RoutingRuleXO) contentv1alpha1.RoutingRuleObservation {
 	if observed == nil {
 		return contentv1alpha1.RoutingRuleObservation{}
 	}
 
 	return contentv1alpha1.RoutingRuleObservation{
-		Name:        observed.Name,
-		Description: observed.Description,
-		Mode:        string(observed.Mode),
+		Name:        observed.GetName(),
+		Description: observed.GetDescription(),
+		Mode:        observed.GetMode(),
 		Matchers:    observed.Matchers,
 	}
 }

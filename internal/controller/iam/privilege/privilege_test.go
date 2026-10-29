@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -16,6 +15,7 @@ import (
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
 	iammocks "github.com/genesary/provider-sonatype-nexus/test/mocks/iam"
 )
 
@@ -67,7 +67,7 @@ func TestObserve(t *testing.T) {
 			name: "NotFound_404",
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.GetFn = func(_ string) (*security.Privilege, error) {
+				mc.GetFn = func(_ string) (*iamclient.Privilege, error) {
 					return nil, errors.New("404 not found")
 				}
 			},
@@ -79,7 +79,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.GetFn = func(_ string) (*security.Privilege, error) {
+				mc.GetFn = func(_ string) (*iamclient.Privilege, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -91,7 +91,7 @@ func TestObserve(t *testing.T) {
 			name: "NilPrivilegeReturned",
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.GetFn = func(_ string) (*security.Privilege, error) {
+				mc.GetFn = func(_ string) (*iamclient.Privilege, error) {
 					//nolint:nilnil // intentionally testing nil privilege with nil error
 					return nil, nil
 				}
@@ -104,8 +104,8 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.GetFn = func(_ string) (*security.Privilege, error) {
-					return &security.Privilege{
+				mc.GetFn = func(_ string) (*iamclient.Privilege, error) {
+					return &iamclient.Privilege{
 						Name: "my-priv",
 						Type: "application",
 					}, nil
@@ -125,8 +125,8 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
-				mc.GetFn = func(_ string) (*security.Privilege, error) {
-					return &security.Privilege{
+				mc.GetFn = func(_ string) (*iamclient.Privilege, error) {
+					return &iamclient.Privilege{
 						Name:    "my-priv",
 						Type:    "application",
 						Actions: []string{"READ", "WRITE"},

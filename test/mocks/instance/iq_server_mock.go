@@ -1,7 +1,9 @@
 package capability
 
 import (
-	nexussdk "github.com/datadrivers/go-nexus-client/nexus3/schema/iq"
+	"context"
+
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	instanceclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 )
@@ -10,12 +12,12 @@ var _ instanceclient.IQServerClient = &MockIQServerClient{}
 
 // MockIQServerClient is a test double for instanceclient.IQServerClient.
 type MockIQServerClient struct {
-	GetFn     func() (*nexussdk.IQServerConfiguration, error)
-	UpdateFn  func(config nexussdk.IQServerConfiguration) error
+	GetFn     func() (*v395.IqConnectionXo, error)
+	UpdateFn  func(config v395.IqConnectionXo) error
 	DisableFn func() error
 
 	GetCalls     int
-	UpdateCalls  []nexussdk.IQServerConfiguration
+	UpdateCalls  []v395.IqConnectionXo
 	DisableCalls int
 }
 
@@ -25,7 +27,7 @@ func NewMockIQServerClient() *MockIQServerClient {
 }
 
 // Get mock implementation.
-func (m *MockIQServerClient) Get() (*nexussdk.IQServerConfiguration, error) {
+func (m *MockIQServerClient) Get(_ context.Context) (*v395.IqConnectionXo, error) {
 	m.GetCalls++
 
 	if m.GetFn != nil {
@@ -36,7 +38,7 @@ func (m *MockIQServerClient) Get() (*nexussdk.IQServerConfiguration, error) {
 }
 
 // Update mock implementation.
-func (m *MockIQServerClient) Update(config nexussdk.IQServerConfiguration) error {
+func (m *MockIQServerClient) Update(_ context.Context, config v395.IqConnectionXo) error {
 	m.UpdateCalls = append(m.UpdateCalls, config)
 
 	if m.UpdateFn != nil {
@@ -47,7 +49,7 @@ func (m *MockIQServerClient) Update(config nexussdk.IQServerConfiguration) error
 }
 
 // Disable mock implementation.
-func (m *MockIQServerClient) Disable() error {
+func (m *MockIQServerClient) Disable(_ context.Context) error {
 	m.DisableCalls++
 
 	if m.DisableFn != nil {

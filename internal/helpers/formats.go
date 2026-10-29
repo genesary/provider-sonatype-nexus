@@ -19,6 +19,7 @@ package helpers
 
 import (
 	"io"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -259,4 +260,18 @@ func IsNotFound(err error) bool {
 		strings.Contains(msg, "not found") ||
 		strings.Contains(msg, "did not find") ||
 		strings.Contains(msg, "does not exist")
+}
+
+// ClampInt32 converts value to an int32, saturating at the int32 bounds rather
+// than wrapping around.
+func ClampInt32(value int) int32 {
+	if value > math.MaxInt32 {
+		return math.MaxInt32
+	}
+
+	if value < math.MinInt32 {
+		return math.MinInt32
+	}
+
+	return int32(value)
 }

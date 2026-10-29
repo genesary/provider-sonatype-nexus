@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -69,7 +69,7 @@ func TestObserve(t *testing.T) {
 			name: "NotFound_404",
 			cr:   newTestContentSelector("my-selector", "format == 'maven2'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.GetFn = func(_ string) (*security.ContentSelector, error) {
+				mc.GetFn = func(_ string) (*v395.ContentSelectorApiResponse, error) {
 					return nil, errors.New("404 not found")
 				}
 			},
@@ -81,7 +81,7 @@ func TestObserve(t *testing.T) {
 			name: "NilReturned",
 			cr:   newTestContentSelector("my-selector", "format == 'maven2'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.GetFn = func(_ string) (*security.ContentSelector, error) {
+				mc.GetFn = func(_ string) (*v395.ContentSelectorApiResponse, error) {
 					//nolint:nilnil // intentionally testing nil with nil error
 					return nil, nil
 				}
@@ -94,7 +94,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestContentSelector("my-selector", "format == 'maven2'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.GetFn = func(_ string) (*security.ContentSelector, error) {
+				mc.GetFn = func(_ string) (*v395.ContentSelectorApiResponse, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -111,11 +111,11 @@ func TestObserve(t *testing.T) {
 				return cs
 			}(),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.GetFn = func(_ string) (*security.ContentSelector, error) {
-					return &security.ContentSelector{
-						Name:        "my-selector",
-						Expression:  "format == 'maven2'",
-						Description: description,
+				mc.GetFn = func(_ string) (*v395.ContentSelectorApiResponse, error) {
+					return &v395.ContentSelectorApiResponse{
+						Name:        new("my-selector"),
+						Expression:  new("format == 'maven2'"),
+						Description: new(description),
 					}, nil
 				}
 			},
@@ -127,10 +127,10 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated",
 			cr:   newTestContentSelector("my-selector", "format == 'docker'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.GetFn = func(_ string) (*security.ContentSelector, error) {
-					return &security.ContentSelector{
-						Name:       "my-selector",
-						Expression: "format == 'maven2'",
+				mc.GetFn = func(_ string) (*v395.ContentSelectorApiResponse, error) {
+					return &v395.ContentSelectorApiResponse{
+						Name:       new("my-selector"),
+						Expression: new("format == 'maven2'"),
 					}, nil
 				}
 			},
@@ -149,14 +149,14 @@ func TestObserve(t *testing.T) {
 				return cs
 			}(),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.GetFn = func(name string) (*security.ContentSelector, error) {
+				mc.GetFn = func(name string) (*v395.ContentSelectorApiResponse, error) {
 					if name != "external-name" {
 						return nil, errors.New("wrong name called")
 					}
 
-					return &security.ContentSelector{
-						Name:       "external-name",
-						Expression: "format == 'npm'",
+					return &v395.ContentSelectorApiResponse{
+						Name:       new("external-name"),
+						Expression: new("format == 'npm'"),
 					}, nil
 				}
 			},
@@ -222,7 +222,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestContentSelector("new-selector", "format == 'helm'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.CreateFn = func(_ security.ContentSelector) error {
+				mc.CreateFn = func(_ v395.ContentSelectorApiCreateRequest) error {
 					return nil
 				}
 			},
@@ -243,7 +243,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestContentSelector("new-selector", "format == 'helm'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.CreateFn = func(_ security.ContentSelector) error {
+				mc.CreateFn = func(_ v395.ContentSelectorApiCreateRequest) error {
 					return errors.New("create failed")
 				}
 			},
@@ -308,7 +308,7 @@ func TestUpdate(t *testing.T) {
 				return cs
 			}(),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.UpdateFn = func(_ string, _ security.ContentSelector) error {
+				mc.UpdateFn = func(_ string, _ v395.ContentSelectorApiUpdateRequest) error {
 					return nil
 				}
 			},
@@ -325,7 +325,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestContentSelector("existing-selector", "format == 'raw'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
-				mc.UpdateFn = func(_ string, _ security.ContentSelector) error {
+				mc.UpdateFn = func(_ string, _ v395.ContentSelectorApiUpdateRequest) error {
 					return errors.New("update failed")
 				}
 			},
@@ -576,11 +576,11 @@ func TestObserve_UpdatesAtProvider(t *testing.T) {
 	cr := newTestContentSelector("my-selector", "format == 'docker'")
 
 	mc := contentmocks.NewMockContentSelectorClient()
-	mc.GetFn = func(_ string) (*security.ContentSelector, error) {
-		return &security.ContentSelector{
-			Name:        "my-selector",
-			Expression:  "format == 'docker'",
-			Description: "my description",
+	mc.GetFn = func(_ string) (*v395.ContentSelectorApiResponse, error) {
+		return &v395.ContentSelectorApiResponse{
+			Name:        new("my-selector"),
+			Expression:  new("format == 'docker'"),
+			Description: new("my description"),
 		}, nil
 	}
 

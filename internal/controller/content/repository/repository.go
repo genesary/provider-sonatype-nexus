@@ -25,7 +25,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
-	pkgrepository "github.com/datadrivers/go-nexus-client/nexus3/pkg/repository"
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -118,7 +117,7 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	}
 
 	return &external{
-		client:     nexusClient.Repository,
+		client:     nexusClient.RepositoryManagementAPI,
 		kube:       c.kube,
 		baseURL:    creds.URL,
 		getHandler: getHandler,
@@ -128,7 +127,7 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 // external implements managed.ExternalClient.
 type external struct {
 	// client is the Nexus repository API.
-	client *pkgrepository.RepositoryService
+	client *nexusAPI
 	// kube resolves the secrets the spec references.
 	kube client.Client
 	// baseURL is the Nexus base URL, used to report the repository URL.
@@ -156,7 +155,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	name := repositoryName(repoCR)
 
-	state, err := handler.Observe(e.client, name, repoCR.Spec.ForProvider.Type, desiredRepo{repo: repoCR})
+	state, err := handler.Observe(ctx, e.client, name, repoCR.Spec.ForProvider.Type, desiredRepo{repo: repoCR})
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetRepository)
 	}
@@ -208,7 +207,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, err
 	}
 
-	err = handler.Create(e.client, repoCR.Spec.ForProvider.Type, desired)
+	err = handler.Create(ctx, e.client, repoCR.Spec.ForProvider.Type, desired)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateRepository)
 	}
@@ -250,7 +249,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalUpdate{}, err
 	}
 
-	err = handler.Update(e.client, repositoryName(repoCR), repoCR.Spec.ForProvider.Type, desired)
+	err = handler.Update(ctx, e.client, repositoryName(repoCR), repoCR.Spec.ForProvider.Type, desired)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateRepository)
 	}
@@ -272,7 +271,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalDelete{}, err
 	}
 
-	err = handler.Delete(e.client, repositoryName(repoCR), repoCR.Spec.ForProvider.Type)
+	err = handler.Delete(ctx, e.client, repositoryName(repoCR), repoCR.Spec.ForProvider.Type)
 	if err != nil && !helpers.IsNotFound(err) {
 		return managed.ExternalDelete{}, errors.Wrap(err, errDeleteRepository)
 	}

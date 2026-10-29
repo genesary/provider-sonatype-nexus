@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	schema "github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	"k8s.io/utils/ptr"
 
 	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
@@ -28,15 +28,15 @@ func observationOf(t *testing.T, repo any, url string) repositoryv1alpha1.Reposi
 func TestGenerateRepositoryObservationHosted(t *testing.T) {
 	t.Parallel()
 
-	repo := schema.AptHostedRepository{
+	repo := v395.AptHostedApiRepository{
 		Name:   "apt-hosted",
 		Online: true,
-		Storage: schema.HostedStorage{
+		Storage: v395.HostedStorageAttributes{
 			BlobStoreName:               "default",
 			StrictContentTypeValidation: true,
-			WritePolicy:                 new(schema.StorageWritePolicyAllow),
+			WritePolicy:                 "ALLOW",
 		},
-		Cleanup: &schema.Cleanup{PolicyNames: []string{"weekly"}},
+		Cleanup: &v395.CleanupPolicyAttributes{PolicyNames: []string{"weekly"}},
 	}
 
 	got := observationOf(t, repo, "https://nexus.example.com/repository/apt-hosted")
@@ -59,15 +59,15 @@ func TestGenerateRepositoryObservationHosted(t *testing.T) {
 }
 
 // TestGenerateRepositoryObservationProxy checks the fields a proxy repository
-// reports, including the routing rule Nexus renames on the way out.
+// reports, including its routing rule.
 func TestGenerateRepositoryObservationProxy(t *testing.T) {
 	t.Parallel()
 
-	repo := schema.AptProxyRepository{
+	repo := v395.AptProxyApiRepository{
 		Name:            "apt-proxy",
 		Online:          false,
-		Storage:         schema.Storage{BlobStoreName: "blobs", StrictContentTypeValidation: false},
-		Proxy:           schema.Proxy{RemoteURL: "https://deb.debian.org"},
+		Storage:         v395.StorageAttributes{BlobStoreName: "blobs", StrictContentTypeValidation: false},
+		Proxy:           v395.ProxyAttributes{RemoteUrl: "https://deb.debian.org"},
 		RoutingRuleName: new("block-all"),
 	}
 
@@ -95,11 +95,11 @@ func TestGenerateRepositoryObservationProxy(t *testing.T) {
 func TestGenerateRepositoryObservationGroup(t *testing.T) {
 	t.Parallel()
 
-	repo := schema.RawGroupRepository{
+	repo := v395.RawGroupApiRepository{
 		Name:    "raw-group",
 		Online:  true,
-		Storage: schema.Storage{BlobStoreName: "default"},
-		Group:   schema.Group{MemberNames: []string{"raw-hosted", "raw-proxy"}},
+		Storage: v395.StorageAttributes{BlobStoreName: "default"},
+		Group:   v395.GroupAttributes{MemberNames: []string{"raw-hosted", "raw-proxy"}},
 	}
 
 	got := observationOf(t, repo, "https://nexus.example.com/repository/raw-group")
@@ -134,5 +134,18 @@ func TestGenerateRepositoryObservationToleratesMissingFields(t *testing.T) {
 
 	if got.URL == nil {
 		t.Error("URL was not reported")
+	}
+}
+
+// TestGenerateRepositoryObservationPrefersReportedURL checks that the URL
+// Nexus reports wins over the one derived from the provider config.
+func TestGenerateRepositoryObservationPrefersReportedURL(t *testing.T) {
+	t.Parallel()
+
+	reported := map[string]any{"name": "repo", "url": "https://public.example.com/repository/repo"}
+
+	got := generateRepositoryObservation(reported, "http://nexus.internal:8081/repository/repo")
+	if ptr.Deref(got.URL, "") != "https://public.example.com/repository/repo" {
+		t.Errorf("URL = %v, want the reported one", got.URL)
 	}
 }

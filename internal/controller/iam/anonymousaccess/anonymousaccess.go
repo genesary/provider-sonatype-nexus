@@ -110,7 +110,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	settings, err := e.client.Read()
+	settings, err := e.client.Read(ctx)
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetAnonymous)
 	}
@@ -133,7 +133,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 	settings := iamclient.GenerateAnonymousAccessSettings(anonAccess)
 
-	err := e.client.Update(settings)
+	err := e.client.Update(ctx, settings)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errUpdateAnonymous)
 	}
@@ -150,7 +150,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 	settings := iamclient.GenerateAnonymousAccessSettings(anonAccess)
 
-	err := e.client.Update(settings)
+	err := e.client.Update(ctx, settings)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateAnonymous)
 	}
@@ -159,7 +159,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete is a no-op; AnonymousAccess is a singleton and cannot be deleted.
-func (e *external) Delete(_ context.Context, _ resource.Managed) (managed.ExternalDelete, error) {
+func (e *external) Delete(ctx context.Context, _ resource.Managed) (managed.ExternalDelete, error) {
 	return managed.ExternalDelete{}, nil
 }
 

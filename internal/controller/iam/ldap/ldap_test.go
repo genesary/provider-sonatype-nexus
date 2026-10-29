@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -78,7 +78,7 @@ func TestObserve(t *testing.T) {
 			name: "NotFound_404",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.GetFn = func(_ string) (*security.LDAP, error) {
+				mc.GetFn = func(_ string) (*v395.ReadLdapServerXo, error) {
 					return nil, errors.New("404 not found")
 				}
 			},
@@ -90,7 +90,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.GetFn = func(_ string) (*security.LDAP, error) {
+				mc.GetFn = func(_ string) (*v395.ReadLdapServerXo, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -102,7 +102,7 @@ func TestObserve(t *testing.T) {
 			name: "NilLDAPReturned",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.GetFn = func(_ string) (*security.LDAP, error) {
+				mc.GetFn = func(_ string) (*v395.ReadLdapServerXo, error) {
 					//nolint:nilnil // intentionally testing nil LDAP with nil error
 					return nil, nil
 				}
@@ -115,15 +115,15 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.GetFn = func(_ string) (*security.LDAP, error) {
-					return &security.LDAP{
+				mc.GetFn = func(_ string) (*v395.ReadLdapServerXo, error) {
+					return &v395.ReadLdapServerXo{
 						Name:       "corp-ldap",
 						Protocol:   "ldap",
 						Host:       "ldap.example.com",
 						Port:       389,
 						SearchBase: "dc=example,dc=com",
-						AuthSchema: "none",
-						UserBaseDN: "ou=people,dc=example,dc=com",
+						AuthScheme: "none",
+						UserBaseDn: new("ou=people,dc=example,dc=com"),
 					}, nil
 				}
 			},
@@ -135,15 +135,15 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated",
 			cr:   newTestLDAP("corp-ldap", "ldap-new.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.GetFn = func(_ string) (*security.LDAP, error) {
-					return &security.LDAP{
+				mc.GetFn = func(_ string) (*v395.ReadLdapServerXo, error) {
+					return &v395.ReadLdapServerXo{
 						Name:       "corp-ldap",
 						Protocol:   "ldap",
 						Host:       "ldap-old.example.com",
 						Port:       389,
 						SearchBase: "dc=example,dc=com",
-						AuthSchema: "none",
-						UserBaseDN: "ou=people,dc=example,dc=com",
+						AuthScheme: "none",
+						UserBaseDn: new("ou=people,dc=example,dc=com"),
 					}, nil
 				}
 			},
@@ -209,7 +209,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.CreateFn = func(_ security.LDAP) error {
+				mc.CreateFn = func(_ v395.CreateLdapServerXo) error {
 					return nil
 				}
 			},
@@ -230,7 +230,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.CreateFn = func(_ security.LDAP) error {
+				mc.CreateFn = func(_ v395.CreateLdapServerXo) error {
 					return errors.New("create failed")
 				}
 			},
@@ -291,8 +291,8 @@ func TestCreate_WithPassword(t *testing.T) {
 	kubeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
 
 	mc := iammocks.NewMockLDAPClient()
-	mc.CreateFn = func(ldap security.LDAP) error {
-		if ldap.AuthPassword != "s3cr3t" {
+	mc.CreateFn = func(ldap v395.CreateLdapServerXo) error {
+		if ldap.GetAuthPassword() != "s3cr3t" {
 			return errors.New("unexpected password value")
 		}
 
@@ -331,7 +331,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.UpdateFn = func(_ string, _ security.LDAP) error {
+				mc.UpdateFn = func(_ string, _ v395.UpdateLdapServerXo) error {
 					return nil
 				}
 			},
@@ -348,7 +348,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestLDAP("corp-ldap", "ldap.example.com"),
 			mockSetup: func(mc *iammocks.MockLDAPClient) {
-				mc.UpdateFn = func(_ string, _ security.LDAP) error {
+				mc.UpdateFn = func(_ string, _ v395.UpdateLdapServerXo) error {
 					return errors.New("update failed")
 				}
 			},

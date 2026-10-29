@@ -123,8 +123,15 @@ linters:
           - gocritic
         path: _test\.go
         text: (unnamedResult|exitAfterDefer)
-      # One payload builder set per Nexus repository format. go-nexus-client
-      # models every format and repository type as its own Go struct, so the
+      # The generated Nexus client reads and closes every response body before
+      # returning, and hands back an in-memory copy, so the responses its
+      # callers receive hold no connection to release.
+      - linters:
+          - bodyclose
+        path: internal/(clients|controller/content/repository|test/e2e)/
+      # One payload builder set per Nexus repository format. The generated
+      # Nexus client models every format and repository type as its own Go
+      # struct, so the
       # identical field lists cannot be shared between formats: a struct
       # literal has to name its type.
       - linters:

@@ -65,11 +65,11 @@ func TestRoutingRuleCRUD(t *testing.T) {
 	if got == nil {
 		t.Fatalf("routing rule %q not found in Nexus", ruleName)
 	}
-	if got.Name != ruleName {
-		t.Errorf("routing rule name = %q, want %q", got.Name, ruleName)
+	if got.GetName() != ruleName {
+		t.Errorf("routing rule name = %q, want %q", got.GetName(), ruleName)
 	}
-	if string(got.Mode) != "ALLOW" {
-		t.Errorf("routing rule mode = %q, want %q", got.Mode, "ALLOW")
+	if got.GetMode() != "ALLOW" {
+		t.Errorf("routing rule mode = %q, want %q", got.GetMode(), "ALLOW")
 	}
 	if len(got.Matchers) != 2 {
 		t.Errorf("routing rule matchers len = %d, want 2", len(got.Matchers))

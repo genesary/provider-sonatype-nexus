@@ -122,7 +122,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		ldapName = ldapCR.Spec.ForProvider.Name
 	}
 
-	observed, err := e.client.Get(ldapName)
+	observed, err := e.client.Get(ctx, ldapName)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
@@ -174,7 +174,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 	ldapCfg := iamclient.GenerateLDAP(ldapCR, password)
 
-	err = e.client.Create(ldapCfg)
+	err = e.client.Create(ctx, ldapCfg)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateLDAP)
 	}
@@ -216,9 +216,9 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalUpdate{}, errors.Wrap(err, errGetAuthPassword)
 	}
 
-	ldapCfg := iamclient.GenerateLDAP(ldapCR, password)
+	ldapCfg := iamclient.GenerateLDAPUpdate(ldapCR, password)
 
-	err = e.client.Update(ldapName, ldapCfg)
+	err = e.client.Update(ctx, ldapName, ldapCfg)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateLDAP)
 	}
@@ -240,7 +240,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		ldapName = ldapCR.Spec.ForProvider.Name
 	}
 
-	err := e.client.Delete(ldapName)
+	err := e.client.Delete(ctx, ldapName)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil

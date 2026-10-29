@@ -1,10 +1,10 @@
 package instance
 
 import (
+	"context"
 	"strings"
 
-	nexuspkgsecurity "github.com/datadrivers/go-nexus-client/nexus3/pkg/security"
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
@@ -12,40 +12,37 @@ import (
 
 // SSLTruststoreClient manages Nexus SSL truststore certificates.
 type SSLTruststoreClient interface {
-	AddCertificate(cert *security.SSLCertificate) error
-	RemoveCertificate(id string) error
-	ListCertificates() ([]security.SSLCertificate, error)
+	AddCertificate(ctx context.Context, pem string) error
+	RemoveCertificate(ctx context.Context, id string) error
+	ListCertificates(ctx context.Context) ([]v395.ApiCertificate, error)
 }
 
-// sslTruststoreClientImpl wraps SecuritySSLService to normalize the
-// ListCertificates return type from *[]T to []T.
-type sslTruststoreClientImpl struct {
-	svc *nexuspkgsecurity.SecuritySSLService
+// sslTruststoreClient implements SSLTruststoreClient over the Nexus API.
+type sslTruststoreClient struct {
+	api *v395.SecurityCertificatesAPIService
 }
 
-// AddCertificate adds the given certificate to the Nexus truststore.
-func (c *sslTruststoreClientImpl) AddCertificate(cert *security.SSLCertificate) error {
-	return c.svc.AddCertificate(cert)
+// AddCertificate adds the PEM encoded certificate to the Nexus truststore.
+func (c *sslTruststoreClient) AddCertificate(ctx context.Context, pem string) error {
+	_, resp, err := c.api.CreateSecuritySslTruststore(ctx).Body(pem).Execute()
+
+	return nexus.APIError(resp, err)
 }
 
 // RemoveCertificate removes the certificate with the given ID from the Nexus
 // truststore.
-func (c *sslTruststoreClientImpl) RemoveCertificate(id string) error {
-	return c.svc.RemoveCertificate(id)
+func (c *sslTruststoreClient) RemoveCertificate(ctx context.Context, id string) error {
+	return nexus.APIError(c.api.DeleteSecuritySslTruststore(ctx, id).Execute())
 }
 
 // ListCertificates returns all certificates in the Nexus truststore.
-func (c *sslTruststoreClientImpl) ListCertificates() ([]security.SSLCertificate, error) {
-	result, err := c.svc.ListCertificates()
+func (c *sslTruststoreClient) ListCertificates(ctx context.Context) ([]v395.ApiCertificate, error) {
+	certs, resp, err := c.api.ListSecuritySslTruststore(ctx).Execute()
 	if err != nil {
-		return nil, err
+		return nil, nexus.APIError(resp, err)
 	}
 
-	if result == nil {
-		return nil, nil
-	}
-
-	return *result, nil
+	return certs, nil
 }
 
 // NewSSLTruststoreClient returns a new SSLTruststoreClient.
@@ -55,7 +52,7 @@ func NewSSLTruststoreClient(creds nexus.Credentials) (SSLTruststoreClient, error
 		return nil, err
 	}
 
-	return &sslTruststoreClientImpl{svc: nc.Security.SSL}, nil
+	return &sslTruststoreClient{api: nc.SecurityCertificatesAPI}, nil
 }
 
 // IsCertUpToDate reports whether the CR spec PEM matches observed.
@@ -63,73 +60,39 @@ func IsCertUpToDate(cr *instancev1alpha1.SecuritySSLTruststore) bool {
 	return strings.TrimSpace(cr.Spec.ForProvider.Pem) == strings.TrimSpace(cr.Status.AtProvider.Pem)
 }
 
-// CertToObservation converts an SSLCertificate to an observation struct.
-func CertToObservation(cert *security.SSLCertificate) instancev1alpha1.SecuritySSLTruststoreObservation {
-	obs := instancev1alpha1.SecuritySSLTruststoreObservation{
-		Pem: cert.Pem,
-	}
-
-	setCertBasicFields(&obs, cert)
-	setCertIssuerFields(&obs, cert)
-	setCertSubjectFields(&obs, cert)
-	setCertDateFields(&obs, cert)
-
-	return obs
-}
-
-// setCertBasicFields populates ID, Fingerprint, and SerialNumber from the
-// certificate.
-func setCertBasicFields(obs *instancev1alpha1.SecuritySSLTruststoreObservation, cert *security.SSLCertificate) {
-	if cert.Id != "" {
-		obs.ID = &cert.Id
-	}
-
-	if cert.Fingerprint != "" {
-		obs.Fingerprint = &cert.Fingerprint
-	}
-
-	if cert.SerialNumber != "" {
-		obs.SerialNumber = &cert.SerialNumber
+// CertToObservation converts a truststore certificate to an observation
+// struct. Fields Nexus reports empty are left unset.
+func CertToObservation(cert *v395.ApiCertificate) instancev1alpha1.SecuritySSLTruststoreObservation {
+	return instancev1alpha1.SecuritySSLTruststoreObservation{
+		Pem:                     cert.GetPem(),
+		ID:                      nonEmpty(cert.Id),
+		Fingerprint:             nonEmpty(cert.Fingerprint),
+		SerialNumber:            nonEmpty(cert.SerialNumber),
+		IssuerCommonName:        nonEmpty(cert.IssuerCommonName),
+		IssuerOrganization:      nonEmpty(cert.IssuerOrganization),
+		IssuerOrganizationUnit:  nonEmpty(cert.IssuerOrganizationalUnit),
+		SubjectCommonName:       nonEmpty(cert.SubjectCommonName),
+		SubjectOrganization:     nonEmpty(cert.SubjectOrganization),
+		SubjectOrganizationUnit: nonEmpty(cert.SubjectOrganizationalUnit),
+		IssuedOn:                nonZero(cert.IssuedOn),
+		ExpiresOn:               nonZero(cert.ExpiresOn),
 	}
 }
 
-// setCertIssuerFields populates issuer fields from the certificate.
-func setCertIssuerFields(obs *instancev1alpha1.SecuritySSLTruststoreObservation, cert *security.SSLCertificate) {
-	if cert.IssuerCommonName != "" {
-		obs.IssuerCommonName = &cert.IssuerCommonName
+// nonEmpty returns value, or nil when it points at an empty string.
+func nonEmpty(value *string) *string {
+	if value == nil || *value == "" {
+		return nil
 	}
 
-	if cert.IssuerOrganization != "" {
-		obs.IssuerOrganization = &cert.IssuerOrganization
-	}
-
-	if cert.IssuerOrganizationUnit != "" {
-		obs.IssuerOrganizationUnit = &cert.IssuerOrganizationUnit
-	}
+	return value
 }
 
-// setCertSubjectFields populates subject fields from the certificate.
-func setCertSubjectFields(obs *instancev1alpha1.SecuritySSLTruststoreObservation, cert *security.SSLCertificate) {
-	if cert.SubjectCommonName != "" {
-		obs.SubjectCommonName = &cert.SubjectCommonName
+// nonZero returns value, or nil when it points at zero.
+func nonZero(value *int64) *int64 {
+	if value == nil || *value == 0 {
+		return nil
 	}
 
-	if cert.SubjectOrganization != "" {
-		obs.SubjectOrganization = &cert.SubjectOrganization
-	}
-
-	if cert.SubjectOrganizationUnit != "" {
-		obs.SubjectOrganizationUnit = &cert.SubjectOrganizationUnit
-	}
-}
-
-// setCertDateFields populates IssuedOn and ExpiresOn from the certificate.
-func setCertDateFields(obs *instancev1alpha1.SecuritySSLTruststoreObservation, cert *security.SSLCertificate) {
-	if cert.IssuedOn != 0 {
-		obs.IssuedOn = &cert.IssuedOn
-	}
-
-	if cert.ExpiresOn != 0 {
-		obs.ExpiresOn = &cert.ExpiresOn
-	}
+	return value
 }

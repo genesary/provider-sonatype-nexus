@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
@@ -18,12 +18,12 @@ var errNotConfigured = errors.New("mock function not configured")
 // mockGenericClient is a mock implementing instance.BlobStoreClient.
 type mockGenericClient struct {
 	DeleteFn    func(name string) error
-	ListFn      func() ([]blobstore.Generic, error)
+	ListFn      func() ([]v395.GenericBlobStoreApiResponse, error)
 	DeleteCalls []string
 }
 
 // Delete records the call and delegates to DeleteFn if set.
-func (m *mockGenericClient) Delete(name string) error {
+func (m *mockGenericClient) Delete(_ context.Context, name string) error {
 	m.DeleteCalls = append(m.DeleteCalls, name)
 	if m.DeleteFn != nil {
 		return m.DeleteFn(name)
@@ -32,37 +32,32 @@ func (m *mockGenericClient) Delete(name string) error {
 	return nil
 }
 
-// GetQuotaStatus is a stub; quota status is not exercised by unit tests.
-func (m *mockGenericClient) GetQuotaStatus(_ string) (*blobstore.QuotaStatus, error) {
-	return &blobstore.QuotaStatus{}, nil
-}
-
 // List delegates to ListFn if set, otherwise returns an empty list.
-func (m *mockGenericClient) List() ([]blobstore.Generic, error) {
+func (m *mockGenericClient) List(_ context.Context) ([]v395.GenericBlobStoreApiResponse, error) {
 	if m.ListFn != nil {
 		return m.ListFn()
 	}
 
-	return []blobstore.Generic{}, nil
+	return []v395.GenericBlobStoreApiResponse{}, nil
 }
 
 // fileCall captures arguments to a file-client Create or Update call.
 type fileCall struct {
 	Name string
-	BS   *blobstore.File
+	Path string
 }
 
 // mockFileClient is a mock implementing instance.BlobStoreFileClient.
 type mockFileClient struct {
-	GetFn       func(name string) (*blobstore.File, error)
-	CreateFn    func(bs *blobstore.File) error
-	UpdateFn    func(name string, bs *blobstore.File) error
+	GetFn       func(name string) (*v395.FileBlobStoreApiModel, error)
+	CreateFn    func(bs v395.FileBlobStoreApiCreateRequest) error
+	UpdateFn    func(name string, bs v395.FileBlobStoreApiUpdateRequest) error
 	CreateCalls []fileCall
 	UpdateCalls []fileCall
 }
 
 // Get delegates to GetFn; returns errNotConfigured if GetFn is nil.
-func (m *mockFileClient) Get(name string) (*blobstore.File, error) {
+func (m *mockFileClient) Get(_ context.Context, name string) (*v395.FileBlobStoreApiModel, error) {
 	if m.GetFn != nil {
 		return m.GetFn(name)
 	}
@@ -71,8 +66,8 @@ func (m *mockFileClient) Get(name string) (*blobstore.File, error) {
 }
 
 // Create records the call and delegates to CreateFn if set.
-func (m *mockFileClient) Create(bs *blobstore.File) error {
-	m.CreateCalls = append(m.CreateCalls, fileCall{Name: bs.Name, BS: bs})
+func (m *mockFileClient) Create(_ context.Context, bs v395.FileBlobStoreApiCreateRequest) error {
+	m.CreateCalls = append(m.CreateCalls, fileCall{Name: bs.Name, Path: bs.Path})
 	if m.CreateFn != nil {
 		return m.CreateFn(bs)
 	}
@@ -81,8 +76,8 @@ func (m *mockFileClient) Create(bs *blobstore.File) error {
 }
 
 // Update records the call and delegates to UpdateFn if set.
-func (m *mockFileClient) Update(name string, bs *blobstore.File) error {
-	m.UpdateCalls = append(m.UpdateCalls, fileCall{Name: name, BS: bs})
+func (m *mockFileClient) Update(_ context.Context, name string, bs v395.FileBlobStoreApiUpdateRequest) error {
+	m.UpdateCalls = append(m.UpdateCalls, fileCall{Name: name, Path: bs.Path})
 	if m.UpdateFn != nil {
 		return m.UpdateFn(name, bs)
 	}
@@ -90,31 +85,23 @@ func (m *mockFileClient) Update(name string, bs *blobstore.File) error {
 	return nil
 }
 
-// Delete is a stub; file-client Delete is not exercised by unit tests.
-func (m *mockFileClient) Delete(_ string) error { return nil }
-
-// GetQuotaStatus is a stub; quota status is not exercised by unit tests.
-func (m *mockFileClient) GetQuotaStatus(_ string) (*blobstore.QuotaStatus, error) {
-	return &blobstore.QuotaStatus{}, nil
-}
-
 // s3Call captures arguments to an S3-client Create or Update call.
 type s3Call struct {
 	Name string
-	BS   *blobstore.S3
+	BS   v395.S3BlobStoreApiModel
 }
 
 // mockS3Client is a mock implementing instance.BlobStoreS3Client.
 type mockS3Client struct {
-	GetFn       func(name string) (*blobstore.S3, error)
-	CreateFn    func(bs *blobstore.S3) error
-	UpdateFn    func(name string, bs *blobstore.S3) error
+	GetFn       func(name string) (*v395.S3BlobStoreApiModel, error)
+	CreateFn    func(bs v395.S3BlobStoreApiModel) error
+	UpdateFn    func(name string, bs v395.S3BlobStoreApiModel) error
 	CreateCalls []s3Call
 	UpdateCalls []s3Call
 }
 
 // Get delegates to GetFn; returns errNotConfigured if GetFn is nil.
-func (m *mockS3Client) Get(name string) (*blobstore.S3, error) {
+func (m *mockS3Client) Get(_ context.Context, name string) (*v395.S3BlobStoreApiModel, error) {
 	if m.GetFn != nil {
 		return m.GetFn(name)
 	}
@@ -123,7 +110,7 @@ func (m *mockS3Client) Get(name string) (*blobstore.S3, error) {
 }
 
 // Create records the call and delegates to CreateFn if set.
-func (m *mockS3Client) Create(bs *blobstore.S3) error {
+func (m *mockS3Client) Create(_ context.Context, bs v395.S3BlobStoreApiModel) error {
 	m.CreateCalls = append(m.CreateCalls, s3Call{Name: bs.Name, BS: bs})
 	if m.CreateFn != nil {
 		return m.CreateFn(bs)
@@ -133,21 +120,13 @@ func (m *mockS3Client) Create(bs *blobstore.S3) error {
 }
 
 // Update records the call and delegates to UpdateFn if set.
-func (m *mockS3Client) Update(name string, bs *blobstore.S3) error {
+func (m *mockS3Client) Update(_ context.Context, name string, bs v395.S3BlobStoreApiModel) error {
 	m.UpdateCalls = append(m.UpdateCalls, s3Call{Name: name, BS: bs})
 	if m.UpdateFn != nil {
 		return m.UpdateFn(name, bs)
 	}
 
 	return nil
-}
-
-// Delete is a stub; S3-client Delete is not exercised by unit tests.
-func (m *mockS3Client) Delete(_ string) error { return nil }
-
-// GetQuotaStatus is a stub; quota status is not exercised by unit tests.
-func (m *mockS3Client) GetQuotaStatus(_ string) (*blobstore.QuotaStatus, error) {
-	return &blobstore.QuotaStatus{}, nil
 }
 
 // newTestExternal builds an *external with typed mocks, using empty mocks for
@@ -209,7 +188,7 @@ func TestObserve(t *testing.T) {
 			name: "FileNotFound",
 			cr:   newBlobStoreCR("test-blobstore", "File"),
 			file: &mockFileClient{
-				GetFn: func(_ string) (*blobstore.File, error) {
+				GetFn: func(_ string) (*v395.FileBlobStoreApiModel, error) {
 					return nil, errors.New("404 not found")
 				},
 			},
@@ -223,8 +202,8 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			file: &mockFileClient{
-				GetFn: func(_ string) (*blobstore.File, error) {
-					return &blobstore.File{Name: "test-blobstore", Path: testPath}, nil
+				GetFn: func(_ string) (*v395.FileBlobStoreApiModel, error) {
+					return &v395.FileBlobStoreApiModel{Path: testPath}, nil
 				},
 			},
 			wantExists:   true,
@@ -234,7 +213,7 @@ func TestObserve(t *testing.T) {
 			name: "S3NotFound",
 			cr:   newBlobStoreCR("test-s3-blobstore", "S3"),
 			s3: &mockS3Client{
-				GetFn: func(_ string) (*blobstore.S3, error) {
+				GetFn: func(_ string) (*v395.S3BlobStoreApiModel, error) {
 					return nil, errors.New("404 not found")
 				},
 			},
@@ -248,11 +227,11 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			s3: &mockS3Client{
-				GetFn: func(_ string) (*blobstore.S3, error) {
-					return &blobstore.S3{
+				GetFn: func(_ string) (*v395.S3BlobStoreApiModel, error) {
+					return &v395.S3BlobStoreApiModel{
 						Name: "test-s3-blobstore",
-						BucketConfiguration: blobstore.S3BucketConfiguration{
-							Bucket: blobstore.S3Bucket{Name: "test-bucket"},
+						BucketConfiguration: v395.S3BlobStoreApiBucketConfiguration{
+							Bucket: v395.S3BlobStoreApiBucket{Name: "test-bucket"},
 						},
 					}, nil
 				},
@@ -264,7 +243,7 @@ func TestObserve(t *testing.T) {
 			name: "GetFileError",
 			cr:   newBlobStoreCR("test-blobstore", "File"),
 			file: &mockFileClient{
-				GetFn: func(_ string) (*blobstore.File, error) {
+				GetFn: func(_ string) (*v395.FileBlobStoreApiModel, error) {
 					return nil, errors.New("connection error")
 				},
 			},
@@ -358,7 +337,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateFileError",
 			cr:   newBlobStoreCR("test-file-blobstore", "File"),
 			file: &mockFileClient{
-				CreateFn: func(_ *blobstore.File) error { return errors.New("create error") },
+				CreateFn: func(_ v395.FileBlobStoreApiCreateRequest) error { return errors.New("create error") },
 			},
 			wantErr: true,
 		},
@@ -438,7 +417,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateFileError",
 			cr:   newBlobStoreCR("test-file-blobstore", "File"),
 			file: &mockFileClient{
-				UpdateFn: func(_ string, _ *blobstore.File) error { return errors.New("update error") },
+				UpdateFn: func(_ string, _ v395.FileBlobStoreApiUpdateRequest) error { return errors.New("update error") },
 			},
 			wantErr: true,
 		},
@@ -569,12 +548,12 @@ func TestGenerateFileBlobStore(t *testing.T) {
 	tests := []struct {
 		name string
 		cr   *instancev1alpha1.BlobStore
-		want *blobstore.File
+		want v395.FileBlobStoreApiCreateRequest
 	}{
 		{
 			name: "FileBlobStoreNoPath",
 			cr:   newBlobStoreCR("test-blobstore", "File"),
-			want: &blobstore.File{Name: "test-blobstore"},
+			want: v395.FileBlobStoreApiCreateRequest{Name: "test-blobstore"},
 		},
 		{
 			name: "FileBlobStoreWithPath",
@@ -584,7 +563,7 @@ func TestGenerateFileBlobStore(t *testing.T) {
 
 				return cr
 			}(),
-			want: &blobstore.File{Name: "test-blobstore", Path: testPath},
+			want: v395.FileBlobStoreApiCreateRequest{Name: "test-blobstore", Path: testPath},
 		},
 		{
 			name: "FileBlobStoreWithQuota",
@@ -597,9 +576,9 @@ func TestGenerateFileBlobStore(t *testing.T) {
 
 				return cr
 			}(),
-			want: &blobstore.File{
+			want: v395.FileBlobStoreApiCreateRequest{
 				Name:      "test-blobstore",
-				SoftQuota: &blobstore.SoftQuota{Type: quotaType, Limit: quotaLimit},
+				SoftQuota: &v395.BlobStoreApiSoftQuota{Type: quotaType, Limit: &quotaLimit},
 			},
 		},
 	}
@@ -633,9 +612,9 @@ func TestGenerateFileBlobStore(t *testing.T) {
 					got.SoftQuota.Type, tt.want.SoftQuota.Type)
 			}
 
-			if got.SoftQuota.Limit != tt.want.SoftQuota.Limit {
+			if got.SoftQuota.GetLimit() != tt.want.SoftQuota.GetLimit() {
 				t.Errorf("generateFileBlobStore() SoftQuota.Limit = %v, want %v",
-					got.SoftQuota.Limit, tt.want.SoftQuota.Limit)
+					got.SoftQuota.GetLimit(), tt.want.SoftQuota.GetLimit())
 			}
 		})
 	}

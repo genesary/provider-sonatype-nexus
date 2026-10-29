@@ -2,7 +2,9 @@
 package iam
 
 import (
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	"context"
+
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
 )
@@ -11,13 +13,13 @@ var _ iamclient.LDAPClient = &MockLDAPClient{}
 
 // MockLDAPClient is a mock of iamclient.LDAPClient.
 type MockLDAPClient struct {
-	GetFn    func(name string) (*security.LDAP, error)
-	CreateFn func(ldap security.LDAP) error
-	UpdateFn func(name string, ldap security.LDAP) error
+	GetFn    func(name string) (*v395.ReadLdapServerXo, error)
+	CreateFn func(ldap v395.CreateLdapServerXo) error
+	UpdateFn func(name string, ldap v395.UpdateLdapServerXo) error
 	DeleteFn func(name string) error
 
 	GetCalls    []string
-	CreateCalls []security.LDAP
+	CreateCalls []v395.CreateLdapServerXo
 	UpdateCalls []string
 	DeleteCalls []string
 }
@@ -28,7 +30,7 @@ func NewMockLDAPClient() *MockLDAPClient {
 }
 
 // Get mock implementation.
-func (m *MockLDAPClient) Get(name string) (*security.LDAP, error) {
+func (m *MockLDAPClient) Get(_ context.Context, name string) (*v395.ReadLdapServerXo, error) {
 	m.GetCalls = append(m.GetCalls, name)
 
 	if m.GetFn != nil {
@@ -39,7 +41,7 @@ func (m *MockLDAPClient) Get(name string) (*security.LDAP, error) {
 }
 
 // Create mock implementation.
-func (m *MockLDAPClient) Create(ldap security.LDAP) error {
+func (m *MockLDAPClient) Create(_ context.Context, ldap v395.CreateLdapServerXo) error {
 	m.CreateCalls = append(m.CreateCalls, ldap)
 
 	if m.CreateFn != nil {
@@ -50,7 +52,7 @@ func (m *MockLDAPClient) Create(ldap security.LDAP) error {
 }
 
 // Update mock implementation.
-func (m *MockLDAPClient) Update(name string, ldap security.LDAP) error {
+func (m *MockLDAPClient) Update(_ context.Context, name string, ldap v395.UpdateLdapServerXo) error {
 	m.UpdateCalls = append(m.UpdateCalls, name)
 
 	if m.UpdateFn != nil {
@@ -61,7 +63,7 @@ func (m *MockLDAPClient) Update(name string, ldap security.LDAP) error {
 }
 
 // Delete mock implementation.
-func (m *MockLDAPClient) Delete(name string) error {
+func (m *MockLDAPClient) Delete(_ context.Context, name string) error {
 	m.DeleteCalls = append(m.DeleteCalls, name)
 
 	if m.DeleteFn != nil {

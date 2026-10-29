@@ -117,7 +117,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	observed, err := e.client.Get(id)
+	observed, err := e.client.Get(ctx, id)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
@@ -148,25 +148,25 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotCapability)
 	}
 
-	existing, err := e.client.List()
+	existing, err := e.client.List(ctx)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errListCapabilities)
 	}
 
 	for _, cap := range existing {
-		if cap.Type == capabilityCR.Spec.ForProvider.TypeId {
-			meta.SetExternalName(capabilityCR, cap.ID)
+		if cap.GetType() == capabilityCR.Spec.ForProvider.TypeId {
+			meta.SetExternalName(capabilityCR, cap.GetId())
 
 			return managed.ExternalCreation{}, nil
 		}
 	}
 
-	created, err := e.client.Create(instanceclient.GenerateCapabilityCreate(&capabilityCR.Spec.ForProvider))
+	created, err := e.client.Create(ctx, instanceclient.GenerateCapabilityCreate(&capabilityCR.Spec.ForProvider))
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateCap)
 	}
 
-	meta.SetExternalName(capabilityCR, created.ID)
+	meta.SetExternalName(capabilityCR, created.GetId())
 
 	return managed.ExternalCreation{}, nil
 }
@@ -180,7 +180,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 	id := meta.GetExternalName(capabilityCR)
 
-	err := e.client.Update(id, instanceclient.GenerateCapabilityUpdate(&capabilityCR.Spec.ForProvider, id))
+	err := e.client.Update(ctx, id, instanceclient.GenerateCapabilityUpdate(&capabilityCR.Spec.ForProvider, id))
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateCap)
 	}
@@ -200,7 +200,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalDelete{}, nil
 	}
 
-	err := e.client.Delete(id)
+	err := e.client.Delete(ctx, id)
 	if err != nil {
 		if helpers.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil

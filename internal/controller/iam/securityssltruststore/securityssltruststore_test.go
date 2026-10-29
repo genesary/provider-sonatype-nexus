@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -92,13 +92,13 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.ListCertificatesFn = func() ([]security.SSLCertificate, error) {
-					return []security.SSLCertificate{
+				mc.ListCertificatesFn = func() ([]v395.ApiCertificate, error) {
+					return []v395.ApiCertificate{
 						{
-							Id:                "cert-id-123",
-							Pem:               testPem,
-							Fingerprint:       "AB:CD:EF",
-							SubjectCommonName: "testCA",
+							Id:                new("cert-id-123"),
+							Pem:               new(testPem),
+							Fingerprint:       new("AB:CD:EF"),
+							SubjectCommonName: new("testCA"),
 						},
 					}, nil
 				}
@@ -116,9 +116,9 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.ListCertificatesFn = func() ([]security.SSLCertificate, error) {
-					return []security.SSLCertificate{
-						{Id: "cert-id-123", Pem: testPem},
+				mc.ListCertificatesFn = func() ([]v395.ApiCertificate, error) {
+					return []v395.ApiCertificate{
+						{Id: new("cert-id-123"), Pem: new(testPem)},
 					}, nil
 				}
 			},
@@ -135,8 +135,8 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.ListCertificatesFn = func() ([]security.SSLCertificate, error) {
-					return []security.SSLCertificate{}, nil
+				mc.ListCertificatesFn = func() ([]v395.ApiCertificate, error) {
+					return []v395.ApiCertificate{}, nil
 				}
 			},
 			wantExists:   false,
@@ -152,7 +152,7 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.ListCertificatesFn = func() ([]security.SSLCertificate, error) {
+				mc.ListCertificatesFn = func() ([]v395.ApiCertificate, error) {
 					return nil, errors.New("connection error")
 				}
 			},
@@ -205,12 +205,12 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTruststoreCR(testPem),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.AddCertificateFn = func(_ *security.SSLCertificate) error {
+				mc.AddCertificateFn = func(_ string) error {
 					return nil
 				}
-				mc.ListCertificatesFn = func() ([]security.SSLCertificate, error) {
-					return []security.SSLCertificate{
-						{Id: "new-cert-id", Pem: testPem},
+				mc.ListCertificatesFn = func() ([]v395.ApiCertificate, error) {
+					return []v395.ApiCertificate{
+						{Id: new("new-cert-id"), Pem: new(testPem)},
 					}, nil
 				}
 			},
@@ -220,7 +220,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateAPIError",
 			cr:   newTruststoreCR(testPem),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.AddCertificateFn = func(_ *security.SSLCertificate) error {
+				mc.AddCertificateFn = func(_ string) error {
 					return errors.New("add error")
 				}
 			},
@@ -230,11 +230,11 @@ func TestCreate(t *testing.T) {
 			name: "CreateCantFindAfterAdd",
 			cr:   newTruststoreCR(testPem),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.AddCertificateFn = func(_ *security.SSLCertificate) error {
+				mc.AddCertificateFn = func(_ string) error {
 					return nil
 				}
-				mc.ListCertificatesFn = func() ([]security.SSLCertificate, error) {
-					return []security.SSLCertificate{}, nil
+				mc.ListCertificatesFn = func() ([]v395.ApiCertificate, error) {
+					return []v395.ApiCertificate{}, nil
 				}
 			},
 			wantErr: true,
@@ -289,12 +289,12 @@ func TestUpdate(t *testing.T) {
 				mc.RemoveCertificateFn = func(_ string) error {
 					return nil
 				}
-				mc.AddCertificateFn = func(_ *security.SSLCertificate) error {
+				mc.AddCertificateFn = func(_ string) error {
 					return nil
 				}
-				mc.ListCertificatesFn = func() ([]security.SSLCertificate, error) {
-					return []security.SSLCertificate{
-						{Id: "new-cert-id", Pem: testPem},
+				mc.ListCertificatesFn = func() ([]v395.ApiCertificate, error) {
+					return []v395.ApiCertificate{
+						{Id: new("new-cert-id"), Pem: new(testPem)},
 					}, nil
 				}
 			},
@@ -312,7 +312,7 @@ func TestUpdate(t *testing.T) {
 				mc.RemoveCertificateFn = func(_ string) error {
 					return nil
 				}
-				mc.AddCertificateFn = func(_ *security.SSLCertificate) error {
+				mc.AddCertificateFn = func(_ string) error {
 					return errors.New("add error")
 				}
 			},

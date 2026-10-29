@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -82,7 +82,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestUserTokenConfig(true),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.GetFn = func() (*security.UserTokenConfiguration, error) {
+				mc.GetFn = func() (*v395.UserTokensApiModel, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -94,8 +94,8 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestUserTokenConfig(true),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.GetFn = func() (*security.UserTokenConfiguration, error) {
-					return &security.UserTokenConfiguration{Enabled: true}, nil
+				mc.GetFn = func() (*v395.UserTokensApiModel, error) {
+					return &v395.UserTokensApiModel{Enabled: new(true)}, nil
 				}
 			},
 			wantExists:   true,
@@ -106,8 +106,8 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButEnabledDiffers",
 			cr:   newTestUserTokenConfig(false),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.GetFn = func() (*security.UserTokenConfiguration, error) {
-					return &security.UserTokenConfiguration{Enabled: true}, nil
+				mc.GetFn = func() (*v395.UserTokensApiModel, error) {
+					return &v395.UserTokensApiModel{Enabled: new(true)}, nil
 				}
 			},
 			wantExists:   true,
@@ -123,10 +123,10 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.GetFn = func() (*security.UserTokenConfiguration, error) {
-					return &security.UserTokenConfiguration{
-						Enabled:        true,
-						ProtectContent: false,
+				mc.GetFn = func() (*v395.UserTokensApiModel, error) {
+					return &v395.UserTokensApiModel{
+						Enabled:        new(true),
+						ProtectContent: new(false),
 					}, nil
 				}
 			},
@@ -192,7 +192,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestUserTokenConfig(true),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.ConfigureFn = func(_ security.UserTokenConfiguration) error {
+				mc.ConfigureFn = func(_ v395.UserTokensApiModel) error {
 					return nil
 				}
 			},
@@ -205,7 +205,7 @@ func TestCreate(t *testing.T) {
 						len(mc.ConfigureCalls))
 				}
 
-				if !mc.ConfigureCalls[0].Enabled {
+				if !mc.ConfigureCalls[0].GetEnabled() {
 					t.Error("expected Enabled=true in UpdateUserTokenConfiguration call")
 				}
 			},
@@ -214,7 +214,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestUserTokenConfig(true),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.ConfigureFn = func(_ security.UserTokenConfiguration) error {
+				mc.ConfigureFn = func(_ v395.UserTokensApiModel) error {
 					return errors.New("update failed")
 				}
 			},
@@ -271,7 +271,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestUserTokenConfig(false),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.ConfigureFn = func(_ security.UserTokenConfiguration) error {
+				mc.ConfigureFn = func(_ v395.UserTokensApiModel) error {
 					return nil
 				}
 			},
@@ -281,7 +281,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestUserTokenConfig(true),
 			mockSetup: func(mc *iammocks.MockUserTokenConfigurationClient) {
-				mc.ConfigureFn = func(_ security.UserTokenConfiguration) error {
+				mc.ConfigureFn = func(_ v395.UserTokensApiModel) error {
 					return errors.New("update failed")
 				}
 			},

@@ -1,9 +1,10 @@
 package iam
 
 import (
+	"context"
 	"errors"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
 )
@@ -15,11 +16,11 @@ var _ iamclient.AnonymousAccessClient = &MockAnonymousAccessClient{}
 
 // MockAnonymousAccessClient is a mock of iamclient.AnonymousAccessClient.
 type MockAnonymousAccessClient struct {
-	ReadFn   func() (*security.AnonymousAccessSettings, error)
-	UpdateFn func(settings security.AnonymousAccessSettings) error
+	ReadFn   func() (*v395.AnonymousAccessSettingsXO, error)
+	UpdateFn func(settings v395.AnonymousAccessSettingsXO) error
 
 	ReadCalls   int
-	UpdateCalls []security.AnonymousAccessSettings
+	UpdateCalls []v395.AnonymousAccessSettingsXO
 }
 
 // NewMockAnonymousAccessClient creates a new MockAnonymousAccessClient.
@@ -28,7 +29,7 @@ func NewMockAnonymousAccessClient() *MockAnonymousAccessClient {
 }
 
 // Read mock implementation.
-func (m *MockAnonymousAccessClient) Read() (*security.AnonymousAccessSettings, error) {
+func (m *MockAnonymousAccessClient) Read(_ context.Context) (*v395.AnonymousAccessSettingsXO, error) {
 	m.ReadCalls++
 
 	if m.ReadFn != nil {
@@ -39,7 +40,7 @@ func (m *MockAnonymousAccessClient) Read() (*security.AnonymousAccessSettings, e
 }
 
 // Update mock implementation.
-func (m *MockAnonymousAccessClient) Update(settings security.AnonymousAccessSettings) error {
+func (m *MockAnonymousAccessClient) Update(_ context.Context, settings v395.AnonymousAccessSettingsXO) error {
 	m.UpdateCalls = append(m.UpdateCalls, settings)
 
 	if m.UpdateFn != nil {

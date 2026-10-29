@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	nexussdk "github.com/datadrivers/go-nexus-client/nexus3/schema/capability"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -18,6 +17,7 @@ import (
 
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	instanceclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	capabilitymocks "github.com/genesary/provider-sonatype-nexus/test/mocks/instance"
 )
 
@@ -67,7 +67,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError_NotFound",
 			cr:   newTestCapabilityWithID("cap", "DockerBearerTokenRealm", "abc123"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.GetFn = func(_ string) (*nexussdk.Capability, error) {
+				mc.GetFn = func(_ string) (*instanceclient.Capability, error) {
 					return nil, errors.New("resource not found")
 				}
 			},
@@ -79,7 +79,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError_General",
 			cr:   newTestCapabilityWithID("cap", "DockerBearerTokenRealm", "abc123"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.GetFn = func(_ string) (*nexussdk.Capability, error) {
+				mc.GetFn = func(_ string) (*instanceclient.Capability, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -91,7 +91,7 @@ func TestObserve(t *testing.T) {
 			name: "NilCapabilityReturned",
 			cr:   newTestCapabilityWithID("cap", "DockerBearerTokenRealm", "abc123"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.GetFn = func(_ string) (*nexussdk.Capability, error) {
+				mc.GetFn = func(_ string) (*instanceclient.Capability, error) {
 					//nolint:nilnil // intentionally testing nil capability with nil error case
 					return nil, nil
 				}
@@ -104,12 +104,12 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestCapabilityWithID("cap", "DockerBearerTokenRealm", "abc123"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.GetFn = func(_ string) (*nexussdk.Capability, error) {
-					return &nexussdk.Capability{
-						ID:         "abc123",
-						Type:       "DockerBearerTokenRealm",
-						Enabled:    true,
-						Properties: map[string]string{},
+				mc.GetFn = func(_ string) (*instanceclient.Capability, error) {
+					return &instanceclient.Capability{
+						Id:         new("abc123"),
+						Type:       new("DockerBearerTokenRealm"),
+						Enabled:    new(true),
+						Properties: new(map[string]string{}),
 					}, nil
 				}
 			},
@@ -121,12 +121,12 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated_DifferentEnabled",
 			cr:   newTestCapabilityWithID("cap", "DockerBearerTokenRealm", "abc123"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.GetFn = func(_ string) (*nexussdk.Capability, error) {
-					return &nexussdk.Capability{
-						ID:         "abc123",
-						Type:       "DockerBearerTokenRealm",
-						Enabled:    false,
-						Properties: map[string]string{},
+				mc.GetFn = func(_ string) (*instanceclient.Capability, error) {
+					return &instanceclient.Capability{
+						Id:         new("abc123"),
+						Type:       new("DockerBearerTokenRealm"),
+						Enabled:    new(false),
+						Properties: new(map[string]string{}),
 					}, nil
 				}
 			},
@@ -143,13 +143,13 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.GetFn = func(_ string) (*nexussdk.Capability, error) {
-					return &nexussdk.Capability{
-						ID:         "abc123",
-						Type:       "DockerBearerTokenRealm",
-						Enabled:    true,
-						Notes:      "old notes",
-						Properties: map[string]string{},
+				mc.GetFn = func(_ string) (*instanceclient.Capability, error) {
+					return &instanceclient.Capability{
+						Id:         new("abc123"),
+						Type:       new("DockerBearerTokenRealm"),
+						Enabled:    new(true),
+						Notes:      new("old notes"),
+						Properties: new(map[string]string{}),
 					}, nil
 				}
 			},
@@ -166,12 +166,12 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.GetFn = func(_ string) (*nexussdk.Capability, error) {
-					return &nexussdk.Capability{
-						ID:         "abc123",
-						Type:       "DockerBearerTokenRealm",
-						Enabled:    true,
-						Properties: map[string]string{},
+				mc.GetFn = func(_ string) (*instanceclient.Capability, error) {
+					return &instanceclient.Capability{
+						Id:         new("abc123"),
+						Type:       new("DockerBearerTokenRealm"),
+						Enabled:    new(true),
+						Properties: new(map[string]string{}),
 					}, nil
 				}
 			},
@@ -227,12 +227,12 @@ func TestObserve_UpdatesAtProvider(t *testing.T) {
 	cr := newTestCapabilityWithID("cap", "DockerBearerTokenRealm", "abc123")
 
 	mc := capabilitymocks.NewMockCapabilityClient()
-	mc.GetFn = func(_ string) (*nexussdk.Capability, error) {
-		return &nexussdk.Capability{
-			ID:         "abc123",
-			Type:       "DockerBearerTokenRealm",
-			Enabled:    true,
-			Properties: map[string]string{},
+	mc.GetFn = func(_ string) (*instanceclient.Capability, error) {
+		return &instanceclient.Capability{
+			Id:         new("abc123"),
+			Type:       new("DockerBearerTokenRealm"),
+			Enabled:    new(true),
+			Properties: new(map[string]string{}),
 		}, nil
 	}
 
@@ -263,11 +263,11 @@ func TestCreate(t *testing.T) {
 			name: "Success",
 			cr:   newTestCapability("cap", "DockerBearerTokenRealm"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.ListFn = func() ([]nexussdk.Capability, error) {
-					return []nexussdk.Capability{}, nil
+				mc.ListFn = func() ([]instanceclient.Capability, error) {
+					return []instanceclient.Capability{}, nil
 				}
-				mc.CreateFn = func(_ nexussdk.CapabilityCreate) (*nexussdk.Capability, error) {
-					return &nexussdk.Capability{ID: "server-id-123", Type: "DockerBearerTokenRealm"}, nil
+				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
+					return &instanceclient.Capability{Id: new("server-id-123"), Type: new("DockerBearerTokenRealm")}, nil
 				}
 			},
 			wantErr:     false,
@@ -277,9 +277,9 @@ func TestCreate(t *testing.T) {
 			name: "AdoptExisting",
 			cr:   newTestCapability("cap", "audit"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.ListFn = func() ([]nexussdk.Capability, error) {
-					return []nexussdk.Capability{
-						{ID: "existing-id-456", Type: "audit"},
+				mc.ListFn = func() ([]instanceclient.Capability, error) {
+					return []instanceclient.Capability{
+						{Id: new("existing-id-456"), Type: new("audit")},
 					}, nil
 				}
 			},
@@ -290,7 +290,7 @@ func TestCreate(t *testing.T) {
 			name: "ListError",
 			cr:   newTestCapability("cap", "DockerBearerTokenRealm"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.ListFn = func() ([]nexussdk.Capability, error) {
+				mc.ListFn = func() ([]instanceclient.Capability, error) {
 					return nil, errors.New("nexus unavailable")
 				}
 			},
@@ -300,10 +300,10 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestCapability("cap", "DockerBearerTokenRealm"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.ListFn = func() ([]nexussdk.Capability, error) {
-					return []nexussdk.Capability{}, nil
+				mc.ListFn = func() ([]instanceclient.Capability, error) {
+					return []instanceclient.Capability{}, nil
 				}
-				mc.CreateFn = func(_ nexussdk.CapabilityCreate) (*nexussdk.Capability, error) {
+				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
 					return nil, errors.New("nexus unavailable")
 				}
 			},
@@ -360,7 +360,7 @@ func TestUpdate(t *testing.T) {
 			name: "Success",
 			cr:   newTestCapabilityWithID("cap", "DockerBearerTokenRealm", "abc123"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.UpdateFn = func(_ string, _ nexussdk.CapabilityUpdate) error {
+				mc.UpdateFn = func(_ string, _ instanceclient.Capability) error {
 					return nil
 				}
 			},
@@ -370,7 +370,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestCapabilityWithID("cap", "DockerBearerTokenRealm", "abc123"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.UpdateFn = func(_ string, _ nexussdk.CapabilityUpdate) error {
+				mc.UpdateFn = func(_ string, _ instanceclient.Capability) error {
 					return errors.New("update failed")
 				}
 			},

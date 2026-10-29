@@ -2,7 +2,9 @@
 package iam
 
 import (
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	"context"
+
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
@@ -10,8 +12,13 @@ import (
 
 // AnonymousAccessClient manages the Nexus anonymous access configuration.
 type AnonymousAccessClient interface {
-	Read() (*security.AnonymousAccessSettings, error)
-	Update(settings security.AnonymousAccessSettings) error
+	Read(ctx context.Context) (*v395.AnonymousAccessSettingsXO, error)
+	Update(ctx context.Context, settings v395.AnonymousAccessSettingsXO) error
+}
+
+// anonymousAccessClient implements AnonymousAccessClient over the Nexus API.
+type anonymousAccessClient struct {
+	api *v395.SecurityManagementAnonymousAccessAPIService
 }
 
 // NewAnonymousAccessClient returns an AnonymousAccessClient backed by a
@@ -22,29 +29,46 @@ func NewAnonymousAccessClient(creds nexus.Credentials) (AnonymousAccessClient, e
 		return nil, err
 	}
 
-	return nc.Security.Anonymous, nil
+	return &anonymousAccessClient{api: nc.SecurityManagementAnonymousAccessAPI}, nil
+}
+
+// Read returns the anonymous access settings.
+func (c *anonymousAccessClient) Read(ctx context.Context) (*v395.AnonymousAccessSettingsXO, error) {
+	settings, resp, err := c.api.ListSecurityAnonymous(ctx).Execute()
+	if err != nil {
+		return nil, nexus.APIError(resp, err)
+	}
+
+	return settings, nil
+}
+
+// Update replaces the anonymous access settings.
+func (c *anonymousAccessClient) Update(ctx context.Context, settings v395.AnonymousAccessSettingsXO) error {
+	_, resp, err := c.api.UpdateSecurityAnonymous(ctx).AnonymousAccessSettingsXO(settings).Execute()
+
+	return nexus.APIError(resp, err)
 }
 
 // GenerateAnonymousAccessSettings builds an AnonymousAccessSettings
 // from the CR spec.
-func GenerateAnonymousAccessSettings(cr *iamv1alpha1.AnonymousAccess) security.AnonymousAccessSettings {
-	return security.AnonymousAccessSettings{
-		Enabled:   cr.Spec.ForProvider.Enabled,
-		UserID:    cr.Spec.ForProvider.UserID,
+func GenerateAnonymousAccessSettings(cr *iamv1alpha1.AnonymousAccess) v395.AnonymousAccessSettingsXO {
+	return v395.AnonymousAccessSettingsXO{
+		Enabled:   new(cr.Spec.ForProvider.Enabled),
+		UserId:    cr.Spec.ForProvider.UserID,
 		RealmName: cr.Spec.ForProvider.RealmName,
 	}
 }
 
 // GenerateAnonymousAccessObservation converts observed settings to an
 // observation struct.
-func GenerateAnonymousAccessObservation(settings *security.AnonymousAccessSettings) iamv1alpha1.AnonymousAccessObservation {
+func GenerateAnonymousAccessObservation(settings *v395.AnonymousAccessSettingsXO) iamv1alpha1.AnonymousAccessObservation {
 	if settings == nil {
 		return iamv1alpha1.AnonymousAccessObservation{}
 	}
 
 	return iamv1alpha1.AnonymousAccessObservation{
-		Enabled:   settings.Enabled,
-		UserID:    settings.UserID,
+		Enabled:   settings.GetEnabled(),
+		UserID:    settings.UserId,
 		RealmName: settings.RealmName,
 	}
 }
