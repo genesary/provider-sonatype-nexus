@@ -6,9 +6,11 @@ import (
 	"testing"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
+	pkgerrors "github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
 // mockHandler implements formatHandler, returning configured values.
@@ -343,7 +345,7 @@ func TestRepositoryDelete(t *testing.T) {
 		{
 			name:    "DeleteNotFoundIsIgnored",
 			cr:      newTestRepo("maven-releases", "maven2", repoTypeHosted),
-			handler: &mockHandler{deleteErr: errors.New("404 not found")},
+			handler: &mockHandler{deleteErr: pkgerrors.Wrap(nexus.ErrNotFound, "404 Not Found")},
 		},
 		{
 			name:    "DeleteError",

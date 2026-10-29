@@ -16,6 +16,7 @@ import (
 
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	contentmocks "github.com/genesary/provider-sonatype-nexus/test/mocks/content"
 )
 
@@ -70,7 +71,7 @@ func TestObserve(t *testing.T) {
 			cr:   newTestContentSelector("my-selector", "format == 'maven2'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
 				mc.GetFn = func(_ string) (*v395.ContentSelectorApiResponse, error) {
-					return nil, errors.New("404 not found")
+					return nil, nexus.ErrNotFound
 				}
 			},
 			wantExists:   false,
@@ -405,7 +406,7 @@ func TestDelete(t *testing.T) {
 			cr:   newTestContentSelector("old-selector", "format == 'pypi'"),
 			mockSetup: func(mc *contentmocks.MockContentSelectorClient) {
 				mc.DeleteFn = func(_ string) error {
-					return errors.New("404 not found")
+					return nexus.ErrNotFound
 				}
 			},
 			wantErr: false,

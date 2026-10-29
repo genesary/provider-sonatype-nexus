@@ -159,7 +159,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete is a no-op; AnonymousAccess is a singleton and cannot be deleted.
-func (e *external) Delete(ctx context.Context, _ resource.Managed) (managed.ExternalDelete, error) {
+func (e *external) Delete(_ context.Context, _ resource.Managed) (managed.ExternalDelete, error) {
 	return managed.ExternalDelete{}, nil
 }
 

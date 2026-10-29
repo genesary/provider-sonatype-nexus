@@ -18,6 +18,7 @@ import (
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	instanceclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	capabilitymocks "github.com/genesary/provider-sonatype-nexus/test/mocks/instance"
 )
 
@@ -68,7 +69,7 @@ func TestObserve(t *testing.T) {
 			cr:   newTestCapabilityWithID("cap", "DockerBearerTokenRealm", "abc123"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
 				mc.GetFn = func(_ string) (*instanceclient.Capability, error) {
-					return nil, errors.New("resource not found")
+					return nil, nexus.ErrNotFound
 				}
 			},
 			wantExists:   false,
@@ -440,7 +441,7 @@ func TestDelete(t *testing.T) {
 			cr:   newTestCapabilityWithID("cap", "DockerBearerTokenRealm", "abc123"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
 				mc.DeleteFn = func(_ string) error {
-					return errors.New("resource not found")
+					return nexus.ErrNotFound
 				}
 			},
 			wantErr: false,

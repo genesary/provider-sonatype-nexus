@@ -9,7 +9,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
-	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
 // errNotConfigured is returned by mock functions that have not been configured.
@@ -189,7 +189,7 @@ func TestObserve(t *testing.T) {
 			cr:   newBlobStoreCR("test-blobstore", "File"),
 			file: &mockFileClient{
 				GetFn: func(_ string) (*v395.FileBlobStoreApiModel, error) {
-					return nil, errors.New("404 not found")
+					return nil, nexus.ErrNotFound
 				},
 			},
 		},
@@ -214,7 +214,7 @@ func TestObserve(t *testing.T) {
 			cr:   newBlobStoreCR("test-s3-blobstore", "S3"),
 			s3: &mockS3Client{
 				GetFn: func(_ string) (*v395.S3BlobStoreApiModel, error) {
-					return nil, errors.New("404 not found")
+					return nil, nexus.ErrNotFound
 				},
 			},
 		},
@@ -476,7 +476,7 @@ func TestDelete(t *testing.T) {
 			name: "DeleteBlobStoreNotFound",
 			cr:   newBlobStoreCR("test-blobstore", "File"),
 			generic: &mockGenericClient{
-				DeleteFn: func(_ string) error { return errors.New("404 not found") },
+				DeleteFn: func(_ string) error { return nexus.ErrNotFound },
 			},
 		},
 		{
@@ -505,33 +505,6 @@ func TestDelete(t *testing.T) {
 
 			if tt.validate != nil && !tt.wantErr {
 				tt.validate(t, generic)
-			}
-		})
-	}
-}
-
-// TestIsNotFound tests the helpers.IsNotFound function.
-func TestIsNotFound(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name string
-		err  error
-		want bool
-	}{
-		{name: "NilError", err: nil, want: false},
-		{name: "404Error", err: errors.New("404 not found"), want: true},
-		{name: "NotFoundError", err: errors.New("resource not found"), want: true},
-		{name: "DoesNotExistError", err: errors.New("resource does not exist"), want: true},
-		{name: "OtherError", err: errors.New("connection timeout"), want: false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			if got := helpers.IsNotFound(tt.err); got != tt.want {
-				t.Errorf("helpers.IsNotFound() = %v, want %v", got, tt.want)
 			}
 		})
 	}

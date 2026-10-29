@@ -16,6 +16,7 @@ import (
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	iammocks "github.com/genesary/provider-sonatype-nexus/test/mocks/iam"
 )
 
@@ -68,7 +69,7 @@ func TestObserve(t *testing.T) {
 			cr:   newTestRole("my-role", "My Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
 				mc.GetFn = func(_ string) (*v395.RoleXOResponse, error) {
-					return nil, errors.New("404 not found")
+					return nil, nexus.ErrNotFound
 				}
 			},
 			wantExists:   false,
@@ -390,7 +391,7 @@ func TestDelete(t *testing.T) {
 			cr:   newTestRole("old-role", "Old Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
 				mc.DeleteFn = func(_ string) error {
-					return errors.New("404 not found")
+					return nexus.ErrNotFound
 				}
 			},
 			wantErr: false,

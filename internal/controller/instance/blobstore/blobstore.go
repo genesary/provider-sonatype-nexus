@@ -20,7 +20,6 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -152,7 +151,7 @@ func observeTypedBlobStore[T any](
 
 	result, err := getter(ctx, name)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
 
@@ -268,7 +267,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 
 	err := e.genericClient.Delete(ctx, name)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
 		}
 

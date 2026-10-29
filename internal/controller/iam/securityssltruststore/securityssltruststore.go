@@ -21,7 +21,6 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -178,7 +177,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 	oldID := meta.GetExternalName(truststoreCR)
 	if oldID != "" {
 		err := e.client.RemoveCertificate(ctx, oldID)
-		if err != nil && !helpers.IsNotFound(err) {
+		if err != nil && !nexus.IsNotFound(err) {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errRemoveCert)
 		}
 	}
@@ -216,7 +215,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 
 	err := e.client.RemoveCertificate(ctx, certID)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
 		}
 

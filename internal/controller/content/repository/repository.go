@@ -32,7 +32,6 @@ import (
 	repositoryv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -272,7 +271,7 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 	}
 
 	err = handler.Delete(ctx, e.client, repositoryName(repoCR), repoCR.Spec.ForProvider.Type)
-	if err != nil && !helpers.IsNotFound(err) {
+	if err != nil && !nexus.IsNotFound(err) {
 		return managed.ExternalDelete{}, errors.Wrap(err, errDeleteRepository)
 	}
 

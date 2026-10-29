@@ -16,6 +16,7 @@ import (
 
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	contentmocks "github.com/genesary/provider-sonatype-nexus/test/mocks/content"
 )
 
@@ -69,7 +70,7 @@ func TestObserve(t *testing.T) {
 			cr:   newTestRoutingRule("block-snaps", "BLOCK", []string{".*-SNAPSHOT.*"}),
 			mockSetup: func(mc *contentmocks.MockRoutingRuleClient) {
 				mc.GetFn = func(_ string) (*v395.RoutingRuleXO, error) {
-					return nil, errors.New("404 not found")
+					return nil, nexus.ErrNotFound
 				}
 			},
 			wantExists:   false,
@@ -392,7 +393,7 @@ func TestDelete(t *testing.T) {
 			cr:   newTestRoutingRule("old-rule", "BLOCK", []string{".*"}),
 			mockSetup: func(mc *contentmocks.MockRoutingRuleClient) {
 				mc.DeleteFn = func(_ string) error {
-					return errors.New("404 not found")
+					return nexus.ErrNotFound
 				}
 			},
 			wantErr: false,

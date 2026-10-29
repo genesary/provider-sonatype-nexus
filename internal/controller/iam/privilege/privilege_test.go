@@ -16,6 +16,7 @@ import (
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	iammocks "github.com/genesary/provider-sonatype-nexus/test/mocks/iam"
 )
 
@@ -68,7 +69,7 @@ func TestObserve(t *testing.T) {
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
 				mc.GetFn = func(_ string) (*iamclient.Privilege, error) {
-					return nil, errors.New("404 not found")
+					return nil, nexus.ErrNotFound
 				}
 			},
 			wantExists:   false,
@@ -371,7 +372,7 @@ func TestDelete(t *testing.T) {
 			cr:   newTestPrivilege("my-priv"),
 			mockSetup: func(mc *iammocks.MockPrivilegeClient) {
 				mc.DeleteFn = func(_ string) error {
-					return errors.New("404 not found")
+					return nexus.ErrNotFound
 				}
 			},
 			wantErr: false,

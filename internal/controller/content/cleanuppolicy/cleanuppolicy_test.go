@@ -16,6 +16,7 @@ import (
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	contentclient "github.com/genesary/provider-sonatype-nexus/internal/clients/content"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	contentmocks "github.com/genesary/provider-sonatype-nexus/test/mocks/content"
 )
 
@@ -68,7 +69,7 @@ func TestObserve(t *testing.T) {
 			cr:   newTestCleanupPolicy("my-policy", "maven2"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
 				mc.GetFn = func(_ string) (*contentclient.CleanupPolicy, error) {
-					return nil, errors.New("404 not found")
+					return nil, nexus.ErrNotFound
 				}
 			},
 			wantExists:   false,
@@ -76,16 +77,16 @@ func TestObserve(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name: "NotFound_NotFoundText",
+			name: "ErrorMentioningNotFoundIsNotAbsence",
 			cr:   newTestCleanupPolicy("my-policy", "npm"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
 				mc.GetFn = func(_ string) (*contentclient.CleanupPolicy, error) {
-					return nil, errors.New("resource not found")
+					return nil, errors.New("500 Internal Server Error: blob store not found")
 				}
 			},
 			wantExists:   false,
 			wantUpToDate: false,
-			wantErr:      false,
+			wantErr:      true,
 		},
 		{
 			name: "NilPolicyReturned",
@@ -402,20 +403,20 @@ func TestDelete(t *testing.T) {
 			cr:   newTestCleanupPolicy("old-policy", "helm"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
 				mc.DeleteFn = func(_ string) error {
-					return errors.New("404 not found")
+					return nexus.ErrNotFound
 				}
 			},
 			wantErr: false,
 		},
 		{
-			name: "DeleteNotFoundDoesNotExist",
+			name: "DeleteErrorMentioningDoesNotExistIsNotAbsence",
 			cr:   newTestCleanupPolicy("old-policy", "helm"),
 			mockSetup: func(mc *contentmocks.MockCleanupPolicyClient) {
 				mc.DeleteFn = func(_ string) error {
-					return errors.New("does not exist")
+					return errors.New("400 Bad Request: format does not exist")
 				}
 			},
-			wantErr: false,
+			wantErr: true,
 		},
 		{
 			name: "DeleteError",

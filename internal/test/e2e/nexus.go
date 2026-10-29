@@ -30,7 +30,12 @@ import (
 // absentAsNil turns the outcome of a generated client read into the value it
 // read, (nil, nil) when Nexus answered 404, or the error otherwise.
 func absentAsNil[T any](value *T, resp *http.Response, err error) (*T, error) {
-	err = nexusclient.APIError(resp, err)
+	return ignoreAbsent(value, nexusclient.APIError(resp, err))
+}
+
+// ignoreAbsent returns (nil, nil) when err stems from Nexus not having the
+// resource, (nil, err) on any other error, and (value, nil) otherwise.
+func ignoreAbsent[T any](value *T, err error) (*T, error) {
 	if nexusclient.IsNotFound(err) {
 		return nil, nil
 	}
@@ -44,18 +49,7 @@ func absentAsNil[T any](value *T, resp *http.Response, err error) (*T, error) {
 
 // FetchUser returns the Nexus user with the given ID, or (nil, nil) if absent.
 func (f *Framework) FetchUser(userID string) (*v395.ApiUser, error) {
-	users, resp, err := f.Nexus.SecurityManagementUsersAPI.ListSecurityUsers(context.Background()).UserId(userID).Execute()
-	if err != nil {
-		return nil, nexusclient.APIError(resp, err)
-	}
-
-	for i := range users {
-		if users[i].UserId == userID {
-			return &users[i], nil
-		}
-	}
-
-	return nil, nil
+	return ignoreAbsent(f.users.Get(context.Background(), userID))
 }
 
 // FetchRole returns the Nexus role with the given ID, or (nil, nil) if absent.
@@ -169,18 +163,7 @@ func (f *Framework) FetchCargoProxyRepo(name string) (*v395.CargoProxyApiReposit
 
 // FetchCapability returns the capability with the given ID, or (nil, nil) if absent.
 func (f *Framework) FetchCapability(id string) (*v395.CapabilityDTO, error) {
-	capabilities, resp, err := f.Nexus.CapabilitiesAPI.ListCapabilities(context.Background()).Execute()
-	if err != nil {
-		return nil, nexusclient.APIError(resp, err)
-	}
-
-	for i := range capabilities {
-		if capabilities[i].GetId() == id {
-			return &capabilities[i], nil
-		}
-	}
-
-	return nil, nil
+	return ignoreAbsent(f.capabilities.Get(context.Background(), id))
 }
 
 // FetchRoutingRule returns the routing rule with the given name, or (nil, nil) if absent.

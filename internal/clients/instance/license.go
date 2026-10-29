@@ -119,11 +119,15 @@ func (c *licenseClient) InstallLicense(ctx context.Context, licenseData []byte) 
 }
 
 // DeleteLicense removes the installed Nexus license. A license that is
-// already gone is not an error.
+// already gone is not an error, whether Nexus reports it as 402 Payment
+// Required or as 404, as GetLicense does.
 func (c *licenseClient) DeleteLicense(ctx context.Context) error {
-	err := nexus.IgnoreNotFound(nexus.APIError(c.client.ProductLicensingAPI.DeleteSystemLicense(ctx).Execute()))
+	resp, err := c.client.ProductLicensingAPI.DeleteSystemLicense(ctx).Execute()
+	if resp != nil && resp.StatusCode == http.StatusPaymentRequired {
+		return nil
+	}
 
-	return errors.Wrap(err, "cannot delete license")
+	return errors.Wrap(nexus.IgnoreNotFound(nexus.APIError(resp, err)), "cannot delete license")
 }
 
 // formatLicenseDate renders a license date as RFC 3339, or as an empty string

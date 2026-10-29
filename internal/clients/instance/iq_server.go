@@ -18,6 +18,11 @@ type IQServerClient interface {
 	Disable(ctx context.Context) error
 }
 
+// defaultIQAuthenticationType is the IQ Server authentication type submitted
+// when the spec sets none. Nexus requires one on every write, and defaults to
+// it in its own UI.
+const defaultIQAuthenticationType = "USER"
+
 // iqServerClient implements IQServerClient over the Nexus API.
 type iqServerClient struct {
 	api *v395.ManageSonatypeRepositoryFirewallConfigurationAPIService
@@ -61,7 +66,7 @@ func GenerateIQServerUpdate(params *instancev1alpha1.IQServerConfigurationParame
 		Enabled:             new(ptr.Deref(params.Enabled, true)),
 		ShowLink:            new(ptr.Deref(params.ShowLink, false)),
 		Url:                 params.URL,
-		AuthenticationType:  ptr.Deref(params.AuthenticationType, ""),
+		AuthenticationType:  ptr.Deref(params.AuthenticationType, defaultIQAuthenticationType),
 		UseTrustStoreForUrl: new(ptr.Deref(params.UseTrustStoreForURL, false)),
 		TimeoutSeconds:      toInt32Ptr(params.TimeoutSeconds),
 		Properties:          params.Properties,

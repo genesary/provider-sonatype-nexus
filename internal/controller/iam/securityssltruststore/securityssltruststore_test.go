@@ -17,6 +17,7 @@ import (
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	iammocks "github.com/genesary/provider-sonatype-nexus/test/mocks/iam"
 )
 
@@ -374,7 +375,7 @@ func TestDelete(t *testing.T) {
 			}(),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
 				mc.RemoveCertificateFn = func(_ string) error {
-					return errors.New("404 not found")
+					return nexus.ErrNotFound
 				}
 			},
 			wantErr: false,

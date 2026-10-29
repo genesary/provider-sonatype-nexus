@@ -9,7 +9,6 @@ import (
 	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 // nexusAPI is the generated Nexus repository management API. Format bindings
@@ -115,7 +114,7 @@ type typedOps[Req, Resp any] struct {
 func (o typedOps[Req, Resp]) Observe(ctx context.Context, api *nexusAPI, name string, desired desiredRepo) (repoState, error) {
 	observed, err := o.get(ctx, api, name)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return repoState{}, nil
 		}
 
