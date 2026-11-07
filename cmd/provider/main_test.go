@@ -62,3 +62,44 @@ func TestNewChangeLogOptionsRelativePath(t *testing.T) {
 		}
 	}
 }
+
+// TestClientOptions checks that Secrets are only read directly from the API
+// server when the Secret cache is disabled.
+func TestClientOptions(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		enableSecretCache bool
+		wantUncached      bool
+	}{
+		"SecretCacheEnabled":  {enableSecretCache: true},
+		"SecretCacheDisabled": {enableSecretCache: false, wantUncached: true},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := clientOptions(test.enableSecretCache)
+			if opts.Cache == nil {
+				t.Fatal("clientOptions().Cache is nil")
+			}
+
+			uncached := false
+
+			for _, object := range opts.Cache.DisableFor {
+				if _, isSecret := object.(*corev1.Secret); isSecret {
+					uncached = true
+				}
+			}
+
+			if uncached != test.wantUncached {
+				t.Errorf("Secrets read from the API server = %t, want %t", uncached, test.wantUncached)
+			}
+
+			if len(opts.Cache.DisableFor) > 1 {
+				t.Errorf("clientOptions() disables the cache for %d kinds, want at most 1", len(opts.Cache.DisableFor))
+			}
+		})
+	}
+}

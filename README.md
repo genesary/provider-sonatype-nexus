@@ -156,6 +156,7 @@ for example `args: ["--debug", "--poll=5m"]`.
 | `--max-reconcile-rate` (`MAX_RECONCILE_RATE`) | `10` | Maximum reconciles per second, across all controllers. It also sets the number of concurrent reconciles per controller and bounds the Kubernetes API client rate. |
 | `--poll-state-metric` (`POLL_STATE_METRIC_INTERVAL`) | `5s` | How often the `crossplane_managed_resource_*` state metrics are recorded. |
 | `--enable-management-policies` (`ENABLE_MANAGEMENT_POLICIES`) | `true` | Honor `spec.managementPolicies`, for example to observe a Nexus resource without managing it. Disable it with `--no-enable-management-policies` or `ENABLE_MANAGEMENT_POLICIES=false`: `--enable-management-policies=false` is rejected. |
+| `--enable-secret-cache` (`ENABLE_SECRET_CACHE`) | `true` | Read Secrets through the informer cache. See [Kubernetes Secret Access](#kubernetes-secret-access). |
 | `--enable-changelogs` (`ENABLE_CHANGE_LOGS`) | `false` | Alpha. Send a [change log](https://docs.crossplane.io/latest/guides/change-logs/) entry for every create, update and delete of a Nexus resource. Enable it with `--enable-changelogs` or `ENABLE_CHANGE_LOGS=true`: `--enable-changelogs=true` is rejected. |
 | `--changelogs-socket-path` (`CHANGELOGS_SOCKET_PATH`) | `/var/run/changelogs/changelogs.sock` | Absolute path of the change logs sidecar socket, when change logs are enabled. |
 
@@ -179,6 +180,49 @@ spec:
     - repositories.content.nexus.crossplane.io
     - blobstores.instance.nexus.crossplane.io
 ```
+
+### Kubernetes Secret Access
+
+By default the provider reads Kubernetes Secrets through the controller-runtime
+cache. The first read starts an informer that lists and watches every Secret
+the provider can access and keeps them in memory, which requires cluster-wide
+`list` and `watch` on Secrets.
+
+`--no-enable-secret-cache` (or `ENABLE_SECRET_CACHE=false`) sends each Secret
+read directly to the Kubernetes API instead, so the provider only needs access
+to the Secrets it actually uses. Other kinds stay cached.
+
+```yaml
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: provider-sonatype-nexus
+spec:
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          containers:
+            - name: package-runtime
+              args:
+                - --no-enable-secret-cache
+```
+
+Things to know before disabling it:
+
+- **Permissions:** the provider needs `get` on every Secret it reads:
+  `ProviderConfig` credentials and the Secret references of managed resources
+  (user passwords, repository HTTP client and LDAP bind passwords, S3 keys, IQ
+  Server credentials, license files). It needs `get`, `create` and `patch` on
+  connection Secrets (`writeConnectionSecretToRef`) in their namespace. `get`
+  and `patch` can be restricted with `resourceNames`, `create` cannot.
+- **Existing grants:** the flag does not change RBAC. The ClusterRole
+  Crossplane generates for the provider can still grant broader Secret access,
+  and a narrower Role does not take it away.
+- **API traffic:** every Secret read becomes an API request. Credentials are
+  read on every reconcile, and these requests share the provider's Kubernetes
+  client rate limit, derived from `--max-reconcile-rate`.
 
 ### Metrics
 
