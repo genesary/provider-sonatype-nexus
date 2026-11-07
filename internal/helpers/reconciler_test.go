@@ -34,7 +34,7 @@ import (
 )
 
 // sharedOptions is the number of options every controller gets.
-const sharedOptions = 6
+const sharedOptions = 7
 
 // recorderManager is a manager that only provides event recorders.
 type recorderManager struct {
@@ -44,6 +44,15 @@ type recorderManager struct {
 // GetEventRecorderFor returns a fake event recorder.
 func (recorderManager) GetEventRecorderFor(string) record.EventRecorder {
 	return record.NewFakeRecorder(1)
+}
+
+// GetClient returns the client of the embedded manager, or nil without one.
+func (m recorderManager) GetClient() client.Client {
+	if m.Manager == nil {
+		return nil
+	}
+
+	return m.Manager.GetClient()
 }
 
 // nopChangeLogger is a change logger that records nothing.
@@ -289,8 +298,17 @@ func reconcileRoleWith(t *testing.T, opts Options, role *iamv1alpha1.Role, speci
 	t.Helper()
 
 	mgr := newTestManager(t, role)
+
+	return reconcileWithManager(t, mgr, opts, role, specific(mgr.GetClient()))
+}
+
+// reconcileWithManager runs one reconcile of role with mgr, by a reconciler
+// built with ReconcilerOptions and specific, and returns its requeue delay.
+func reconcileWithManager(t *testing.T, mgr ctrl.Manager, opts Options, role *iamv1alpha1.Role, specific []managed.ReconcilerOption) time.Duration {
+	t.Helper()
+
 	reconciler := managed.NewReconciler(mgr, resource.ManagedKind(iamv1alpha1.RoleGroupVersionKind),
-		ReconcilerOptions(mgr, "test", opts, specific(mgr.GetClient())...)...)
+		ReconcilerOptions(mgr, "test", opts, specific...)...)
 
 	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: role.GetName(), Namespace: role.GetNamespace()}}
 
