@@ -15,6 +15,7 @@ func defaultFlags() flags {
 		PollInterval:             time.Minute,
 		MinPollInterval:          30 * time.Second,
 		PollJitterPercentage:     10,
+		CreationGracePeriod:      30 * time.Second,
 		PollStateMetricInterval:  5 * time.Second,
 		MaxReconcileRate:         10,
 		EnableManagementPolicies: true,
@@ -49,7 +50,7 @@ func TestFlags(t *testing.T) {
 			want: func(*flags) {},
 		},
 		"Flags": {
-			args: []string{"--debug", "--leader-election", "--sync=2h", "--poll=5m", "--min-poll-interval=10s", "--poll-jitter-percentage=0", "--poll-state-metric=30s", "--max-reconcile-rate=20", "--no-enable-management-policies", "--no-enable-secret-cache", "--enable-changelogs", "--changelogs-socket-path=/tmp/changelogs.sock"},
+			args: []string{"--debug", "--leader-election", "--sync=2h", "--poll=5m", "--min-poll-interval=10s", "--poll-jitter-percentage=0", "--creation-grace-period=0s", "--poll-state-metric=30s", "--max-reconcile-rate=20", "--no-enable-management-policies", "--no-enable-secret-cache", "--enable-changelogs", "--changelogs-socket-path=/tmp/changelogs.sock"},
 			want: func(f *flags) {
 				f.Debug = true
 				f.LeaderElection = true
@@ -58,6 +59,7 @@ func TestFlags(t *testing.T) {
 				f.MinPollInterval = 10 * time.Second
 				f.PollStateMetricInterval = 30 * time.Second
 				f.PollJitterPercentage = 0
+				f.CreationGracePeriod = 0
 				f.MaxReconcileRate = 20
 				f.EnableManagementPolicies = false
 				f.EnableSecretCache = false

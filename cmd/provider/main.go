@@ -73,6 +73,7 @@ func main() {
 	}
 
 	kingpin.FatalIfError(helpers.ValidatePollJitterPercentage(parsed.PollJitterPercentage), "Invalid --poll-jitter-percentage")
+	kingpin.FatalIfError(helpers.ValidateCreationGracePeriod(parsed.CreationGracePeriod), "Invalid creation grace period")
 
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
@@ -206,6 +207,7 @@ func controllerOptions(log logging.Logger, parsed flags) helpers.Options {
 		},
 		MinPollInterval:      parsed.MinPollInterval,
 		PollJitterPercentage: parsed.PollJitterPercentage,
+		CreationGracePeriod:  parsed.CreationGracePeriod,
 	}
 }
 

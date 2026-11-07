@@ -32,7 +32,7 @@ import (
 )
 
 // sharedOptions is the number of options every controller gets.
-const sharedOptions = 5
+const sharedOptions = 6
 
 // recorderManager is a manager that only provides event recorders.
 type recorderManager struct {
@@ -624,6 +624,82 @@ func TestReconcilerOptionsApplyPollJitter(t *testing.T) {
 
 			if got == test.exact {
 				t.Errorf("Reconcile() RequeueAfter = %v, want it spread", got)
+			}
+		})
+	}
+}
+
+// TestValidateCreationGracePeriod checks that only a negative period is
+// rejected.
+func TestValidateCreationGracePeriod(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		period  time.Duration
+		wantErr bool
+	}{
+		"Default":  {period: DefaultCreationGracePeriod},
+		"Zero":     {},
+		"Negative": {period: -time.Second, wantErr: true},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			err := ValidateCreationGracePeriod(test.period)
+			if (err != nil) != test.wantErr {
+				t.Errorf("ValidateCreationGracePeriod(%v) error = %v, want error %t", test.period, err, test.wantErr)
+			}
+		})
+	}
+}
+
+// TestReconcilerOptionsCreationGracePeriod checks, through a real reconcile
+// of a resource that was just created and is not reported by Nexus, that the
+// grace period makes the reconciler wait, and that zero disables it.
+func TestReconcilerOptionsCreationGracePeriod(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		period     time.Duration
+		wantCreate bool
+	}{
+		"WaitsDuringThePeriod": {period: time.Hour},
+		"ZeroDisablesIt":       {wantCreate: true},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			role := testRole("")
+			meta.SetExternalCreateSucceeded(role, time.Now())
+
+			created := false
+			connector := managed.ExternalConnectorFn(func(context.Context, resource.Managed) (managed.ExternalClient, error) {
+				return &managed.ExternalClientFns{
+					ObserveFn: func(context.Context, resource.Managed) (managed.ExternalObservation, error) {
+						return managed.ExternalObservation{ResourceExists: false}, nil
+					},
+					CreateFn: func(context.Context, resource.Managed) (managed.ExternalCreation, error) {
+						created = true
+
+						return managed.ExternalCreation{}, nil
+					},
+					DisconnectFn: func(context.Context) error { return nil },
+				}, nil
+			})
+
+			opts := testOptions()
+			opts.CreationGracePeriod = test.period
+
+			reconcileRoleWith(t, opts, role, func(client.Client) []managed.ReconcilerOption {
+				return []managed.ReconcilerOption{managed.WithExternalConnector(connector)}
+			})
+
+			if created != test.wantCreate {
+				t.Errorf("Create() called = %t, want %t", created, test.wantCreate)
 			}
 		})
 	}

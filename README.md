@@ -154,6 +154,7 @@ for example `args: ["--debug", "--poll=5m"]`.
 | `--poll` (`POLL_INTERVAL`) | `1m` | How often each managed resource is checked for drift. |
 | `--min-poll-interval` (`MIN_POLL_INTERVAL`) | `30s` | Shortest poll interval a resource may request with the `crossplane.io/poll-interval` annotation. Shorter requests are raised to it, or to `--poll` when that is shorter. `0` removes the limit. |
 | `--poll-jitter-percentage` (`POLL_JITTER_PERCENTAGE`) | `10` | Spread each poll by up to this percentage of its interval, in both directions but never below the shortest allowed poll interval (see `--min-poll-interval`), so that resources created together do not poll Nexus together. `0` disables it, the maximum is `50`. |
+| `--creation-grace-period` (`CREATION_GRACE_PERIOD`) | `30s` | How long after a create a report that the resource does not exist is not trusted. A resource deleted within this period keeps its finalizer until the period ends. `0` disables it. |
 | `--sync` (`SYNC_INTERVAL`) | `1h` | How often every resource is re-listed from the API server and checked for drift. |
 | `--max-reconcile-rate` (`MAX_RECONCILE_RATE`) | `10` | Maximum reconciles per second, across all controllers. It also sets the number of concurrent reconciles per controller and bounds the Kubernetes API client rate. |
 | `--poll-state-metric` (`POLL_STATE_METRIC_INTERVAL`) | `5s` | How often the `crossplane_managed_resource_*` state metrics are recorded. |
