@@ -13,9 +13,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
+	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
-	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
+	instanceclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
@@ -36,10 +36,10 @@ const (
 
 // Setup adds a controller that reconciles SecurityRealm resources.
 func Setup(mgr ctrl.Manager, opts controller.Options) error {
-	name := managed.ControllerName(iamv1alpha1.SecurityRealmGroupKind)
+	name := managed.ControllerName(instancev1alpha1.SecurityRealmGroupKind)
 
 	reconciler := managed.NewReconciler(mgr,
-		resource.ManagedKind(iamv1alpha1.SecurityRealmGroupVersionKind),
+		resource.ManagedKind(instancev1alpha1.SecurityRealmGroupVersionKind),
 		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
@@ -52,7 +52,7 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		Named(name).
 		WithOptions(opts.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
-		For(&iamv1alpha1.SecurityRealm{}).
+		For(&instancev1alpha1.SecurityRealm{}).
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
@@ -64,7 +64,7 @@ type connector struct {
 
 // Connect produces an ExternalClient for the given managed resource.
 func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isSecurityRealm := managedRes.(*iamv1alpha1.SecurityRealm)
+	_, isSecurityRealm := managedRes.(*instancev1alpha1.SecurityRealm)
 	if !isSecurityRealm {
 		return nil, errors.New(errNotSecurityRealm)
 	}
@@ -84,7 +84,7 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
-	realmClient, err := iamclient.NewSecurityRealmClient(creds)
+	realmClient, err := instanceclient.NewSecurityRealmClient(creds)
 	if err != nil {
 		return nil, errors.Wrap(err, errNewClient)
 	}
@@ -94,12 +94,12 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 
 // external implements managed.ExternalClient.
 type external struct {
-	client iamclient.SecurityRealmClient
+	client instanceclient.SecurityRealmClient
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
 func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	securityRealm, isSecurityRealm := managedRes.(*iamv1alpha1.SecurityRealm)
+	securityRealm, isSecurityRealm := managedRes.(*instancev1alpha1.SecurityRealm)
 	if !isSecurityRealm {
 		return managed.ExternalObservation{}, errors.New(errNotSecurityRealm)
 	}
@@ -116,18 +116,18 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 	}
 
 	availableRealms, _ := e.client.ListAvailable(ctx)
-	securityRealm.Status.AtProvider = iamclient.GenerateSecurityRealmObservation(availableRealms, activeRealms)
+	securityRealm.Status.AtProvider = instanceclient.GenerateSecurityRealmObservation(availableRealms, activeRealms)
 	securityRealm.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsSecurityRealmUpToDate(securityRealm),
+		ResourceUpToDate: instanceclient.IsSecurityRealmUpToDate(securityRealm),
 	}, nil
 }
 
 // Create activates the desired security realms.
 func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	securityRealm, isSecurityRealm := managedRes.(*iamv1alpha1.SecurityRealm)
+	securityRealm, isSecurityRealm := managedRes.(*instancev1alpha1.SecurityRealm)
 	if !isSecurityRealm {
 		return managed.ExternalCreation{}, errors.New(errNotSecurityRealm)
 	}
@@ -142,7 +142,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 // Update activates the desired security realms.
 func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	securityRealm, isSecurityRealm := managedRes.(*iamv1alpha1.SecurityRealm)
+	securityRealm, isSecurityRealm := managedRes.(*instancev1alpha1.SecurityRealm)
 	if !isSecurityRealm {
 		return managed.ExternalUpdate{}, errors.New(errNotSecurityRealm)
 	}

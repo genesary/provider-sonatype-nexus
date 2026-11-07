@@ -14,9 +14,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
+	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
-	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
+	instanceclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
@@ -58,10 +58,10 @@ const (
 
 // Setup adds a controller that reconciles License resources.
 func Setup(mgr ctrl.Manager, opts controller.Options) error {
-	name := managed.ControllerName(iamv1alpha1.LicenseGroupKind)
+	name := managed.ControllerName(instancev1alpha1.LicenseGroupKind)
 
 	reconciler := managed.NewReconciler(mgr,
-		resource.ManagedKind(iamv1alpha1.LicenseGroupVersionKind),
+		resource.ManagedKind(instancev1alpha1.LicenseGroupVersionKind),
 		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
@@ -74,7 +74,7 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		Named(name).
 		WithOptions(opts.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
-		For(&iamv1alpha1.License{}).
+		For(&instancev1alpha1.License{}).
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
@@ -86,7 +86,7 @@ type connector struct {
 
 // Connect produces an ExternalClient for the given managed resource.
 func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isLicense := managedRes.(*iamv1alpha1.License)
+	_, isLicense := managedRes.(*instancev1alpha1.License)
 	if !isLicense {
 		return nil, errors.New(errNotLicense)
 	}
@@ -106,7 +106,7 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
-	licenseClient, err := iamclient.NewLicenseClient(creds)
+	licenseClient, err := instanceclient.NewLicenseClient(creds)
 	if err != nil {
 		return nil, errors.Wrap(err, errNewClient)
 	}
@@ -119,13 +119,13 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 
 // external implements managed.ExternalClient.
 type external struct {
-	client iamclient.LicenseClient
+	client instanceclient.LicenseClient
 	kube   client.Client
 }
 
 // Observe checks whether the license is installed and up to date.
 func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	licenseCR, isLicense := managedRes.(*iamv1alpha1.License)
+	licenseCR, isLicense := managedRes.(*instancev1alpha1.License)
 	if !isLicense {
 		return managed.ExternalObservation{}, errors.New(errNotLicense)
 	}
@@ -139,12 +139,12 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{}, errors.Wrap(err, errFetchLicense)
 	}
 
-	currentHash := iamclient.HashLicense(desiredBytes)
+	currentHash := instanceclient.HashLicense(desiredBytes)
 
 	nexusInfo, err := e.client.GetLicense(ctx)
-	if errors.Is(err, iamclient.ErrNoLicense) {
+	if errors.Is(err, instanceclient.ErrNoLicense) {
 		prevHash := licenseCR.Status.AtProvider.InstalledHash
-		licenseCR.Status.AtProvider = iamclient.GenerateLicenseObservation(nil, prevHash)
+		licenseCR.Status.AtProvider = instanceclient.GenerateLicenseObservation(nil, prevHash)
 		licenseCR.SetConditions(nexusv1alpha1.Available())
 
 		return managed.ExternalObservation{ResourceExists: false}, nil
@@ -155,18 +155,18 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 	}
 
 	prevHash := licenseCR.Status.AtProvider.InstalledHash
-	licenseCR.Status.AtProvider = iamclient.GenerateLicenseObservation(nexusInfo, prevHash)
+	licenseCR.Status.AtProvider = instanceclient.GenerateLicenseObservation(nexusInfo, prevHash)
 	licenseCR.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsLicenseUpToDate(licenseCR, currentHash),
+		ResourceUpToDate: instanceclient.IsLicenseUpToDate(licenseCR, currentHash),
 	}, nil
 }
 
 // Create installs the license on Nexus for the first time.
 func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	licenseCR, isLicense := managedRes.(*iamv1alpha1.License)
+	licenseCR, isLicense := managedRes.(*instancev1alpha1.License)
 	if !isLicense {
 		return managed.ExternalCreation{}, errors.New(errNotLicense)
 	}
@@ -183,7 +183,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 // Update reinstalls the license when it drifts from the desired state.
 func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	licenseCR, isLicense := managedRes.(*iamv1alpha1.License)
+	licenseCR, isLicense := managedRes.(*instancev1alpha1.License)
 	if !isLicense {
 		return managed.ExternalUpdate{}, errors.New(errNotLicense)
 	}
@@ -200,7 +200,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 // Delete removes the license from Nexus.
 func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	_, isLicense := managedRes.(*iamv1alpha1.License)
+	_, isLicense := managedRes.(*instancev1alpha1.License)
 	if !isLicense {
 		return managed.ExternalDelete{}, errors.New(errNotLicense)
 	}
@@ -220,7 +220,7 @@ func (e *external) Disconnect(_ context.Context) error {
 
 // applyLicense fetches the desired license, installs it on Nexus, records the
 // hash in Status.AtProvider, and returns the raw bytes for ConnectionDetails.
-func (e *external) applyLicense(ctx context.Context, licenseCR *iamv1alpha1.License) ([]byte, error) {
+func (e *external) applyLicense(ctx context.Context, licenseCR *instancev1alpha1.License) ([]byte, error) {
 	data, err := e.fetchDesiredLicense(ctx, licenseCR)
 	if err != nil {
 		return nil, errors.Wrap(err, errFetchLicense)
@@ -231,7 +231,7 @@ func (e *external) applyLicense(ctx context.Context, licenseCR *iamv1alpha1.Lice
 		return nil, errors.Wrap(err, errInstallLicense)
 	}
 
-	hash := iamclient.HashLicense(data)
+	hash := instanceclient.HashLicense(data)
 
 	before := licenseCR.DeepCopy()
 	licenseCR.Status.AtProvider.InstalledHash = hash
@@ -248,7 +248,7 @@ func (e *external) applyLicense(ctx context.Context, licenseCR *iamv1alpha1.Lice
 // fetchDesiredLicense returns the license bytes from the configured source.
 // Behavior 1: reads from LicenseSecretRef.
 // Behavior 2: fetches from EndpointURL, caches in writeConnectionSecretToRef.
-func (e *external) fetchDesiredLicense(ctx context.Context, licenseCR *iamv1alpha1.License) ([]byte, error) {
+func (e *external) fetchDesiredLicense(ctx context.Context, licenseCR *instancev1alpha1.License) ([]byte, error) {
 	params := licenseCR.Spec.ForProvider
 
 	if params.LicenseSecretRef != nil {
@@ -265,7 +265,7 @@ func (e *external) fetchDesiredLicense(ctx context.Context, licenseCR *iamv1alph
 // fetchFromEndpoint fetches the license from the HTTP endpoint.
 // Falls back to the writeConnectionSecretToRef cache when the endpoint is
 // unavailable; the cache is written by the reconciler via ConnectionDetails.
-func (e *external) fetchFromEndpoint(ctx context.Context, licenseCR *iamv1alpha1.License) ([]byte, error) {
+func (e *external) fetchFromEndpoint(ctx context.Context, licenseCR *instancev1alpha1.License) ([]byte, error) {
 	params := licenseCR.Spec.ForProvider
 
 	data, endpointErr := e.doEndpointRequest(ctx, licenseCR.GetNamespace(), *params.EndpointURL, params.EndpointCredentials)
@@ -287,7 +287,7 @@ func (e *external) fetchFromEndpoint(ctx context.Context, licenseCR *iamv1alpha1
 
 // doEndpointRequest performs the HTTP GET for the license file. namespace is
 // the License namespace, which the credential secret selectors are bound to.
-func (e *external) doEndpointRequest(ctx context.Context, namespace, url string, creds *iamv1alpha1.LicenseEndpointCredentials) ([]byte, error) {
+func (e *external) doEndpointRequest(ctx context.Context, namespace, url string, creds *instancev1alpha1.LicenseEndpointCredentials) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot build endpoint request")
@@ -318,7 +318,7 @@ func (e *external) doEndpointRequest(ctx context.Context, namespace, url string,
 }
 
 // applyEndpointCredentials sets HTTP auth headers on the request.
-func (e *external) applyEndpointCredentials(ctx context.Context, namespace string, req *http.Request, creds *iamv1alpha1.LicenseEndpointCredentials) error {
+func (e *external) applyEndpointCredentials(ctx context.Context, namespace string, req *http.Request, creds *instancev1alpha1.LicenseEndpointCredentials) error {
 	if creds == nil {
 		return nil
 	}
