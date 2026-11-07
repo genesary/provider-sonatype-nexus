@@ -146,8 +146,10 @@ linters:
       # crossplane-runtime's event.NewAPIRecorder still requires the old
       # client-go record.EventRecorder API; GetEventRecorder (new events API)
       # is type-incompatible until crossplane-runtime migrates.
+      # helpers.NewEventRecorder is the only caller.
       - linters:
           - staticcheck
+        path: internal/helpers/reconciler\.go
         text: "SA1019: .*GetEventRecorderFor is deprecated:"
       # scheme.Builder is soft-deprecated; the provider scaffold still follows
       # the upstream crossplane template which uses it.

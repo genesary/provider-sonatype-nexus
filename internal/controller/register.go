@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -23,11 +22,12 @@ import (
 	instancelicense "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/license"
 	instancesecurityrealm "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/securityrealm"
 	instancessltruststore "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/securityssltruststore"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 // Setup creates all Nexus controllers and adds them to the supplied manager.
-func Setup(mgr ctrl.Manager, opts controller.Options) error {
-	for _, setup := range []func(ctrl.Manager, controller.Options) error{
+func Setup(mgr ctrl.Manager, opts helpers.Options) error {
+	for _, setup := range []func(ctrl.Manager, helpers.Options) error{
 		config.Setup,
 		contentcleanuppolicy.Setup,
 		contentcontentselector.Setup,

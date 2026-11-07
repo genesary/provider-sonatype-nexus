@@ -2,8 +2,6 @@
 package config
 
 import (
-	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/providerconfig"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
@@ -12,11 +10,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 // Setup adds controllers that reconcile ProviderConfigs by
 // accounting for their current usage.
-func Setup(mgr ctrl.Manager, opts controller.Options) error {
+func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	err := setupNamespacedProviderConfig(mgr, opts)
 	if err != nil {
 		return err
@@ -26,7 +25,7 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 }
 
 // setupNamespacedProviderConfig sets up the ProviderConfig controller.
-func setupNamespacedProviderConfig(mgr ctrl.Manager, opts controller.Options) error {
+func setupNamespacedProviderConfig(mgr ctrl.Manager, opts helpers.Options) error {
 	return setupProviderConfig(mgr, opts, &v1alpha1.ProviderConfig{}, v1alpha1.ProviderConfigKind)
 }
 
@@ -37,7 +36,7 @@ func setupNamespacedProviderConfig(mgr ctrl.Manager, opts controller.Options) er
 // usage lives beside the managed resource that created it and records which
 // kind of config it refers to. The reconciler counts the usages of a
 // ClusterProviderConfig across all namespaces.
-func setupClusterProviderConfig(mgr ctrl.Manager, opts controller.Options) error {
+func setupClusterProviderConfig(mgr ctrl.Manager, opts helpers.Options) error {
 	return setupProviderConfig(mgr, opts, &v1alpha1.ClusterProviderConfig{}, v1alpha1.ClusterProviderConfigKind)
 }
 
@@ -46,7 +45,7 @@ func setupClusterProviderConfig(mgr ctrl.Manager, opts controller.Options) error
 // The controller is only enqueued by the usages that refer to configKind, so
 // that a ProviderConfig and a ClusterProviderConfig of the same name do not
 // wake each other up.
-func setupProviderConfig(mgr ctrl.Manager, opts controller.Options, config client.Object, configKind string) error {
+func setupProviderConfig(mgr ctrl.Manager, opts helpers.Options, config client.Object, configKind string) error {
 	name := providerconfig.ControllerName(schema.GroupKind{Group: v1alpha1.Group, Kind: configKind}.String())
 
 	kinds := resource.ProviderConfigKinds{
@@ -57,7 +56,7 @@ func setupProviderConfig(mgr ctrl.Manager, opts controller.Options, config clien
 
 	reconciler := providerconfig.NewReconciler(mgr, kinds,
 		providerconfig.WithLogger(opts.Logger.WithValues("controller", name)),
-		providerconfig.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
+		providerconfig.WithRecorder(helpers.NewEventRecorder(mgr, name, opts.EventFilterFunctions...)))
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
