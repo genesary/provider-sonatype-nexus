@@ -33,6 +33,22 @@ if [ ! -f "${OUTPUT_DIR}/xpkg/${PLATFORM}/${PACKAGE_NAME}-${VERSION}.xpkg" ]; th
     echo_error "xpkg not built — run 'make build' first"
 fi
 
+# local.xpkg.deploy.provider.<name> extracts every xpkg of the output
+# directory under the same cache key, so the last one in glob order is
+# deployed, whatever its version. Packages left by builds of earlier commits
+# would then be installed instead of this one, with their older CRDs, while
+# the runtime image is this build's. Remove them.
+for xpkg in "${OUTPUT_DIR}"/xpkg/linux_*/"${PACKAGE_NAME}"-*.xpkg; do
+    [ -e "${xpkg}" ] || continue
+    case "${xpkg}" in
+        */"${PACKAGE_NAME}-${VERSION}.xpkg") ;;
+        *)
+            echo "removing ${xpkg}, left by an earlier build"
+            rm -f "${xpkg}"
+            ;;
+    esac
+done
+
 echo_step "creating kind cluster '${KIND_CLUSTER_NAME}' on kindest/node:${KIND_NODE_IMAGE_TAG:?run through make test-integration}"
 "${KIND}" get kubeconfig --name "${KIND_CLUSTER_NAME}" >/dev/null 2>&1 || \
     "${KIND}" create cluster --name="${KIND_CLUSTER_NAME}" --config="${projectdir}/e2e/kind-config.yaml" \
@@ -46,8 +62,67 @@ echo_step "installing Crossplane ${CROSSPLANE_VERSION}"
     "${HELM}" install crossplane --create-namespace --namespace=crossplane-system \
         crossplane-build-module/crossplane --version "${CROSSPLANE_VERSION}"
 
-echo_step "deploying ${PACKAGE_NAME} provider package"
+# The tests delete their resources seconds after creating them. Within the
+# creation grace period (30s by default), the provider does not trust Nexus
+# reporting a resource gone, so each deletion would wait out the rest of
+# those 30s. Nexus is strongly consistent, so a short period is enough.
+E2E_CREATION_GRACE_PERIOD="${E2E_CREATION_GRACE_PERIOD:-5s}"
+
+# Match the provider default; set to false to exercise direct Secret reads.
+ENABLE_SECRET_CACHE="${ENABLE_SECRET_CACHE:-true}"
+
+# Extra provider flags, space separated, e.g. E2E_PROVIDER_ARGS="--poll=10s".
+# The script's own settings go through the provider's environment variables
+# instead of flags: kingpin rejects a repeated flag, while a flag passed here
+# simply overrides its variable. read -a splits on spaces without
+# glob-expanding the words.
+read -r -a extra_provider_args <<<"${E2E_PROVIDER_ARGS:-}"
+provider_args=""
+for arg in "${extra_provider_args[@]}"; do
+    # Escape for a double-quoted YAML scalar.
+    arg="${arg//\\/\\\\}"
+    arg="${arg//\"/\\\"}"
+    provider_args="${provider_args:+${provider_args}, }\"${arg}\""
+done
+
+# local.xpkg.deploy.provider.<name> uses DRC_FILE as the provider's
+# DeploymentRuntimeConfig when it exists; it overrides the name and image.
+DRC_FILE="$(mktemp)"
+export DRC_FILE
+# Keep the cluster teardown trap set above, unless skipcleanup is set.
+trap 'rm -f "${DRC_FILE}"; [ "${skipcleanup}" = "true" ] || cleanup' EXIT
+cat >"${DRC_FILE}" <<EOF_DRC
+apiVersion: pkg.crossplane.io/v1beta1
+kind: DeploymentRuntimeConfig
+metadata:
+  name: runtimeconfig-${PACKAGE_NAME}
+spec:
+  deploymentTemplate:
+    spec:
+      selector: {}
+      template:
+        spec:
+          containers:
+            - name: package-runtime
+              args: [${provider_args}]
+              env:
+                - name: DEBUG
+                  value: "true"
+                - name: CREATION_GRACE_PERIOD
+                  value: "${E2E_CREATION_GRACE_PERIOD}"
+                - name: ENABLE_SECRET_CACHE
+                  value: "${ENABLE_SECRET_CACHE}"
+EOF_DRC
+
+echo_step "deploying ${PACKAGE_NAME} provider package (CREATION_GRACE_PERIOD=${E2E_CREATION_GRACE_PERIOD}, ENABLE_SECRET_CACHE=${ENABLE_SECRET_CACHE}, args=[${provider_args}])"
 make -C "${projectdir}" "local.xpkg.deploy.provider.${PACKAGE_NAME}"
+
+# Start Nexus now, so that its image pull and slow first boot (a few minutes)
+# overlap with the provider becoming healthy and its CRDs being established,
+# instead of starting after them. nexus_setup.sh re-applies the same manifest
+# (idempotently) and waits for Nexus later.
+echo_step "starting Nexus in the background"
+"${KUBECTL}" apply -f "${projectdir}/e2e/manifests/nexus.yaml"
 
 echo_step "waiting for provider to become healthy"
 "${KUBECTL}" wait "provider.pkg.crossplane.io/${PACKAGE_NAME}" \

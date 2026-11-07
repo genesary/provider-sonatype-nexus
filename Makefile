@@ -128,9 +128,13 @@ test-integration: $(KIND) $(KUBECTL) $(CROSSPLANE_CLI) $(HELM)
 # Expects NEXUS_URL, NEXUS_USER, and NEXUS_PASS to be exported by the caller;
 # cluster/local/integration_tests.sh exports these automatically.
 E2E_TEST_TIMEOUT ?= 30m
+# The e2e tests spend almost all their time waiting on the provider and
+# Nexus, so run more of them at once than go test's GOMAXPROCS default (4 on a
+# standard CI runner) would allow. -v prints each test's duration.
+E2E_TEST_PARALLEL ?= 16
 e2e.test:
 	@$(INFO) running e2e Go suite with build tag e2e
-	@go test -tags=e2e -timeout=$(E2E_TEST_TIMEOUT) -count=1 ./internal/test/e2e/... || $(FAIL)
+	@go test -tags=e2e -v -parallel=$(E2E_TEST_PARALLEL) -timeout=$(E2E_TEST_TIMEOUT) -count=1 ./internal/test/e2e/... || $(FAIL)
 	@$(OK) e2e Go suite passed
 
 .PHONY: submodules fallthrough run e2e.run test-integration e2e.test

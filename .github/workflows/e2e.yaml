@@ -1,9 +1,10 @@
 name: E2E Tests
 
+# Pushes to main are not tested again: the e2e suite already ran on their pull
+# request.
 on:
   push:
     branches:
-      - main
       - release-*
   pull_request: {}
   workflow_dispatch: {}
