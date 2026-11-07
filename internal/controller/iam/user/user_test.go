@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,6 +17,7 @@ import (
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	iammocks "github.com/genesary/provider-sonatype-nexus/test/mocks/iam"
 )
 
@@ -75,8 +76,8 @@ func TestObserve(t *testing.T) {
 			name: "NotFound_404",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.GetFn = func(_ string) (*security.User, error) {
-					return nil, errors.New("404 not found")
+				mc.GetFn = func(_ string) (*v395.ApiUser, error) {
+					return nil, nexus.ErrNotFound
 				}
 			},
 			wantExists:   false,
@@ -87,7 +88,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.GetFn = func(_ string) (*security.User, error) {
+				mc.GetFn = func(_ string) (*v395.ApiUser, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -99,7 +100,7 @@ func TestObserve(t *testing.T) {
 			name: "NilUserReturned",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.GetFn = func(_ string) (*security.User, error) {
+				mc.GetFn = func(_ string) (*v395.ApiUser, error) {
 					//nolint:nilnil // intentionally testing nil user with nil error
 					return nil, nil
 				}
@@ -112,12 +113,12 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.GetFn = func(_ string) (*security.User, error) {
-					return &security.User{
-						UserID:       "alice",
-						FirstName:    "Alice",
-						LastName:     "Smith",
-						EmailAddress: "alice@example.com",
+				mc.GetFn = func(_ string) (*v395.ApiUser, error) {
+					return &v395.ApiUser{
+						UserId:       "alice",
+						FirstName:    *v395.NewNullableString(new("Alice")),
+						LastName:     *v395.NewNullableString(new("Smith")),
+						EmailAddress: *v395.NewNullableString(new("alice@example.com")),
 						Status:       "active",
 						Source:       "default",
 					}, nil
@@ -131,12 +132,12 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated",
 			cr:   newTestUser("alice", "Alice", "NewLastName"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.GetFn = func(_ string) (*security.User, error) {
-					return &security.User{
-						UserID:       "alice",
-						FirstName:    "Alice",
-						LastName:     "OldLastName",
-						EmailAddress: "alice@example.com",
+				mc.GetFn = func(_ string) (*v395.ApiUser, error) {
+					return &v395.ApiUser{
+						UserId:       "alice",
+						FirstName:    *v395.NewNullableString(new("Alice")),
+						LastName:     *v395.NewNullableString(new("OldLastName")),
+						EmailAddress: *v395.NewNullableString(new("alice@example.com")),
 						Status:       "active",
 						Source:       "default",
 					}, nil
@@ -204,7 +205,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.CreateFn = func(_ security.User) error {
+				mc.CreateFn = func(_ v395.ApiCreateUser) error {
 					return nil
 				}
 			},
@@ -216,8 +217,8 @@ func TestCreate(t *testing.T) {
 					t.Errorf("expected 1 Create call, got %d", len(mc.CreateCalls))
 				}
 
-				if mc.CreateCalls[0].UserID != "alice" {
-					t.Errorf("wrong user ID: %v", mc.CreateCalls[0].UserID)
+				if mc.CreateCalls[0].UserId != "alice" {
+					t.Errorf("wrong user ID: %v", mc.CreateCalls[0].UserId)
 				}
 			},
 		},
@@ -225,7 +226,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.CreateFn = func(_ security.User) error {
+				mc.CreateFn = func(_ v395.ApiCreateUser) error {
 					return errors.New("create failed")
 				}
 			},
@@ -286,7 +287,7 @@ func TestCreate_WithPassword(t *testing.T) {
 	kubeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
 
 	mc := iammocks.NewMockUserClient()
-	mc.CreateFn = func(user security.User) error {
+	mc.CreateFn = func(user v395.ApiCreateUser) error {
 		if user.Password != "s3cr3t" {
 			return errors.New("unexpected password value")
 		}
@@ -326,7 +327,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.UpdateFn = func(_ string, _ security.User) error {
+				mc.UpdateFn = func(_ string, _ v395.ApiUser) error {
 					return nil
 				}
 			},
@@ -343,7 +344,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
-				mc.UpdateFn = func(_ string, _ security.User) error {
+				mc.UpdateFn = func(_ string, _ v395.ApiUser) error {
 					return errors.New("update failed")
 				}
 			},
@@ -404,7 +405,7 @@ func TestUpdate_WithPassword(t *testing.T) {
 	kubeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(secret).Build()
 
 	mc := iammocks.NewMockUserClient()
-	mc.UpdateFn = func(_ string, _ security.User) error {
+	mc.UpdateFn = func(_ string, _ v395.ApiUser) error {
 		return nil
 	}
 	mc.ChangePasswordFn = func(id, password string) error {
@@ -473,7 +474,7 @@ func TestDelete(t *testing.T) {
 			cr:   newTestUser("alice", "Alice", "Smith"),
 			mockSetup: func(mc *iammocks.MockUserClient) {
 				mc.DeleteFn = func(_ string) error {
-					return errors.New("404 not found")
+					return nexus.ErrNotFound
 				}
 			},
 			wantErr: false,

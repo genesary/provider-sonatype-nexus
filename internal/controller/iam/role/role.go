@@ -18,7 +18,6 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -115,9 +114,9 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		roleID = roleRes.Spec.ForProvider.ID
 	}
 
-	observed, err := e.client.Get(roleID)
+	observed, err := e.client.Get(ctx, roleID)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
 
@@ -147,7 +146,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 	roleData := iamclient.GenerateRole(roleRes)
 
-	err := e.client.Create(roleData)
+	err := e.client.Create(ctx, roleData)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateRole)
 	}
@@ -171,7 +170,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 	roleData := iamclient.GenerateRole(roleRes)
 
-	err := e.client.Update(roleID, roleData)
+	err := e.client.Update(ctx, roleID, roleData)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateRole)
 	}
@@ -191,9 +190,9 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		roleID = roleRes.Spec.ForProvider.ID
 	}
 
-	err := e.client.Delete(roleID)
+	err := e.client.Delete(ctx, roleID)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
 		}
 

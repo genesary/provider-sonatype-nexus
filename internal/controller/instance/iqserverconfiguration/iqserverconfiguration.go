@@ -116,12 +116,12 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{}, errors.New(errNotIQServerConfiguration)
 	}
 
-	observed, err := e.client.Get()
+	observed, err := e.client.Get(ctx)
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetIQServer)
 	}
 
-	if !iqConfig.GetDeletionTimestamp().IsZero() && observed != nil && !observed.Enabled {
+	if !iqConfig.GetDeletionTimestamp().IsZero() && observed != nil && !observed.GetEnabled() {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
@@ -184,13 +184,13 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 // Delete disables the IQ Server integration in Nexus.
 // IQ Server config is a singleton; Delete disables rather than removes.
-func (e *external) Delete(_ context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
+func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
 	_, ok := managedRes.(*instancev1alpha1.IQServerConfiguration)
 	if !ok {
 		return managed.ExternalDelete{}, errors.New(errNotIQServerConfiguration)
 	}
 
-	err := e.client.Disable()
+	err := e.client.Disable(ctx)
 	if err != nil {
 		return managed.ExternalDelete{}, errors.Wrap(err, errDeleteIQServer)
 	}
@@ -221,7 +221,7 @@ func (e *external) applyConfig(ctx context.Context, iqConfig *instancev1alpha1.I
 
 	config := instanceclient.GenerateIQServerUpdate(&iqConfig.Spec.ForProvider, username, password)
 
-	err = e.client.Update(config)
+	err = e.client.Update(ctx, config)
 	if err != nil {
 		return "", errors.Wrap(err, errUpdateIQServer)
 	}

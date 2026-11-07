@@ -18,7 +18,6 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -127,9 +126,9 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		userID = userRes.Spec.ForProvider.UserID
 	}
 
-	observed, err := e.client.Get(userID)
+	observed, err := e.client.Get(ctx, userID)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
 
@@ -179,7 +178,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 	userData := iamclient.GenerateUser(userRes, password)
 
-	err = e.client.Create(userData)
+	err = e.client.Create(ctx, userData)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateUser)
 	}
@@ -216,9 +215,9 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalUpdate{}, err
 	}
 
-	userData := iamclient.GenerateUser(userRes, "")
+	userData := iamclient.GenerateUserUpdate(userRes)
 
-	err = e.client.Update(userID, userData)
+	err = e.client.Update(ctx, userID, userData)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateUser)
 	}
@@ -230,7 +229,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		}
 
 		if password != "" {
-			err = e.client.ChangePassword(userID, password)
+			err = e.client.ChangePassword(ctx, userID, password)
 			if err != nil {
 				return managed.ExternalUpdate{}, errors.Wrap(err, errChangePassword)
 			}
@@ -254,9 +253,9 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		userID = userRes.Spec.ForProvider.UserID
 	}
 
-	err := e.client.Delete(userID)
+	err := e.client.Delete(ctx, userID)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
 		}
 

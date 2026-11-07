@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	nexusschema "github.com/datadrivers/go-nexus-client/nexus3/schema"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -16,6 +16,7 @@ import (
 
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	contentmocks "github.com/genesary/provider-sonatype-nexus/test/mocks/content"
 )
 
@@ -68,8 +69,8 @@ func TestObserve(t *testing.T) {
 			name: "NotFound_404",
 			cr:   newTestRoutingRule("block-snaps", "BLOCK", []string{".*-SNAPSHOT.*"}),
 			mockSetup: func(mc *contentmocks.MockRoutingRuleClient) {
-				mc.GetFn = func(_ string) (*nexusschema.RoutingRule, error) {
-					return nil, errors.New("404 not found")
+				mc.GetFn = func(_ string) (*v395.RoutingRuleXO, error) {
+					return nil, nexus.ErrNotFound
 				}
 			},
 			wantExists:   false,
@@ -80,7 +81,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestRoutingRule("block-snaps", "BLOCK", []string{".*-SNAPSHOT.*"}),
 			mockSetup: func(mc *contentmocks.MockRoutingRuleClient) {
-				mc.GetFn = func(_ string) (*nexusschema.RoutingRule, error) {
+				mc.GetFn = func(_ string) (*v395.RoutingRuleXO, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -98,12 +99,12 @@ func TestObserve(t *testing.T) {
 				return rr
 			}(),
 			mockSetup: func(mc *contentmocks.MockRoutingRuleClient) {
-				mc.GetFn = func(_ string) (*nexusschema.RoutingRule, error) {
-					return &nexusschema.RoutingRule{
-						Name:        "block-snaps",
-						Mode:        "BLOCK",
+				mc.GetFn = func(_ string) (*v395.RoutingRuleXO, error) {
+					return &v395.RoutingRuleXO{
+						Name:        new("block-snaps"),
+						Mode:        new("BLOCK"),
 						Matchers:    []string{".*-SNAPSHOT.*"},
-						Description: "block snapshots",
+						Description: new("block snapshots"),
 					}, nil
 				}
 			},
@@ -115,10 +116,10 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated_ModeMismatch",
 			cr:   newTestRoutingRule("allow-releases", "ALLOW", []string{".*-RELEASE.*"}),
 			mockSetup: func(mc *contentmocks.MockRoutingRuleClient) {
-				mc.GetFn = func(_ string) (*nexusschema.RoutingRule, error) {
-					return &nexusschema.RoutingRule{
-						Name:     "allow-releases",
-						Mode:     "BLOCK",
+				mc.GetFn = func(_ string) (*v395.RoutingRuleXO, error) {
+					return &v395.RoutingRuleXO{
+						Name:     new("allow-releases"),
+						Mode:     new("BLOCK"),
 						Matchers: []string{".*-RELEASE.*"},
 					}, nil
 				}
@@ -131,10 +132,10 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated_MatchersMismatch",
 			cr:   newTestRoutingRule("my-rule", "BLOCK", []string{".*-SNAPSHOT.*", ".*-alpha.*"}),
 			mockSetup: func(mc *contentmocks.MockRoutingRuleClient) {
-				mc.GetFn = func(_ string) (*nexusschema.RoutingRule, error) {
-					return &nexusschema.RoutingRule{
-						Name:     "my-rule",
-						Mode:     "BLOCK",
+				mc.GetFn = func(_ string) (*v395.RoutingRuleXO, error) {
+					return &v395.RoutingRuleXO{
+						Name:     new("my-rule"),
+						Mode:     new("BLOCK"),
 						Matchers: []string{".*-SNAPSHOT.*"},
 					}, nil
 				}
@@ -154,14 +155,14 @@ func TestObserve(t *testing.T) {
 				return rr
 			}(),
 			mockSetup: func(mc *contentmocks.MockRoutingRuleClient) {
-				mc.GetFn = func(name string) (*nexusschema.RoutingRule, error) {
+				mc.GetFn = func(name string) (*v395.RoutingRuleXO, error) {
 					if name != "nexus-rule-name" {
 						return nil, errors.New("wrong name called: " + name)
 					}
 
-					return &nexusschema.RoutingRule{
-						Name:     "nexus-rule-name",
-						Mode:     "BLOCK",
+					return &v395.RoutingRuleXO{
+						Name:     new("nexus-rule-name"),
+						Mode:     new("BLOCK"),
 						Matchers: []string{".*"},
 					}, nil
 				}
@@ -220,11 +221,11 @@ func TestObserve_UpdatesAtProvider(t *testing.T) {
 	cr := newTestRoutingRule("my-rule", "BLOCK", []string{".*-SNAPSHOT.*"})
 
 	mc := contentmocks.NewMockRoutingRuleClient()
-	mc.GetFn = func(_ string) (*nexusschema.RoutingRule, error) {
-		return &nexusschema.RoutingRule{
-			Name:        "my-rule",
-			Description: "block snapshots",
-			Mode:        "BLOCK",
+	mc.GetFn = func(_ string) (*v395.RoutingRuleXO, error) {
+		return &v395.RoutingRuleXO{
+			Name:        new("my-rule"),
+			Description: new("block snapshots"),
+			Mode:        new("BLOCK"),
 			Matchers:    []string{".*-SNAPSHOT.*"},
 		}, nil
 	}
@@ -268,7 +269,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestRoutingRule("new-rule", "BLOCK", []string{".*-SNAPSHOT.*"}),
 			mockSetup: func(mc *contentmocks.MockRoutingRuleClient) {
-				mc.CreateFn = func(_ *nexusschema.RoutingRule) error {
+				mc.CreateFn = func(_ *v395.RoutingRuleXO) error {
 					return nil
 				}
 			},
@@ -285,7 +286,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestRoutingRule("new-rule", "BLOCK", []string{".*-SNAPSHOT.*"}),
 			mockSetup: func(mc *contentmocks.MockRoutingRuleClient) {
-				mc.CreateFn = func(_ *nexusschema.RoutingRule) error {
+				mc.CreateFn = func(_ *v395.RoutingRuleXO) error {
 					return errors.New("create failed")
 				}
 			},
@@ -330,7 +331,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestRoutingRule("existing-rule", "ALLOW", []string{".*-RELEASE.*"}),
 			mockSetup: func(mc *contentmocks.MockRoutingRuleClient) {
-				mc.UpdateFn = func(_ *nexusschema.RoutingRule) error {
+				mc.UpdateFn = func(_ *v395.RoutingRuleXO) error {
 					return nil
 				}
 			},
@@ -340,7 +341,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestRoutingRule("existing-rule", "ALLOW", []string{".*-RELEASE.*"}),
 			mockSetup: func(mc *contentmocks.MockRoutingRuleClient) {
-				mc.UpdateFn = func(_ *nexusschema.RoutingRule) error {
+				mc.UpdateFn = func(_ *v395.RoutingRuleXO) error {
 					return errors.New("update failed")
 				}
 			},
@@ -392,7 +393,7 @@ func TestDelete(t *testing.T) {
 			cr:   newTestRoutingRule("old-rule", "BLOCK", []string{".*"}),
 			mockSetup: func(mc *contentmocks.MockRoutingRuleClient) {
 				mc.DeleteFn = func(_ string) error {
-					return errors.New("404 not found")
+					return nexus.ErrNotFound
 				}
 			},
 			wantErr: false,

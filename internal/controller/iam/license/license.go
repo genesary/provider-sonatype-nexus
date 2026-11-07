@@ -42,6 +42,8 @@ const (
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
 	errGetPC = "cannot get ProviderConfig"
+	// errNewClient is returned when creating the Nexus client fails.
+	errNewClient = "cannot create new Nexus client"
 	// errGetLicense is returned when retrieving the license from Nexus fails.
 	errGetLicense = "cannot get license from Nexus"
 	// errInstallLicense is returned when installing the license on Nexus fails.
@@ -104,8 +106,13 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
+	licenseClient, err := iamclient.NewLicenseClient(creds)
+	if err != nil {
+		return nil, errors.Wrap(err, errNewClient)
+	}
+
 	return &external{
-		client: iamclient.NewLicenseClient(creds),
+		client: licenseClient,
 		kube:   c.kube,
 	}, nil
 }

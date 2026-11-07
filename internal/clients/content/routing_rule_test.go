@@ -3,8 +3,7 @@ package content
 import (
 	"testing"
 
-	nexusschema "github.com/datadrivers/go-nexus-client/nexus3/schema"
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 )
@@ -32,20 +31,20 @@ func TestGenerateRoutingRule_Basic(t *testing.T) {
 	cr := newCR("my-rule", "BLOCK", []string{".*-SNAPSHOT.*"}, nil)
 	got := GenerateRoutingRule(cr)
 
-	if got.Name != "my-rule" {
-		t.Errorf("Name = %q, want %q", got.Name, "my-rule")
+	if got.GetName() != "my-rule" {
+		t.Errorf("Name = %q, want %q", got.GetName(), "my-rule")
 	}
 
-	if got.Mode != "BLOCK" {
-		t.Errorf("Mode = %q, want BLOCK", got.Mode)
+	if got.GetMode() != "BLOCK" {
+		t.Errorf("Mode = %q, want BLOCK", got.GetMode())
 	}
 
 	if len(got.Matchers) != 1 || got.Matchers[0] != ".*-SNAPSHOT.*" {
 		t.Errorf("Matchers = %v, want [.*-SNAPSHOT.*]", got.Matchers)
 	}
 
-	if got.Description != "" {
-		t.Errorf("Description = %q, want empty", got.Description)
+	if got.GetDescription() != "" {
+		t.Errorf("Description = %q, want empty", got.GetDescription())
 	}
 }
 
@@ -58,12 +57,12 @@ func TestGenerateRoutingRule_WithDescription(t *testing.T) {
 	cr := newCR("my-rule", "ALLOW", []string{".*"}, new("allow all"))
 	got := GenerateRoutingRule(cr)
 
-	if got.Description != "allow all" {
-		t.Errorf("Description = %q, want %q", got.Description, "allow all")
+	if got.GetDescription() != "allow all" {
+		t.Errorf("Description = %q, want %q", got.GetDescription(), "allow all")
 	}
 
-	if got.Mode != nexusschema.RoutingRuleModeAllow {
-		t.Errorf("Mode = %q, want ALLOW", got.Mode)
+	if got.GetMode() != "ALLOW" {
+		t.Errorf("Mode = %q, want ALLOW", got.GetMode())
 	}
 }
 
@@ -199,10 +198,10 @@ func TestGenerateRoutingRuleObservation_Nil(t *testing.T) {
 func TestGenerateRoutingRuleObservation_Full(t *testing.T) {
 	t.Parallel()
 
-	rule := &nexusschema.RoutingRule{
-		Name:        "my-rule",
-		Description: "some desc",
-		Mode:        "BLOCK",
+	rule := &v395.RoutingRuleXO{
+		Name:        new("my-rule"),
+		Description: new("some desc"),
+		Mode:        new("BLOCK"),
 		Matchers:    []string{".*-SNAPSHOT.*"},
 	}
 
@@ -239,17 +238,17 @@ func TestIsContentSelectorUpToDate_DescriptionDropped(t *testing.T) {
 		Expression: `format == "maven2"`,
 	}
 
-	observed := &security.ContentSelector{
-		Name:        "selector",
-		Expression:  `format == "maven2"`,
-		Description: "leftover",
+	observed := &v395.ContentSelectorApiResponse{
+		Name:        new("selector"),
+		Expression:  new(`format == "maven2"`),
+		Description: new("leftover"),
 	}
 
 	if IsContentSelectorUpToDate(cr, observed) {
 		t.Error("IsContentSelectorUpToDate() = true, want false when the description was dropped")
 	}
 
-	observed.Description = ""
+	observed.Description = new("")
 
 	if !IsContentSelectorUpToDate(cr, observed) {
 		t.Error("IsContentSelectorUpToDate() = false, want true once the description is gone")

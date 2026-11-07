@@ -2,7 +2,9 @@
 package iam
 
 import (
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	"context"
+
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
 )
@@ -11,13 +13,13 @@ var _ iamclient.RoleClient = &MockRoleClient{}
 
 // MockRoleClient is a mock of iamclient.RoleClient.
 type MockRoleClient struct {
-	GetFn    func(id string) (*security.Role, error)
-	CreateFn func(role security.Role) error
-	UpdateFn func(id string, role security.Role) error
+	GetFn    func(id string) (*v395.RoleXOResponse, error)
+	CreateFn func(role v395.RoleXORequest) error
+	UpdateFn func(id string, role v395.RoleXORequest) error
 	DeleteFn func(id string) error
 
 	GetCalls    []string
-	CreateCalls []security.Role
+	CreateCalls []v395.RoleXORequest
 	UpdateCalls []string
 	DeleteCalls []string
 }
@@ -28,7 +30,7 @@ func NewMockRoleClient() *MockRoleClient {
 }
 
 // Get mock implementation.
-func (m *MockRoleClient) Get(id string) (*security.Role, error) {
+func (m *MockRoleClient) Get(_ context.Context, id string) (*v395.RoleXOResponse, error) {
 	m.GetCalls = append(m.GetCalls, id)
 
 	if m.GetFn != nil {
@@ -39,7 +41,7 @@ func (m *MockRoleClient) Get(id string) (*security.Role, error) {
 }
 
 // Create mock implementation.
-func (m *MockRoleClient) Create(role security.Role) error {
+func (m *MockRoleClient) Create(_ context.Context, role v395.RoleXORequest) error {
 	m.CreateCalls = append(m.CreateCalls, role)
 
 	if m.CreateFn != nil {
@@ -50,7 +52,7 @@ func (m *MockRoleClient) Create(role security.Role) error {
 }
 
 // Update mock implementation.
-func (m *MockRoleClient) Update(id string, role security.Role) error {
+func (m *MockRoleClient) Update(_ context.Context, id string, role v395.RoleXORequest) error {
 	m.UpdateCalls = append(m.UpdateCalls, id)
 
 	if m.UpdateFn != nil {
@@ -61,7 +63,7 @@ func (m *MockRoleClient) Update(id string, role security.Role) error {
 }
 
 // Delete mock implementation.
-func (m *MockRoleClient) Delete(id string) error {
+func (m *MockRoleClient) Delete(_ context.Context, id string) error {
 	m.DeleteCalls = append(m.DeleteCalls, id)
 
 	if m.DeleteFn != nil {

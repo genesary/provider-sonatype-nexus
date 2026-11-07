@@ -12,9 +12,8 @@ import (
 // fields, and a field simply stays empty where the format does not have it -
 // a hosted repository has no remote URL, a proxy repository has no members.
 //
-// The URL is passed in rather than read from the repository: go-nexus-client
-// drops the url field Nexus returns, and Nexus always serves a repository at
-// <base>/repository/<name>.
+// The URL Nexus reports is preferred; url is the fallback when it reports
+// none, since Nexus always serves a repository at <base>/repository/<name>.
 func generateRepositoryObservation(fields map[string]any, url string) repositoryv1alpha1.RepositoryObservation {
 	storage := objectField(fields, "storage")
 
@@ -28,6 +27,11 @@ func generateRepositoryObservation(fields map[string]any, url string) repository
 		RemoteURL:                   stringField(objectField(fields, "proxy"), "remoteUrl"),
 		MemberNames:                 stringSliceField(objectField(fields, "group"), "memberNames"),
 		RoutingRuleName:             stringField(fields, "routingRuleName"),
+	}
+
+	reported := stringField(fields, "url")
+	if reported != "" {
+		url = reported
 	}
 
 	if url != "" {

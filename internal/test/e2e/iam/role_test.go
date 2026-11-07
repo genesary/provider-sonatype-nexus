@@ -72,10 +72,10 @@ func TestRoleCRUD(t *testing.T) {
 	if got == nil {
 		t.Fatalf("role %q not found in Nexus", roleID)
 	}
-	if got.ID != roleID {
-		t.Errorf("role ID = %q, want %q", got.ID, roleID)
+	if got.GetId() != roleID {
+		t.Errorf("role ID = %q, want %q", got.GetId(), roleID)
 	}
-	if got.Name != roleName {
-		t.Errorf("role name = %q, want %q", got.Name, roleName)
+	if got.GetName() != roleName {
+		t.Errorf("role name = %q, want %q", got.GetName(), roleName)
 	}
 }

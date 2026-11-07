@@ -5,7 +5,6 @@ import (
 
 	instanceclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 
-	nexussdk "github.com/datadrivers/go-nexus-client/nexus3/schema/capability"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
@@ -34,20 +33,20 @@ func TestGenerateCapabilityCreate(t *testing.T) {
 
 	got := instanceclient.GenerateCapabilityCreate(&cr.Spec.ForProvider)
 
-	if got.Type != "DockerBearerTokenRealm" {
-		t.Errorf("Type = %q, want DockerBearerTokenRealm", got.Type)
+	if got.GetType() != "DockerBearerTokenRealm" {
+		t.Errorf("Type = %q, want DockerBearerTokenRealm", got.GetType())
 	}
 
-	if !got.Enabled {
+	if !got.GetEnabled() {
 		t.Error("Enabled = false, want true")
 	}
 
-	if got.Notes != "notes" {
-		t.Errorf("Notes = %q, want notes", got.Notes)
+	if got.GetNotes() != "notes" {
+		t.Errorf("Notes = %q, want notes", got.GetNotes())
 	}
 
-	if got.Properties["key"] != "val" {
-		t.Errorf("Properties[key] = %q, want val", got.Properties["key"])
+	if got.GetProperties()["key"] != "val" {
+		t.Errorf("Properties[key] = %q, want val", got.GetProperties()["key"])
 	}
 }
 
@@ -60,12 +59,12 @@ func TestGenerateCapabilityCreate_NilProperties(t *testing.T) {
 
 	got := instanceclient.GenerateCapabilityCreate(&cr.Spec.ForProvider)
 
-	if got.Properties == nil {
+	if got.GetProperties() == nil {
 		t.Error("Properties should not be nil")
 	}
 
-	if len(got.Properties) != 0 {
-		t.Errorf("Properties len = %d, want 0", len(got.Properties))
+	if len(got.GetProperties()) != 0 {
+		t.Errorf("Properties len = %d, want 0", len(got.GetProperties()))
 	}
 }
 
@@ -77,24 +76,24 @@ func TestGenerateCapabilityUpdate(t *testing.T) {
 
 	got := instanceclient.GenerateCapabilityUpdate(&cr.Spec.ForProvider, "id-xyz")
 
-	if got.ID != "id-xyz" {
-		t.Errorf("ID = %q, want id-xyz", got.ID)
+	if got.GetId() != "id-xyz" {
+		t.Errorf("ID = %q, want id-xyz", got.GetId())
 	}
 
-	if got.Type != "DockerBearerTokenRealm" {
-		t.Errorf("Type = %q, want DockerBearerTokenRealm", got.Type)
+	if got.GetType() != "DockerBearerTokenRealm" {
+		t.Errorf("Type = %q, want DockerBearerTokenRealm", got.GetType())
 	}
 
-	if got.Enabled {
+	if got.GetEnabled() {
 		t.Error("Enabled = true, want false")
 	}
 
-	if got.Notes != "updated" {
-		t.Errorf("Notes = %q, want updated", got.Notes)
+	if got.GetNotes() != "updated" {
+		t.Errorf("Notes = %q, want updated", got.GetNotes())
 	}
 
-	if got.Properties["a"] != "b" {
-		t.Errorf("Properties[a] = %q, want b", got.Properties["a"])
+	if got.GetProperties()["a"] != "b" {
+		t.Errorf("Properties[a] = %q, want b", got.GetProperties()["a"])
 	}
 }
 
@@ -107,7 +106,7 @@ func TestGenerateCapabilityUpdate_NilProperties(t *testing.T) {
 
 	got := instanceclient.GenerateCapabilityUpdate(&cr.Spec.ForProvider, "id-abc")
 
-	if got.Properties == nil {
+	if got.GetProperties() == nil {
 		t.Error("Properties should not be nil")
 	}
 }
@@ -120,77 +119,77 @@ func TestIsCapabilityUpToDate(t *testing.T) {
 	tests := []struct {
 		name     string
 		cr       *instancev1alpha1.Capability
-		observed *nexussdk.Capability
+		observed *instanceclient.Capability
 		want     bool
 	}{
 		{
 			name: "UpToDate",
 			cr:   newCR("DockerBearerTokenRealm", true, "notes", map[string]string{"k": "v"}),
-			observed: &nexussdk.Capability{
-				Type:       "DockerBearerTokenRealm",
-				Enabled:    true,
-				Notes:      "notes",
-				Properties: map[string]string{"k": "v"},
+			observed: &instanceclient.Capability{
+				Type:       new("DockerBearerTokenRealm"),
+				Enabled:    new(true),
+				Notes:      new("notes"),
+				Properties: new(map[string]string{"k": "v"}),
 			},
 			want: true,
 		},
 		{
 			name: "DifferentType",
 			cr:   newCR("DockerBearerTokenRealm", true, "", nil),
-			observed: &nexussdk.Capability{
-				Type:       "NuGetApiKey",
-				Enabled:    true,
-				Properties: map[string]string{},
+			observed: &instanceclient.Capability{
+				Type:       new("NuGetApiKey"),
+				Enabled:    new(true),
+				Properties: new(map[string]string{}),
 			},
 			want: false,
 		},
 		{
 			name: "DifferentEnabled",
 			cr:   newCR("DockerBearerTokenRealm", true, "", nil),
-			observed: &nexussdk.Capability{
-				Type:       "DockerBearerTokenRealm",
-				Enabled:    false,
-				Properties: map[string]string{},
+			observed: &instanceclient.Capability{
+				Type:       new("DockerBearerTokenRealm"),
+				Enabled:    new(false),
+				Properties: new(map[string]string{}),
 			},
 			want: false,
 		},
 		{
 			name: "DifferentNotes",
 			cr:   newCR("DockerBearerTokenRealm", true, "new", nil),
-			observed: &nexussdk.Capability{
-				Type:       "DockerBearerTokenRealm",
-				Enabled:    true,
-				Notes:      "old",
-				Properties: map[string]string{},
+			observed: &instanceclient.Capability{
+				Type:       new("DockerBearerTokenRealm"),
+				Enabled:    new(true),
+				Notes:      new("old"),
+				Properties: new(map[string]string{}),
 			},
 			want: false,
 		},
 		{
 			name: "DifferentProperties",
 			cr:   newCR("DockerBearerTokenRealm", true, "", map[string]string{"k": "v"}),
-			observed: &nexussdk.Capability{
-				Type:       "DockerBearerTokenRealm",
-				Enabled:    true,
-				Properties: map[string]string{},
+			observed: &instanceclient.Capability{
+				Type:       new("DockerBearerTokenRealm"),
+				Enabled:    new(true),
+				Properties: new(map[string]string{}),
 			},
 			want: false,
 		},
 		{
 			name: "NilDesiredPropertiesMatchesEmpty",
 			cr:   newCR("DockerBearerTokenRealm", true, "", nil),
-			observed: &nexussdk.Capability{
-				Type:       "DockerBearerTokenRealm",
-				Enabled:    true,
-				Properties: map[string]string{},
+			observed: &instanceclient.Capability{
+				Type:       new("DockerBearerTokenRealm"),
+				Enabled:    new(true),
+				Properties: new(map[string]string{}),
 			},
 			want: true,
 		},
 		{
 			name: "NilObservedPropertiesMatchesEmpty",
 			cr:   newCR("DockerBearerTokenRealm", true, "", map[string]string{}),
-			observed: &nexussdk.Capability{
-				Type:       "DockerBearerTokenRealm",
-				Enabled:    true,
+			observed: &instanceclient.Capability{
+				Type:       new("DockerBearerTokenRealm"),
+				Enabled:    new(true),
 				Properties: nil,
 			},
 			want: true,
@@ -213,9 +212,9 @@ func TestIsCapabilityUpToDate(t *testing.T) {
 func TestGenerateCapabilityObservation(t *testing.T) {
 	t.Parallel()
 
-	obs := instanceclient.GenerateCapabilityObservation(&nexussdk.Capability{
-		ID:   "abc123",
-		Type: "DockerBearerTokenRealm",
+	obs := instanceclient.GenerateCapabilityObservation(&instanceclient.Capability{
+		Id:   new("abc123"),
+		Type: new("DockerBearerTokenRealm"),
 	})
 
 	if obs.ID != "abc123" {

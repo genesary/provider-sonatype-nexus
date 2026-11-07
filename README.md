@@ -4,7 +4,7 @@ A [Crossplane](https://crossplane.io/) provider for managing [Sonatype Nexus Rep
 
 ## Overview
 
-This provider enables you to manage Nexus Repository Manager resources using Kubernetes custom resources. It follows the standard Crossplane provider pattern and uses the [go-nexus-client](https://github.com/datadrivers/go-nexus-client) library for communicating with the Nexus API.
+This provider enables you to manage Nexus Repository Manager resources using Kubernetes custom resources. It follows the standard Crossplane provider pattern and uses the [nexus-repo-api-client-go](https://github.com/sonatype-nexus-community/nexus-repo-api-client-go) library, generated from the Nexus OpenAPI specification, for communicating with the Nexus API.
 
 ## Supported Resources
 

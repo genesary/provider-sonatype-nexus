@@ -110,12 +110,12 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	activeRealms, err := e.client.ListActive()
+	activeRealms, err := e.client.ListActive(ctx)
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetRealms)
 	}
 
-	availableRealms, _ := e.client.ListAvailable()
+	availableRealms, _ := e.client.ListAvailable(ctx)
 	securityRealm.Status.AtProvider = iamclient.GenerateSecurityRealmObservation(availableRealms, activeRealms)
 	securityRealm.SetConditions(nexusv1alpha1.Available())
 
@@ -132,7 +132,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotSecurityRealm)
 	}
 
-	err := e.client.Activate(securityRealm.Spec.ForProvider.ActiveRealms)
+	err := e.client.Activate(ctx, securityRealm.Spec.ForProvider.ActiveRealms)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errActivateRealms)
 	}
@@ -147,7 +147,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalUpdate{}, errors.New(errNotSecurityRealm)
 	}
 
-	err := e.client.Activate(securityRealm.Spec.ForProvider.ActiveRealms)
+	err := e.client.Activate(ctx, securityRealm.Spec.ForProvider.ActiveRealms)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errActivateRealms)
 	}

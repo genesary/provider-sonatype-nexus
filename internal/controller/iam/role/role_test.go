@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -16,6 +16,7 @@ import (
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	iammocks "github.com/genesary/provider-sonatype-nexus/test/mocks/iam"
 )
 
@@ -67,8 +68,8 @@ func TestObserve(t *testing.T) {
 			name: "NotFound_404",
 			cr:   newTestRole("my-role", "My Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.GetFn = func(_ string) (*security.Role, error) {
-					return nil, errors.New("404 not found")
+				mc.GetFn = func(_ string) (*v395.RoleXOResponse, error) {
+					return nil, nexus.ErrNotFound
 				}
 			},
 			wantExists:   false,
@@ -79,7 +80,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestRole("my-role", "My Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.GetFn = func(_ string) (*security.Role, error) {
+				mc.GetFn = func(_ string) (*v395.RoleXOResponse, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -91,7 +92,7 @@ func TestObserve(t *testing.T) {
 			name: "NilRoleReturned",
 			cr:   newTestRole("my-role", "My Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.GetFn = func(_ string) (*security.Role, error) {
+				mc.GetFn = func(_ string) (*v395.RoleXOResponse, error) {
 					//nolint:nilnil // intentionally testing nil role with nil error
 					return nil, nil
 				}
@@ -104,10 +105,10 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestRole("my-role", "My Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.GetFn = func(_ string) (*security.Role, error) {
-					return &security.Role{
-						ID:   "my-role",
-						Name: "My Role",
+				mc.GetFn = func(_ string) (*v395.RoleXOResponse, error) {
+					return &v395.RoleXOResponse{
+						Id:   new("my-role"),
+						Name: new("My Role"),
 					}, nil
 				}
 			},
@@ -119,10 +120,10 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButOutdated",
 			cr:   newTestRole("my-role", "New Name"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.GetFn = func(_ string) (*security.Role, error) {
-					return &security.Role{
-						ID:   "my-role",
-						Name: "Old Name",
+				mc.GetFn = func(_ string) (*v395.RoleXOResponse, error) {
+					return &v395.RoleXOResponse{
+						Id:   new("my-role"),
+						Name: new("Old Name"),
 					}, nil
 				}
 			},
@@ -141,14 +142,14 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.GetFn = func(id string) (*security.Role, error) {
+				mc.GetFn = func(id string) (*v395.RoleXOResponse, error) {
 					if id != "external-role-id" {
 						return nil, errors.New("wrong id called")
 					}
 
-					return &security.Role{
-						ID:   "external-role-id",
-						Name: "My Role",
+					return &v395.RoleXOResponse{
+						Id:   new("external-role-id"),
+						Name: new("My Role"),
 					}, nil
 				}
 			},
@@ -214,7 +215,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestRole("new-role", "New Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.CreateFn = func(_ security.Role) error {
+				mc.CreateFn = func(_ v395.RoleXORequest) error {
 					return nil
 				}
 			},
@@ -226,8 +227,8 @@ func TestCreate(t *testing.T) {
 					t.Errorf("expected 1 Create call, got %d", len(mc.CreateCalls))
 				}
 
-				if mc.CreateCalls[0].ID != "new-role" {
-					t.Errorf("wrong role ID: %v", mc.CreateCalls[0].ID)
+				if mc.CreateCalls[0].Id != "new-role" {
+					t.Errorf("wrong role ID: %v", mc.CreateCalls[0].Id)
 				}
 			},
 		},
@@ -235,7 +236,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestRole("new-role", "New Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.CreateFn = func(_ security.Role) error {
+				mc.CreateFn = func(_ v395.RoleXORequest) error {
 					return errors.New("create failed")
 				}
 			},
@@ -293,7 +294,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestRole("existing-role", "Updated Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.UpdateFn = func(_ string, _ security.Role) error {
+				mc.UpdateFn = func(_ string, _ v395.RoleXORequest) error {
 					return nil
 				}
 			},
@@ -310,7 +311,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestRole("existing-role", "Updated Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
-				mc.UpdateFn = func(_ string, _ security.Role) error {
+				mc.UpdateFn = func(_ string, _ v395.RoleXORequest) error {
 					return errors.New("update failed")
 				}
 			},
@@ -390,7 +391,7 @@ func TestDelete(t *testing.T) {
 			cr:   newTestRole("old-role", "Old Role"),
 			mockSetup: func(mc *iammocks.MockRoleClient) {
 				mc.DeleteFn = func(_ string) error {
-					return errors.New("404 not found")
+					return nexus.ErrNotFound
 				}
 			},
 			wantErr: false,

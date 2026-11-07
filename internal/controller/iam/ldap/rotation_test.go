@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -46,20 +46,20 @@ func TestAuthPasswordRotation(t *testing.T) {
 	var applied []string
 
 	mc := iammocks.NewMockLDAPClient()
-	mc.CreateFn = func(ldap security.LDAP) error {
-		applied = append(applied, ldap.AuthPassword)
+	mc.CreateFn = func(ldap v395.CreateLdapServerXo) error {
+		applied = append(applied, ldap.GetAuthPassword())
 
 		return nil
 	}
-	mc.UpdateFn = func(_ string, ldap security.LDAP) error {
-		applied = append(applied, ldap.AuthPassword)
+	mc.UpdateFn = func(_ string, ldap v395.UpdateLdapServerXo) error {
+		applied = append(applied, ldap.GetAuthPassword())
 
 		return nil
 	}
-	mc.GetFn = func(_ string) (*security.LDAP, error) {
-		return &security.LDAP{
+	mc.GetFn = func(_ string) (*v395.ReadLdapServerXo, error) {
+		return &v395.ReadLdapServerXo{
 			Name: "corp-ldap", Protocol: "ldap", Host: "ldap.example.com", Port: 389,
-			SearchBase: "dc=example,dc=com", AuthSchema: "none", UserBaseDN: "ou=people,dc=example,dc=com",
+			SearchBase: "dc=example,dc=com", AuthScheme: "none", UserBaseDn: new("ou=people,dc=example,dc=com"),
 		}, nil
 	}
 

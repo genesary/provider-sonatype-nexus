@@ -63,6 +63,10 @@ type S3Config struct {
 	Endpoint *string `json:"endpoint,omitempty"`
 
 	// Expiration days for objects.
+	//
+	// Deprecated: Nexus no longer accepts a bucket expiration, so this field
+	// is ignored.
+	//
 	// +kubebuilder:validation:Optional
 	ExpirationDays *int32 `json:"expirationDays,omitempty"`
 
@@ -125,6 +129,9 @@ type BlobStoreObservation struct {
 
 	// BucketExpirationDays is the observed number of days before deleted
 	// blobs expire from the S3 bucket.
+	//
+	// Deprecated: Nexus no longer reports a bucket expiration, so this field
+	// is never set.
 	BucketExpirationDays *int32 `json:"bucketExpirationDays,omitempty"`
 }
 

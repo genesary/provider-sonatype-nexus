@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	nexussdk "github.com/datadrivers/go-nexus-client/nexus3/schema/iq"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -60,17 +60,13 @@ func newTestScheme(t *testing.T) *runtime.Scheme {
 }
 
 // newObservedConfig returns a sample IQServerConfiguration from Nexus.
-func newObservedConfig() *nexussdk.IQServerConfiguration {
-	url := "https://iq.example.com"
-	authType := "USER"
-	timeout := 60
-
-	return &nexussdk.IQServerConfiguration{
-		Enabled:            true,
-		ShowLink:           true,
-		URL:                &url,
-		AuthenticationType: &authType,
-		TimeoutSeconds:     &timeout,
+func newObservedConfig() *v395.IqConnectionXo {
+	return &v395.IqConnectionXo{
+		Enabled:            new(true),
+		ShowLink:           new(true),
+		Url:                "https://iq.example.com",
+		AuthenticationType: "USER",
+		TimeoutSeconds:     new(int32(60)),
 	}
 }
 
@@ -96,8 +92,8 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *instancemocks.MockIQServerClient) {
-				mc.GetFn = func() (*nexussdk.IQServerConfiguration, error) {
-					return &nexussdk.IQServerConfiguration{Enabled: false}, nil
+				mc.GetFn = func() (*v395.IqConnectionXo, error) {
+					return &v395.IqConnectionXo{Enabled: new(false)}, nil
 				}
 			},
 			wantExists:   false,
@@ -114,7 +110,7 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *instancemocks.MockIQServerClient) {
-				mc.GetFn = func() (*nexussdk.IQServerConfiguration, error) {
+				mc.GetFn = func() (*v395.IqConnectionXo, error) {
 					return newObservedConfig(), nil
 				}
 			},
@@ -126,7 +122,7 @@ func TestObserve(t *testing.T) {
 			name: "GetError",
 			cr:   newTestIQServer(true),
 			mockSetup: func(mc *instancemocks.MockIQServerClient) {
-				mc.GetFn = func() (*nexussdk.IQServerConfiguration, error) {
+				mc.GetFn = func() (*v395.IqConnectionXo, error) {
 					return nil, errors.New("connection refused")
 				}
 			},
@@ -138,7 +134,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsAndUpToDate",
 			cr:   newTestIQServer(true),
 			mockSetup: func(mc *instancemocks.MockIQServerClient) {
-				mc.GetFn = func() (*nexussdk.IQServerConfiguration, error) {
+				mc.GetFn = func() (*v395.IqConnectionXo, error) {
 					return newObservedConfig(), nil
 				}
 			},
@@ -150,7 +146,7 @@ func TestObserve(t *testing.T) {
 			name: "ExistsButEnabledDiffers",
 			cr:   newTestIQServer(false),
 			mockSetup: func(mc *instancemocks.MockIQServerClient) {
-				mc.GetFn = func() (*nexussdk.IQServerConfiguration, error) {
+				mc.GetFn = func() (*v395.IqConnectionXo, error) {
 					return newObservedConfig(), nil
 				}
 			},
@@ -167,7 +163,7 @@ func TestObserve(t *testing.T) {
 				return cr
 			}(),
 			mockSetup: func(mc *instancemocks.MockIQServerClient) {
-				mc.GetFn = func() (*nexussdk.IQServerConfiguration, error) {
+				mc.GetFn = func() (*v395.IqConnectionXo, error) {
 					return newObservedConfig(), nil
 				}
 			},
@@ -233,7 +229,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateSuccess",
 			cr:   newTestIQServer(true),
 			mockSetup: func(mc *instancemocks.MockIQServerClient) {
-				mc.UpdateFn = func(_ nexussdk.IQServerConfiguration) error {
+				mc.UpdateFn = func(_ v395.IqConnectionXo) error {
 					return nil
 				}
 			},
@@ -245,7 +241,7 @@ func TestCreate(t *testing.T) {
 					t.Errorf("expected 1 Update call, got %d", len(mc.UpdateCalls))
 				}
 
-				if !mc.UpdateCalls[0].Enabled {
+				if !mc.UpdateCalls[0].GetEnabled() {
 					t.Error("expected Enabled=true in Update call")
 				}
 			},
@@ -254,7 +250,7 @@ func TestCreate(t *testing.T) {
 			name: "CreateError",
 			cr:   newTestIQServer(true),
 			mockSetup: func(mc *instancemocks.MockIQServerClient) {
-				mc.UpdateFn = func(_ nexussdk.IQServerConfiguration) error {
+				mc.UpdateFn = func(_ v395.IqConnectionXo) error {
 					return errors.New("update failed")
 				}
 			},
@@ -312,7 +308,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateSuccess",
 			cr:   newTestIQServer(false),
 			mockSetup: func(mc *instancemocks.MockIQServerClient) {
-				mc.UpdateFn = func(_ nexussdk.IQServerConfiguration) error {
+				mc.UpdateFn = func(_ v395.IqConnectionXo) error {
 					return nil
 				}
 			},
@@ -329,7 +325,7 @@ func TestUpdate(t *testing.T) {
 			name: "UpdateError",
 			cr:   newTestIQServer(true),
 			mockSetup: func(mc *instancemocks.MockIQServerClient) {
-				mc.UpdateFn = func(_ nexussdk.IQServerConfiguration) error {
+				mc.UpdateFn = func(_ v395.IqConnectionXo) error {
 					return errors.New("update failed")
 				}
 			},

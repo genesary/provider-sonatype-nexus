@@ -68,8 +68,8 @@ func TestBlobStoreCRUD(t *testing.T) {
 	if got == nil {
 		t.Fatalf("blob store %q not found in Nexus", bsName)
 	}
-	if got.Name != bsName {
-		t.Errorf("blob store name = %q, want %q", got.Name, bsName)
+	if got.Path == "" {
+		t.Errorf("blob store %q reports no path", bsName)
 	}
 }
 

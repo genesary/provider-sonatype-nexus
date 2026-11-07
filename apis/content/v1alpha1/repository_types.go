@@ -15,7 +15,7 @@ type RepositoryParameters struct {
 	Name string `json:"name"`
 
 	// Format of the repository (maven2, npm, docker, raw, etc.).
-	// +kubebuilder:validation:Enum=maven2;npm;docker;raw;nuget;pypi;rubygems;yum;apt;helm;go;r;conan;conda;cocoapods;bower;gitlfs;p2;cargo;huggingface
+	// +kubebuilder:validation:Enum=maven2;npm;docker;raw;nuget;pypi;rubygems;yum;apt;helm;go;r;conan;conda;cocoapods;gitlfs;p2;cargo;huggingface
 	// +kubebuilder:validation:Required
 	Format string `json:"format"`
 
@@ -66,6 +66,11 @@ type RepositoryParameters struct {
 	Group *GroupConfig `json:"group,omitempty"`
 
 	// Npm specific configuration.
+	//
+	// Deprecated: Nexus moved these settings to the Sonatype Repository
+	// Firewall configuration and no longer accepts them on a repository, so
+	// this field is ignored.
+	//
 	// +kubebuilder:validation:Optional
 	Npm *NpmConfig `json:"npm,omitempty"`
 
@@ -90,6 +95,10 @@ type RepositoryParameters struct {
 	NugetProxy *NugetProxyConfig `json:"nugetProxy,omitempty"`
 
 	// Bower specific configuration.
+	//
+	// Deprecated: Nexus no longer supports the Bower format, so this field is
+	// ignored.
+	//
 	// +kubebuilder:validation:Optional
 	Bower *BowerConfig `json:"bower,omitempty"`
 

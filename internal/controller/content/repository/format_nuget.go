@@ -1,30 +1,36 @@
 package repository
 
 import (
-	schema "github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 )
 
 // init registers the NuGet repository format.
 func init() {
 	registerFormat("nuget",
 		hosted(
-			func(svc *nexusAPI) repoAPI[schema.NugetHostedRepository] { return svc.Nuget.Hosted },
+			get[v395.NugetHostedApiRepository]((*nexusAPI).GetNugetHostedRepository),
+			create((*nexusAPI).CreateNugetHostedRepository, v395.ApiCreateNugetHostedRepositoryRequest.NugetHostedRepositoryApiRequest),
+			update((*nexusAPI).UpdateNugetHostedRepository, v395.ApiUpdateNugetHostedRepositoryRequest.NugetHostedRepositoryApiRequest),
 			buildNugetHosted,
 		),
 		proxy(
-			func(svc *nexusAPI) repoAPI[schema.NugetProxyRepository] { return svc.Nuget.Proxy },
+			get[v395.NugetProxyApiRepository]((*nexusAPI).GetNugetProxyRepository),
+			create((*nexusAPI).CreateNugetProxyRepository, v395.ApiCreateNugetProxyRepositoryRequest.NugetProxyRepositoryApiRequest),
+			update((*nexusAPI).UpdateNugetProxyRepository, v395.ApiUpdateNugetProxyRepositoryRequest.NugetProxyRepositoryApiRequest),
 			buildNugetProxy,
 		),
 		group(
-			func(svc *nexusAPI) repoAPI[schema.NugetGroupRepository] { return svc.Nuget.Group },
+			get[v395.NugetGroupApiRepository]((*nexusAPI).GetNugetGroupRepository),
+			create((*nexusAPI).CreateNugetGroupRepository, v395.ApiCreateNugetGroupRepositoryRequest.NugetGroupRepositoryApiRequest),
+			update((*nexusAPI).UpdateNugetGroupRepository, v395.ApiUpdateNugetGroupRepositoryRequest.NugetGroupRepositoryApiRequest),
 			buildNugetGroup,
 		),
 	)
 }
 
 // buildNugetHosted renders a NuGet hosted repository payload.
-func buildNugetHosted(desired desiredRepo) schema.NugetHostedRepository {
-	return schema.NugetHostedRepository{
+func buildNugetHosted(desired desiredRepo) v395.NugetHostedRepositoryApiRequest {
+	return v395.NugetHostedRepositoryApiRequest{
 		Name:    desired.name(),
 		Online:  desired.online(),
 		Storage: desired.hostedStorage(),
@@ -33,23 +39,23 @@ func buildNugetHosted(desired desiredRepo) schema.NugetHostedRepository {
 }
 
 // buildNugetProxy renders a NuGet proxy repository payload.
-func buildNugetProxy(desired desiredRepo) schema.NugetProxyRepository {
-	return schema.NugetProxyRepository{
-		Name:          desired.name(),
-		Online:        desired.online(),
-		Storage:       desired.storage(),
-		Proxy:         desired.proxy(),
-		NegativeCache: desired.negativeCache(),
-		HTTPClient:    desired.httpClient(),
-		NugetProxy:    desired.nugetProxy(),
-		RoutingRule:   desired.routingRule(),
-		Cleanup:       desired.cleanup(),
+func buildNugetProxy(desired desiredRepo) v395.NugetProxyRepositoryApiRequest {
+	return v395.NugetProxyRepositoryApiRequest{
+		Name:            desired.name(),
+		Online:          desired.online(),
+		Storage:         desired.storage(),
+		Proxy:           desired.proxy(),
+		NegativeCache:   desired.negativeCache(),
+		HttpClient:      desired.httpClient(),
+		RoutingRuleName: desired.routingRule(),
+		NugetProxy:      desired.nugetProxy(),
+		Cleanup:         desired.cleanup(),
 	}
 }
 
 // buildNugetGroup renders a NuGet group repository payload.
-func buildNugetGroup(desired desiredRepo) schema.NugetGroupRepository {
-	return schema.NugetGroupRepository{
+func buildNugetGroup(desired desiredRepo) v395.NugetGroupRepositoryApiRequest {
+	return v395.NugetGroupRepositoryApiRequest{
 		Name:    desired.name(),
 		Online:  desired.online(),
 		Storage: desired.storage(),

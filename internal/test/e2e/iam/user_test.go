@@ -92,7 +92,7 @@ func TestUserCRUD(t *testing.T) {
 	if got == nil {
 		t.Fatalf("user %q not found in Nexus", userID)
 	}
-	if got.UserID != userID {
-		t.Errorf("user ID = %q, want %q", got.UserID, userID)
+	if got.UserId != userID {
+		t.Errorf("user ID = %q, want %q", got.UserId, userID)
 	}
 }

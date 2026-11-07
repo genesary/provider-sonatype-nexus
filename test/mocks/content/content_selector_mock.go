@@ -1,7 +1,9 @@
 package content
 
 import (
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	"context"
+
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	contentclient "github.com/genesary/provider-sonatype-nexus/internal/clients/content"
 )
@@ -10,13 +12,13 @@ var _ contentclient.ContentSelectorClient = &MockContentSelectorClient{}
 
 // MockContentSelectorClient is a mock of contentclient.ContentSelectorClient.
 type MockContentSelectorClient struct {
-	GetFn    func(name string) (*security.ContentSelector, error)
-	CreateFn func(cs security.ContentSelector) error
-	UpdateFn func(name string, cs security.ContentSelector) error
+	GetFn    func(name string) (*v395.ContentSelectorApiResponse, error)
+	CreateFn func(cs v395.ContentSelectorApiCreateRequest) error
+	UpdateFn func(name string, cs v395.ContentSelectorApiUpdateRequest) error
 	DeleteFn func(name string) error
 
 	GetCalls    []string
-	CreateCalls []security.ContentSelector
+	CreateCalls []v395.ContentSelectorApiCreateRequest
 	UpdateCalls []string
 	DeleteCalls []string
 }
@@ -27,7 +29,7 @@ func NewMockContentSelectorClient() *MockContentSelectorClient {
 }
 
 // Get mock implementation.
-func (m *MockContentSelectorClient) Get(name string) (*security.ContentSelector, error) {
+func (m *MockContentSelectorClient) Get(_ context.Context, name string) (*v395.ContentSelectorApiResponse, error) {
 	m.GetCalls = append(m.GetCalls, name)
 
 	if m.GetFn != nil {
@@ -38,7 +40,7 @@ func (m *MockContentSelectorClient) Get(name string) (*security.ContentSelector,
 }
 
 // Create mock implementation.
-func (m *MockContentSelectorClient) Create(cs security.ContentSelector) error {
+func (m *MockContentSelectorClient) Create(_ context.Context, cs v395.ContentSelectorApiCreateRequest) error {
 	m.CreateCalls = append(m.CreateCalls, cs)
 
 	if m.CreateFn != nil {
@@ -49,7 +51,7 @@ func (m *MockContentSelectorClient) Create(cs security.ContentSelector) error {
 }
 
 // Update mock implementation.
-func (m *MockContentSelectorClient) Update(name string, cs security.ContentSelector) error {
+func (m *MockContentSelectorClient) Update(_ context.Context, name string, cs v395.ContentSelectorApiUpdateRequest) error {
 	m.UpdateCalls = append(m.UpdateCalls, name)
 
 	if m.UpdateFn != nil {
@@ -60,7 +62,7 @@ func (m *MockContentSelectorClient) Update(name string, cs security.ContentSelec
 }
 
 // Delete mock implementation.
-func (m *MockContentSelectorClient) Delete(name string) error {
+func (m *MockContentSelectorClient) Delete(_ context.Context, name string) error {
 	m.DeleteCalls = append(m.DeleteCalls, name)
 
 	if m.DeleteFn != nil {

@@ -10,8 +10,9 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
 	"github.com/pkg/errors"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -19,7 +20,6 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -42,6 +42,10 @@ const (
 
 	// blobStoreTypeFile is the string identifier for File-type blob stores.
 	blobStoreTypeFile = "File"
+
+	// defaultS3Region is the region Nexus is asked for when the spec sets
+	// none; Nexus then uses the region of the bucket.
+	defaultS3Region = "DEFAULT"
 )
 
 // Setup creates a controller for BlobStore resources.
@@ -94,27 +98,7 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
-	generic, err := instance.NewBlobStoreClient(creds)
-	if err != nil {
-		return nil, errors.Wrap(err, errNewClient)
-	}
-
-	s3Client, err := instance.NewBlobStoreS3Client(creds)
-	if err != nil {
-		return nil, errors.Wrap(err, errNewClient)
-	}
-
-	azure, err := instance.NewBlobStoreAzureClient(creds)
-	if err != nil {
-		return nil, errors.Wrap(err, errNewClient)
-	}
-
-	file, err := instance.NewBlobStoreFileClient(creds)
-	if err != nil {
-		return nil, errors.Wrap(err, errNewClient)
-	}
-
-	group, err := instance.NewBlobStoreGroupClient(creds)
+	generic, file, s3Client, err := instance.NewBlobStoreClients(creds)
 	if err != nil {
 		return nil, errors.Wrap(err, errNewClient)
 	}
@@ -122,9 +106,7 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{
 		genericClient: generic,
 		s3Client:      s3Client,
-		azureClient:   azure,
 		fileClient:    file,
-		groupClient:   group,
 	}, nil
 }
 
@@ -132,9 +114,7 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 type external struct {
 	genericClient instance.BlobStoreClient
 	s3Client      instance.BlobStoreS3Client
-	azureClient   instance.BlobStoreAzureClient
 	fileClient    instance.BlobStoreFileClient
-	groupClient   instance.BlobStoreGroupClient
 }
 
 // Observe checks if the BlobStore resource exists and is up-to-date.
@@ -146,21 +126,22 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	switch blobStore.Spec.ForProvider.Type {
 	case blobStoreTypeFile:
-		return e.observeFileBlobStore(blobStore)
+		return e.observeFileBlobStore(ctx, blobStore)
 	case "S3":
-		return e.observeS3BlobStore(blobStore)
+		return e.observeS3BlobStore(ctx, blobStore)
 	default:
-		return e.observeFileBlobStore(blobStore)
+		return e.observeFileBlobStore(ctx, blobStore)
 	}
 }
 
 // observeTypedBlobStore fetches a typed blob store, populates
 // observation, and returns whether the resource is up to date.
 func observeTypedBlobStore[T any](
+	ctx context.Context,
 	blobStore *instancev1alpha1.BlobStore,
 	ext *external,
-	getter func(string) (*T, error),
-	generate func(*T) instancev1alpha1.BlobStoreObservation,
+	getter func(context.Context, string) (*T, error),
+	generate func(string, *T) instancev1alpha1.BlobStoreObservation,
 	checker func(*instancev1alpha1.BlobStore) bool,
 ) (managed.ExternalObservation, error) {
 	name := meta.GetExternalName(blobStore)
@@ -168,9 +149,9 @@ func observeTypedBlobStore[T any](
 		name = blobStore.Spec.ForProvider.Name
 	}
 
-	result, err := getter(name)
+	result, err := getter(ctx, name)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
 
@@ -186,8 +167,8 @@ func observeTypedBlobStore[T any](
 	// The observation is replaced rather than updated field by field, so a
 	// setting removed from the blob store out of band leaves no stale value
 	// behind for the up to date check to match against.
-	blobStore.Status.AtProvider = generate(result)
-	ext.populateBlobStoreStats(blobStore)
+	blobStore.Status.AtProvider = generate(name, result)
+	ext.populateBlobStoreStats(ctx, blobStore)
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
@@ -206,14 +187,14 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 	case blobStoreTypeFile:
 		fileBlobStore := generateFileBlobStore(blobStore)
 
-		err := e.fileClient.Create(fileBlobStore)
+		err := e.fileClient.Create(ctx, fileBlobStore)
 		if err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errCreateBlobStore)
 		}
 	case "S3":
 		s3BlobStore := generateS3BlobStore(blobStore)
 
-		err := e.s3Client.Create(s3BlobStore)
+		err := e.s3Client.Create(ctx, s3BlobStore)
 		if err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errCreateBlobStore)
 		}
@@ -221,7 +202,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		// Default to File type
 		fileBlobStore := generateFileBlobStore(blobStore)
 
-		err := e.fileClient.Create(fileBlobStore)
+		err := e.fileClient.Create(ctx, fileBlobStore)
 		if err != nil {
 			return managed.ExternalCreation{}, errors.Wrap(err, errCreateBlobStore)
 		}
@@ -246,24 +227,24 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 	switch blobStore.Spec.ForProvider.Type {
 	case blobStoreTypeFile:
-		fileBlobStore := generateFileBlobStore(blobStore)
+		fileBlobStore := generateFileBlobStoreUpdate(blobStore)
 
-		err := e.fileClient.Update(name, fileBlobStore)
+		err := e.fileClient.Update(ctx, name, fileBlobStore)
 		if err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateBlobStore)
 		}
 	case "S3":
 		s3BlobStore := generateS3BlobStore(blobStore)
 
-		err := e.s3Client.Update(name, s3BlobStore)
+		err := e.s3Client.Update(ctx, name, s3BlobStore)
 		if err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateBlobStore)
 		}
 	default:
 		// Default to File type
-		fileBlobStore := generateFileBlobStore(blobStore)
+		fileBlobStore := generateFileBlobStoreUpdate(blobStore)
 
-		err := e.fileClient.Update(name, fileBlobStore)
+		err := e.fileClient.Update(ctx, name, fileBlobStore)
 		if err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateBlobStore)
 		}
@@ -284,9 +265,9 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		name = blobStore.Spec.ForProvider.Name
 	}
 
-	err := e.genericClient.Delete(name)
+	err := e.genericClient.Delete(ctx, name)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
 		}
 
@@ -302,119 +283,109 @@ func (e *external) Disconnect(ctx context.Context) error {
 }
 
 // observeFileBlobStore handles Observe for File-type blob stores.
-func (e *external) observeFileBlobStore(blobStore *instancev1alpha1.BlobStore) (managed.ExternalObservation, error) {
-	return observeTypedBlobStore(blobStore, e, e.fileClient.Get, generateFileBlobStoreObservation, isFileBlobStoreUpToDate)
+func (e *external) observeFileBlobStore(ctx context.Context, blobStore *instancev1alpha1.BlobStore) (managed.ExternalObservation, error) {
+	return observeTypedBlobStore(ctx, blobStore, e, e.fileClient.Get, generateFileBlobStoreObservation, isFileBlobStoreUpToDate)
 }
 
 // observeS3BlobStore handles Observe for S3-type blob stores.
-func (e *external) observeS3BlobStore(blobStore *instancev1alpha1.BlobStore) (managed.ExternalObservation, error) {
-	return observeTypedBlobStore(blobStore, e, e.s3Client.Get, generateS3BlobStoreObservation, isS3BlobStoreUpToDate)
+func (e *external) observeS3BlobStore(ctx context.Context, blobStore *instancev1alpha1.BlobStore) (managed.ExternalObservation, error) {
+	return observeTypedBlobStore(ctx, blobStore, e, e.s3Client.Get, generateS3BlobStoreObservation, isS3BlobStoreUpToDate)
 }
 
 // populateBlobStoreStats fetches the stats and the type from the list
 // endpoint and adds them to Status.AtProvider: neither is reported by the
 // typed endpoint the observation is otherwise built from. Errors are silently
 // ignored — these fields are best-effort and should not block reconciliation.
-func (e *external) populateBlobStoreStats(blobStore *instancev1alpha1.BlobStore) {
+func (e *external) populateBlobStoreStats(ctx context.Context, blobStore *instancev1alpha1.BlobStore) {
 	name := meta.GetExternalName(blobStore)
 	if name == "" {
 		name = blobStore.Spec.ForProvider.Name
 	}
 
-	generics, err := e.genericClient.List()
+	generics, err := e.genericClient.List(ctx)
 	if err != nil {
 		return
 	}
 
 	for _, generic := range generics {
-		if generic.Name != name {
+		if generic.GetName() != name {
 			continue
 		}
 
-		available := int64(generic.AvailableSpaceInBytes)
-		total := int64(generic.TotalSizeInBytes)
-		count := int64(generic.BlobCount)
-
-		blobStore.Status.AtProvider.Type = generic.Type
-		blobStore.Status.AtProvider.AvailableSpaceInBytes = &available
-		blobStore.Status.AtProvider.TotalSizeInBytes = &total
-		blobStore.Status.AtProvider.BlobCount = &count
+		blobStore.Status.AtProvider.Type = generic.GetType()
+		blobStore.Status.AtProvider.AvailableSpaceInBytes = new(generic.GetAvailableSpaceInBytes())
+		blobStore.Status.AtProvider.TotalSizeInBytes = new(generic.GetTotalSizeInBytes())
+		blobStore.Status.AtProvider.BlobCount = new(generic.GetBlobCount())
 
 		break
 	}
 }
 
-// generateFileBlobStore generates a File blob store from the CR spec.
-func generateFileBlobStore(blobStoreCR *instancev1alpha1.BlobStore) *blobstore.File {
-	fileBlobStore := &blobstore.File{
-		Name: blobStoreCR.Spec.ForProvider.Name,
+// generateFileBlobStore generates a File blob store creation request from the
+// CR spec.
+func generateFileBlobStore(blobStoreCR *instancev1alpha1.BlobStore) v395.FileBlobStoreApiCreateRequest {
+	return v395.FileBlobStoreApiCreateRequest{
+		Name:      blobStoreCR.Spec.ForProvider.Name,
+		Path:      ptr.Deref(blobStoreCR.Spec.ForProvider.Path, ""),
+		SoftQuota: generateSoftQuota(blobStoreCR),
 	}
+}
 
-	if blobStoreCR.Spec.ForProvider.Path != nil {
-		fileBlobStore.Path = *blobStoreCR.Spec.ForProvider.Path
+// generateFileBlobStoreUpdate generates a File blob store update request from
+// the CR spec.
+func generateFileBlobStoreUpdate(blobStoreCR *instancev1alpha1.BlobStore) v395.FileBlobStoreApiUpdateRequest {
+	create := generateFileBlobStore(blobStoreCR)
+
+	return v395.FileBlobStoreApiUpdateRequest{
+		Path:      create.Path,
+		SoftQuota: create.SoftQuota,
 	}
-
-	if blobStoreCR.Spec.ForProvider.SoftQuota != nil {
-		fileBlobStore.SoftQuota = &blobstore.SoftQuota{}
-		if blobStoreCR.Spec.ForProvider.SoftQuota.Type != nil {
-			fileBlobStore.SoftQuota.Type = *blobStoreCR.Spec.ForProvider.SoftQuota.Type
-		}
-
-		if blobStoreCR.Spec.ForProvider.SoftQuota.Limit != nil {
-			fileBlobStore.SoftQuota.Limit = *blobStoreCR.Spec.ForProvider.SoftQuota.Limit
-		}
-	}
-
-	return fileBlobStore
 }
 
 // generateS3BlobStore generates an S3 blob store from the CR spec.
-func generateS3BlobStore(blobStoreCR *instancev1alpha1.BlobStore) *blobstore.S3 {
-	s3BlobStore := &blobstore.S3{
-		Name: blobStoreCR.Spec.ForProvider.Name,
+//
+// The spec's expirationDays is not submitted: Nexus no longer accepts a bucket
+// expiration.
+func generateS3BlobStore(blobStoreCR *instancev1alpha1.BlobStore) v395.S3BlobStoreApiModel {
+	s3BlobStore := v395.S3BlobStoreApiModel{
+		Name:      blobStoreCR.Spec.ForProvider.Name,
+		SoftQuota: generateSoftQuota(blobStoreCR),
 	}
 
-	if blobStoreCR.Spec.ForProvider.SoftQuota != nil {
-		s3BlobStore.SoftQuota = &blobstore.SoftQuota{}
-		if blobStoreCR.Spec.ForProvider.SoftQuota.Type != nil {
-			s3BlobStore.SoftQuota.Type = *blobStoreCR.Spec.ForProvider.SoftQuota.Type
-		}
-
-		if blobStoreCR.Spec.ForProvider.SoftQuota.Limit != nil {
-			s3BlobStore.SoftQuota.Limit = *blobStoreCR.Spec.ForProvider.SoftQuota.Limit
-		}
-	}
-
-	if blobStoreCR.Spec.ForProvider.S3Config != nil {
-		s3BlobStore.BucketConfiguration = blobstore.S3BucketConfiguration{
-			Bucket: blobstore.S3Bucket{
-				Name: blobStoreCR.Spec.ForProvider.S3Config.Bucket,
-			},
-		}
-		if blobStoreCR.Spec.ForProvider.S3Config.Region != nil {
-			s3BlobStore.BucketConfiguration.Bucket.Region = *blobStoreCR.Spec.ForProvider.S3Config.Region
-		}
-
-		if blobStoreCR.Spec.ForProvider.S3Config.Prefix != nil {
-			s3BlobStore.BucketConfiguration.Bucket.Prefix = *blobStoreCR.Spec.ForProvider.S3Config.Prefix
-		}
-
-		if blobStoreCR.Spec.ForProvider.S3Config.ExpirationDays != nil {
-			s3BlobStore.BucketConfiguration.Bucket.Expiration = *blobStoreCR.Spec.ForProvider.S3Config.ExpirationDays
+	s3Config := blobStoreCR.Spec.ForProvider.S3Config
+	if s3Config != nil {
+		s3BlobStore.BucketConfiguration.Bucket = v395.S3BlobStoreApiBucket{
+			Name:   s3Config.Bucket,
+			Region: ptr.Deref(s3Config.Region, defaultS3Region),
+			Prefix: s3Config.Prefix,
 		}
 	}
 
 	return s3BlobStore
 }
 
+// generateSoftQuota generates the soft quota of a blob store, nil when the
+// spec sets none.
+func generateSoftQuota(blobStoreCR *instancev1alpha1.BlobStore) *v395.BlobStoreApiSoftQuota {
+	spec := blobStoreCR.Spec.ForProvider.SoftQuota
+	if spec == nil {
+		return nil
+	}
+
+	return &v395.BlobStoreApiSoftQuota{
+		Type:  ptr.Deref(spec.Type, ""),
+		Limit: new(ptr.Deref(spec.Limit, 0)),
+	}
+}
+
 // generateFileBlobStoreObservation renders the File blob store Nexus reported
-// as the observed state of the managed resource.
-func generateFileBlobStoreObservation(fileBlobStore *blobstore.File) instancev1alpha1.BlobStoreObservation {
-	obs := instancev1alpha1.BlobStoreObservation{Name: fileBlobStore.Name}
+// as the observed state of the managed resource. The File endpoint does not
+// report the name, so it is the one the blob store was read under.
+func generateFileBlobStoreObservation(name string, fileBlobStore *v395.FileBlobStoreApiModel) instancev1alpha1.BlobStoreObservation {
+	obs := instancev1alpha1.BlobStoreObservation{Name: name}
 
 	if fileBlobStore.Path != "" {
-		path := fileBlobStore.Path
-		obs.Path = &path
+		obs.Path = new(fileBlobStore.Path)
 	}
 
 	setSoftQuotaObservation(&obs, fileBlobStore.SoftQuota)
@@ -424,40 +395,36 @@ func generateFileBlobStoreObservation(fileBlobStore *blobstore.File) instancev1a
 
 // generateS3BlobStoreObservation renders the S3 blob store Nexus reported as
 // the observed state of the managed resource.
-func generateS3BlobStoreObservation(s3BlobStore *blobstore.S3) instancev1alpha1.BlobStoreObservation {
+func generateS3BlobStoreObservation(_ string, s3BlobStore *v395.S3BlobStoreApiModel) instancev1alpha1.BlobStoreObservation {
 	obs := instancev1alpha1.BlobStoreObservation{Name: s3BlobStore.Name}
 
 	setSoftQuotaObservation(&obs, s3BlobStore.SoftQuota)
 
 	bucket := s3BlobStore.BucketConfiguration.Bucket
 	if bucket.Name != "" {
-		obs.BucketName = &bucket.Name
+		obs.BucketName = new(bucket.Name)
 	}
 
 	if bucket.Region != "" {
-		obs.BucketRegion = &bucket.Region
+		obs.BucketRegion = new(bucket.Region)
 	}
 
-	if bucket.Prefix != "" {
-		obs.BucketPrefix = &bucket.Prefix
+	if bucket.GetPrefix() != "" {
+		obs.BucketPrefix = bucket.Prefix
 	}
-
-	obs.BucketExpirationDays = &bucket.Expiration
 
 	return obs
 }
 
 // setSoftQuotaObservation records the soft quota of a blob store, leaving the
 // observation untouched when the blob store has none.
-func setSoftQuotaObservation(obs *instancev1alpha1.BlobStoreObservation, softQuota *blobstore.SoftQuota) {
+func setSoftQuotaObservation(obs *instancev1alpha1.BlobStoreObservation, softQuota *v395.BlobStoreApiSoftQuota) {
 	if softQuota == nil {
 		return
 	}
 
-	quotaType := softQuota.Type
-	quotaLimit := softQuota.Limit
-	obs.SoftQuotaType = &quotaType
-	obs.SoftQuotaLimit = &quotaLimit
+	obs.SoftQuotaType = new(softQuota.Type)
+	obs.SoftQuotaLimit = new(softQuota.GetLimit())
 }
 
 // isFileBlobStoreUpToDate checks if a File blob store matches observed.
@@ -520,23 +487,12 @@ func isS3BucketConfigUpToDate(blobStoreCR *instancev1alpha1.BlobStore) bool {
 	}
 
 	return matchesOptionalString(s3Config.Region, obs.BucketRegion) &&
-		matchesOptionalString(s3Config.Prefix, obs.BucketPrefix) &&
-		matchesOptionalInt32(s3Config.ExpirationDays, obs.BucketExpirationDays)
+		matchesOptionalString(s3Config.Prefix, obs.BucketPrefix)
 }
 
 // matchesOptionalString reports whether an observed value satisfies a spec
 // field that carries intent only when it is set.
 func matchesOptionalString(desired, observed *string) bool {
-	if desired == nil {
-		return true
-	}
-
-	return observed != nil && *observed == *desired
-}
-
-// matchesOptionalInt32 reports whether an observed value satisfies a spec
-// field that carries intent only when it is set.
-func matchesOptionalInt32(desired, observed *int32) bool {
 	if desired == nil {
 		return true
 	}

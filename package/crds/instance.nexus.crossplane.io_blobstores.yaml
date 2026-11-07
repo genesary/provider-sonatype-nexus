@@ -92,7 +92,11 @@ spec:
                         description: Endpoint URL for S3 compatible storage.
                         type: string
                       expirationDays:
-                        description: Expiration days for objects.
+                        description: |-
+                          Expiration days for objects.
+
+                          Deprecated: Nexus no longer accepts a bucket expiration, so this field
+                          is ignored.
                         format: int32
                         type: integer
                       forcePathStyle:
@@ -237,6 +241,9 @@ spec:
                     description: |-
                       BucketExpirationDays is the observed number of days before deleted
                       blobs expire from the S3 bucket.
+
+                      Deprecated: Nexus no longer reports a bucket expiration, so this field
+                      is never set.
                     format: int32
                     type: integer
                   bucketName:

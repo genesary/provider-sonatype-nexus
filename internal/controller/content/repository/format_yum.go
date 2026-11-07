@@ -1,56 +1,62 @@
 package repository
 
 import (
-	schema "github.com/datadrivers/go-nexus-client/nexus3/schema/repository"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 )
 
 // init registers the Yum repository format.
 func init() {
 	registerFormat("yum",
 		hosted(
-			func(svc *nexusAPI) repoAPI[schema.YumHostedRepository] { return svc.Yum.Hosted },
+			get[v395.YumHostedApiRepository]((*nexusAPI).GetYumHostedRepository),
+			create((*nexusAPI).CreateYumHostedRepository, v395.ApiCreateYumHostedRepositoryRequest.YumHostedRepositoryApiRequest),
+			update((*nexusAPI).UpdateYumHostedRepository, v395.ApiUpdateYumHostedRepositoryRequest.YumHostedRepositoryApiRequest),
 			buildYumHosted,
 		),
 		proxy(
-			func(svc *nexusAPI) repoAPI[schema.YumProxyRepository] { return svc.Yum.Proxy },
+			get[v395.YumProxyApiRepository]((*nexusAPI).GetYumProxyRepository),
+			create((*nexusAPI).CreateYumProxyRepository, v395.ApiCreateYumProxyRepositoryRequest.YumProxyRepositoryApiRequest),
+			update((*nexusAPI).UpdateYumProxyRepository, v395.ApiUpdateYumProxyRepositoryRequest.YumProxyRepositoryApiRequest),
 			buildYumProxy,
 		),
 		group(
-			func(svc *nexusAPI) repoAPI[schema.YumGroupRepository] { return svc.Yum.Group },
+			get[v395.YumGroupApiRepository]((*nexusAPI).GetYumGroupRepository),
+			create((*nexusAPI).CreateYumGroupRepository, v395.ApiCreateYumGroupRepositoryRequest.YumGroupRepositoryApiRequest),
+			update((*nexusAPI).UpdateYumGroupRepository, v395.ApiUpdateYumGroupRepositoryRequest.YumGroupRepositoryApiRequest),
 			buildYumGroup,
 		),
 	)
 }
 
 // buildYumHosted renders a Yum hosted repository payload.
-func buildYumHosted(desired desiredRepo) schema.YumHostedRepository {
-	return schema.YumHostedRepository{
+func buildYumHosted(desired desiredRepo) v395.YumHostedRepositoryApiRequest {
+	return v395.YumHostedRepositoryApiRequest{
 		Name:    desired.name(),
 		Online:  desired.online(),
 		Storage: desired.hostedStorage(),
-		Yum:     desired.yum(),
 		Cleanup: desired.cleanup(),
+		Yum:     desired.yum(),
 	}
 }
 
 // buildYumProxy renders a Yum proxy repository payload.
-func buildYumProxy(desired desiredRepo) schema.YumProxyRepository {
-	return schema.YumProxyRepository{
-		Name:          desired.name(),
-		Online:        desired.online(),
-		Storage:       desired.storage(),
-		Proxy:         desired.proxy(),
-		NegativeCache: desired.negativeCache(),
-		HTTPClient:    desired.httpClient(),
-		RoutingRule:   desired.routingRule(),
-		Cleanup:       desired.cleanup(),
-		YumSigning:    desired.yumSigning(),
+func buildYumProxy(desired desiredRepo) v395.YumProxyRepositoryApiRequest {
+	return v395.YumProxyRepositoryApiRequest{
+		Name:            desired.name(),
+		Online:          desired.online(),
+		Storage:         desired.storage(),
+		Proxy:           desired.proxy(),
+		NegativeCache:   desired.negativeCache(),
+		HttpClient:      desired.httpClient(),
+		RoutingRuleName: desired.routingRule(),
+		Cleanup:         desired.cleanup(),
+		YumSigning:      desired.yumSigning(),
 	}
 }
 
 // buildYumGroup renders a Yum group repository payload.
-func buildYumGroup(desired desiredRepo) schema.YumGroupRepository {
-	return schema.YumGroupRepository{
+func buildYumGroup(desired desiredRepo) v395.YumGroupRepositoryApiRequest {
+	return v395.YumGroupRepositoryApiRequest{
 		Name:       desired.name(),
 		Online:     desired.online(),
 		Storage:    desired.storage(),

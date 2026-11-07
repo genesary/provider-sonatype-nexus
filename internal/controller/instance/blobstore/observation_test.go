@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/blobstore"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 )
@@ -30,10 +30,9 @@ func TestObserveReplacesStaleObservation(t *testing.T) {
 	cr := newFileBlobStoreWithQuota("test-blobstore", "spaceRemainingQuota", 1024)
 
 	file := &mockFileClient{
-		GetFn: func(_ string) (*blobstore.File, error) {
-			return &blobstore.File{
-				Name:      "test-blobstore",
-				SoftQuota: &blobstore.SoftQuota{Type: "spaceRemainingQuota", Limit: 1024},
+		GetFn: func(_ string) (*v395.FileBlobStoreApiModel, error) {
+			return &v395.FileBlobStoreApiModel{
+				SoftQuota: &v395.BlobStoreApiSoftQuota{Type: "spaceRemainingQuota", Limit: new(int64(1024))},
 			}, nil
 		},
 	}
@@ -50,8 +49,8 @@ func TestObserveReplacesStaleObservation(t *testing.T) {
 	}
 
 	// The quota is dropped from Nexus behind the provider's back.
-	file.GetFn = func(_ string) (*blobstore.File, error) {
-		return &blobstore.File{Name: "test-blobstore"}, nil
+	file.GetFn = func(_ string) (*v395.FileBlobStoreApiModel, error) {
+		return &v395.FileBlobStoreApiModel{}, nil
 	}
 
 	observation, err = ext.Observe(context.Background(), cr)
@@ -77,10 +76,9 @@ func TestObserveReportsQuotaRemovedFromSpec(t *testing.T) {
 	cr := newBlobStoreCR("test-blobstore", "File")
 
 	file := &mockFileClient{
-		GetFn: func(_ string) (*blobstore.File, error) {
-			return &blobstore.File{
-				Name:      "test-blobstore",
-				SoftQuota: &blobstore.SoftQuota{Type: "spaceRemainingQuota", Limit: 1024},
+		GetFn: func(_ string) (*v395.FileBlobStoreApiModel, error) {
+			return &v395.FileBlobStoreApiModel{
+				SoftQuota: &v395.BlobStoreApiSoftQuota{Type: "spaceRemainingQuota", Limit: new(int64(1024))},
 			}, nil
 		},
 	}
@@ -95,9 +93,10 @@ func TestObserveReportsQuotaRemovedFromSpec(t *testing.T) {
 	}
 }
 
-// TestObserveReportsBucketExpirationDrift tests that the S3 bucket expiration
-// the provider submits is compared against the observed one.
-func TestObserveReportsBucketExpirationDrift(t *testing.T) {
+// TestObserveIgnoresBucketExpiration tests that the deprecated S3 bucket
+// expiration takes no part in drift detection: Nexus neither accepts nor
+// reports it, so comparing it would report drift forever.
+func TestObserveIgnoresBucketExpiration(t *testing.T) {
 	t.Parallel()
 
 	expiration := int32(7)
@@ -105,15 +104,15 @@ func TestObserveReportsBucketExpirationDrift(t *testing.T) {
 	cr := newBlobStoreCR("test-s3-blobstore", "S3")
 	cr.Spec.ForProvider.S3Config = &instancev1alpha1.S3Config{
 		Bucket:         "test-bucket",
-		ExpirationDays: &expiration,
+		ExpirationDays: &expiration, //nolint:staticcheck // asserts the deprecated field is ignored
 	}
 
 	s3Client := &mockS3Client{
-		GetFn: func(_ string) (*blobstore.S3, error) {
-			return &blobstore.S3{
+		GetFn: func(_ string) (*v395.S3BlobStoreApiModel, error) {
+			return &v395.S3BlobStoreApiModel{
 				Name: "test-s3-blobstore",
-				BucketConfiguration: blobstore.S3BucketConfiguration{
-					Bucket: blobstore.S3Bucket{Name: "test-bucket", Expiration: 3},
+				BucketConfiguration: v395.S3BlobStoreApiBucketConfiguration{
+					Bucket: v395.S3BlobStoreApiBucket{Name: "test-bucket", Region: "us-east-1"},
 				},
 			}, nil
 		},
@@ -124,12 +123,13 @@ func TestObserveReportsBucketExpirationDrift(t *testing.T) {
 		t.Fatalf("Observe() error = %v", err)
 	}
 
-	if observation.ResourceUpToDate {
-		t.Error("Observe() ResourceUpToDate = true, want false for a differing bucket expiration")
+	if !observation.ResourceUpToDate {
+		t.Error("Observe() ResourceUpToDate = false, want true when only the expiration differs")
 	}
 
-	if cr.Status.AtProvider.BucketExpirationDays == nil || *cr.Status.AtProvider.BucketExpirationDays != 3 {
-		t.Errorf("AtProvider.BucketExpirationDays = %v, want 3", cr.Status.AtProvider.BucketExpirationDays)
+	//nolint:staticcheck // asserts the deprecated field is never set
+	if cr.Status.AtProvider.BucketExpirationDays != nil {
+		t.Errorf("AtProvider.BucketExpirationDays = %v, want nil", cr.Status.AtProvider.BucketExpirationDays) //nolint:staticcheck // see above
 	}
 }
 
@@ -141,19 +141,19 @@ func TestObserveRecordsNameTypeAndStats(t *testing.T) {
 	cr := newBlobStoreCR("test-blobstore", "File")
 
 	file := &mockFileClient{
-		GetFn: func(_ string) (*blobstore.File, error) {
-			return &blobstore.File{Name: "test-blobstore", Path: "/data/blobs/test"}, nil
+		GetFn: func(_ string) (*v395.FileBlobStoreApiModel, error) {
+			return &v395.FileBlobStoreApiModel{Path: "/data/blobs/test"}, nil
 		},
 	}
 
 	generic := &mockGenericClient{
-		ListFn: func() ([]blobstore.Generic, error) {
-			return []blobstore.Generic{{
-				Name:                  "test-blobstore",
-				Type:                  "File",
-				AvailableSpaceInBytes: 42,
-				TotalSizeInBytes:      100,
-				BlobCount:             7,
+		ListFn: func() ([]v395.GenericBlobStoreApiResponse, error) {
+			return []v395.GenericBlobStoreApiResponse{{
+				Name:                  new("test-blobstore"),
+				Type:                  new("File"),
+				AvailableSpaceInBytes: new(int64(42)),
+				TotalSizeInBytes:      new(int64(100)),
+				BlobCount:             new(int64(7)),
 			}}, nil
 		},
 	}

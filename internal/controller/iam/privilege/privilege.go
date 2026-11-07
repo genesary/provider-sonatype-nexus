@@ -18,7 +18,6 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/iam"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -115,9 +114,9 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		privName = privRes.Spec.ForProvider.Name
 	}
 
-	observed, err := e.client.Get(privName)
+	observed, err := e.client.Get(ctx, privName)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
 
@@ -145,7 +144,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotPrivilege)
 	}
 
-	err := e.client.Create(privRes)
+	err := e.client.Create(ctx, privRes)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreatePrivilege)
 	}
@@ -167,7 +166,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		privName = privRes.Spec.ForProvider.Name
 	}
 
-	err := e.client.Update(privName, privRes)
+	err := e.client.Update(ctx, privName, privRes)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdatePrivilege)
 	}
@@ -187,9 +186,9 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		privName = privRes.Spec.ForProvider.Name
 	}
 
-	err := e.client.Delete(privName)
+	err := e.client.Delete(ctx, privName)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
 		}
 

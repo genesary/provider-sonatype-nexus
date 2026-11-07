@@ -12,24 +12,12 @@ import (
 // excluded from drift detection because Nexus never echoes back what the
 // provider sent, which would otherwise report drift on every single reconcile:
 //
-//   - the signing keys and the HTTP client credentials are redacted or dropped
-//     by the API, as any credential should be;
-//   - the npm block is accepted on write but left out of the read response
-//     from Nexus 3.66 onwards, where the setting moved to the firewall
-//     configuration. It is still submitted so it keeps working where Nexus
-//     honours it, but it cannot be read back and so cannot be diffed.
+// the signing keys and the HTTP client credentials are redacted or dropped by
+// the API, as any credential should be.
 var unmanagedPaths = map[string]struct{}{
 	"aptSigning":                {},
 	"yumSigning":                {},
 	"httpClient.authentication": {},
-	"npm":                       {},
-}
-
-// observedFieldAliases maps a field the provider writes to the differently
-// named field Nexus reports it back under. Routing rules are submitted as
-// "routingRule" but read back as "routingRuleName" (NEXUS-30973).
-var observedFieldAliases = map[string]string{
-	"routingRule": "routingRuleName",
 }
 
 // isUpToDate reports whether the repository Nexus returned already holds every
@@ -43,7 +31,7 @@ var observedFieldAliases = map[string]string{
 // permanent drift. Only the fields the desired payload actually carries are
 // asserted, which makes drift detection complete for every managed field and
 // stable for everything else.
-func isUpToDate[T any](desired, observed T) (upToDate bool, observedFields map[string]any, err error) {
+func isUpToDate(desired, observed any) (upToDate bool, observedFields map[string]any, err error) {
 	desiredFields, err := repositoryFields(desired)
 	if err != nil {
 		return false, nil, errors.Wrap(err, "cannot encode the desired repository")
@@ -87,7 +75,7 @@ func fieldsMatch(desired, observed map[string]any, path string) bool {
 			continue
 		}
 
-		if !valueMatches(want, observed[observedField(field)], fieldPath) {
+		if !valueMatches(want, observed[field], fieldPath) {
 			return false
 		}
 	}
@@ -102,16 +90,6 @@ func joinPath(path, field string) string {
 	}
 
 	return path + "." + field
-}
-
-// observedField returns the name Nexus reports the given payload field under.
-func observedField(field string) string {
-	alias, aliased := observedFieldAliases[field]
-	if aliased {
-		return alias
-	}
-
-	return field
 }
 
 // valueMatches reports whether an observed value satisfies the desired one.

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	nexussdk "github.com/datadrivers/go-nexus-client/nexus3/schema/iq"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -50,10 +50,10 @@ func TestCredentialRotation(t *testing.T) {
 	var applied []string
 
 	mc := instancemocks.NewMockIQServerClient()
-	mc.GetFn = func() (*nexussdk.IQServerConfiguration, error) {
+	mc.GetFn = func() (*v395.IqConnectionXo, error) {
 		return newObservedConfig(), nil
 	}
-	mc.UpdateFn = func(config nexussdk.IQServerConfiguration) error {
+	mc.UpdateFn = func(config v395.IqConnectionXo) error {
 		applied = append(applied, ptr.Deref(config.Password, ""))
 
 		return nil

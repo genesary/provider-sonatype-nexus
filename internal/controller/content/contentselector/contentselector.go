@@ -18,7 +18,6 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	contentclient "github.com/genesary/provider-sonatype-nexus/internal/clients/content"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -115,9 +114,9 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		name = contentSelector.Spec.ForProvider.Name
 	}
 
-	observed, err := e.client.Get(name)
+	observed, err := e.client.Get(ctx, name)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
 		}
 
@@ -144,7 +143,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotContentSelector)
 	}
 
-	err := e.client.Create(contentclient.GenerateContentSelector(contentSelector))
+	err := e.client.Create(ctx, contentclient.GenerateContentSelector(contentSelector))
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateContentSelector)
 	}
@@ -166,7 +165,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		name = contentSelector.Spec.ForProvider.Name
 	}
 
-	err := e.client.Update(name, contentclient.GenerateContentSelector(contentSelector))
+	err := e.client.Update(ctx, name, contentclient.GenerateContentSelectorUpdate(contentSelector))
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateContentSelector)
 	}
@@ -186,9 +185,9 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 		name = contentSelector.Spec.ForProvider.Name
 	}
 
-	err := e.client.Delete(name)
+	err := e.client.Delete(ctx, name)
 	if err != nil {
-		if helpers.IsNotFound(err) {
+		if nexus.IsNotFound(err) {
 			return managed.ExternalDelete{}, nil
 		}
 

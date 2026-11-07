@@ -64,7 +64,7 @@ func TestContentSelectorCRUD(t *testing.T) {
 	if got == nil {
 		t.Fatalf("content selector %q not found in Nexus", selectorName)
 	}
-	if got.Name != selectorName {
-		t.Errorf("selector name = %q, want %q", got.Name, selectorName)
+	if got.GetName() != selectorName {
+		t.Errorf("selector name = %q, want %q", got.GetName(), selectorName)
 	}
 }

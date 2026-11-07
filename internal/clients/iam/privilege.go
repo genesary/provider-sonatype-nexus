@@ -1,9 +1,10 @@
 package iam
 
 import (
-	"github.com/datadrivers/go-nexus-client/nexus3/pkg/security/privilege"
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	"context"
+
 	"github.com/pkg/errors"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	"k8s.io/utils/ptr"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
@@ -29,17 +30,20 @@ const (
 	errUnknownPrivilegeType = "unknown privilege type"
 )
 
+// Privilege is the Nexus representation of a privilege of any type.
+type Privilege = v395.ApiPrivilegeRequest
+
 // PrivilegeClient manages Nexus privileges.
 type PrivilegeClient interface {
-	Get(name string) (*security.Privilege, error)
-	Create(privCR *iamv1alpha1.Privilege) error
-	Update(name string, privCR *iamv1alpha1.Privilege) error
-	Delete(name string) error
+	Get(ctx context.Context, name string) (*Privilege, error)
+	Create(ctx context.Context, privCR *iamv1alpha1.Privilege) error
+	Update(ctx context.Context, name string, privCR *iamv1alpha1.Privilege) error
+	Delete(ctx context.Context, name string) error
 }
 
-// privilegeClientImpl dispatches privilege CRUD to the correct sub-service.
-type privilegeClientImpl struct {
-	svc *privilege.SecurityPrivilegeService
+// privilegeClient dispatches privilege writes to the endpoint of their type.
+type privilegeClient struct {
+	api *v395.SecurityManagementPrivilegesAPIService
 }
 
 // NewPrivilegeClient returns a new PrivilegeClient.
@@ -49,57 +53,62 @@ func NewPrivilegeClient(creds nexus.Credentials) (PrivilegeClient, error) {
 		return nil, err
 	}
 
-	return &privilegeClientImpl{svc: nc.Security.Privilege}, nil
+	return &privilegeClient{api: nc.SecurityManagementPrivilegesAPI}, nil
 }
 
 // Get returns the privilege with the given name.
-func (c *privilegeClientImpl) Get(name string) (*security.Privilege, error) {
-	return c.svc.Get(name)
+func (c *privilegeClient) Get(ctx context.Context, name string) (*Privilege, error) {
+	priv, resp, err := c.api.GetSecurityPrivileges(ctx, name).Execute()
+	if err != nil {
+		return nil, nexus.APIError(resp, err)
+	}
+
+	return priv, nil
 }
 
 // Create creates a new privilege from the CR spec.
-func (c *privilegeClientImpl) Create(privCR *iamv1alpha1.Privilege) error {
+func (c *privilegeClient) Create(ctx context.Context, privCR *iamv1alpha1.Privilege) error {
 	switch privCR.Spec.ForProvider.Type {
 	case privilegeTypeApplication:
-		return c.svc.Application.Create(buildApplicationPrivilege(privCR))
+		return nexus.APIError(c.api.CreateApplicationPrivilege(ctx).ApiPrivilegeApplicationRequest(buildApplicationPrivilege(privCR)).Execute())
 	case privilegeTypeRepoView:
-		return c.svc.RepositoryView.Create(buildRepoViewPrivilege(privCR))
+		return nexus.APIError(c.api.CreateRepositoryViewPrivilege(ctx).ApiPrivilegeRepositoryViewRequest(buildRepoViewPrivilege(privCR)).Execute())
 	case privilegeTypeRepoAdmin:
-		return c.svc.RepositoryAdmin.Create(buildRepoAdminPrivilege(privCR))
+		return nexus.APIError(c.api.CreateRepositoryAdminPrivilege(ctx).ApiPrivilegeRepositoryAdminRequest(buildRepoAdminPrivilege(privCR)).Execute())
 	case privilegeTypeRepoContentSelector:
-		return c.svc.RepositoryContentSelector.Create(buildRepoContentSelectorPrivilege(privCR))
+		return nexus.APIError(c.api.CreateRepositoryContentSelectorPrivilege(ctx).ApiPrivilegeRepositoryContentSelectorRequest(buildRepoContentSelectorPrivilege(privCR)).Execute())
 	case privilegeTypeScript:
-		return c.svc.Script.Create(buildScriptPrivilege(privCR))
+		return nexus.APIError(c.api.CreateScriptPrivilege(ctx).ApiPrivilegeScriptRequest(buildScriptPrivilege(privCR)).Execute())
 	case privilegeTypeWildcard:
-		return c.svc.Wildcard.Create(buildWildcardPrivilege(privCR))
+		return nexus.APIError(c.api.CreateWildcardPrivilege(ctx).ApiPrivilegeWildcardRequest(buildWildcardPrivilege(privCR)).Execute())
 	default:
 		return errors.New(errUnknownPrivilegeType)
 	}
 }
 
 // Update updates the named privilege from the CR spec.
-func (c *privilegeClientImpl) Update(name string, privCR *iamv1alpha1.Privilege) error {
+func (c *privilegeClient) Update(ctx context.Context, name string, privCR *iamv1alpha1.Privilege) error {
 	switch privCR.Spec.ForProvider.Type {
 	case privilegeTypeApplication:
-		return c.svc.Application.Update(name, buildApplicationPrivilege(privCR))
+		return nexus.APIError(c.api.UpdateApplicationPrivilege(ctx, name).ApiPrivilegeApplicationRequest(buildApplicationPrivilege(privCR)).Execute())
 	case privilegeTypeRepoView:
-		return c.svc.RepositoryView.Update(name, buildRepoViewPrivilege(privCR))
+		return nexus.APIError(c.api.UpdateRepositoryViewPrivilege(ctx, name).ApiPrivilegeRepositoryViewRequest(buildRepoViewPrivilege(privCR)).Execute())
 	case privilegeTypeRepoAdmin:
-		return c.svc.RepositoryAdmin.Update(name, buildRepoAdminPrivilege(privCR))
+		return nexus.APIError(c.api.UpdateRepositoryAdminPrivilege(ctx, name).ApiPrivilegeRepositoryAdminRequest(buildRepoAdminPrivilege(privCR)).Execute())
 	case privilegeTypeRepoContentSelector:
-		return c.svc.RepositoryContentSelector.Update(name, buildRepoContentSelectorPrivilege(privCR))
+		return nexus.APIError(c.api.UpdateRepositoryContentSelectorPrivilege(ctx, name).ApiPrivilegeRepositoryContentSelectorRequest(buildRepoContentSelectorPrivilege(privCR)).Execute())
 	case privilegeTypeScript:
-		return c.svc.Script.Update(name, buildScriptPrivilege(privCR))
+		return nexus.APIError(c.api.UpdateScriptPrivilege(ctx, name).ApiPrivilegeScriptRequest(buildScriptPrivilege(privCR)).Execute())
 	case privilegeTypeWildcard:
-		return c.svc.Wildcard.Update(name, buildWildcardPrivilege(privCR))
+		return nexus.APIError(c.api.UpdateWildcardPrivilege(ctx, name).ApiPrivilegeWildcardRequest(buildWildcardPrivilege(privCR)).Execute())
 	default:
 		return errors.New(errUnknownPrivilegeType)
 	}
 }
 
 // Delete deletes the privilege with the given name.
-func (c *privilegeClientImpl) Delete(name string) error {
-	return c.svc.Delete(name)
+func (c *privilegeClient) Delete(ctx context.Context, name string) error {
+	return nexus.APIError(c.api.DeleteSecurityPrivileges(ctx, name).Execute())
 }
 
 // GeneratePrivilegeObservation returns the observed Privilege state.
@@ -108,23 +117,23 @@ func (c *privilegeClientImpl) Delete(name string) error {
 // that drift detection can compare them: a privilege whose repository or
 // content selector was changed out of band is otherwise indistinguishable from
 // one still matching its spec.
-func GeneratePrivilegeObservation(observed *security.Privilege) iamv1alpha1.PrivilegeObservation {
+func GeneratePrivilegeObservation(observed *Privilege) iamv1alpha1.PrivilegeObservation {
 	if observed == nil {
 		return iamv1alpha1.PrivilegeObservation{}
 	}
 
 	return iamv1alpha1.PrivilegeObservation{
-		ReadOnly:        &observed.ReadOnly,
+		ReadOnly:        new(observed.GetReadOnly()),
 		Name:            observed.Name,
 		Type:            observed.Type,
-		Description:     observed.Description,
+		Description:     observed.GetDescription(),
 		Actions:         observed.Actions,
-		Domain:          observed.Domain,
-		Format:          observed.Format,
-		Repository:      observed.Repository,
-		ContentSelector: observed.ContentSelector,
-		ScriptName:      observed.ScriptName,
-		Pattern:         observed.Pattern,
+		Domain:          observed.GetDomain(),
+		Format:          observed.GetFormat(),
+		Repository:      observed.GetRepository(),
+		ContentSelector: observed.GetContentSelector(),
+		ScriptName:      observed.GetScriptName(),
+		Pattern:         observed.GetPattern(),
 	}
 }
 
@@ -183,158 +192,81 @@ func areRepoPrivilegeFieldsUpToDate(spec *iamv1alpha1.PrivilegeParameters, obs *
 		helpers.IsComparablePtrEqualComparable(spec.Repository, obs.Repository)
 }
 
-// repoPrivilegeFields holds common fields shared by repository privilege types.
-type repoPrivilegeFields struct {
-	name        string
-	description string
-	format      string
-	repository  string
-}
+// The payload builders below always submit a description, empty when the spec
+// sets none, which is how Nexus is told to drop it.
 
-// extractRepoFields extracts common repository privilege fields
-// from the CR spec.
-func extractRepoFields(privCR *iamv1alpha1.Privilege) repoPrivilegeFields {
-	fields := repoPrivilegeFields{name: privCR.Spec.ForProvider.Name}
+// buildApplicationPrivilege builds an application privilege from the CR spec.
+func buildApplicationPrivilege(privCR *iamv1alpha1.Privilege) v395.ApiPrivilegeApplicationRequest {
+	spec := privCR.Spec.ForProvider
 
-	helpers.AssignIfNonNil(&fields.description, privCR.Spec.ForProvider.Description)
-	helpers.AssignIfNonNil(&fields.format, privCR.Spec.ForProvider.Format)
-	helpers.AssignIfNonNil(&fields.repository, privCR.Spec.ForProvider.Repository)
-
-	return fields
-}
-
-// buildApplicationPrivilege builds a PrivilegeApplication from the CR spec.
-func buildApplicationPrivilege(privCR *iamv1alpha1.Privilege) security.PrivilegeApplication {
-	privObj := security.PrivilegeApplication{
-		Name:    privCR.Spec.ForProvider.Name,
-		Actions: toApplicationActions(privCR.Spec.ForProvider.Actions),
-	}
-
-	helpers.AssignIfNonNil(&privObj.Description, privCR.Spec.ForProvider.Description)
-	helpers.AssignIfNonNil(&privObj.Domain, privCR.Spec.ForProvider.Domain)
-
-	return privObj
-}
-
-// buildRepoViewPrivilege builds a PrivilegeRepositoryView from the CR spec.
-func buildRepoViewPrivilege(privCR *iamv1alpha1.Privilege) security.PrivilegeRepositoryView {
-	fields := extractRepoFields(privCR)
-
-	return security.PrivilegeRepositoryView{
-		Name:        fields.name,
-		Description: fields.description,
-		Format:      fields.format,
-		Repository:  fields.repository,
-		Actions:     toRepositoryViewActions(privCR.Spec.ForProvider.Actions),
+	return v395.ApiPrivilegeApplicationRequest{
+		Name:        spec.Name,
+		Description: new(ptr.Deref(spec.Description, "")),
+		Actions:     nonNilStrings(spec.Actions),
+		Domain:      ptr.Deref(spec.Domain, ""),
 	}
 }
 
-// buildRepoAdminPrivilege builds a PrivilegeRepositoryAdmin from the CR spec.
-func buildRepoAdminPrivilege(privCR *iamv1alpha1.Privilege) security.PrivilegeRepositoryAdmin {
-	fields := extractRepoFields(privCR)
+// buildRepoViewPrivilege builds a repository-view privilege from the CR spec.
+func buildRepoViewPrivilege(privCR *iamv1alpha1.Privilege) v395.ApiPrivilegeRepositoryViewRequest {
+	spec := privCR.Spec.ForProvider
 
-	return security.PrivilegeRepositoryAdmin{
-		Name:        fields.name,
-		Description: fields.description,
-		Format:      fields.format,
-		Repository:  fields.repository,
-		Actions:     toRepositoryAdminActions(privCR.Spec.ForProvider.Actions),
+	return v395.ApiPrivilegeRepositoryViewRequest{
+		Name:        spec.Name,
+		Description: new(ptr.Deref(spec.Description, "")),
+		Actions:     nonNilStrings(spec.Actions),
+		Format:      ptr.Deref(spec.Format, ""),
+		Repository:  ptr.Deref(spec.Repository, ""),
 	}
 }
 
-// buildRepoContentSelectorPrivilege builds a
-// PrivilegeRepositoryContentSelector from the CR spec.
-func buildRepoContentSelectorPrivilege(privCR *iamv1alpha1.Privilege) security.PrivilegeRepositoryContentSelector {
-	fields := extractRepoFields(privCR)
+// buildRepoAdminPrivilege builds a repository-admin privilege from the CR spec.
+func buildRepoAdminPrivilege(privCR *iamv1alpha1.Privilege) v395.ApiPrivilegeRepositoryAdminRequest {
+	spec := privCR.Spec.ForProvider
 
-	privObj := security.PrivilegeRepositoryContentSelector{
-		Name:        fields.name,
-		Description: fields.description,
-		Format:      fields.format,
-		Repository:  fields.repository,
-		Actions:     toRepositoryContentSelectorActions(privCR.Spec.ForProvider.Actions),
+	return v395.ApiPrivilegeRepositoryAdminRequest{
+		Name:        spec.Name,
+		Description: new(ptr.Deref(spec.Description, "")),
+		Actions:     nonNilStrings(spec.Actions),
+		Format:      ptr.Deref(spec.Format, ""),
+		Repository:  ptr.Deref(spec.Repository, ""),
 	}
-
-	helpers.AssignIfNonNil(&privObj.ContentSelector, privCR.Spec.ForProvider.ContentSelector)
-
-	return privObj
 }
 
-// buildScriptPrivilege builds a PrivilegeScript from the CR spec.
-func buildScriptPrivilege(privCR *iamv1alpha1.Privilege) security.PrivilegeScript {
-	privObj := security.PrivilegeScript{
-		Name:    privCR.Spec.ForProvider.Name,
-		Actions: toScriptActions(privCR.Spec.ForProvider.Actions),
+// buildRepoContentSelectorPrivilege builds a repository-content-selector
+// privilege from the CR spec.
+func buildRepoContentSelectorPrivilege(privCR *iamv1alpha1.Privilege) v395.ApiPrivilegeRepositoryContentSelectorRequest {
+	spec := privCR.Spec.ForProvider
+
+	return v395.ApiPrivilegeRepositoryContentSelectorRequest{
+		Name:            spec.Name,
+		Description:     new(ptr.Deref(spec.Description, "")),
+		Actions:         nonNilStrings(spec.Actions),
+		Format:          ptr.Deref(spec.Format, ""),
+		Repository:      ptr.Deref(spec.Repository, ""),
+		ContentSelector: ptr.Deref(spec.ContentSelector, ""),
 	}
-
-	helpers.AssignIfNonNil(&privObj.Description, privCR.Spec.ForProvider.Description)
-	helpers.AssignIfNonNil(&privObj.ScriptName, privCR.Spec.ForProvider.ScriptName)
-
-	return privObj
 }
 
-// buildWildcardPrivilege builds a PrivilegeWildcard from the CR spec.
-func buildWildcardPrivilege(privCR *iamv1alpha1.Privilege) security.PrivilegeWildcard {
-	privObj := security.PrivilegeWildcard{
-		Name: privCR.Spec.ForProvider.Name,
+// buildScriptPrivilege builds a script privilege from the CR spec.
+func buildScriptPrivilege(privCR *iamv1alpha1.Privilege) v395.ApiPrivilegeScriptRequest {
+	spec := privCR.Spec.ForProvider
+
+	return v395.ApiPrivilegeScriptRequest{
+		Name:        spec.Name,
+		Description: new(ptr.Deref(spec.Description, "")),
+		Actions:     nonNilStrings(spec.Actions),
+		ScriptName:  ptr.Deref(spec.ScriptName, ""),
 	}
-
-	helpers.AssignIfNonNil(&privObj.Description, privCR.Spec.ForProvider.Description)
-	helpers.AssignIfNonNil(&privObj.Pattern, privCR.Spec.ForProvider.Pattern)
-
-	return privObj
 }
 
-// toApplicationActions converts string action names to
-// PrivilegeApplication action types.
-func toApplicationActions(actions []string) []security.SecurityPrivilegeApplicationActions {
-	result := make([]security.SecurityPrivilegeApplicationActions, len(actions))
-	for idx, act := range actions {
-		result[idx] = security.SecurityPrivilegeApplicationActions(act)
+// buildWildcardPrivilege builds a wildcard privilege from the CR spec.
+func buildWildcardPrivilege(privCR *iamv1alpha1.Privilege) v395.ApiPrivilegeWildcardRequest {
+	spec := privCR.Spec.ForProvider
+
+	return v395.ApiPrivilegeWildcardRequest{
+		Name:        spec.Name,
+		Description: new(ptr.Deref(spec.Description, "")),
+		Pattern:     ptr.Deref(spec.Pattern, ""),
 	}
-
-	return result
-}
-
-// toRepositoryViewActions converts string action names to
-// PrivilegeRepositoryView action types.
-func toRepositoryViewActions(actions []string) []security.SecurityPrivilegeRepositoryViewActions {
-	result := make([]security.SecurityPrivilegeRepositoryViewActions, len(actions))
-	for idx, act := range actions {
-		result[idx] = security.SecurityPrivilegeRepositoryViewActions(act)
-	}
-
-	return result
-}
-
-// toRepositoryAdminActions converts string action names to
-// PrivilegeRepositoryAdmin action types.
-func toRepositoryAdminActions(actions []string) []security.SecurityPrivilegeRepositoryAdminActions {
-	result := make([]security.SecurityPrivilegeRepositoryAdminActions, len(actions))
-	for idx, act := range actions {
-		result[idx] = security.SecurityPrivilegeRepositoryAdminActions(act)
-	}
-
-	return result
-}
-
-// toRepositoryContentSelectorActions converts strings to
-// PrivilegeRepositoryContentSelector action types.
-func toRepositoryContentSelectorActions(actions []string) []security.SecurityPrivilegeRepositoryContentSelectorActions {
-	result := make([]security.SecurityPrivilegeRepositoryContentSelectorActions, len(actions))
-	for idx, act := range actions {
-		result[idx] = security.SecurityPrivilegeRepositoryContentSelectorActions(act)
-	}
-
-	return result
-}
-
-// toScriptActions converts string action names to PrivilegeScript action types.
-func toScriptActions(actions []string) []security.SecurityPrivilegeScriptActions {
-	result := make([]security.SecurityPrivilegeScriptActions, len(actions))
-	for idx, act := range actions {
-		result[idx] = security.SecurityPrivilegeScriptActions(act)
-	}
-
-	return result
 }

@@ -3,45 +3,45 @@ package iam
 import (
 	"testing"
 
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 )
 
 // newLDAPServer returns the LDAP server Nexus reports for a fully configured
 // server, so that a test can change one field and assert it is compared.
-func newLDAPServer() *security.LDAP {
-	return &security.LDAP{
-		ID:                          "ldap-id",
+func newLDAPServer() *v395.ReadLdapServerXo {
+	return &v395.ReadLdapServerXo{
+		Id:                          new("ldap-id"),
 		Name:                        "corp",
 		Protocol:                    "ldaps",
 		Host:                        "ldap.example.com",
 		Port:                        636,
 		SearchBase:                  "dc=example,dc=com",
-		AuthSchema:                  "simple",
-		AuthUserName:                "cn=admin,dc=example,dc=com",
-		AuthRealm:                   "EXAMPLE",
+		AuthScheme:                  "simple",
+		AuthUsername:                new("cn=admin,dc=example,dc=com"),
+		AuthRealm:                   new("EXAMPLE"),
 		ConnectionTimeoutSeconds:    30,
 		ConnectionRetryDelaySeconds: 300,
-		MaxIncidentCount:            3,
-		UseTrustStore:               true,
-		UserBaseDN:                  "ou=people",
-		UserSubtree:                 true,
+		MaxIncidentsCount:           3,
+		UseTrustStore:               new(true),
+		UserBaseDn:                  new("ou=people"),
+		UserSubtree:                 new(true),
 		UserObjectClass:             "inetOrgPerson",
-		UserIDAttribute:             "uid",
+		UserIdAttribute:             "uid",
 		UserRealNameAttribute:       "cn",
 		UserEmailAddressAttribute:   "mail",
-		UserPasswordAttribute:       "userPassword",
-		UserMemberOfAttribute:       "memberOf",
-		UserLDAPFilter:              "(uid=dom*)",
-		LDAPGroupsAsRoles:           true,
-		GroupType:                   "static",
-		GroupBaseDn:                 "ou=groups",
-		GroupSubtree:                true,
-		GroupObjectClass:            "groupOfUniqueNames",
-		GroupIDAttribute:            "cn",
-		GroupMemberAttribute:        "uniqueMember",
-		GroupMemberFormat:           "uid=${username},ou=people,dc=example,dc=com",
+		UserPasswordAttribute:       new("userPassword"),
+		UserMemberOfAttribute:       new("memberOf"),
+		UserLdapFilter:              new("(uid=dom*)"),
+		LdapGroupsAsRoles:           new(true),
+		GroupType:                   new("static"),
+		GroupBaseDn:                 new("ou=groups"),
+		GroupSubtree:                new(true),
+		GroupObjectClass:            new("groupOfUniqueNames"),
+		GroupIdAttribute:            new("cn"),
+		GroupMemberAttribute:        new("uniqueMember"),
+		GroupMemberFormat:           new("uid=${username},ou=people,dc=example,dc=com"),
 	}
 }
 
@@ -57,30 +57,30 @@ func newLDAPCR() *iamv1alpha1.LDAP {
 		Host:                        server.Host,
 		Port:                        server.Port,
 		SearchBase:                  server.SearchBase,
-		AuthScheme:                  server.AuthSchema,
-		AuthUsername:                &server.AuthUserName,
-		AuthRealm:                   &server.AuthRealm,
+		AuthScheme:                  server.AuthScheme,
+		AuthUsername:                server.AuthUsername,
+		AuthRealm:                   server.AuthRealm,
 		ConnectionTimeoutSeconds:    &server.ConnectionTimeoutSeconds,
 		ConnectionRetryDelaySeconds: &server.ConnectionRetryDelaySeconds,
-		MaxIncidentCount:            &server.MaxIncidentCount,
-		UseTrustStore:               &server.UseTrustStore,
-		UserBaseDN:                  server.UserBaseDN,
-		UserSubtree:                 &server.UserSubtree,
+		MaxIncidentCount:            &server.MaxIncidentsCount,
+		UseTrustStore:               server.UseTrustStore,
+		UserBaseDN:                  server.GetUserBaseDn(),
+		UserSubtree:                 server.UserSubtree,
 		UserObjectClass:             &server.UserObjectClass,
-		UserIDAttribute:             &server.UserIDAttribute,
+		UserIDAttribute:             &server.UserIdAttribute,
 		UserRealNameAttribute:       &server.UserRealNameAttribute,
 		UserEmailAddressAttribute:   &server.UserEmailAddressAttribute,
-		UserPasswordAttribute:       &server.UserPasswordAttribute,
-		UserMemberOfAttribute:       &server.UserMemberOfAttribute,
-		UserLDAPFilter:              &server.UserLDAPFilter,
-		LDAPGroupsAsRoles:           &server.LDAPGroupsAsRoles,
-		GroupType:                   &server.GroupType,
-		GroupBaseDN:                 &server.GroupBaseDn,
-		GroupSubtree:                &server.GroupSubtree,
-		GroupObjectClass:            &server.GroupObjectClass,
-		GroupIDAttribute:            &server.GroupIDAttribute,
-		GroupMemberAttribute:        &server.GroupMemberAttribute,
-		GroupMemberFormat:           &server.GroupMemberFormat,
+		UserPasswordAttribute:       server.UserPasswordAttribute,
+		UserMemberOfAttribute:       server.UserMemberOfAttribute,
+		UserLDAPFilter:              server.UserLdapFilter,
+		LDAPGroupsAsRoles:           server.LdapGroupsAsRoles,
+		GroupType:                   server.GroupType,
+		GroupBaseDN:                 server.GroupBaseDn,
+		GroupSubtree:                server.GroupSubtree,
+		GroupObjectClass:            server.GroupObjectClass,
+		GroupIDAttribute:            server.GroupIdAttribute,
+		GroupMemberAttribute:        server.GroupMemberAttribute,
+		GroupMemberFormat:           server.GroupMemberFormat,
 	}
 	cr.Status.AtProvider = GenerateLDAPObservation(newLDAPServer())
 
@@ -106,35 +106,35 @@ func TestGenerateLDAPObservation_AllFields(t *testing.T) {
 	server := newLDAPServer()
 	obs := GenerateLDAPObservation(server)
 
-	if obs.ID == nil || *obs.ID != server.ID {
-		t.Errorf("ID = %v, want %q", obs.ID, server.ID)
+	if obs.ID == nil || *obs.ID != server.GetId() {
+		t.Errorf("ID = %v, want %q", obs.ID, server.GetId())
 	}
 
 	checks := map[string][2]any{
 		"Name":                        {obs.Name, server.Name},
-		"AuthScheme":                  {obs.AuthScheme, server.AuthSchema},
-		"AuthUsername":                {obs.AuthUsername, server.AuthUserName},
-		"AuthRealm":                   {obs.AuthRealm, server.AuthRealm},
+		"AuthScheme":                  {obs.AuthScheme, server.AuthScheme},
+		"AuthUsername":                {obs.AuthUsername, server.GetAuthUsername()},
+		"AuthRealm":                   {obs.AuthRealm, server.GetAuthRealm()},
 		"ConnectionTimeoutSeconds":    {obs.ConnectionTimeoutSeconds, server.ConnectionTimeoutSeconds},
 		"ConnectionRetryDelaySeconds": {obs.ConnectionRetryDelaySeconds, server.ConnectionRetryDelaySeconds},
-		"MaxIncidentCount":            {obs.MaxIncidentCount, server.MaxIncidentCount},
-		"UseTrustStore":               {obs.UseTrustStore, server.UseTrustStore},
-		"UserSubtree":                 {obs.UserSubtree, server.UserSubtree},
+		"MaxIncidentCount":            {obs.MaxIncidentCount, server.MaxIncidentsCount},
+		"UseTrustStore":               {obs.UseTrustStore, server.GetUseTrustStore()},
+		"UserSubtree":                 {obs.UserSubtree, server.GetUserSubtree()},
 		"UserObjectClass":             {obs.UserObjectClass, server.UserObjectClass},
-		"UserIDAttribute":             {obs.UserIDAttribute, server.UserIDAttribute},
+		"UserIDAttribute":             {obs.UserIDAttribute, server.UserIdAttribute},
 		"UserRealNameAttribute":       {obs.UserRealNameAttribute, server.UserRealNameAttribute},
 		"UserEmailAddressAttribute":   {obs.UserEmailAddressAttribute, server.UserEmailAddressAttribute},
-		"UserPasswordAttribute":       {obs.UserPasswordAttribute, server.UserPasswordAttribute},
-		"UserMemberOfAttribute":       {obs.UserMemberOfAttribute, server.UserMemberOfAttribute},
-		"UserLDAPFilter":              {obs.UserLDAPFilter, server.UserLDAPFilter},
-		"LDAPGroupsAsRoles":           {obs.LDAPGroupsAsRoles, server.LDAPGroupsAsRoles},
-		"GroupType":                   {obs.GroupType, server.GroupType},
-		"GroupBaseDN":                 {obs.GroupBaseDN, server.GroupBaseDn},
-		"GroupSubtree":                {obs.GroupSubtree, server.GroupSubtree},
-		"GroupObjectClass":            {obs.GroupObjectClass, server.GroupObjectClass},
-		"GroupIDAttribute":            {obs.GroupIDAttribute, server.GroupIDAttribute},
-		"GroupMemberAttribute":        {obs.GroupMemberAttribute, server.GroupMemberAttribute},
-		"GroupMemberFormat":           {obs.GroupMemberFormat, server.GroupMemberFormat},
+		"UserPasswordAttribute":       {obs.UserPasswordAttribute, server.GetUserPasswordAttribute()},
+		"UserMemberOfAttribute":       {obs.UserMemberOfAttribute, server.GetUserMemberOfAttribute()},
+		"UserLDAPFilter":              {obs.UserLDAPFilter, server.GetUserLdapFilter()},
+		"LDAPGroupsAsRoles":           {obs.LDAPGroupsAsRoles, server.GetLdapGroupsAsRoles()},
+		"GroupType":                   {obs.GroupType, server.GetGroupType()},
+		"GroupBaseDN":                 {obs.GroupBaseDN, server.GetGroupBaseDn()},
+		"GroupSubtree":                {obs.GroupSubtree, server.GetGroupSubtree()},
+		"GroupObjectClass":            {obs.GroupObjectClass, server.GetGroupObjectClass()},
+		"GroupIDAttribute":            {obs.GroupIDAttribute, server.GetGroupIdAttribute()},
+		"GroupMemberAttribute":        {obs.GroupMemberAttribute, server.GetGroupMemberAttribute()},
+		"GroupMemberFormat":           {obs.GroupMemberFormat, server.GetGroupMemberFormat()},
 	}
 
 	for field, values := range checks {

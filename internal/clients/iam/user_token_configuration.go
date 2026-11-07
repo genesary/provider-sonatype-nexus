@@ -1,18 +1,25 @@
 package iam
 
 import (
-	"github.com/datadrivers/go-nexus-client/nexus3/schema/security"
+	"context"
+
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	"k8s.io/utils/ptr"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
-	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 // UserTokenConfigurationClient manages user token configuration.
 type UserTokenConfigurationClient interface {
-	Get() (*security.UserTokenConfiguration, error)
-	Configure(config security.UserTokenConfiguration) error
+	Get(ctx context.Context) (*v395.UserTokensApiModel, error)
+	Configure(ctx context.Context, config v395.UserTokensApiModel) error
+}
+
+// userTokenConfigurationClient implements UserTokenConfigurationClient over
+// the Nexus API.
+type userTokenConfigurationClient struct {
+	api *v395.SecurityManagementUserTokensAPIService
 }
 
 // NewUserTokenConfigurationClient returns a new UserTokenConfigurationClient.
@@ -22,36 +29,52 @@ func NewUserTokenConfigurationClient(creds nexus.Credentials) (UserTokenConfigur
 		return nil, err
 	}
 
-	return nc.Security.UserTokens, nil
+	return &userTokenConfigurationClient{api: nc.SecurityManagementUserTokensAPI}, nil
+}
+
+// Get returns the user token configuration.
+func (c *userTokenConfigurationClient) Get(ctx context.Context) (*v395.UserTokensApiModel, error) {
+	config, resp, err := c.api.ListSecurityUserTokens(ctx).Execute()
+	if err != nil {
+		return nil, nexus.APIError(resp, err)
+	}
+
+	return config, nil
+}
+
+// Configure replaces the user token configuration.
+func (c *userTokenConfigurationClient) Configure(ctx context.Context, config v395.UserTokensApiModel) error {
+	_, resp, err := c.api.UpdateSecurityUserTokens(ctx).UserTokensApiModel(config).Execute()
+
+	return nexus.APIError(resp, err)
 }
 
 // GenerateUserTokenConfiguration converts the CR spec to Nexus config.
-func GenerateUserTokenConfiguration(userTokenCfg *iamv1alpha1.UserTokenConfiguration) security.UserTokenConfiguration {
-	config := security.UserTokenConfiguration{
-		Enabled: userTokenCfg.Spec.ForProvider.Enabled,
+//
+// Every setting is submitted, an unset optional as its zero value, which is
+// what IsUserTokenConfigUpToDate compares against.
+func GenerateUserTokenConfiguration(userTokenCfg *iamv1alpha1.UserTokenConfiguration) v395.UserTokensApiModel {
+	spec := userTokenCfg.Spec.ForProvider
+
+	return v395.UserTokensApiModel{
+		Enabled:           new(spec.Enabled),
+		ProtectContent:    new(ptr.Deref(spec.ProtectContent, false)),
+		ExpirationEnabled: new(ptr.Deref(spec.ExpirationEnabled, false)),
+		ExpirationDays:    new(ptr.Deref(spec.ExpirationDays, 0)),
 	}
-
-	helpers.AssignIfNonNil(&config.ProtectContent, userTokenCfg.Spec.ForProvider.ProtectContent)
-	helpers.AssignIfNonNil(&config.ExpirationEnabled, userTokenCfg.Spec.ForProvider.ExpirationEnabled)
-
-	if userTokenCfg.Spec.ForProvider.ExpirationDays != nil {
-		config.ExpirationDays = int(*userTokenCfg.Spec.ForProvider.ExpirationDays)
-	}
-
-	return config
 }
 
 // GenerateUserTokenConfigObservation returns the observed state.
-func GenerateUserTokenConfigObservation(config *security.UserTokenConfiguration) iamv1alpha1.UserTokenConfigurationObservation {
+func GenerateUserTokenConfigObservation(config *v395.UserTokensApiModel) iamv1alpha1.UserTokenConfigurationObservation {
 	if config == nil {
 		return iamv1alpha1.UserTokenConfigurationObservation{}
 	}
 
 	return iamv1alpha1.UserTokenConfigurationObservation{
-		Enabled:           config.Enabled,
-		ProtectContent:    config.ProtectContent,
-		ExpirationEnabled: config.ExpirationEnabled,
-		ExpirationDays:    config.ExpirationDays,
+		Enabled:           config.GetEnabled(),
+		ProtectContent:    config.GetProtectContent(),
+		ExpirationEnabled: config.GetExpirationEnabled(),
+		ExpirationDays:    int(config.GetExpirationDays()),
 	}
 }
 

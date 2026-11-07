@@ -83,7 +83,11 @@ spec:
                     - keypair
                     type: object
                   bower:
-                    description: Bower specific configuration.
+                    description: |-
+                      Bower specific configuration.
+
+                      Deprecated: Nexus no longer supports the Bower format, so this field is
+                      ignored.
                     properties:
                       rewritePackageUrls:
                         description: RewritePackageUrls forces Bower to retrieve packages
@@ -175,7 +179,6 @@ spec:
                     - conan
                     - conda
                     - cocoapods
-                    - bower
                     - gitlfs
                     - p2
                     - cargo
@@ -304,7 +307,12 @@ spec:
                         type: integer
                     type: object
                   npm:
-                    description: Npm specific configuration.
+                    description: |-
+                      Npm specific configuration.
+
+                      Deprecated: Nexus moved these settings to the Sonatype Repository
+                      Firewall configuration and no longer accepts them on a repository, so
+                      this field is ignored.
                     properties:
                       removeNonCataloged:
                         description: RemoveNonCataloged removes non-cataloged versions.

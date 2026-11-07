@@ -6,8 +6,6 @@ import (
 	"context"
 
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
-	"github.com/datadrivers/go-nexus-client/nexus3"
-	"github.com/datadrivers/go-nexus-client/nexus3/pkg/client"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,23 +21,6 @@ type Credentials struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 	Insecure bool   `json:"insecure"`
-}
-
-// NewClient creates a new Nexus client from the provided credentials.
-func NewClient(creds Credentials) (*nexus3.NexusClient, error) {
-	cfg := client.Config{
-		URL:      creds.URL,
-		Username: creds.Username,
-		Password: creds.Password,
-		Insecure: creds.Insecure,
-	}
-
-	nc := nexus3.NewClient(cfg)
-	if nc == nil {
-		return nil, errors.New("failed to create Nexus client")
-	}
-
-	return nc, nil
 }
 
 // clusterProviderConfigKind is the Kind name for ClusterProviderConfig.
