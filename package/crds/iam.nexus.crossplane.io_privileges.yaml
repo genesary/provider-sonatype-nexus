@@ -90,6 +90,9 @@ spec:
                   name:
                     description: Name of the privilege.
                     type: string
+                    x-kubernetes-validations:
+                    - message: Name is immutable.
+                      rule: self == oldSelf
                   pattern:
                     description: Pattern for wildcard type privilege.
                     type: string
@@ -111,6 +114,9 @@ spec:
                     - script
                     - wildcard
                     type: string
+                    x-kubernetes-validations:
+                    - message: Type is immutable.
+                      rule: self == oldSelf
                 required:
                 - name
                 - type

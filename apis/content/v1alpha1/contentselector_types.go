@@ -12,6 +12,7 @@ import (
 type ContentSelectorParameters struct {
 	// Name of the content selector.
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Name is immutable."
 	Name string `json:"name"`
 
 	// Description of the content selector.

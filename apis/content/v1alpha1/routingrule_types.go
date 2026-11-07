@@ -12,6 +12,7 @@ import (
 type RoutingRuleParameters struct {
 	// Name of the routing rule.
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Name is immutable."
 	Name string `json:"name"`
 
 	// Description of the routing rule.

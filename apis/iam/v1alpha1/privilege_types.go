@@ -12,6 +12,7 @@ import (
 type PrivilegeParameters struct {
 	// Name of the privilege.
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Name is immutable."
 	Name string `json:"name"`
 
 	// Description of the privilege.
@@ -21,6 +22,7 @@ type PrivilegeParameters struct {
 	// Type of the privilege.
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Enum=application;repository-view;repository-admin;repository-content-selector;script;wildcard
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Type is immutable."
 	Type string `json:"type"`
 
 	// Actions allowed by this privilege.

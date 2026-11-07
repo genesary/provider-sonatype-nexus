@@ -12,6 +12,7 @@ import (
 type LDAPParameters struct {
 	// Name of the LDAP server.
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Name is immutable."
 	Name string `json:"name"`
 
 	// Protocol to use for connecting to the LDAP server.

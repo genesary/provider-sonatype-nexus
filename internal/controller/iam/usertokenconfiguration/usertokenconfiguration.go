@@ -40,6 +40,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
+		managed.WithDeterministicExternalName(true),
 	)
 
 	reconciler := managed.NewReconciler(mgr, resource.ManagedKind(iamv1alpha1.UserTokenConfigurationGroupVersionKind), reconcilerOpts...)

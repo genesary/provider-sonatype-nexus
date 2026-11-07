@@ -28,7 +28,12 @@ const (
 // An external name that is already set is kept, so an explicit
 // crossplane.io/external-name annotation still wins.
 func WithSpecExternalName[T resource.Managed](kube client.Client, name func(T) string) managed.ReconcilerOption {
-	return managed.WithInitializers(SpecExternalName(kube, name))
+	return func(reconciler *managed.Reconciler) {
+		// The spec names the Nexus object, so a create interrupted before its
+		// outcome was recorded can be observed again instead of blocking.
+		managed.WithDeterministicExternalName(true)(reconciler)
+		managed.WithInitializers(SpecExternalName(kube, name))(reconciler)
+	}
 }
 
 // WithServerAssignedExternalName removes the reconciler's default initializer

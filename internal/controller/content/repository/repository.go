@@ -349,12 +349,10 @@ func resolveHTTPClientPassword(ctx context.Context, kube client.Reader, repoCR *
 
 // repositoryName returns the name that identifies the repository in Nexus.
 //
-// spec.forProvider.name is authoritative. crossplane-runtime seeds the
-// crossplane.io/external-name annotation from metadata.name, which is not
-// necessarily the repository name, and Nexus cannot rename a repository, so
-// trusting the annotation first would make the controller look up - and then
-// try to create - the wrong repository whenever the two names differ. The
-// annotation is only a fallback for a spec that carries no name at all.
+// spec.forProvider.name is authoritative: it is immutable, as Nexus cannot
+// rename a repository, and helpers.WithSpecExternalName keeps the
+// crossplane.io/external-name annotation equal to it. The annotation is only a
+// fallback for a spec that carries no name at all.
 func repositoryName(repoCR *repositoryv1alpha1.Repository) string {
 	if repoCR.Spec.ForProvider.Name != "" {
 		return repoCR.Spec.ForProvider.Name

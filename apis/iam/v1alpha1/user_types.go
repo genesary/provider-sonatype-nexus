@@ -12,6 +12,7 @@ import (
 type UserParameters struct {
 	// UserID is the unique identifier for the user.
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="UserID is immutable."
 	UserID string `json:"userId"`
 
 	// FirstName of the user.

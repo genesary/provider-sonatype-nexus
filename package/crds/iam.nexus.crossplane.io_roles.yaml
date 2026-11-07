@@ -65,6 +65,9 @@ spec:
                   id:
                     description: ID is the unique identifier for the role.
                     type: string
+                    x-kubernetes-validations:
+                    - message: ID is immutable.
+                      rule: self == oldSelf
                   name:
                     description: Name of the role.
                     type: string

@@ -159,6 +159,9 @@ spec:
                   name:
                     description: Name of the LDAP server.
                     type: string
+                    x-kubernetes-validations:
+                    - message: Name is immutable.
+                      rule: self == oldSelf
                   port:
                     description: Port is the LDAP server port.
                     format: int32

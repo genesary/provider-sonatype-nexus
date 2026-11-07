@@ -184,6 +184,9 @@ spec:
                     - cargo
                     - huggingface
                     type: string
+                    x-kubernetes-validations:
+                    - message: Format is immutable.
+                      rule: self == oldSelf
                   group:
                     description: Group configuration for group repositories.
                     properties:
@@ -292,6 +295,9 @@ spec:
                   name:
                     description: Name of the repository.
                     type: string
+                    x-kubernetes-validations:
+                    - message: Name is immutable.
+                      rule: self == oldSelf
                   negativeCache:
                     description: NegativeCache configuration for proxy repositories.
                     properties:
@@ -398,6 +404,9 @@ spec:
                     - proxy
                     - group
                     type: string
+                    x-kubernetes-validations:
+                    - message: Type is immutable.
+                      rule: self == oldSelf
                   yum:
                     description: Yum specific configuration.
                     properties:

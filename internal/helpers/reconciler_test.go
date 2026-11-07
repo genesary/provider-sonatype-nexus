@@ -249,9 +249,8 @@ func TestAddMRStateRecorder(t *testing.T) {
 	}
 }
 
-// newTestReconciler returns a reconciler for a Role that is up to date with
-// Nexus, built with the options of ReconcilerOptions.
-func newTestReconciler(t *testing.T, opts Options, role *iamv1alpha1.Role) *managed.Reconciler {
+// newTestManager returns a manager whose client holds role.
+func newTestManager(t *testing.T, role *iamv1alpha1.Role) recorderManager {
 	t.Helper()
 
 	scheme := runtime.NewScheme()
@@ -262,34 +261,49 @@ func newTestReconciler(t *testing.T, opts Options, role *iamv1alpha1.Role) *mana
 	}
 
 	kube := clientfake.NewClientBuilder().WithScheme(scheme).WithObjects(role).WithStatusSubresource(role).Build()
-	mgr := recorderManager{Manager: &resourcefake.Manager{Client: kube, Scheme: scheme}}
 
-	connector := managed.ExternalConnectorFn(func(context.Context, resource.Managed) (managed.ExternalClient, error) {
-		return &managed.ExternalClientFns{
-			ObserveFn: func(context.Context, resource.Managed) (managed.ExternalObservation, error) {
-				return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
-			},
-			DisconnectFn: func(context.Context) error { return nil },
-		}, nil
-	})
-
-	return managed.NewReconciler(mgr, resource.ManagedKind(iamv1alpha1.RoleGroupVersionKind),
-		ReconcilerOptions(mgr, "test", opts, managed.WithExternalConnector(connector))...)
+	return recorderManager{Manager: &resourcefake.Manager{Client: kube, Scheme: scheme}}
 }
 
-// reconcileRole runs one reconcile of role with opts and returns its requeue
-// delay.
-func reconcileRole(t *testing.T, opts Options, role *iamv1alpha1.Role) time.Duration {
+// upToDateConnector is a connector to a Nexus where every resource exists
+// and is up to date.
+var upToDateConnector = managed.ExternalConnectorFn(func(context.Context, resource.Managed) (managed.ExternalClient, error) {
+	return &managed.ExternalClientFns{
+		ObserveFn: func(context.Context, resource.Managed) (managed.ExternalObservation, error) {
+			return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
+		},
+		DisconnectFn: func(context.Context) error { return nil },
+	}, nil
+})
+
+// reconcileRoleWith runs one reconcile of role, by a reconciler built with
+// ReconcilerOptions and the options returned by specific for the manager's
+// client, and returns its requeue delay.
+func reconcileRoleWith(t *testing.T, opts Options, role *iamv1alpha1.Role, specific func(client.Client) []managed.ReconcilerOption) time.Duration {
 	t.Helper()
+
+	mgr := newTestManager(t, role)
+	reconciler := managed.NewReconciler(mgr, resource.ManagedKind(iamv1alpha1.RoleGroupVersionKind),
+		ReconcilerOptions(mgr, "test", opts, specific(mgr.GetClient())...)...)
 
 	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: role.GetName(), Namespace: role.GetNamespace()}}
 
-	got, err := newTestReconciler(t, opts, role).Reconcile(t.Context(), request)
+	got, err := reconciler.Reconcile(t.Context(), request)
 	if err != nil {
 		t.Fatalf("Reconcile() error = %v", err)
 	}
 
 	return got.RequeueAfter
+}
+
+// reconcileRole runs one reconcile of a role that is up to date with Nexus,
+// and returns its requeue delay.
+func reconcileRole(t *testing.T, opts Options, role *iamv1alpha1.Role) time.Duration {
+	t.Helper()
+
+	return reconcileRoleWith(t, opts, role, func(client.Client) []managed.ReconcilerOption {
+		return []managed.ReconcilerOption{managed.WithExternalConnector(upToDateConnector)}
+	})
 }
 
 // testRole returns a Role whose poll interval annotation is annotation, or
