@@ -5,25 +5,33 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 
 	changelogsv1alpha1 "github.com/crossplane/crossplane-runtime/v2/apis/changelogs/proto/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/providerconfig"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	resourcefake "github.com/crossplane/crossplane-runtime/v2/pkg/resource/fake"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	clientfake "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
 )
 
 // sharedOptions is the number of options every controller gets.
-const sharedOptions = 3
+const sharedOptions = 4
 
 // recorderManager is a manager that only provides event recorders.
 type recorderManager struct {
@@ -228,6 +236,150 @@ func TestAddMRStateRecorder(t *testing.T) {
 				if _, isRecorder := runnable.(*statemetrics.MRStateRecorder); !isRecorder {
 					t.Errorf("AddMRStateRecorder() added a %T, want a *statemetrics.MRStateRecorder", runnable)
 				}
+			}
+		})
+	}
+}
+
+// newTestReconciler returns a reconciler for a Role that is up to date with
+// Nexus, built with the options of ReconcilerOptions.
+func newTestReconciler(t *testing.T, opts Options, role *iamv1alpha1.Role) *managed.Reconciler {
+	t.Helper()
+
+	scheme := runtime.NewScheme()
+
+	err := iamv1alpha1.SchemeBuilder.AddToScheme(scheme)
+	if err != nil {
+		t.Fatalf("AddToScheme() error = %v", err)
+	}
+
+	kube := clientfake.NewClientBuilder().WithScheme(scheme).WithObjects(role).WithStatusSubresource(role).Build()
+	mgr := recorderManager{Manager: &resourcefake.Manager{Client: kube, Scheme: scheme}}
+
+	connector := managed.ExternalConnectorFn(func(context.Context, resource.Managed) (managed.ExternalClient, error) {
+		return &managed.ExternalClientFns{
+			ObserveFn: func(context.Context, resource.Managed) (managed.ExternalObservation, error) {
+				return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
+			},
+			DisconnectFn: func(context.Context) error { return nil },
+		}, nil
+	})
+
+	return managed.NewReconciler(mgr, resource.ManagedKind(iamv1alpha1.RoleGroupVersionKind),
+		ReconcilerOptions(mgr, "test", opts, managed.WithExternalConnector(connector))...)
+}
+
+// reconcileRole runs one reconcile of role with opts and returns its requeue
+// delay.
+func reconcileRole(t *testing.T, opts Options, role *iamv1alpha1.Role) time.Duration {
+	t.Helper()
+
+	request := reconcile.Request{NamespacedName: types.NamespacedName{Name: role.GetName(), Namespace: role.GetNamespace()}}
+
+	got, err := newTestReconciler(t, opts, role).Reconcile(t.Context(), request)
+	if err != nil {
+		t.Fatalf("Reconcile() error = %v", err)
+	}
+
+	return got.RequeueAfter
+}
+
+// testRole returns a Role whose poll interval annotation is annotation, or
+// none when it is empty.
+func testRole(annotation string) *iamv1alpha1.Role {
+	role := &iamv1alpha1.Role{ObjectMeta: metav1.ObjectMeta{Name: "role", Namespace: "team"}}
+	if annotation != "" {
+		meta.AddAnnotations(role, map[string]string{meta.AnnotationKeyPollInterval: annotation})
+	}
+
+	return role
+}
+
+// TestReconcilerOptionsPollInterval checks the requeue delay of a real
+// reconcile for each value of the crossplane.io/poll-interval annotation.
+func TestReconcilerOptionsPollInterval(t *testing.T) {
+	t.Parallel()
+
+	const (
+		pollInterval    = time.Minute
+		minPollInterval = 30 * time.Second
+	)
+
+	tests := map[string]struct {
+		annotation string
+		noMinimum  bool
+		want       time.Duration
+	}{
+		"NoAnnotationUsesThePollInterval": {
+			want: pollInterval,
+		},
+		"InvalidAnnotationUsesThePollInterval": {
+			annotation: "-1s",
+			want:       pollInterval,
+		},
+		"AnnotationAboveTheMinimumIsHonored": {
+			annotation: "2h",
+			want:       2 * time.Hour,
+		},
+		"AnnotationBelowThePollIntervalIsHonored": {
+			annotation: "45s",
+			want:       45 * time.Second,
+		},
+		"AnnotationBelowTheMinimumIsRaised": {
+			annotation: "1ms",
+			want:       minPollInterval,
+		},
+		"AnnotationAtTheMinimumIsHonored": {
+			annotation: "30s",
+			want:       minPollInterval,
+		},
+		"ZeroMinimumRemovesTheLimit": {
+			annotation: "1ms",
+			noMinimum:  true,
+			want:       time.Millisecond,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := testOptions()
+			opts.PollInterval = pollInterval
+			opts.MinPollInterval = minPollInterval
+
+			if test.noMinimum {
+				opts.MinPollInterval = 0
+			}
+
+			got := reconcileRole(t, opts, testRole(test.annotation))
+			if got != test.want {
+				t.Errorf("Reconcile() RequeueAfter = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
+// TestValidateMinPollInterval checks that only a negative minimum is rejected.
+func TestValidateMinPollInterval(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		minimum time.Duration
+		wantErr bool
+	}{
+		"Positive": {minimum: time.Second},
+		"Zero":     {},
+		"Negative": {minimum: -time.Second, wantErr: true},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			err := ValidateMinPollInterval(test.minimum)
+			if (err != nil) != test.wantErr {
+				t.Errorf("ValidateMinPollInterval(%v) error = %v, want error %t", test.minimum, err, test.wantErr)
 			}
 		})
 	}

@@ -66,6 +66,8 @@ func main() {
 		kingpin.Fatalf("--poll-state-metric must be positive, got %s", parsed.PollStateMetricInterval)
 	}
 
+	kingpin.FatalIfError(helpers.ValidateMinPollInterval(parsed.MinPollInterval), "Invalid minimum poll interval")
+
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
 
@@ -196,6 +198,7 @@ func controllerOptions(log logging.Logger, parsed flags) helpers.Options {
 				MRStateMetrics:          stateMetrics,
 			},
 		},
+		MinPollInterval: parsed.MinPollInterval,
 	}
 }
 
