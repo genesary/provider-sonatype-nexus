@@ -2,122 +2,113 @@
 package main
 
 import (
+	"io"
 	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
+	"github.com/pkg/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"github.com/genesary/provider-sonatype-nexus/apis"
 	nexuscontroller "github.com/genesary/provider-sonatype-nexus/internal/controller"
+	"github.com/genesary/provider-sonatype-nexus/internal/version"
 )
 
 const (
-	// defaultMaxReconcileRate is the default maximum reconcile rate.
-	defaultMaxReconcileRate = 10
-	// decimalBase is the base for decimal integer parsing.
-	decimalBase = 10
+	// leaseDuration is how long a leader election lease is valid.
+	leaseDuration = 60 * time.Second
+	// renewDeadline is how long the leader keeps trying to renew its lease
+	// before giving it up.
+	renewDeadline = 50 * time.Second
 )
 
 // main is the entry point for the provider.
+//
+// Every flag can also be set through the environment variable named in its
+// help, which is how earlier releases were configured.
 func main() {
 	var (
-		debug            = getEnvBool("DEBUG", false)
-		pollInterval     = getEnvDuration("POLL_INTERVAL", time.Minute)
-		leaderElection   = getEnvBool("LEADER_ELECTION", false)
-		maxReconcileRate = getEnvInt("MAX_RECONCILE_RATE", defaultMaxReconcileRate)
+		app = kingpin.New(filepath.Base(os.Args[0]), "Sonatype Nexus support for Crossplane.").
+			Version(version.Version)
+		debug            = app.Flag("debug", "Run with debug logging.").Short('d').Envar("DEBUG").Bool()
+		leaderElection   = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").Envar("LEADER_ELECTION").Bool()
+		syncInterval     = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Envar("SYNC_INTERVAL").Duration()
+		pollInterval     = app.Flag("poll", "How often individual resources will be checked for drift from the desired state.").Default("1m").Envar("POLL_INTERVAL").Duration()
+		maxReconcileRate = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may be checked for drift from the desired state.").Default("10").Envar("MAX_RECONCILE_RATE").Int()
 	)
 
-	zl := zap.New(zap.UseDevMode(debug))
-	log := logging.NewLogrLogger(zl.WithName("provider-sonatype-nexus"))
-	ctrl.SetLogger(zl)
+	kingpin.MustParse(app.Parse(os.Args[1:]))
+
+	zapLogger := zap.New(zap.UseDevMode(*debug))
+	log := logging.NewLogrLogger(zapLogger.WithName("provider-sonatype-nexus"))
+
+	if *debug {
+		// controller-runtime is very verbose even at info level, so it only
+		// gets a real logger in debug mode.
+		ctrl.SetLogger(zapLogger)
+	} else {
+		// A no-op logger keeps controller-runtime from warning that none was
+		// set.
+		ctrl.SetLogger(zap.New(zap.WriteTo(io.Discard)))
+	}
 
 	cfg, err := ctrl.GetConfig()
-	if err != nil {
-		log.Info("Cannot get config", "error", err)
-		os.Exit(1)
-	}
+	kingpin.FatalIfError(err, "Cannot get API server rest config")
 
-	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		LeaderElection:             leaderElection,
+	scheme, err := newScheme()
+	kingpin.FatalIfError(err, "Cannot build the manager scheme")
+
+	mgr, err := ctrl.NewManager(ratelimiter.LimitRESTConfig(cfg, *maxReconcileRate), ctrl.Options{
+		Scheme: scheme,
+		Cache:  cache.Options{SyncPeriod: syncInterval},
+
+		// controller-runtime defaults to 15s leases with a 10s renewal
+		// deadline, which a busy provider can miss and lose leadership.
+		// Crossplane providers use Leases only, with longer leases.
+		LeaderElection:             *leaderElection,
 		LeaderElectionID:           "crossplane-leader-election-provider-sonatype-nexus",
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
+		LeaseDuration:              new(leaseDuration),
+		RenewDeadline:              new(renewDeadline),
 	})
-	if err != nil {
-		log.Info("Cannot create controller manager", "error", err)
-		os.Exit(1)
-	}
-
-	err = apis.AddToScheme(mgr.GetScheme())
-	if err != nil {
-		log.Info("Cannot add APIs to scheme", "error", err)
-		os.Exit(1)
-	}
+	kingpin.FatalIfError(err, "Cannot create controller manager")
 
 	opts := controller.Options{
 		Logger:                  log,
-		MaxConcurrentReconciles: maxReconcileRate,
-		PollInterval:            pollInterval,
-		GlobalRateLimiter:       ratelimiter.NewGlobal(maxReconcileRate),
+		MaxConcurrentReconciles: *maxReconcileRate,
+		PollInterval:            *pollInterval,
+		GlobalRateLimiter:       ratelimiter.NewGlobal(*maxReconcileRate),
 		Features:                &feature.Flags{},
 	}
 
-	err = nexuscontroller.Setup(mgr, opts)
+	kingpin.FatalIfError(nexuscontroller.Setup(mgr, opts), "Cannot setup Nexus controllers")
+
+	log.Info("Starting controller manager", "version", version.Version)
+	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
+}
+
+// newScheme returns the manager scheme: the Kubernetes built-in types, which
+// the provider reads Secrets through, and the provider's own APIs.
+func newScheme() (*runtime.Scheme, error) {
+	scheme := runtime.NewScheme()
+
+	builder := runtime.NewSchemeBuilder(clientgoscheme.AddToScheme, apis.AddToScheme)
+
+	err := builder.AddToScheme(scheme)
 	if err != nil {
-		log.Info("Cannot setup controllers", "error", err)
-		os.Exit(1)
+		return nil, errors.Wrap(err, "cannot add types to scheme")
 	}
 
-	log.Info("Starting controller manager")
-
-	err = mgr.Start(ctrl.SetupSignalHandler())
-	if err != nil {
-		log.Info("Cannot start controller manager", "error", err)
-		os.Exit(1)
-	}
-}
-
-// getEnvBool returns a boolean environment variable value or a default.
-func getEnvBool(key string, defaultVal bool) bool {
-	if val := os.Getenv(key); val != "" {
-		return val == "true" || val == "1"
-	}
-
-	return defaultVal
-}
-
-// getEnvDuration returns a duration environment variable value or a default.
-func getEnvDuration(key string, defaultVal time.Duration) time.Duration {
-	if val := os.Getenv(key); val != "" {
-		d, err := time.ParseDuration(val)
-		if err == nil {
-			return d
-		}
-	}
-
-	return defaultVal
-}
-
-// getEnvInt returns an integer environment variable value or a default.
-func getEnvInt(key string, defaultVal int) int {
-	if val := os.Getenv(key); val != "" {
-		var result int
-
-		for _, c := range val {
-			if c < '0' || c > '9' {
-				return defaultVal
-			}
-
-			result = result*decimalBase + int(c-'0')
-		}
-
-		return result
-	}
-
-	return defaultVal
+	return scheme, nil
 }
