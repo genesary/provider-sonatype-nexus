@@ -37,6 +37,16 @@ type UserParameters struct {
 	// +kubebuilder:validation:Optional
 	Roles []string `json:"roles,omitempty"`
 
+	// RoleRefs resolve roles from Role managed resources in the User's
+	// namespace. Resolved IDs replace roles.
+	// +kubebuilder:validation:Optional
+	RoleRefs []xpv2.Reference `json:"roleRefs,omitempty"`
+
+	// RoleSelector selects Role managed resources in the User's namespace to
+	// resolve roles.
+	// +kubebuilder:validation:Optional
+	RoleSelector *xpv2.Selector `json:"roleSelector,omitempty"`
+
 	// PasswordSecretRef is a reference to a secret with the user password.
 	// The secret must be in the same namespace as the User.
 	// +kubebuilder:validation:Optional

@@ -112,13 +112,35 @@ type RepositoryParameters struct {
 	// RoutingRule is the name of the routing rule for proxy repositories.
 	// +kubebuilder:validation:Optional
 	RoutingRule *string `json:"routingRule,omitempty"`
+
+	// RoutingRuleRef resolves routingRule from a RoutingRule managed resource
+	// in the Repository's namespace.
+	// +kubebuilder:validation:Optional
+	RoutingRuleRef *xpv2.Reference `json:"routingRuleRef,omitempty"`
+
+	// RoutingRuleSelector selects a RoutingRule managed resource in the
+	// Repository's namespace to resolve routingRule.
+	// +kubebuilder:validation:Optional
+	RoutingRuleSelector *xpv2.Selector `json:"routingRuleSelector,omitempty"`
 }
 
 // RepositoryStorage defines storage configuration for a repository.
+// +kubebuilder:validation:XValidation:rule="has(self.blobStoreName) || has(self.blobStoreNameRef) || has(self.blobStoreNameSelector)",message="one of blobStoreName, blobStoreNameRef or blobStoreNameSelector is required."
 type RepositoryStorage struct {
-	// BlobStoreName is the name of the blob store to use.
-	// +kubebuilder:validation:Required
-	BlobStoreName string `json:"blobStoreName"`
+	// BlobStoreName is the name of the blob store to use. It is required,
+	// unless it is resolved through blobStoreNameRef or blobStoreNameSelector.
+	// +kubebuilder:validation:Optional
+	BlobStoreName string `json:"blobStoreName,omitempty"`
+
+	// BlobStoreNameRef resolves blobStoreName from a BlobStore managed
+	// resource in the Repository's namespace.
+	// +kubebuilder:validation:Optional
+	BlobStoreNameRef *xpv2.Reference `json:"blobStoreNameRef,omitempty"`
+
+	// BlobStoreNameSelector selects a BlobStore managed resource in the
+	// Repository's namespace to resolve blobStoreName.
+	// +kubebuilder:validation:Optional
+	BlobStoreNameSelector *xpv2.Selector `json:"blobStoreNameSelector,omitempty"`
 
 	// StrictContentTypeValidation enables strict content type validation.
 	// +kubebuilder:default=true
@@ -136,6 +158,16 @@ type RepositoryCleanup struct {
 	// PolicyNames is a list of cleanup policy names.
 	// +kubebuilder:validation:Optional
 	PolicyNames []string `json:"policyNames,omitempty"`
+
+	// PolicyNameRefs resolve policyNames from CleanupPolicy managed resources
+	// in the Repository's namespace. Resolved names replace policyNames.
+	// +kubebuilder:validation:Optional
+	PolicyNameRefs []xpv2.Reference `json:"policyNameRefs,omitempty"`
+
+	// PolicyNameSelector selects CleanupPolicy managed resources in the
+	// Repository's namespace to resolve policyNames.
+	// +kubebuilder:validation:Optional
+	PolicyNameSelector *xpv2.Selector `json:"policyNameSelector,omitempty"`
 }
 
 // MavenConfig defines Maven specific configuration.
@@ -286,6 +318,17 @@ type GroupConfig struct {
 	// MemberNames is a list of member repository names.
 	// +kubebuilder:validation:Optional
 	MemberNames []string `json:"memberNames,omitempty"`
+
+	// MemberNameRefs resolve memberNames from Repository managed resources in
+	// the group Repository's namespace. Resolved names replace memberNames, in
+	// the order of the references.
+	// +kubebuilder:validation:Optional
+	MemberNameRefs []xpv2.Reference `json:"memberNameRefs,omitempty"`
+
+	// MemberNameSelector selects Repository managed resources in the group
+	// Repository's namespace to resolve memberNames, sorted by name.
+	// +kubebuilder:validation:Optional
+	MemberNameSelector *xpv2.Selector `json:"memberNameSelector,omitempty"`
 
 	// WritableMember is the writable member of the group (for Docker and Maven).
 	// +kubebuilder:validation:Optional
