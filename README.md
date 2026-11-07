@@ -8,20 +8,27 @@ This provider enables you to manage Nexus Repository Manager resources using Kub
 
 ## Supported Resources
 
-| Resource | Description |
-|----------|-------------|
-| `ProviderConfig` | Configuration for connecting to Nexus |
-| `BlobStore` | File or S3-based blob storage |
-| `Repository` | Repositories for various formats (hosted, proxy, group) |
-| `User` | Nexus user accounts |
-| `Role` | Security roles with privileges |
-| `Privilege` | Security privileges (application, repository-view, wildcard) |
-| `ContentSelector` | Content selectors for fine-grained access control |
-| `SecurityRealm` | Security realm configuration |
-| `AnonymousAccess` | Anonymous access settings |
-| `LDAP` | LDAP server configuration |
-| `SAML` | SAML identity provider configuration |
-| `UserTokenConfiguration` | User token settings |
+| Resource | API group | Description |
+|----------|-----------|-------------|
+| `ProviderConfig` | `nexus.crossplane.io` | Connection to a Nexus instance, used by the managed resources of its namespace |
+| `ClusterProviderConfig` | `nexus.crossplane.io` | Connection to a Nexus instance, usable from any namespace |
+| `Repository` | `content.nexus.crossplane.io` | Repositories for various formats (hosted, proxy, group) |
+| `CleanupPolicy` | `content.nexus.crossplane.io` | Component cleanup policies |
+| `ContentSelector` | `content.nexus.crossplane.io` | Content selectors for fine-grained access control |
+| `RoutingRule` | `content.nexus.crossplane.io` | Routing rules for proxy repositories |
+| `User` | `iam.nexus.crossplane.io` | Nexus user accounts |
+| `Role` | `iam.nexus.crossplane.io` | Security roles with privileges |
+| `Privilege` | `iam.nexus.crossplane.io` | Security privileges (application, repository-view, wildcard, ...) |
+| `AnonymousAccess` | `iam.nexus.crossplane.io` | Anonymous access settings |
+| `LDAP` | `iam.nexus.crossplane.io` | LDAP server configuration |
+| `SAML` | `iam.nexus.crossplane.io` | SAML identity provider configuration |
+| `UserTokenConfiguration` | `iam.nexus.crossplane.io` | User token settings |
+| `BlobStore` | `instance.nexus.crossplane.io` | File or S3-based blob storage |
+| `Capability` | `instance.nexus.crossplane.io` | Nexus capabilities |
+| `IQServerConfiguration` | `instance.nexus.crossplane.io` | Sonatype IQ Server integration |
+| `License` | `instance.nexus.crossplane.io` | Nexus Pro license |
+| `SecurityRealm` | `instance.nexus.crossplane.io` | Active security realms and their order |
+| `SecuritySSLTruststore` | `instance.nexus.crossplane.io` | Certificates of the Nexus SSL truststore |
 
 ### Supported Repository Formats
 
@@ -63,7 +70,7 @@ kind: Provider
 metadata:
   name: provider-sonatype-nexus
 spec:
-  package: ghcr.io/genesary/provider-sonatype-nexus:v0.1.0
+  package: ghcr.io/genesary/provider-sonatype-nexus:v0.3.1
 ```
 
 Crossplane will pull the package, extract the CRDs and RBAC rules, and start the controller automatically.
@@ -71,19 +78,7 @@ Crossplane will pull the package, extract the CRDs and RBAC rules, and start the
 ### Install via CLI
 
 ```bash
-kubectl crossplane install provider ghcr.io/genesary/provider-sonatype-nexus:v0.1.0
-```
-
-### Manual Installation (without Crossplane package manager)
-
-If you prefer to deploy the controller directly:
-
-```bash
-# Apply CRDs
-kubectl apply -f package/crds/
-
-# Deploy the controller (adjust the image tag as needed)
-kubectl apply -f e2e/manifests/provider.yaml
+crossplane xpkg install provider ghcr.io/genesary/provider-sonatype-nexus:v0.3.1
 ```
 
 ## Configuration
@@ -385,247 +380,165 @@ references, not both. To reference a built-in Nexus object, such as an
 
 ## Usage Examples
 
-### BlobStore
-
-#### File-based BlobStore
+Every managed resource is namespaced, and names its provider config with
+`providerConfigRef`. This chain creates a blob store, a Maven repository
+stored in it, a privilege to read that repository, and a role granting that
+privilege, each referencing the previous one:
 
 ```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
+apiVersion: instance.nexus.crossplane.io/v1alpha1
 kind: BlobStore
 metadata:
-  name: my-file-blobstore
+  name: maven
+  namespace: default
 spec:
   forProvider:
-    name: my-file-blobstore
+    name: maven
     type: File
-    path: /nexus-data/blobs/my-file-blobstore
-    softQuota:
-      type: spaceRemainingQuota
-      limit: 104857600  # 100MB
+    path: /nexus-data/blobs/maven
   providerConfigRef:
-    name: nexus-provider-config
-```
-
-### Repository
-
-#### Maven Hosted Repository
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
+    kind: ProviderConfig
+    name: default
+---
+apiVersion: content.nexus.crossplane.io/v1alpha1
 kind: Repository
 metadata:
   name: maven-releases
+  namespace: default
 spec:
   forProvider:
     name: maven-releases
     format: maven2
     type: hosted
-    online: true
     storage:
-      blobStoreName: default
+      blobStoreNameRef:
+        name: maven
+      writePolicy: ALLOW_ONCE
     maven:
       versionPolicy: RELEASE
       layoutPolicy: STRICT
   providerConfigRef:
-    name: nexus-provider-config
-```
-
-#### Docker Hosted Repository
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
+    kind: ProviderConfig
+    name: default
+---
+apiVersion: iam.nexus.crossplane.io/v1alpha1
+kind: Privilege
 metadata:
-  name: docker-hosted
-spec:
-  forProvider:
-    name: docker-hosted
-    format: docker
-    type: hosted
-    online: true
-    docker:
-      httpPort: 8082
-      forceBasicAuth: true
-  providerConfigRef:
-    name: nexus-provider-config
-```
-
-### User
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: User
-metadata:
-  name: developer-user
+  name: maven-releases-read
   namespace: default
 spec:
   forProvider:
-    userId: developer
-    firstName: John
-    lastName: Developer
-    email: john.developer@example.com
-    status: active
-    roles:
-      - nx-repository-view-maven2-*-read
-    passwordSecretRef:
-      name: user-password-secret
-      key: password
+    name: maven-releases-read
+    type: repository-view
+    format: maven2
+    repositoryRef:
+      name: maven-releases
+    actions:
+      - BROWSE
+      - READ
   providerConfigRef:
-    name: nexus-provider-config
-```
-
-### Role
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
+    kind: ProviderConfig
+    name: default
+---
+apiVersion: iam.nexus.crossplane.io/v1alpha1
 kind: Role
 metadata:
-  name: developer-role
+  name: maven-readers
+  namespace: default
 spec:
   forProvider:
-    roleId: developer-role
-    name: Developer Role
-    description: Role for developers
-    privileges:
-      - nx-repository-view-maven2-*-read
-      - nx-repository-view-npm-*-read
-    roles: []
+    id: maven-readers
+    name: Maven readers
+    privilegeRefs:
+      - name: maven-releases-read
   providerConfigRef:
-    name: nexus-provider-config
+    kind: ProviderConfig
+    name: default
 ```
 
-### Privilege
+The [`examples`](examples) directory has an example of every kind:
 
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Privilege
-metadata:
-  name: custom-repo-view
-spec:
-  forProvider:
-    name: custom-repo-view
-    type: repository-view
-    description: Custom repository view privilege
-    repositoryView:
-      format: maven2
-      repository: maven-releases
-      actions:
-        - browse
-        - read
-  providerConfigRef:
-    name: nexus-provider-config
-```
-
-### Content Selector
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: ContentSelector
-metadata:
-  name: release-selector
-spec:
-  forProvider:
-    name: release-selector
-    description: Select only release artifacts
-    expression: format == "maven2" and path =^ "/com/example/"
-  providerConfigRef:
-    name: nexus-provider-config
-```
-
-### Security Realm
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: SecurityRealm
-metadata:
-  name: nexus-realms
-spec:
-  forProvider:
-    realms:
-      - NexusAuthenticatingRealm
-      - NexusAuthorizingRealm
-      - DockerToken
-  providerConfigRef:
-    name: nexus-provider-config
-```
+| Directory | Examples |
+|-----------|----------|
+| [`examples/content`](examples/content) | Repositories (Maven hosted, proxy and group, Docker, npm, Hugging Face, P2), `CleanupPolicy`, `ContentSelector`, `RoutingRule` |
+| [`examples/iam`](examples/iam) | `User`, `Role`, `Privilege` (application, repository-view, wildcard), `AnonymousAccess`, `LDAP`, `SAML`, `UserTokenConfiguration`, a role built with references |
+| [`examples/instance`](examples/instance) | `BlobStore` (File and S3), `Capability`, `IQServerConfiguration`, `SecurityRealm`, `SecuritySSLTruststore` |
+| [`examples/providerconfig.yaml`](examples/providerconfig.yaml) | `ProviderConfig` and its Secrets |
 
 ## Development
 
 ### Prerequisites
 
-- Go 1.24+
+- Go 1.26+
 - Docker
-- kubectl
-- Kind (for e2e tests)
+- The `build` submodule: `make submodules`
 
 ### Building
 
 ```bash
-# Generate code (DeepCopy methods, CRDs)
+# Generate code (DeepCopy methods, managed resource methods, CRDs)
 make generate
 
-# Build the provider binary
+# Build the provider binary, image and Crossplane package
 make build
 
 # Run unit tests
 make test
 
-# Build Docker image
-make docker-build
+# Run the linters
+make lint
 
-# Build Crossplane package with embedded runtime (requires crossplane CLI)
-make xpkg-build
+# Generate, lint and test: run before opening a pull request
+make reviewable
 ```
 
 ### Running E2E Tests
 
-```bash
-# Run full e2e test cycle (setup + tests)
-make e2e
+`make e2e.run` builds nothing: run `make build` first. It then creates a kind
+cluster, installs Crossplane and the locally built provider package, starts
+Nexus in the cluster, and runs the Go e2e suite in `internal/test/e2e`.
 
-# Or with cleanup
-make e2e-full
+```bash
+make build
+make e2e.run
 ```
+
+The following environment variables tune it:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `skipcleanup` | | `true` keeps the kind cluster after the run. |
+| `KIND_NODE_IMAGE_TAG` | see `Makefile` | kindest/node tag, and so Kubernetes version, of the cluster. |
+| `CROSSPLANE_VERSION` | see `Makefile` | Crossplane chart version. |
+| `E2E_TEST_PARALLEL` | `16` | Number of e2e tests run at once. |
+| `E2E_TEST_TIMEOUT` | `30m` | Timeout of the Go e2e suite. |
+| `E2E_CREATION_GRACE_PERIOD` | `5s` | `--creation-grace-period` of the provider under test. |
+| `ENABLE_SECRET_CACHE` | `true` | `--enable-secret-cache` of the provider under test. |
+| `E2E_PROVIDER_ARGS` | | Extra provider flags, space separated, e.g. `--poll=10s`. |
+
+`make e2e.test` only runs the Go suite, against an existing cluster. It
+expects `NEXUS_URL`, `NEXUS_USER` and `NEXUS_PASS`.
 
 ### Project Structure
 
 ```
 .
-├── apis/v1alpha1/              # CRD type definitions
-│   ├── blobstore_types.go
-│   ├── repository_types.go
-│   ├── user_types.go
-│   ├── role_types.go
-│   ├── privilege_types.go
-│   ├── contentselector_types.go
-│   ├── securityrealm_types.go
-│   ├── anonymousaccess_types.go
-│   ├── ldap_types.go
-│   ├── saml_types.go
-│   ├── usertokenconfiguration_types.go
-│   └── providerconfig_types.go
-├── cmd/provider/               # Provider entry point
+├── apis/                       # API types and generated CRD methods
+│   ├── v1alpha1/               # ProviderConfig, ClusterProviderConfig, ProviderConfigUsage
+│   ├── content/v1alpha1/       # Repository, CleanupPolicy, ContentSelector, RoutingRule
+│   ├── iam/v1alpha1/           # User, Role, Privilege, LDAP, SAML, ...
+│   └── instance/v1alpha1/      # BlobStore, Capability, License, SecurityRealm, ...
+├── cmd/provider/               # Provider entry point and flags
 ├── internal/
-│   ├── clients/nexus/          # Nexus client wrapper
-│   └── controller/             # Resource controllers
-│       ├── blobstore/
-│       ├── repository/
-│       ├── user/
-│       ├── role/
-│       ├── privilege/
-│       ├── contentselector/
-│       ├── securityrealm/
-│       ├── anonymousaccess/
-│       ├── ldap/
-│       ├── saml/
-│       └── usertokenconfiguration/
-├── e2e/                        # E2E test infrastructure
-├── examples/                   # Example YAML manifests
-├── package/crds/               # Generated CRDs
-├── test/mocks/                 # Mock implementations
-├── Dockerfile
-├── Makefile
-└── go.mod
+│   ├── clients/                # Nexus API clients, by API group
+│   │   └── nexus/              # Shared HTTP client, credentials, errors
+│   ├── controller/             # Controllers, by API group
+│   ├── helpers/                # Shared reconciler options and helpers
+│   └── test/e2e/               # E2E test suite
+├── cluster/                    # Provider image and e2e scripts
+├── e2e/                        # E2E kind cluster and Nexus manifests
+├── examples/                   # Example manifests
+└── package/                    # Crossplane package metadata and generated CRDs
 ```
 
 ### Running Locally

@@ -7,16 +7,22 @@ metadata:
     meta.crossplane.io/source: github.com/genesary/provider-sonatype-nexus
     meta.crossplane.io/license: Apache-2.0
     meta.crossplane.io/description: |
-      A Crossplane provider for managing Sonatype Nexus Repository Manager resources
-      including blob stores, repositories, users, and roles.
+      A Crossplane provider for managing Sonatype Nexus Repository Manager
+      resources: repositories, blob stores, security and instance settings.
     meta.crossplane.io/readme: |
-      This provider enables Crossplane to manage Sonatype Nexus Repository Manager resources.
+      `provider-sonatype-nexus` brings Sonatype Nexus Repository Manager
+      configuration under Crossplane management.
 
       Supported resources:
-      - BlobStore (File and S3 types)
-      - Repository (Maven, Docker, npm, Raw - hosted, proxy, group)
-      - User
-      - Role
+      - Content: Repository (hosted, proxy and group, for every format Nexus
+        supports), CleanupPolicy, ContentSelector, RoutingRule
+      - IAM: User, Role, Privilege, AnonymousAccess, LDAP, SAML,
+        UserTokenConfiguration
+      - Instance: BlobStore (File and S3), Capability, IQServerConfiguration,
+        License, SecurityRealm, SecuritySSLTruststore
+
+      For setup, provider flags and examples, see the repository
+      [README](https://github.com/genesary/provider-sonatype-nexus/blob/main/README.md).
 spec:
   capabilities:
     - safe-start
