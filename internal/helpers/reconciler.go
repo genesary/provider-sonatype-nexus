@@ -7,12 +7,15 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/providerconfig"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
+	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 // maxSharedReconcilerOptions is the most options ReconcilerOptions shares
 // between controllers, to size the slice it returns.
-const maxSharedReconcilerOptions = 4
+const maxSharedReconcilerOptions = 5
 
 // Options are the crossplane-runtime controller options, extended with the
 // settings of this provider.
@@ -34,6 +37,10 @@ func ReconcilerOptions(mgr ctrl.Manager, name string, opts Options, specific ...
 		options = append(options, managed.WithManagementPolicies())
 	}
 
+	if opts.MetricOptions != nil && opts.MetricOptions.MRMetrics != nil {
+		options = append(options, managed.WithMetricRecorder(opts.MetricOptions.MRMetrics))
+	}
+
 	return append(options, specific...)
 }
 
@@ -50,6 +57,25 @@ func ProviderConfigReconcilerOptions(mgr ctrl.Manager, name string, opts Options
 // controllerLogger returns the logger of the named controller.
 func controllerLogger(opts Options, name string) logging.Logger {
 	return opts.Logger.WithValues("controller", name)
+}
+
+// AddMRStateRecorder registers with mgr a recorder of the state metrics of the
+// managed resources in list. It does nothing when state metrics are disabled.
+func AddMRStateRecorder(mgr ctrl.Manager, opts Options, list resource.ManagedList) error {
+	if opts.MetricOptions == nil || opts.MetricOptions.MRStateMetrics == nil {
+		return nil
+	}
+
+	recorder := statemetrics.NewMRStateRecorder(
+		mgr.GetClient(), opts.Logger, opts.MetricOptions.MRStateMetrics, list, opts.MetricOptions.PollStateMetricInterval,
+	)
+
+	err := mgr.Add(recorder)
+	if err != nil {
+		return errors.Wrapf(err, "cannot register MR state metrics recorder for kind %T", list)
+	}
+
+	return nil
 }
 
 // newEventRecorder returns a Crossplane event recorder for the named

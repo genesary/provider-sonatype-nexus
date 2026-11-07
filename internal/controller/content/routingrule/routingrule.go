@@ -51,6 +51,11 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 
 	reconciler := managed.NewReconciler(mgr, resource.ManagedKind(contentv1alpha1.RoutingRuleGroupVersionKind), reconcilerOpts...)
 
+	err := helpers.AddMRStateRecorder(mgr, opts, &contentv1alpha1.RoutingRuleList{})
+	if err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(opts.ForControllerRuntime()).

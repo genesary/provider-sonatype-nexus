@@ -72,6 +72,11 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 
 	rec := managed.NewReconciler(mgr, resource.ManagedKind(repositoryv1alpha1.RepositoryGroupVersionKind), reconcilerOpts...)
 
+	err := helpers.AddMRStateRecorder(mgr, opts, &repositoryv1alpha1.RepositoryList{})
+	if err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(opts.ForControllerRuntime()).

@@ -68,6 +68,11 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 
 	reconciler := managed.NewReconciler(mgr, resource.ManagedKind(instancev1alpha1.LicenseGroupVersionKind), reconcilerOpts...)
 
+	err := helpers.AddMRStateRecorder(mgr, opts, &instancev1alpha1.LicenseList{})
+	if err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).
 		WithOptions(opts.ForControllerRuntime()).
