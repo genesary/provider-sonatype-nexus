@@ -106,7 +106,7 @@ func (c *licenseClient) InstallLicense(ctx context.Context, licenseData []byte) 
 
 	resp, err := cfg.HTTPClient.Do(req)
 	if err != nil {
-		return errors.Wrap(err, "POST license request failed")
+		return errors.Wrap(nexus.RedactURLError(err), "POST license request failed")
 	}
 
 	defer resp.Body.Close() //nolint:errcheck // response body close error is not actionable here

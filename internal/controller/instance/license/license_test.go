@@ -966,3 +966,26 @@ func TestEndpointClientTimeout(t *testing.T) {
 		t.Fatal("endpointClient has no timeout")
 	}
 }
+
+// TestDoEndpointRequest_RedactsTheURL checks that a failed license download
+// does not report the query of its URL, which for a pre-signed URL holds its
+// signature.
+func TestDoEndpointRequest_RedactsTheURL(t *testing.T) {
+	t.Parallel()
+
+	e := &external{}
+
+	for _, endpoint := range []string{
+		"http://127.0.0.1:1/license.lic?X-Amz-Signature=secret",
+		"http://127.0.0.1:1/%zz?X-Amz-Signature=secret",
+	} {
+		_, err := e.doEndpointRequest(context.Background(), "default", endpoint, nil)
+		if err == nil {
+			t.Fatalf("doEndpointRequest(%q) error = nil, want an error", endpoint)
+		}
+
+		if strings.Contains(err.Error(), "secret") {
+			t.Errorf("doEndpointRequest(%q) error = %q reports the URL query", endpoint, err.Error())
+		}
+	}
+}

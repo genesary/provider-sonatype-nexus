@@ -119,11 +119,14 @@ func (b *limitedBody) Read(buf []byte) (int, error) {
 // APIError turns the outcome of a generated client call into a provider
 // error: nil on success, an error wrapping ErrNotFound when Nexus answered
 // 404, and otherwise an error naming the HTTP status and quoting the start of
-// the response body, which is where Nexus explains a rejected request.
+// the response body, which is where Nexus explains a rejected request. A
+// transport error has its request URL redacted, see RedactURLError.
 func APIError(resp *http.Response, err error) error {
 	if err == nil {
 		return nil
 	}
+
+	err = RedactURLError(err)
 
 	if resp != nil && resp.StatusCode == http.StatusNotFound {
 		return errors.Wrap(ErrNotFound, err.Error())

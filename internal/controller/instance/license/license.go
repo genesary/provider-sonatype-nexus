@@ -272,7 +272,7 @@ func (e *external) fetchFromEndpoint(ctx context.Context, licenseCR *instancev1a
 func (e *external) doEndpointRequest(ctx context.Context, namespace, url string, creds *instancev1alpha1.LicenseEndpointCredentials) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
-		return nil, errors.Wrap(err, "cannot build endpoint request")
+		return nil, errors.Wrap(nexus.RedactURLError(err), "cannot build endpoint request")
 	}
 
 	err = e.applyEndpointCredentials(ctx, namespace, req, creds)
@@ -282,7 +282,7 @@ func (e *external) doEndpointRequest(ctx context.Context, namespace, url string,
 
 	resp, err := endpointClient.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "endpoint request failed")
+		return nil, errors.Wrap(nexus.RedactURLError(err), "endpoint request failed")
 	}
 
 	defer resp.Body.Close() //nolint:errcheck // response body close error is not actionable here
