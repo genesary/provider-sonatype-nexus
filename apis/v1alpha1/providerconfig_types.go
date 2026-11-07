@@ -101,7 +101,9 @@ type ProviderConfigList struct {
 // +kubebuilder:printcolumn:name="RESOURCE-NAME",type="string",JSONPath=".resourceRef.name"
 // +kubebuilder:resource:scope=Namespaced,categories={crossplane,provider,nexus}
 
-// ProviderConfigUsage indicates that a resource is using a ProviderConfig.
+// ProviderConfigUsage indicates that a resource is using a ProviderConfig or a
+// ClusterProviderConfig. Every managed resource of this provider is namespaced,
+// so its usage record lives beside it, whichever kind of config it refers to.
 type ProviderConfigUsage struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -146,37 +148,9 @@ type ClusterProviderConfigList struct {
 	Items []ClusterProviderConfig `json:"items"`
 }
 
-// +kubebuilder:object:root=true
-// +kubebuilder:storageversion
-// +kubebuilder:printcolumn:name="AGE",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:printcolumn:name="CONFIG-NAME",type="string",JSONPath=".providerConfigRef.name"
-// +kubebuilder:printcolumn:name="RESOURCE-KIND",type="string",JSONPath=".resourceRef.kind"
-// +kubebuilder:printcolumn:name="RESOURCE-NAME",type="string",JSONPath=".resourceRef.name"
-// +kubebuilder:resource:scope=Cluster,categories={crossplane,provider,nexus}
-
-// ClusterProviderConfigUsage indicates that a resource is using
-// a ClusterProviderConfig.
-type ClusterProviderConfigUsage struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	xpv2.TypedProviderConfigUsage `json:",inline"`
-}
-
-// +kubebuilder:object:root=true
-
-// ClusterProviderConfigUsageList contains a list of ClusterProviderConfigUsage.
-type ClusterProviderConfigUsageList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-
-	Items []ClusterProviderConfigUsage `json:"items"`
-}
-
 // init registers these types with the SchemeBuilder.
 func init() {
 	SchemeBuilder.Register(&ProviderConfig{}, &ProviderConfigList{})
 	SchemeBuilder.Register(&ProviderConfigUsage{}, &ProviderConfigUsageList{})
 	SchemeBuilder.Register(&ClusterProviderConfig{}, &ClusterProviderConfigList{})
-	SchemeBuilder.Register(&ClusterProviderConfigUsage{}, &ClusterProviderConfigUsageList{})
 }

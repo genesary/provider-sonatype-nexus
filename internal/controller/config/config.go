@@ -36,11 +36,17 @@ func setupNamespacedProviderConfig(mgr ctrl.Manager, opts controller.Options) er
 			UsageList: v1alpha1.ProviderConfigUsageListGroupVersionKind,
 		},
 		&v1alpha1.ProviderConfig{},
-		&v1alpha1.ProviderConfigUsage{},
+		v1alpha1.ProviderConfigKind,
 	)
 }
 
 // setupClusterProviderConfig sets up the ClusterProviderConfig controller.
+//
+// Every managed resource of this provider is namespaced, so every usage record
+// is a namespaced ProviderConfigUsage, even for a ClusterProviderConfig: the
+// usage lives beside the managed resource that created it and records which
+// kind of config it refers to. The reconciler counts the usages of a
+// ClusterProviderConfig across all namespaces.
 func setupClusterProviderConfig(mgr ctrl.Manager, opts controller.Options) error {
 	return setupProviderConfig(
 		mgr,
@@ -48,22 +54,25 @@ func setupClusterProviderConfig(mgr ctrl.Manager, opts controller.Options) error
 		v1alpha1.ClusterProviderConfigGroupKind,
 		resource.ProviderConfigKinds{
 			Config:    v1alpha1.ClusterProviderConfigGroupVersionKind,
-			Usage:     v1alpha1.ClusterProviderConfigUsageGroupVersionKind,
-			UsageList: v1alpha1.ClusterProviderConfigUsageListGroupVersionKind,
+			Usage:     v1alpha1.ProviderConfigUsageGroupVersionKind,
+			UsageList: v1alpha1.ProviderConfigUsageListGroupVersionKind,
 		},
 		&v1alpha1.ClusterProviderConfig{},
-		&v1alpha1.ClusterProviderConfigUsage{},
+		v1alpha1.ClusterProviderConfigKind,
 	)
 }
 
 // setupProviderConfig wires up a providerconfig controller and reconciler.
+// The controller is only enqueued by the usages that refer to configKind, so
+// that a ProviderConfig and a ClusterProviderConfig of the same name do not
+// wake each other up.
 func setupProviderConfig(
 	mgr ctrl.Manager,
 	opts controller.Options,
 	groupKind string,
 	kinds resource.ProviderConfigKinds,
 	config client.Object,
-	usage client.Object,
+	configKind string,
 ) error {
 	name := providerconfig.ControllerName(groupKind)
 
@@ -75,6 +84,6 @@ func setupProviderConfig(
 		Named(name).
 		WithOptions(opts.ForControllerRuntime()).
 		For(config).
-		Watches(usage, &resource.EnqueueRequestForProviderConfig{}).
+		Watches(&v1alpha1.ProviderConfigUsage{}, &resource.EnqueueRequestForProviderConfig{Kind: configKind}).
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
