@@ -49,43 +49,6 @@ echo_step "installing Crossplane ${CROSSPLANE_VERSION}"
 echo_step "deploying ${PACKAGE_NAME} provider package"
 make -C "${projectdir}" "local.xpkg.deploy.provider.${PACKAGE_NAME}"
 
-echo_step "granting provider service account permission to watch CRDs"
-echo "waiting for provider service account to be created..."
-provider_sa=""
-for _ in $(seq 1 60); do
-    provider_sa="$("${KUBECTL}" get sa -n crossplane-system -o name 2>/dev/null \
-        | grep "${PACKAGE_NAME}" | head -1 | sed 's|^serviceaccount/||')"
-    if [ -n "${provider_sa}" ]; then break; fi
-    sleep 2
-done
-if [ -z "${provider_sa}" ]; then
-    echo_error "provider service account did not appear within 120s"
-fi
-echo "binding ServiceAccount ${provider_sa} to CRD watch role"
-"${KUBECTL}" apply -f - <<EOF
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: ${PACKAGE_NAME}-crd-watcher
-rules:
-  - apiGroups: ["apiextensions.k8s.io"]
-    resources: ["customresourcedefinitions"]
-    verbs: ["get", "list", "watch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: ${PACKAGE_NAME}-crd-watcher
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: ${PACKAGE_NAME}-crd-watcher
-subjects:
-  - kind: ServiceAccount
-    name: ${provider_sa}
-    namespace: crossplane-system
-EOF
-
 echo_step "waiting for provider to become healthy"
 "${KUBECTL}" wait "provider.pkg.crossplane.io/${PACKAGE_NAME}" \
     --for=condition=healthy --timeout=300s

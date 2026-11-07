@@ -46,6 +46,12 @@ const (
 // the requested certificate ID is not present in the truststore list.
 var errCertNotFound = errors.New("certificate not found in truststore")
 
+// SetupGated adds a controller that reconciles SecuritySSLTruststore
+// resources once their CustomResourceDefinition is established.
+func SetupGated(mgr ctrl.Manager, opts helpers.Options) error {
+	return helpers.SetupGated(mgr, opts, Setup, instancev1alpha1.SecuritySSLTruststoreGroupVersionKind)
+}
+
 // Setup adds a controller that reconciles SecuritySSLTruststore resources.
 func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(instancev1alpha1.SecuritySSLTruststoreGroupKind)

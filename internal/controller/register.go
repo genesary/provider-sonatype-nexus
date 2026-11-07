@@ -25,27 +25,29 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
-// Setup creates all Nexus controllers and adds them to the supplied manager.
+// Setup adds all Nexus controllers to the supplied manager. The managed
+// resource controllers each start once their CustomResourceDefinition is
+// established; the ProviderConfig controllers start immediately.
 func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	for _, setup := range []func(ctrl.Manager, helpers.Options) error{
 		config.Setup,
-		contentcleanuppolicy.Setup,
-		contentcontentselector.Setup,
-		contentrepository.Setup,
-		contentroutingrule.Setup,
-		iamanonymousaccess.Setup,
-		iamldap.Setup,
-		iamprivilege.Setup,
-		iamrole.Setup,
-		iamsaml.Setup,
-		iamuser.Setup,
-		iamutc.Setup,
-		instanceblobstore.Setup,
-		instancecapability.Setup,
-		instanceiqserver.Setup,
-		instancelicense.Setup,
-		instancesecurityrealm.Setup,
-		instancessltruststore.Setup,
+		contentcleanuppolicy.SetupGated,
+		contentcontentselector.SetupGated,
+		contentrepository.SetupGated,
+		contentroutingrule.SetupGated,
+		iamanonymousaccess.SetupGated,
+		iamldap.SetupGated,
+		iamprivilege.SetupGated,
+		iamrole.SetupGated,
+		iamsaml.SetupGated,
+		iamuser.SetupGated,
+		iamutc.SetupGated,
+		instanceblobstore.SetupGated,
+		instancecapability.SetupGated,
+		instanceiqserver.SetupGated,
+		instancelicense.SetupGated,
+		instancesecurityrealm.SetupGated,
+		instancessltruststore.SetupGated,
 	} {
 		err := setup(mgr, opts)
 		if err != nil {

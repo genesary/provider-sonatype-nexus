@@ -10,20 +10,25 @@ import (
 	changelogsv1alpha1 "github.com/crossplane/crossplane-runtime/v2/apis/changelogs/proto/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/gate"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/customresourcesgate"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
@@ -83,6 +88,7 @@ func main() {
 		log.Info("Alpha feature enabled", "flag", feature.EnableAlphaChangeLogs, "socket", parsed.ChangeLogsSocketPath)
 	}
 
+	kingpin.FatalIfError(customresourcesgate.Setup(mgr, opts.Options), "Cannot setup CRD gate controller")
 	kingpin.FatalIfError(nexuscontroller.Setup(mgr, opts), "Cannot setup Nexus controllers")
 
 	log.Info("Starting controller manager", "version", version.Version)
@@ -115,7 +121,7 @@ func newManager(cfg *rest.Config, parsed flags) (ctrl.Manager, error) {
 
 	mgr, err := ctrl.NewManager(ratelimiter.LimitRESTConfig(cfg, parsed.MaxReconcileRate), ctrl.Options{
 		Scheme: scheme,
-		Cache:  cache.Options{SyncPeriod: &parsed.SyncInterval},
+		Cache:  cacheOptions(parsed.SyncInterval),
 
 		// controller-runtime defaults to 15s leases with a 10s renewal
 		// deadline, which a busy provider can miss and lose leadership.
@@ -138,11 +144,14 @@ func newManager(cfg *rest.Config, parsed flags) (ctrl.Manager, error) {
 }
 
 // newScheme returns the manager scheme: the Kubernetes built-in types, which
-// the provider reads Secrets through, and the provider's own APIs.
+// the provider reads Secrets through, CustomResourceDefinitions, which the
+// safe-start gate watches, and the provider's own APIs. It must be complete
+// before the manager is built, which resolves the types of
+// cache.Options.ByObject against it.
 func newScheme() (*runtime.Scheme, error) {
 	scheme := runtime.NewScheme()
 
-	builder := runtime.NewSchemeBuilder(clientgoscheme.AddToScheme, apis.AddToScheme)
+	builder := runtime.NewSchemeBuilder(clientgoscheme.AddToScheme, apiextensionsv1.AddToScheme, apis.AddToScheme)
 
 	err := builder.AddToScheme(scheme)
 	if err != nil {
@@ -150,6 +159,24 @@ func newScheme() (*runtime.Scheme, error) {
 	}
 
 	return scheme, nil
+}
+
+// cacheOptions returns the manager cache options.
+//
+// The safe-start gate watches every CustomResourceDefinition of the cluster,
+// not only the ones of this provider, and only reads their group, kind,
+// versions and status. Their schemas, by far their largest part, are stripped
+// before they enter the informer cache. CRDs read through the cache are
+// therefore incomplete and must never be written back to the API server.
+func cacheOptions(syncInterval time.Duration) cache.Options {
+	return cache.Options{
+		SyncPeriod: &syncInterval,
+		ByObject: map[client.Object]cache.ByObject{
+			&apiextensionsv1.CustomResourceDefinition{}: {
+				Transform: customresourcesgate.TransformStripCRDSchema,
+			},
+		},
+	}
 }
 
 // controllerOptions returns the options shared by the provider controllers.
@@ -169,6 +196,7 @@ func controllerOptions(log logging.Logger, parsed flags) helpers.Options {
 			PollInterval:            parsed.PollInterval,
 			GlobalRateLimiter:       ratelimiter.NewGlobal(parsed.MaxReconcileRate),
 			Features:                &feature.Flags{},
+			Gate:                    new(gate.Gate[schema.GroupVersionKind]),
 			MetricOptions: &controller.MetricOptions{
 				PollStateMetricInterval: parsed.PollStateMetricInterval,
 				MRMetrics:               metricRecorder,

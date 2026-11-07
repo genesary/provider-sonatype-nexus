@@ -55,6 +55,12 @@ const (
 	errNoLicenseSource = "neither licenseSecretRef nor endpointUrl is configured"
 )
 
+// SetupGated adds a controller that reconciles License resources once their
+// CustomResourceDefinition is established.
+func SetupGated(mgr ctrl.Manager, opts helpers.Options) error {
+	return helpers.SetupGated(mgr, opts, Setup, instancev1alpha1.LicenseGroupVersionKind)
+}
+
 // Setup adds a controller that reconciles License resources.
 func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(instancev1alpha1.LicenseGroupKind)

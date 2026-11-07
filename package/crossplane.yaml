@@ -17,4 +17,6 @@ metadata:
       - Repository (Maven, Docker, npm, Raw - hosted, proxy, group)
       - User
       - Role
-spec: {}
+spec:
+  capabilities:
+    - safe-start

@@ -59,6 +59,12 @@ const (
 	errFingerprint = "cannot fingerprint repository credentials"
 )
 
+// SetupGated adds a controller that reconciles Repository resources once
+// their CustomResourceDefinition is established.
+func SetupGated(mgr ctrl.Manager, opts helpers.Options) error {
+	return helpers.SetupGated(mgr, opts, Setup, repositoryv1alpha1.RepositoryGroupVersionKind)
+}
+
 // Setup creates a controller for Repository resources.
 func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(repositoryv1alpha1.RepositoryGroupKind)

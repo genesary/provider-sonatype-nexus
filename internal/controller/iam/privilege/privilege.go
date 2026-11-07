@@ -38,6 +38,12 @@ const (
 	errDeletePrivilege = "cannot delete privilege from Nexus"
 )
 
+// SetupGated adds a controller that reconciles Privilege resources once
+// their CustomResourceDefinition is established.
+func SetupGated(mgr ctrl.Manager, opts helpers.Options) error {
+	return helpers.SetupGated(mgr, opts, Setup, iamv1alpha1.PrivilegeGroupVersionKind)
+}
+
 // Setup adds a controller that reconciles Privilege resources.
 func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(iamv1alpha1.PrivilegeGroupKind)

@@ -38,6 +38,12 @@ const (
 	errDeleteRole = "cannot delete role from Nexus"
 )
 
+// SetupGated adds a controller that reconciles Role resources once their
+// CustomResourceDefinition is established.
+func SetupGated(mgr ctrl.Manager, opts helpers.Options) error {
+	return helpers.SetupGated(mgr, opts, Setup, iamv1alpha1.RoleGroupVersionKind)
+}
+
 // Setup adds a controller that reconciles Role resources.
 func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(iamv1alpha1.RoleGroupKind)

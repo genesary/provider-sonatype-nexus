@@ -33,6 +33,12 @@ const (
 	errUpdateUserTokenConfig = "cannot update user token configuration in Nexus"
 )
 
+// SetupGated adds a controller that reconciles UserTokenConfiguration
+// resources once their CustomResourceDefinition is established.
+func SetupGated(mgr ctrl.Manager, opts helpers.Options) error {
+	return helpers.SetupGated(mgr, opts, Setup, iamv1alpha1.UserTokenConfigurationGroupVersionKind)
+}
+
 // Setup adds a controller that reconciles UserTokenConfiguration resources.
 func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(iamv1alpha1.UserTokenConfigurationGroupKind)
