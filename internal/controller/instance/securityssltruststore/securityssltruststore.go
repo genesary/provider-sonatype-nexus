@@ -23,9 +23,6 @@ import (
 )
 
 const (
-	// errNotTruststore means the managed resource is not a
-	// SecuritySSLTruststore custom resource.
-	errNotTruststore = "managed resource is not a SecuritySSLTruststore custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when getting the ProviderConfig fails.
@@ -51,7 +48,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(instancev1alpha1.SecuritySSLTruststoreGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*instancev1alpha1.SecuritySSLTruststore](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
@@ -72,30 +69,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
 // Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isTruststore := managedRes.(*instancev1alpha1.SecuritySSLTruststore)
-	if !isTruststore {
-		return nil, errors.New(errNotTruststore)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+func (c *connector) Connect(ctx context.Context, truststoreCR *instancev1alpha1.SecuritySSLTruststore) (managed.TypedExternalClient[*instancev1alpha1.SecuritySSLTruststore], error) {
+	err := c.usage.Track(ctx, truststoreCR)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, truststoreCR)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -108,18 +95,13 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{client: sslClient}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	client instanceclient.SSLTruststoreClient
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	truststoreCR, isTruststore := managedRes.(*instancev1alpha1.SecuritySSLTruststore)
-	if !isTruststore {
-		return managed.ExternalObservation{}, errors.New(errNotTruststore)
-	}
-
+func (e *external) Observe(ctx context.Context, truststoreCR *instancev1alpha1.SecuritySSLTruststore) (managed.ExternalObservation, error) {
 	certID := meta.GetExternalName(truststoreCR)
 	if certID == "" {
 		return managed.ExternalObservation{ResourceExists: false}, nil
@@ -145,12 +127,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 }
 
 // Create creates the desired certificate in the Nexus truststore.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	truststoreCR, isTruststore := managedRes.(*instancev1alpha1.SecuritySSLTruststore)
-	if !isTruststore {
-		return managed.ExternalCreation{}, errors.New(errNotTruststore)
-	}
-
+func (e *external) Create(ctx context.Context, truststoreCR *instancev1alpha1.SecuritySSLTruststore) (managed.ExternalCreation, error) {
 	err := e.client.AddCertificate(ctx, truststoreCR.Spec.ForProvider.Pem)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errAddCert)
@@ -171,12 +148,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update reconciles the certificate to the desired state.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	truststoreCR, isTruststore := managedRes.(*instancev1alpha1.SecuritySSLTruststore)
-	if !isTruststore {
-		return managed.ExternalUpdate{}, errors.New(errNotTruststore)
-	}
-
+func (e *external) Update(ctx context.Context, truststoreCR *instancev1alpha1.SecuritySSLTruststore) (managed.ExternalUpdate, error) {
 	oldID := meta.GetExternalName(truststoreCR)
 	if oldID != "" {
 		err := e.client.RemoveCertificate(ctx, oldID)
@@ -205,12 +177,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete removes the certificate from the Nexus truststore.
-func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	truststoreCR, isTruststore := managedRes.(*instancev1alpha1.SecuritySSLTruststore)
-	if !isTruststore {
-		return managed.ExternalDelete{}, errors.New(errNotTruststore)
-	}
-
+func (e *external) Delete(ctx context.Context, truststoreCR *instancev1alpha1.SecuritySSLTruststore) (managed.ExternalDelete, error) {
 	certID := meta.GetExternalName(truststoreCR)
 	if certID == "" {
 		return managed.ExternalDelete{}, nil

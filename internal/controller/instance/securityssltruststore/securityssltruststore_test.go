@@ -433,22 +433,6 @@ func TestDisconnect(t *testing.T) {
 	}
 }
 
-// TestConnect_WrongType tests Connect with wrong resource type.
-func TestConnect_WrongType(t *testing.T) {
-	t.Parallel()
-
-	c := &connector{}
-
-	_, err := c.Connect(context.Background(), nil)
-	if err == nil {
-		t.Error("Connect() with nil managed resource should return error")
-	}
-
-	if err.Error() != errNotTruststore {
-		t.Errorf("Connect() error = %q, want %q", err.Error(), errNotTruststore)
-	}
-}
-
 // TestConnect_TrackError tests Connect when ProviderConfig tracking fails.
 func TestConnect_TrackError(t *testing.T) {
 	t.Parallel()

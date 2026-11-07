@@ -20,8 +20,6 @@ import (
 )
 
 const (
-	// errNotCleanupPolicy means the managed resource is not a CleanupPolicy.
-	errNotCleanupPolicy = "managed resource is not a CleanupPolicy custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
@@ -43,7 +41,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(contentv1alpha1.CleanupPolicyGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*contentv1alpha1.CleanupPolicy](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
@@ -64,30 +62,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
 // Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isCleanupPolicy := managedRes.(*contentv1alpha1.CleanupPolicy)
-	if !isCleanupPolicy {
-		return nil, errors.New(errNotCleanupPolicy)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+func (c *connector) Connect(ctx context.Context, cleanupPolicy *contentv1alpha1.CleanupPolicy) (managed.TypedExternalClient[*contentv1alpha1.CleanupPolicy], error) {
+	err := c.usage.Track(ctx, cleanupPolicy)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, cleanupPolicy)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -100,18 +88,13 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{client: cleanupClient}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	client contentclient.CleanupPolicyClient
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	cleanupPolicy, isCleanupPolicy := managedRes.(*contentv1alpha1.CleanupPolicy)
-	if !isCleanupPolicy {
-		return managed.ExternalObservation{}, errors.New(errNotCleanupPolicy)
-	}
-
+func (e *external) Observe(ctx context.Context, cleanupPolicy *contentv1alpha1.CleanupPolicy) (managed.ExternalObservation, error) {
 	name := meta.GetExternalName(cleanupPolicy)
 	if name == "" {
 		name = cleanupPolicy.Spec.ForProvider.Name
@@ -140,12 +123,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 }
 
 // Create creates the external resource.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	cleanupPolicy, isCleanupPolicy := managedRes.(*contentv1alpha1.CleanupPolicy)
-	if !isCleanupPolicy {
-		return managed.ExternalCreation{}, errors.New(errNotCleanupPolicy)
-	}
-
+func (e *external) Create(ctx context.Context, cleanupPolicy *contentv1alpha1.CleanupPolicy) (managed.ExternalCreation, error) {
 	err := e.client.Create(ctx, contentclient.GenerateCleanupPolicy(cleanupPolicy))
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateCleanupPolicy)
@@ -157,12 +135,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update updates the external resource to match the desired state.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	cleanupPolicy, isCleanupPolicy := managedRes.(*contentv1alpha1.CleanupPolicy)
-	if !isCleanupPolicy {
-		return managed.ExternalUpdate{}, errors.New(errNotCleanupPolicy)
-	}
-
+func (e *external) Update(ctx context.Context, cleanupPolicy *contentv1alpha1.CleanupPolicy) (managed.ExternalUpdate, error) {
 	err := e.client.Update(ctx, contentclient.GenerateCleanupPolicy(cleanupPolicy))
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateCleanupPolicy)
@@ -172,12 +145,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete deletes the external resource.
-func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	cleanupPolicy, isCleanupPolicy := managedRes.(*contentv1alpha1.CleanupPolicy)
-	if !isCleanupPolicy {
-		return managed.ExternalDelete{}, errors.New(errNotCleanupPolicy)
-	}
-
+func (e *external) Delete(ctx context.Context, cleanupPolicy *contentv1alpha1.CleanupPolicy) (managed.ExternalDelete, error) {
 	name := meta.GetExternalName(cleanupPolicy)
 	if name == "" {
 		name = cleanupPolicy.Spec.ForProvider.Name

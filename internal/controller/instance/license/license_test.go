@@ -100,18 +100,6 @@ func newLicenseSecret(name, namespace, key string, data []byte) *corev1.Secret {
 // testLicenseData is license content used across controller tests.
 var testLicenseData = []byte("fake-nexus-license-binary")
 
-// TestObserve_WrongType verifies Observe errors on a non-License resource.
-func TestObserve_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: licensefake.NewMockLicenseClient()}
-
-	_, err := e.Observe(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Observe() nil resource should return error")
-	}
-}
-
 // TestObserve_DeletionTimestamp tests Observe when CR has deletion timestamp.
 func TestObserve_DeletionTimestamp(t *testing.T) {
 	t.Parallel()
@@ -289,18 +277,6 @@ func TestObserve_ExistsAndOutdated(t *testing.T) {
 
 	if obs.ResourceUpToDate {
 		t.Error("Observe() ResourceUpToDate = true, want false when hash differs")
-	}
-}
-
-// TestCreate_WrongType verifies Create errors on a non-License resource.
-func TestCreate_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: licensefake.NewMockLicenseClient()}
-
-	_, err := e.Create(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Create() nil resource should return error")
 	}
 }
 
@@ -661,18 +637,6 @@ func TestCreate_WithBearerTokenEndpoint(t *testing.T) {
 	}
 }
 
-// TestUpdate_WrongType verifies Update errors on a non-License resource.
-func TestUpdate_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: licensefake.NewMockLicenseClient()}
-
-	_, err := e.Update(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Update() nil resource should return error")
-	}
-}
-
 // TestUpdate_Success verifies Update reinstalls the license.
 func TestUpdate_Success(t *testing.T) {
 	t.Parallel()
@@ -731,18 +695,6 @@ func TestUpdate_Error(t *testing.T) {
 	}
 }
 
-// TestDelete_WrongType verifies Delete errors on a non-License resource.
-func TestDelete_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: licensefake.NewMockLicenseClient()}
-
-	_, err := e.Delete(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Delete() nil resource should return error")
-	}
-}
-
 // TestDelete_Success verifies Delete removes the license from Nexus.
 func TestDelete_Success(t *testing.T) {
 	t.Parallel()
@@ -798,18 +750,6 @@ func TestDisconnect(t *testing.T) {
 	err := e.Disconnect(context.Background())
 	if err != nil {
 		t.Fatalf("Disconnect() unexpected error: %v", err)
-	}
-}
-
-// TestConnect_WrongType verifies Connect errors on a non-License resource.
-func TestConnect_WrongType(t *testing.T) {
-	t.Parallel()
-
-	c := &connector{}
-
-	_, err := c.Connect(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Connect() nil resource should return error")
 	}
 }
 

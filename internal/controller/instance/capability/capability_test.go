@@ -208,19 +208,6 @@ func TestObserve(t *testing.T) {
 	}
 }
 
-// TestObserve_WrongType verifies Observe returns an error for non-Capability
-// resources.
-func TestObserve_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: capabilitymocks.NewMockCapabilityClient()}
-
-	_, err := e.Observe(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Observe() expected error for wrong type, got nil")
-	}
-}
-
 // TestObserve_UpdatesAtProvider verifies Observe populates AtProvider.
 func TestObserve_UpdatesAtProvider(t *testing.T) {
 	t.Parallel()
@@ -334,19 +321,6 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-// TestCreate_WrongType verifies Create returns an error for non-Capability
-// resources.
-func TestCreate_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: capabilitymocks.NewMockCapabilityClient()}
-
-	_, err := e.Create(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Create() expected error for wrong type, got nil")
-	}
-}
-
 // TestUpdate covers the Update method.
 func TestUpdate(t *testing.T) {
 	t.Parallel()
@@ -394,19 +368,6 @@ func TestUpdate(t *testing.T) {
 				t.Errorf("Update() error = %v, wantErr = %v", err, tt.wantErr)
 			}
 		})
-	}
-}
-
-// TestUpdate_WrongType verifies Update returns an error for non-Capability
-// resources.
-func TestUpdate_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: capabilitymocks.NewMockCapabilityClient()}
-
-	_, err := e.Update(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Update() expected error for wrong type, got nil")
 	}
 }
 
@@ -476,19 +437,6 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-// TestDelete_WrongType verifies Delete returns an error for non-Capability
-// resources.
-func TestDelete_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: capabilitymocks.NewMockCapabilityClient()}
-
-	_, err := e.Delete(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Delete() expected error for wrong type, got nil")
-	}
-}
-
 // newTestScheme registers nexus v1alpha1 types in a new scheme.
 func newTestScheme(t *testing.T) *runtime.Scheme {
 	t.Helper()
@@ -501,23 +449,6 @@ func newTestScheme(t *testing.T) *runtime.Scheme {
 	}
 
 	return s
-}
-
-// TestConnect_WrongType verifies Connect returns an error for non-Capability
-// resources.
-func TestConnect_WrongType(t *testing.T) {
-	t.Parallel()
-
-	c := &connector{}
-
-	_, err := c.Connect(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Connect() expected error for wrong type, got nil")
-	}
-
-	if err.Error() != errNotCapability {
-		t.Errorf("Connect() error = %q, want %q", err.Error(), errNotCapability)
-	}
 }
 
 // TestConnect_TrackError verifies Connect returns an error when ProviderConfig

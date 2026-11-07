@@ -20,8 +20,6 @@ import (
 )
 
 const (
-	// errNotUser means the managed resource is not a User custom resource.
-	errNotUser = "managed resource is not a User custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
@@ -54,7 +52,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(iamv1alpha1.UserGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*iamv1alpha1.User](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
@@ -75,30 +73,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
 // Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isUser := managedRes.(*iamv1alpha1.User)
-	if !isUser {
-		return nil, errors.New(errNotUser)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+func (c *connector) Connect(ctx context.Context, userRes *iamv1alpha1.User) (managed.TypedExternalClient[*iamv1alpha1.User], error) {
+	err := c.usage.Track(ctx, userRes)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, userRes)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -111,19 +99,14 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{client: userClient, kube: c.kube}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	client iamclient.UserClient
 	kube   client.Client
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	userRes, isUser := managedRes.(*iamv1alpha1.User)
-	if !isUser {
-		return managed.ExternalObservation{}, errors.New(errNotUser)
-	}
-
+func (e *external) Observe(ctx context.Context, userRes *iamv1alpha1.User) (managed.ExternalObservation, error) {
 	userID := meta.GetExternalName(userRes)
 	if userID == "" {
 		userID = userRes.Spec.ForProvider.UserID
@@ -160,12 +143,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 }
 
 // Create creates the desired User in Nexus.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	userRes, isUser := managedRes.(*iamv1alpha1.User)
-	if !isUser {
-		return managed.ExternalCreation{}, errors.New(errNotUser)
-	}
-
+func (e *external) Create(ctx context.Context, userRes *iamv1alpha1.User) (managed.ExternalCreation, error) {
 	// One Secret read serves both the fingerprint and the password, so the
 	// recorded fingerprint describes exactly the password applied.
 	secrets := nexus.MemoizeSecrets(e.kube)
@@ -203,12 +181,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update reconciles the User to the desired state.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	userRes, isUser := managedRes.(*iamv1alpha1.User)
-	if !isUser {
-		return managed.ExternalUpdate{}, errors.New(errNotUser)
-	}
-
+func (e *external) Update(ctx context.Context, userRes *iamv1alpha1.User) (managed.ExternalUpdate, error) {
 	userID := meta.GetExternalName(userRes)
 	if userID == "" {
 		userID = userRes.Spec.ForProvider.UserID
@@ -248,12 +221,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete removes the User from Nexus.
-func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	userRes, isUser := managedRes.(*iamv1alpha1.User)
-	if !isUser {
-		return managed.ExternalDelete{}, errors.New(errNotUser)
-	}
-
+func (e *external) Delete(ctx context.Context, userRes *iamv1alpha1.User) (managed.ExternalDelete, error) {
 	userID := meta.GetExternalName(userRes)
 	if userID == "" {
 		userID = userRes.Spec.ForProvider.UserID

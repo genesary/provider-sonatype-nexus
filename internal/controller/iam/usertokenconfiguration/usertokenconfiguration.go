@@ -19,8 +19,6 @@ import (
 )
 
 const (
-	// errNotUserTokenConfig is returned for wrong managed resource type.
-	errNotUserTokenConfig = "managed resource is not a UserTokenConfiguration custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
@@ -38,7 +36,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(iamv1alpha1.UserTokenConfigurationGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*iamv1alpha1.UserTokenConfiguration](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
@@ -59,30 +57,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
 // Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isUserTokenConfig := managedRes.(*iamv1alpha1.UserTokenConfiguration)
-	if !isUserTokenConfig {
-		return nil, errors.New(errNotUserTokenConfig)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+func (c *connector) Connect(ctx context.Context, userTokenCfg *iamv1alpha1.UserTokenConfiguration) (managed.TypedExternalClient[*iamv1alpha1.UserTokenConfiguration], error) {
+	err := c.usage.Track(ctx, userTokenCfg)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, userTokenCfg)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -95,18 +83,13 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{client: tokenClient}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	client iamclient.UserTokenConfigurationClient
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	userTokenCfg, isUserTokenConfig := managedRes.(*iamv1alpha1.UserTokenConfiguration)
-	if !isUserTokenConfig {
-		return managed.ExternalObservation{}, errors.New(errNotUserTokenConfig)
-	}
-
+func (e *external) Observe(ctx context.Context, userTokenCfg *iamv1alpha1.UserTokenConfiguration) (managed.ExternalObservation, error) {
 	// UserTokenConfiguration is a singleton; report absent when being deleted
 	// so the finalizer can be cleared.
 	if userTokenCfg.GetDeletionTimestamp() != nil {
@@ -128,12 +111,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 }
 
 // Create applies the desired user token configuration.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	userTokenCfg, isUserTokenConfig := managedRes.(*iamv1alpha1.UserTokenConfiguration)
-	if !isUserTokenConfig {
-		return managed.ExternalCreation{}, errors.New(errNotUserTokenConfig)
-	}
-
+func (e *external) Create(ctx context.Context, userTokenCfg *iamv1alpha1.UserTokenConfiguration) (managed.ExternalCreation, error) {
 	config := iamclient.GenerateUserTokenConfiguration(userTokenCfg)
 
 	err := e.client.Configure(ctx, config)
@@ -145,12 +123,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update applies the desired user token configuration.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	userTokenCfg, isUserTokenConfig := managedRes.(*iamv1alpha1.UserTokenConfiguration)
-	if !isUserTokenConfig {
-		return managed.ExternalUpdate{}, errors.New(errNotUserTokenConfig)
-	}
-
+func (e *external) Update(ctx context.Context, userTokenCfg *iamv1alpha1.UserTokenConfiguration) (managed.ExternalUpdate, error) {
 	config := iamclient.GenerateUserTokenConfiguration(userTokenCfg)
 
 	err := e.client.Configure(ctx, config)
@@ -162,7 +135,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete is a no-op; UserTokenConfiguration is a singleton.
-func (e *external) Delete(_ context.Context, _ resource.Managed) (managed.ExternalDelete, error) {
+func (e *external) Delete(_ context.Context, _ *iamv1alpha1.UserTokenConfiguration) (managed.ExternalDelete, error) {
 	return managed.ExternalDelete{}, nil
 }
 

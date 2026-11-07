@@ -20,8 +20,6 @@ import (
 )
 
 const (
-	// errNotLDAP means the managed resource is not an LDAP custom resource.
-	errNotLDAP = "managed resource is not an LDAP custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
@@ -49,7 +47,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(iamv1alpha1.LDAPGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*iamv1alpha1.LDAP](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
@@ -70,30 +68,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
 // Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isLDAP := managedRes.(*iamv1alpha1.LDAP)
-	if !isLDAP {
-		return nil, errors.New(errNotLDAP)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+func (c *connector) Connect(ctx context.Context, ldapCR *iamv1alpha1.LDAP) (managed.TypedExternalClient[*iamv1alpha1.LDAP], error) {
+	err := c.usage.Track(ctx, ldapCR)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, ldapCR)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -106,19 +94,14 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{client: ldapClient, kube: c.kube}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	client iamclient.LDAPClient
 	kube   client.Client
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	ldapCR, isLDAP := managedRes.(*iamv1alpha1.LDAP)
-	if !isLDAP {
-		return managed.ExternalObservation{}, errors.New(errNotLDAP)
-	}
-
+func (e *external) Observe(ctx context.Context, ldapCR *iamv1alpha1.LDAP) (managed.ExternalObservation, error) {
 	ldapName := meta.GetExternalName(ldapCR)
 	if ldapName == "" {
 		ldapName = ldapCR.Spec.ForProvider.Name
@@ -155,12 +138,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 }
 
 // Create creates the desired LDAP server in Nexus.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	ldapCR, isLDAP := managedRes.(*iamv1alpha1.LDAP)
-	if !isLDAP {
-		return managed.ExternalCreation{}, errors.New(errNotLDAP)
-	}
-
+func (e *external) Create(ctx context.Context, ldapCR *iamv1alpha1.LDAP) (managed.ExternalCreation, error) {
 	// One Secret read serves both the fingerprint and the password, so the
 	// recorded fingerprint describes exactly the password applied.
 	secrets := nexus.MemoizeSecrets(e.kube)
@@ -198,12 +176,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update reconciles the LDAP server to the desired state.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	ldapCR, isLDAP := managedRes.(*iamv1alpha1.LDAP)
-	if !isLDAP {
-		return managed.ExternalUpdate{}, errors.New(errNotLDAP)
-	}
-
+func (e *external) Update(ctx context.Context, ldapCR *iamv1alpha1.LDAP) (managed.ExternalUpdate, error) {
 	ldapName := meta.GetExternalName(ldapCR)
 	if ldapName == "" {
 		ldapName = ldapCR.Spec.ForProvider.Name
@@ -234,12 +207,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete removes the LDAP server from Nexus.
-func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	ldapCR, isLDAP := managedRes.(*iamv1alpha1.LDAP)
-	if !isLDAP {
-		return managed.ExternalDelete{}, errors.New(errNotLDAP)
-	}
-
+func (e *external) Delete(ctx context.Context, ldapCR *iamv1alpha1.LDAP) (managed.ExternalDelete, error) {
 	ldapName := meta.GetExternalName(ldapCR)
 	if ldapName == "" {
 		ldapName = ldapCR.Spec.ForProvider.Name

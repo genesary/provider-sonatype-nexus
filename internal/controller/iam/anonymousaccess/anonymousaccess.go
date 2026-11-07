@@ -19,8 +19,6 @@ import (
 )
 
 const (
-	// errNotAnonymousAccess means the managed resource is not an AnonymousAccess.
-	errNotAnonymousAccess = "managed resource is not an AnonymousAccess custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
@@ -38,7 +36,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(iamv1alpha1.AnonymousAccessGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*iamv1alpha1.AnonymousAccess](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
@@ -59,30 +57,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
 // Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isAnonymousAccess := managedRes.(*iamv1alpha1.AnonymousAccess)
-	if !isAnonymousAccess {
-		return nil, errors.New(errNotAnonymousAccess)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+func (c *connector) Connect(ctx context.Context, anonAccess *iamv1alpha1.AnonymousAccess) (managed.TypedExternalClient[*iamv1alpha1.AnonymousAccess], error) {
+	err := c.usage.Track(ctx, anonAccess)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, anonAccess)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -95,18 +83,13 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{client: anonClient}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	client iamclient.AnonymousAccessClient
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	anonAccess, isAnonymousAccess := managedRes.(*iamv1alpha1.AnonymousAccess)
-	if !isAnonymousAccess {
-		return managed.ExternalObservation{}, errors.New(errNotAnonymousAccess)
-	}
-
+func (e *external) Observe(ctx context.Context, anonAccess *iamv1alpha1.AnonymousAccess) (managed.ExternalObservation, error) {
 	// AnonymousAccess is a singleton; report absent when being deleted so the
 	// finalizer can be cleared.
 	if anonAccess.GetDeletionTimestamp() != nil {
@@ -128,12 +111,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 }
 
 // Create activates the desired anonymous access settings.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	anonAccess, isAnonymousAccess := managedRes.(*iamv1alpha1.AnonymousAccess)
-	if !isAnonymousAccess {
-		return managed.ExternalCreation{}, errors.New(errNotAnonymousAccess)
-	}
-
+func (e *external) Create(ctx context.Context, anonAccess *iamv1alpha1.AnonymousAccess) (managed.ExternalCreation, error) {
 	settings := iamclient.GenerateAnonymousAccessSettings(anonAccess)
 
 	err := e.client.Update(ctx, settings)
@@ -145,12 +123,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update applies the desired anonymous access settings.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	anonAccess, isAnonymousAccess := managedRes.(*iamv1alpha1.AnonymousAccess)
-	if !isAnonymousAccess {
-		return managed.ExternalUpdate{}, errors.New(errNotAnonymousAccess)
-	}
-
+func (e *external) Update(ctx context.Context, anonAccess *iamv1alpha1.AnonymousAccess) (managed.ExternalUpdate, error) {
 	settings := iamclient.GenerateAnonymousAccessSettings(anonAccess)
 
 	err := e.client.Update(ctx, settings)
@@ -162,7 +135,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete is a no-op; AnonymousAccess is a singleton and cannot be deleted.
-func (e *external) Delete(_ context.Context, _ resource.Managed) (managed.ExternalDelete, error) {
+func (e *external) Delete(_ context.Context, _ *iamv1alpha1.AnonymousAccess) (managed.ExternalDelete, error) {
 	return managed.ExternalDelete{}, nil
 }
 

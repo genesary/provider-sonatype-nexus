@@ -20,8 +20,6 @@ import (
 )
 
 const (
-	// errNotContentSelector means the managed resource is not a ContentSelector.
-	errNotContentSelector = "managed resource is not a ContentSelector custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
@@ -43,7 +41,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(contentv1alpha1.ContentSelectorGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*contentv1alpha1.ContentSelector](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
@@ -64,30 +62,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
 // Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isContentSelector := managedRes.(*contentv1alpha1.ContentSelector)
-	if !isContentSelector {
-		return nil, errors.New(errNotContentSelector)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+func (c *connector) Connect(ctx context.Context, contentSelector *contentv1alpha1.ContentSelector) (managed.TypedExternalClient[*contentv1alpha1.ContentSelector], error) {
+	err := c.usage.Track(ctx, contentSelector)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, contentSelector)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -100,18 +88,13 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{client: csClient}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	client contentclient.ContentSelectorClient
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	contentSelector, isContentSelector := managedRes.(*contentv1alpha1.ContentSelector)
-	if !isContentSelector {
-		return managed.ExternalObservation{}, errors.New(errNotContentSelector)
-	}
-
+func (e *external) Observe(ctx context.Context, contentSelector *contentv1alpha1.ContentSelector) (managed.ExternalObservation, error) {
 	name := meta.GetExternalName(contentSelector)
 	if name == "" {
 		name = contentSelector.Spec.ForProvider.Name
@@ -140,12 +123,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 }
 
 // Create creates the external resource.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	contentSelector, isContentSelector := managedRes.(*contentv1alpha1.ContentSelector)
-	if !isContentSelector {
-		return managed.ExternalCreation{}, errors.New(errNotContentSelector)
-	}
-
+func (e *external) Create(ctx context.Context, contentSelector *contentv1alpha1.ContentSelector) (managed.ExternalCreation, error) {
 	err := e.client.Create(ctx, contentclient.GenerateContentSelector(contentSelector))
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateContentSelector)
@@ -157,12 +135,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update updates the external resource to match the desired state.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	contentSelector, isContentSelector := managedRes.(*contentv1alpha1.ContentSelector)
-	if !isContentSelector {
-		return managed.ExternalUpdate{}, errors.New(errNotContentSelector)
-	}
-
+func (e *external) Update(ctx context.Context, contentSelector *contentv1alpha1.ContentSelector) (managed.ExternalUpdate, error) {
 	name := meta.GetExternalName(contentSelector)
 	if name == "" {
 		name = contentSelector.Spec.ForProvider.Name
@@ -177,12 +150,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete deletes the external resource.
-func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	contentSelector, isContentSelector := managedRes.(*contentv1alpha1.ContentSelector)
-	if !isContentSelector {
-		return managed.ExternalDelete{}, errors.New(errNotContentSelector)
-	}
-
+func (e *external) Delete(ctx context.Context, contentSelector *contentv1alpha1.ContentSelector) (managed.ExternalDelete, error) {
 	name := meta.GetExternalName(contentSelector)
 	if name == "" {
 		name = contentSelector.Spec.ForProvider.Name

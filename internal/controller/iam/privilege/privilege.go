@@ -20,8 +20,6 @@ import (
 )
 
 const (
-	// errNotPrivilege means the managed resource is not a Privilege.
-	errNotPrivilege = "managed resource is not a Privilege custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
@@ -43,7 +41,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(iamv1alpha1.PrivilegeGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*iamv1alpha1.Privilege](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
@@ -64,30 +62,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
 // Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isPrivilege := managedRes.(*iamv1alpha1.Privilege)
-	if !isPrivilege {
-		return nil, errors.New(errNotPrivilege)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+func (c *connector) Connect(ctx context.Context, privRes *iamv1alpha1.Privilege) (managed.TypedExternalClient[*iamv1alpha1.Privilege], error) {
+	err := c.usage.Track(ctx, privRes)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, privRes)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -100,18 +88,13 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{client: privilegeClient}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	client iamclient.PrivilegeClient
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	privRes, isPrivilege := managedRes.(*iamv1alpha1.Privilege)
-	if !isPrivilege {
-		return managed.ExternalObservation{}, errors.New(errNotPrivilege)
-	}
-
+func (e *external) Observe(ctx context.Context, privRes *iamv1alpha1.Privilege) (managed.ExternalObservation, error) {
 	privName := meta.GetExternalName(privRes)
 	if privName == "" {
 		privName = privRes.Spec.ForProvider.Name
@@ -141,12 +124,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 }
 
 // Create creates the desired Privilege in Nexus.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	privRes, isPrivilege := managedRes.(*iamv1alpha1.Privilege)
-	if !isPrivilege {
-		return managed.ExternalCreation{}, errors.New(errNotPrivilege)
-	}
-
+func (e *external) Create(ctx context.Context, privRes *iamv1alpha1.Privilege) (managed.ExternalCreation, error) {
 	err := e.client.Create(ctx, privRes)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreatePrivilege)
@@ -158,12 +136,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update reconciles the Privilege to the desired state.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	privRes, isPrivilege := managedRes.(*iamv1alpha1.Privilege)
-	if !isPrivilege {
-		return managed.ExternalUpdate{}, errors.New(errNotPrivilege)
-	}
-
+func (e *external) Update(ctx context.Context, privRes *iamv1alpha1.Privilege) (managed.ExternalUpdate, error) {
 	privName := meta.GetExternalName(privRes)
 	if privName == "" {
 		privName = privRes.Spec.ForProvider.Name
@@ -178,12 +151,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete removes the Privilege from Nexus.
-func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	privRes, isPrivilege := managedRes.(*iamv1alpha1.Privilege)
-	if !isPrivilege {
-		return managed.ExternalDelete{}, errors.New(errNotPrivilege)
-	}
-
+func (e *external) Delete(ctx context.Context, privRes *iamv1alpha1.Privilege) (managed.ExternalDelete, error) {
 	privName := meta.GetExternalName(privRes)
 	if privName == "" {
 		privName = privRes.Spec.ForProvider.Name
