@@ -15,7 +15,7 @@ import (
 
 // maxSharedReconcilerOptions is the most options ReconcilerOptions shares
 // between controllers, to size the slice it returns.
-const maxSharedReconcilerOptions = 5
+const maxSharedReconcilerOptions = 6
 
 // Options are the crossplane-runtime controller options, extended with the
 // settings of this provider.
@@ -35,6 +35,10 @@ func ReconcilerOptions(mgr ctrl.Manager, name string, opts Options, specific ...
 
 	if opts.Features.Enabled(feature.EnableBetaManagementPolicies) {
 		options = append(options, managed.WithManagementPolicies())
+	}
+
+	if opts.Features.Enabled(feature.EnableAlphaChangeLogs) && opts.ChangeLogOptions != nil {
+		options = append(options, managed.WithChangeLogger(opts.ChangeLogOptions.ChangeLogger))
 	}
 
 	if opts.MetricOptions != nil && opts.MetricOptions.MRMetrics != nil {

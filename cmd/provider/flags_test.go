@@ -16,6 +16,7 @@ func defaultFlags() flags {
 		PollStateMetricInterval:  5 * time.Second,
 		MaxReconcileRate:         10,
 		EnableManagementPolicies: true,
+		ChangeLogsSocketPath:     "/var/run/changelogs/changelogs.sock",
 	}
 }
 
@@ -43,7 +44,7 @@ func TestFlags(t *testing.T) {
 			want: func(*flags) {},
 		},
 		"Flags": {
-			args: []string{"--debug", "--leader-election", "--sync=2h", "--poll=5m", "--poll-state-metric=30s", "--max-reconcile-rate=20", "--no-enable-management-policies"},
+			args: []string{"--debug", "--leader-election", "--sync=2h", "--poll=5m", "--poll-state-metric=30s", "--max-reconcile-rate=20", "--no-enable-management-policies", "--enable-changelogs", "--changelogs-socket-path=/tmp/changelogs.sock"},
 			want: func(f *flags) {
 				f.Debug = true
 				f.LeaderElection = true
@@ -52,6 +53,8 @@ func TestFlags(t *testing.T) {
 				f.PollStateMetricInterval = 30 * time.Second
 				f.MaxReconcileRate = 20
 				f.EnableManagementPolicies = false
+				f.EnableChangeLogs = true
+				f.ChangeLogsSocketPath = "/tmp/changelogs.sock"
 			},
 		},
 		"EnvironmentVariables": {

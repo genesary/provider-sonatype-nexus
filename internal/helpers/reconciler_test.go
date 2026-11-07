@@ -35,8 +35,9 @@ func (recorderManager) GetEventRecorderFor(string) record.EventRecorder {
 // testOptions returns the options of a provider with no feature enabled.
 func testOptions() Options {
 	return Options{Options: controller.Options{
-		Logger:   logging.NewNopLogger(),
-		Features: &feature.Flags{},
+		Logger:           logging.NewNopLogger(),
+		Features:         &feature.Flags{},
+		ChangeLogOptions: &controller.ChangeLogOptions{},
 	}}
 }
 
@@ -59,6 +60,10 @@ func TestReconcilerOptions(t *testing.T) {
 			features: []feature.Flag{feature.EnableBetaManagementPolicies},
 			want:     sharedOptions + 1,
 		},
+		"ChangeLogs": {
+			features: []feature.Flag{feature.EnableAlphaChangeLogs},
+			want:     sharedOptions + 1,
+		},
 		"Metrics": {
 			metrics: &controller.MetricOptions{MRMetrics: managed.NewMRMetricRecorder()},
 			want:    sharedOptions + 1,
@@ -72,10 +77,10 @@ func TestReconcilerOptions(t *testing.T) {
 			want:     sharedOptions + 2,
 		},
 		"AllOptions": {
-			features: []feature.Flag{feature.EnableBetaManagementPolicies},
+			features: []feature.Flag{feature.EnableBetaManagementPolicies, feature.EnableAlphaChangeLogs},
 			metrics:  &controller.MetricOptions{MRMetrics: managed.NewMRMetricRecorder()},
 			specific: 2,
-			want:     sharedOptions + 4,
+			want:     sharedOptions + 5,
 		},
 	}
 

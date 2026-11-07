@@ -19,6 +19,8 @@ type flags struct {
 	PollStateMetricInterval  time.Duration
 	MaxReconcileRate         int
 	EnableManagementPolicies bool
+	EnableChangeLogs         bool
+	ChangeLogsSocketPath     string
 }
 
 // newApp returns the command line of the provider, which parses its flags
@@ -40,6 +42,10 @@ func newApp(name string, parsed *flags) *kingpin.Application {
 		IntVar(&parsed.MaxReconcileRate)
 	app.Flag("enable-management-policies", "Enable support for Management Policies. Disable with --no-enable-management-policies.").Default("true").Envar("ENABLE_MANAGEMENT_POLICIES").
 		BoolVar(&parsed.EnableManagementPolicies)
+	app.Flag("enable-changelogs", "Enable support for capturing change logs during reconciliation.").Default("false").Envar("ENABLE_CHANGE_LOGS").
+		BoolVar(&parsed.EnableChangeLogs)
+	app.Flag("changelogs-socket-path", "Path for changelogs socket (if enabled).").Default("/var/run/changelogs/changelogs.sock").Envar("CHANGELOGS_SOCKET_PATH").
+		StringVar(&parsed.ChangeLogsSocketPath)
 
 	return app
 }

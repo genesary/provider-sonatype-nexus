@@ -156,6 +156,8 @@ for example `args: ["--debug", "--poll=5m"]`.
 | `--max-reconcile-rate` (`MAX_RECONCILE_RATE`) | `10` | Maximum reconciles per second, across all controllers. It also sets the number of concurrent reconciles per controller and bounds the Kubernetes API client rate. |
 | `--poll-state-metric` (`POLL_STATE_METRIC_INTERVAL`) | `5s` | How often the `crossplane_managed_resource_*` state metrics are recorded. |
 | `--enable-management-policies` (`ENABLE_MANAGEMENT_POLICIES`) | `true` | Honor `spec.managementPolicies`, for example to observe a Nexus resource without managing it. Disable it with `--no-enable-management-policies` or `ENABLE_MANAGEMENT_POLICIES=false`: `--enable-management-policies=false` is rejected. |
+| `--enable-changelogs` (`ENABLE_CHANGE_LOGS`) | `false` | Alpha. Send a [change log](https://docs.crossplane.io/latest/guides/change-logs/) entry for every create, update and delete of a Nexus resource. |
+| `--changelogs-socket-path` (`CHANGELOGS_SOCKET_PATH`) | `/var/run/changelogs/changelogs.sock` | Socket of the change logs sidecar, when change logs are enabled. |
 
 ### Metrics
 

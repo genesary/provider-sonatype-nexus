@@ -31,3 +31,19 @@ func TestNewScheme(t *testing.T) {
 		}
 	}
 }
+
+// TestNewChangeLogOptions checks that change logs are set up without the
+// change logs service running: the connection is only made when the first
+// change log is sent.
+func TestNewChangeLogOptions(t *testing.T) {
+	t.Parallel()
+
+	opts, err := newChangeLogOptions(t.TempDir() + "/changelogs.sock")
+	if err != nil {
+		t.Fatalf("newChangeLogOptions() error = %v", err)
+	}
+
+	if opts == nil || opts.ChangeLogger == nil {
+		t.Fatal("newChangeLogOptions() returned no change logger")
+	}
+}
