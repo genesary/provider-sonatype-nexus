@@ -256,8 +256,6 @@ func (e *external) createAzureBlobStore(ctx context.Context, blobStore *instance
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateBlobStore)
 	}
 
-	meta.SetExternalName(blobStore, blobStore.Spec.ForProvider.Name)
-
 	if fingerprint != "" {
 		// Non-fatal: without a recorded fingerprint the next Observe reports
 		// drift and Update re-applies the account key.
@@ -265,6 +263,10 @@ func (e *external) createAzureBlobStore(ctx context.Context, blobStore *instance
 			bs.Status.AtProvider.CredentialsFingerprint = fingerprint
 		})
 	}
+
+	// Set after the status patch, which overwrites in-memory metadata with the
+	// server response.
+	meta.SetExternalName(blobStore, blobStore.Spec.ForProvider.Name)
 
 	return managed.ExternalCreation{}, nil
 }
@@ -299,34 +301,40 @@ func (e *external) observeS3BlobStore(ctx context.Context, blobStore *instancev1
 
 // observeAzureBlobStore handles Observe for Azure-type blob stores. Nexus
 // never reports the account key, so the blob store is only up to date when
-// the fingerprint of the account key Secret is the one last applied.
+// the fingerprint of the account key Secret is the one last applied. The
+// Secret is only read once the blob store is found in sync with the rest of
+// the spec: a missing blob store or other drift needs an Update anyway, which
+// reads the Secret itself, and a Secret not created yet must not hide that
+// the blob store does not exist.
 func (e *external) observeAzureBlobStore(ctx context.Context, blobStore *instancev1alpha1.BlobStore) (managed.ExternalObservation, error) {
-	credentialsUpToDate, err := e.azureCredentialsUpToDate(ctx, blobStore)
+	obs, err := observeTypedBlobStore(ctx, blobStore, e, e.azureClient.Get, generateAzureBlobStoreObservation, isAzureBlobStoreUpToDate)
+	if err != nil || !obs.ResourceUpToDate {
+		return obs, err
+	}
+
+	obs.ResourceUpToDate, err = e.azureCredentialsUpToDate(ctx, blobStore)
 	if err != nil {
 		return managed.ExternalObservation{}, err
 	}
 
-	return observeTypedBlobStore(ctx, blobStore, e, e.azureClient.Get, generateAzureBlobStoreObservation,
-		func(cr *instancev1alpha1.BlobStore) bool {
-			return credentialsUpToDate(cr.Status.AtProvider.CredentialsFingerprint) && isAzureBlobStoreUpToDate(cr)
-		})
+	return obs, nil
 }
 
-// azureCredentialsUpToDate fingerprints the account key Secret of an Azure
-// blob store and returns a check of the fingerprint last applied against it.
-// A blob store being deleted is always up to date, so that a deleted Secret
-// cannot block its deletion.
-func (e *external) azureCredentialsUpToDate(ctx context.Context, blobStore *instancev1alpha1.BlobStore) (func(applied string) bool, error) {
+// azureCredentialsUpToDate reports whether the fingerprint of the account key
+// Secret of an Azure blob store is the one last applied. A blob store being
+// deleted is always up to date, so that a deleted Secret cannot block its
+// deletion.
+func (e *external) azureCredentialsUpToDate(ctx context.Context, blobStore *instancev1alpha1.BlobStore) (bool, error) {
 	if meta.WasDeleted(blobStore) {
-		return func(string) bool { return true }, nil
+		return true, nil
 	}
 
 	fingerprint, err := azureCredentialsFingerprint(ctx, e.kube, blobStore)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	return func(applied string) bool { return applied == fingerprint }, nil
+	return blobStore.Status.AtProvider.CredentialsFingerprint == fingerprint, nil
 }
 
 // resolveAzureBlobStore reads the account key of an Azure blob store and
@@ -349,6 +357,12 @@ func (e *external) resolveAzureBlobStore(ctx context.Context, blobStore *instanc
 		accountKey, err = nexus.GetSecretValue(ctx, secrets, blobStore.GetNamespace(), ref)
 		if err != nil {
 			return v395.AzureBlobStoreApiModel{}, "", errors.Wrap(err, errGetAccountKey)
+		}
+
+		// Nexus would be sent ACCOUNTKEY authentication without a key, and
+		// the empty value recorded as applied.
+		if accountKey == "" {
+			return v395.AzureBlobStoreApiModel{}, "", errors.Errorf("%s: secret key %q is empty", errGetAccountKey, ref.Key)
 		}
 	}
 

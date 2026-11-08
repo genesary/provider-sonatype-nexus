@@ -49,10 +49,10 @@ func newAzureModel() v395.AzureBlobStoreApiModel {
 	}
 }
 
-// TestAzureBlobStoreProEditionRequired checks that the 402 Nexus Community
-// Edition answers with is reported as ErrProEditionRequired, keeping the
+// TestAzureBlobStoreRequiresPro checks that the 402 Nexus Community
+// Edition answers with is reported as ErrAzureBlobStoreRequiresPro, keeping the
 // Nexus explanation, on every write.
-func TestAzureBlobStoreProEditionRequired(t *testing.T) {
+func TestAzureBlobStoreRequiresPro(t *testing.T) {
 	t.Parallel()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -73,8 +73,8 @@ func TestAzureBlobStoreProEditionRequired(t *testing.T) {
 		},
 	} {
 		err := call()
-		if !errors.Is(err, instanceclient.ErrProEditionRequired) {
-			t.Errorf("%s() error = %v, want it to wrap ErrProEditionRequired", name, err)
+		if !errors.Is(err, instanceclient.ErrAzureBlobStoreRequiresPro) {
+			t.Errorf("%s() error = %v, want it to wrap ErrAzureBlobStoreRequiresPro", name, err)
 		}
 
 		if err != nil && !strings.Contains(err.Error(), proOnlyBody) {
@@ -114,8 +114,8 @@ func TestAzureBlobStoreErrors(t *testing.T) {
 				t.Errorf("Get() error = %v, IsNotFound = %v, want %v", err, nexus.IsNotFound(err), tc.wantNotFound)
 			}
 
-			if errors.Is(err, instanceclient.ErrProEditionRequired) {
-				t.Errorf("Get() error = %v, unexpectedly wraps ErrProEditionRequired", err)
+			if errors.Is(err, instanceclient.ErrAzureBlobStoreRequiresPro) {
+				t.Errorf("Get() error = %v, unexpectedly wraps ErrAzureBlobStoreRequiresPro", err)
 			}
 		})
 	}

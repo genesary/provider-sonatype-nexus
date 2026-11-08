@@ -39,7 +39,9 @@ func TestBlobStoreAzure(t *testing.T) {
 
 	f := e2e.New(t)
 
-	pro, err := f.ProEdition()
+	// Only Nexus Repository Pro serves the HTTP system settings API, so it
+	// tells the editions apart.
+	pro, err := f.HTTPSettingsAvailable()
 	if err != nil {
 		t.Fatalf("cannot probe the Nexus edition: %v", err)
 	}
@@ -128,7 +130,7 @@ func TestBlobStoreAzure(t *testing.T) {
 
 		synced := bs.GetCondition(xpv2.TypeSynced)
 
-		return synced.Status == corev1.ConditionFalse && strings.Contains(synced.Message, instanceclient.ErrProEditionRequired.Error()), nil
+		return synced.Status == corev1.ConditionFalse && strings.Contains(synced.Message, instanceclient.ErrAzureBlobStoreRequiresPro.Error()), nil
 	})
 	if err != nil {
 		t.Fatalf("waiting for the BlobStore to report that Nexus Repository Pro is required: %v; conditions: %s",

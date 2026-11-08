@@ -119,13 +119,6 @@ func (f *Framework) HTTPSettingsAvailable() (bool, error) {
 	return available(f.Nexus.ManageSonatypeHTTPSystemSettingsAPI.ListHttp(context.Background()).Execute())
 }
 
-// ProEdition reports whether the Nexus instance is Nexus Repository Pro. It
-// probes the HTTP system settings REST API, which only Pro serves; see
-// available.
-func (f *Framework) ProEdition() (bool, error) {
-	return f.HTTPSettingsAvailable()
-}
-
 // FetchHTTPSettings returns the Nexus HTTP system settings.
 func (f *Framework) FetchHTTPSettings() (*v395.HttpSettingsXo, error) {
 	settings, resp, err := f.Nexus.ManageSonatypeHTTPSystemSettingsAPI.ListHttp(context.Background()).Execute()

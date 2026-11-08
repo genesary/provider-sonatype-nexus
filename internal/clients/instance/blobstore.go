@@ -40,11 +40,12 @@ type BlobStoreAzureClient interface {
 	Update(ctx context.Context, name string, bs v395.AzureBlobStoreApiModel) error
 }
 
-// ErrProEditionRequired is wrapped by the errors of the Azure blob store
-// client when Nexus refuses the request with 402 Payment Required, which is
-// how Nexus Community Edition answers a write of a Nexus Repository Pro
-// feature.
-var ErrProEditionRequired = errors.New("this Nexus instance does not offer Azure blob stores, which require Nexus Repository Pro")
+// ErrAzureBlobStoreRequiresPro is wrapped by the errors of the Azure blob
+// store client when Nexus refuses the request with 402 Payment Required, which
+// is how Nexus Community Edition answers a write of a Nexus Repository Pro
+// feature. It names Azure blob stores: another Pro-only feature gets its own
+// sentinel naming that feature.
+var ErrAzureBlobStoreRequiresPro = errors.New("this Nexus instance does not offer Azure blob stores, which require Nexus Repository Pro")
 
 // blobStoreClient implements BlobStoreClient over the Nexus API.
 type blobStoreClient struct {
@@ -148,14 +149,14 @@ func (c *s3BlobStoreClient) Update(ctx context.Context, name string, bs v395.S3B
 
 // Create creates an Azure blob store.
 func (c *azureBlobStoreClient) Create(ctx context.Context, bs v395.AzureBlobStoreApiModel) error {
-	return proEditionError(c.api.CreateBlobstoresAzure(ctx).AzureBlobStoreApiModel(bs).Execute())
+	return azureBlobStoreError(c.api.CreateBlobstoresAzure(ctx).AzureBlobStoreApiModel(bs).Execute())
 }
 
 // Get returns the Azure blob store with the given name.
 func (c *azureBlobStoreClient) Get(ctx context.Context, name string) (*v395.AzureBlobStoreApiModel, error) {
 	bs, resp, err := c.api.GetBlobstoresAzure(ctx, name).Execute()
 	if err != nil {
-		return nil, proEditionError(resp, err)
+		return nil, azureBlobStoreError(resp, err)
 	}
 
 	return bs, nil
@@ -163,16 +164,16 @@ func (c *azureBlobStoreClient) Get(ctx context.Context, name string) (*v395.Azur
 
 // Update updates the Azure blob store with the given name.
 func (c *azureBlobStoreClient) Update(ctx context.Context, name string, bs v395.AzureBlobStoreApiModel) error {
-	return proEditionError(c.api.UpdateBlobstoresAzure(ctx, name).AzureBlobStoreApiModel(bs).Execute())
+	return azureBlobStoreError(c.api.UpdateBlobstoresAzure(ctx, name).AzureBlobStoreApiModel(bs).Execute())
 }
 
-// proEditionError is nexus.APIError, except that a 402 Payment Required
-// answer wraps ErrProEditionRequired, so that the error tells the user why
-// Nexus refused the Azure blob store rather than only quoting the status.
-func proEditionError(resp *http.Response, err error) error {
+// azureBlobStoreError is nexus.APIError, except that a 402 Payment Required
+// answer wraps ErrAzureBlobStoreRequiresPro, so that the error tells the user
+// why Nexus refused the Azure blob store rather than only quoting the status.
+func azureBlobStoreError(resp *http.Response, err error) error {
 	apiErr := nexus.APIError(resp, err)
 	if apiErr != nil && resp != nil && resp.StatusCode == http.StatusPaymentRequired {
-		return fmt.Errorf("%w: %w", ErrProEditionRequired, apiErr)
+		return fmt.Errorf("%w: %w", ErrAzureBlobStoreRequiresPro, apiErr)
 	}
 
 	return apiErr

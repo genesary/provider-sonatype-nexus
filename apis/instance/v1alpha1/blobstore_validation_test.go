@@ -52,8 +52,8 @@ func forProviderValidator(t *testing.T) (*cel.Validator, *schema.Structural) {
 	return cel.NewValidator(structural, false, celconfig.PerCallLimit), structural
 }
 
-// TestBlobStoreAzureValidation checks the CEL rules tying the Azure
-// configuration to the blob store type and the account key to the
+// TestBlobStoreAzureValidation checks the CEL rules tying the Azure and S3
+// configurations to the blob store type and the account key to the
 // authentication method.
 func TestBlobStoreAzureValidation(t *testing.T) {
 	t.Parallel()
@@ -101,6 +101,20 @@ func TestBlobStoreAzureValidation(t *testing.T) {
 			}},
 			wantErr: "accountKeySecretRef is required when authenticationMethod is ACCOUNTKEY",
 		},
+		"S3WithS3Config": {
+			forProvider: map[string]any{"name": "s3", "type": "S3", "s3Config": map[string]any{"bucket": "nexus"}},
+		},
+		"AzureWithS3Config": {
+			forProvider: map[string]any{
+				"name": "azure", "type": "Azure", "azureConfig": managedIdentityConfig,
+				"s3Config": map[string]any{"bucket": "nexus"},
+			},
+			wantErr: "s3Config is only allowed when type is S3",
+		},
+		"FileWithS3Config": {
+			forProvider: map[string]any{"name": "file", "type": "File", "s3Config": map[string]any{"bucket": "nexus"}},
+			wantErr:     "s3Config is only allowed when type is S3",
+		},
 		"ManagedIdentityWithSecret": {
 			forProvider: map[string]any{"name": "azure", "type": "Azure", "azureConfig": map[string]any{
 				"accountName":          "account",
@@ -127,7 +141,7 @@ func TestBlobStoreAzureValidation(t *testing.T) {
 				return
 			}
 
-			if !strings.Contains(errs.ToAggregate().Error(), tc.wantErr) {
+			if len(errs) == 0 || !strings.Contains(errs.ToAggregate().Error(), tc.wantErr) {
 				t.Fatalf("Validate() errors = %v, want %q", errs, tc.wantErr)
 			}
 		})

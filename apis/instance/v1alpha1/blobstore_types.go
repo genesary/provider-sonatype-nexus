@@ -11,6 +11,7 @@ import (
 // BlobStoreParameters defines the desired state of a BlobStore.
 // +kubebuilder:validation:XValidation:rule="self.type != 'Azure' || has(self.azureConfig)",message="azureConfig is required when type is Azure."
 // +kubebuilder:validation:XValidation:rule="self.type == 'Azure' || !has(self.azureConfig)",message="azureConfig is only allowed when type is Azure."
+// +kubebuilder:validation:XValidation:rule="self.type == 'S3' || !has(self.s3Config)",message="s3Config is only allowed when type is S3."
 type BlobStoreParameters struct {
 	// Name of the blob store.
 	// +kubebuilder:validation:Required

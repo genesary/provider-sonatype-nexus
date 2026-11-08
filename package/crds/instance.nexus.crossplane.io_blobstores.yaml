@@ -235,6 +235,8 @@ spec:
                   rule: self.type != 'Azure' || has(self.azureConfig)
                 - message: azureConfig is only allowed when type is Azure.
                   rule: self.type == 'Azure' || !has(self.azureConfig)
+                - message: s3Config is only allowed when type is S3.
+                  rule: self.type == 'S3' || !has(self.s3Config)
               managementPolicies:
                 default:
                 - '*'

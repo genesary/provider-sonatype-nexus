@@ -363,6 +363,15 @@ func TestObserveAzure(t *testing.T) {
 			noSecret: true,
 			wantErr:  errFingerprint,
 		},
+		"MissingSecretNotFound": {
+			getErr:   nexus.ErrNotFound,
+			noSecret: true,
+		},
+		"MissingSecretWithDrift": {
+			mutateObs:  func(obs *v395.AzureBlobStoreApiModel) { obs.BucketConfiguration.AccountName = "other" },
+			noSecret:   true,
+			wantExists: true,
+		},
 		"MissingSecretWhileDeleting": {
 			mutateCR: func(cr *instancev1alpha1.BlobStore) {
 				cr.DeletionTimestamp = new(metav1.Now())
@@ -462,7 +471,7 @@ func TestObserveAzureRecordsObservation(t *testing.T) {
 func TestCreateAzure(t *testing.T) {
 	t.Parallel()
 
-	proErr := errors.Join(instance.ErrProEditionRequired, errors.New("402 Payment Required"))
+	proErr := errors.Join(instance.ErrAzureBlobStoreRequiresPro, errors.New("402 Payment Required"))
 
 	tests := map[string]struct {
 		mutateCR  func(cr *instancev1alpha1.BlobStore)
@@ -521,10 +530,10 @@ func TestCreateAzure(t *testing.T) {
 			noSecret: true,
 			wantErr:  errFingerprint,
 		},
-		"ProEditionRequired": {
+		"RequiresPro": {
 			createErr: proErr,
 			wantErr:   errCreateBlobStore,
-			wantIs:    instance.ErrProEditionRequired,
+			wantIs:    instance.ErrAzureBlobStoreRequiresPro,
 		},
 	}
 
@@ -622,6 +631,27 @@ func TestUpdateAzure(t *testing.T) {
 
 		if len(azure.UpdateCalls) != 0 {
 			t.Error("Update() called Nexus without the account key")
+		}
+	})
+
+	t.Run("EmptyAccountKey", func(t *testing.T) {
+		t.Parallel()
+
+		cr := newAzureBlobStoreCR()
+		azure := &mockAzureClient{}
+		e, _ := newAzureTestExternal(t, azure, cr, newAccountKeySecret(""))
+
+		_, err := e.Update(context.Background(), cr)
+		if err == nil || !strings.Contains(err.Error(), errGetAccountKey) || !strings.Contains(err.Error(), "is empty") {
+			t.Fatalf("Update() error = %v, want it to report the empty account key", err)
+		}
+
+		if len(azure.UpdateCalls) != 0 {
+			t.Error("Update() called Nexus with an empty account key")
+		}
+
+		if cr.Status.AtProvider.CredentialsFingerprint != "" {
+			t.Error("Update() recorded the fingerprint of an empty account key")
 		}
 	})
 }
