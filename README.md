@@ -140,6 +140,21 @@ Secret references on namespaced objects (ProviderConfig and every managed
 resource) have no `namespace` field: they always refer to Secrets in the object's own
 namespace. Only a ClusterProviderConfig names the namespace of its Secrets.
 
+### Provider Flags
+
+The provider binary takes the flags below. Each one can also be set through
+the environment variable in parentheses. Set them through a
+[`DeploymentRuntimeConfig`](https://docs.crossplane.io/latest/packages/providers/#runtime-configuration),
+for example `args: ["--debug", "--poll=5m"]`.
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--debug` (`DEBUG`) | `false` | Run with debug logging, including controller-runtime's own logs. |
+| `--leader-election` (`LEADER_ELECTION`) | `false` | Use leader election, to run several replicas of the provider. |
+| `--poll` (`POLL_INTERVAL`) | `1m` | How often each managed resource is checked for drift. |
+| `--sync` (`SYNC_INTERVAL`) | `1h` | How often every resource is re-listed from the API server and checked for drift. |
+| `--max-reconcile-rate` (`MAX_RECONCILE_RATE`) | `10` | Maximum reconciles per second, across all controllers. It also sets the number of concurrent reconciles per controller and bounds the Kubernetes API client rate. |
+
 ## Usage Examples
 
 ### BlobStore
