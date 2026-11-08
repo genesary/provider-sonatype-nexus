@@ -22,29 +22,19 @@ func init() {
 	)
 }
 
-// buildAptHosted renders a APT hosted repository payload.
+// buildAptHosted renders an APT hosted repository payload.
 func buildAptHosted(desired desiredRepo) v395.AptHostedRepositoryApiRequest {
-	return v395.AptHostedRepositoryApiRequest{
-		Name:       desired.name(),
-		Online:     desired.online(),
-		Storage:    desired.hostedStorage(),
-		Cleanup:    desired.cleanup(),
-		Apt:        desired.apt(),
-		AptSigning: desired.aptSigning(),
-	}
+	repo := buildHosted[v395.AptHostedRepositoryApiRequest](desired)
+	repo.Apt = desired.apt()
+	repo.AptSigning = desired.aptSigning()
+
+	return repo
 }
 
-// buildAptProxy renders a APT proxy repository payload.
+// buildAptProxy renders an APT proxy repository payload.
 func buildAptProxy(desired desiredRepo) v395.AptProxyRepositoryApiRequest {
-	return v395.AptProxyRepositoryApiRequest{
-		Name:            desired.name(),
-		Online:          desired.online(),
-		Storage:         desired.storage(),
-		Proxy:           desired.proxy(),
-		NegativeCache:   desired.negativeCache(),
-		HttpClient:      desired.httpClient(),
-		RoutingRuleName: desired.routingRule(),
-		Apt:             desired.aptProxy(),
-		Cleanup:         desired.cleanup(),
-	}
+	repo := buildProxy[v395.AptProxyRepositoryApiRequest](desired)
+	repo.Apt = desired.aptProxy()
+
+	return repo
 }

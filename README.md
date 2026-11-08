@@ -30,7 +30,7 @@ This provider enables you to manage Nexus Repository Manager resources using Kub
 | `SecurityRealm` | `instance.nexus.crossplane.io` | Active security realms and their order |
 | `SecuritySSLTruststore` | `instance.nexus.crossplane.io` | Certificates of the Nexus SSL truststore |
 
-Repositories are supported for Maven2, npm, Docker and 16 other formats. See [Supported Repository Formats](docs/repository-formats.md) for the full list and the types of each.
+Repositories are supported for Maven2, npm, Docker and 23 other formats. See [Supported Repository Formats](docs/repository-formats.md) for the full list and the types of each.
 
 ## Quick Start
 

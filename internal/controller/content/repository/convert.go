@@ -41,6 +41,12 @@ const (
 	// defaultDockerIndexType is the Docker index of a Docker proxy repository
 	// whose spec sets none.
 	defaultDockerIndexType = "HUB"
+	// defaultOciIndexType is the index of an OCI proxy repository whose spec
+	// sets none. Nexus defaults OCI proxies to REGISTRY, not to HUB.
+	defaultOciIndexType = "REGISTRY"
+	// cosignEnforcementNone is the cosign enforcement mode that verifies no
+	// signature.
+	cosignEnforcementNone = "NONE"
 )
 
 // desiredRepo is the input every payload builder works from: the desired state
@@ -122,9 +128,9 @@ func (d desiredRepo) hostedStorage() v395.HostedStorageAttributes {
 	return storage
 }
 
-// dockerHostedStorage converts the storage configuration of a hosted Docker
-// repository.
-func (d desiredRepo) dockerHostedStorage() v395.DockerHostedStorageAttributes {
+// containerHostedStorage converts the storage configuration of a hosted Docker
+// or OCI repository.
+func (d desiredRepo) containerHostedStorage() v395.DockerHostedStorageAttributes {
 	hosted := d.hostedStorage()
 
 	return v395.DockerHostedStorageAttributes{
@@ -314,38 +320,48 @@ func (d desiredRepo) maven() v395.MavenAttributes {
 
 // docker converts the Docker specific configuration.
 func (d desiredRepo) docker() v395.DockerAttributes {
-	docker := v395.DockerAttributes{V1Enabled: false, ForceBasicAuth: true}
-
-	spec := d.params().Docker
-	if spec == nil {
-		return docker
-	}
-
-	docker.V1Enabled = ptr.Deref(spec.V1Enabled, false)
-	docker.ForceBasicAuth = ptr.Deref(spec.ForceBasicAuth, true)
-	docker.Subdomain = spec.Subdomain
-	docker.HttpPort = spec.HTTPPort
-	docker.HttpsPort = spec.HTTPSPort
-
-	return docker
+	return containerAttributes(d.params().Docker)
 }
 
-// dockerProxy converts the Docker index configuration of a Docker proxy
-// repository.
+// dockerProxy converts the index configuration of a Docker proxy repository.
 func (d desiredRepo) dockerProxy() v395.DockerProxyAttributes {
-	dockerProxy := v395.DockerProxyAttributes{IndexType: defaultDockerIndexType}
+	return containerProxyAttributes(d.params().DockerProxy, defaultDockerIndexType)
+}
 
-	spec := d.params().DockerProxy
+// containerAttributes converts the registry settings shared by Docker and OCI
+// repositories.
+func containerAttributes(spec *repositoryv1alpha1.ContainerConfig) v395.DockerAttributes {
+	attributes := v395.DockerAttributes{V1Enabled: false, ForceBasicAuth: true}
 	if spec == nil {
-		return dockerProxy
+		return attributes
 	}
 
-	dockerProxy.IndexType = ptr.Deref(spec.IndexType, defaultDockerIndexType)
-	dockerProxy.IndexUrl = spec.IndexURL
-	dockerProxy.CacheForeignLayers = spec.CacheForeignLayers
-	dockerProxy.ForeignLayerUrlWhitelist = spec.ForeignLayerUrlWhitelist
+	attributes.V1Enabled = ptr.Deref(spec.V1Enabled, false)
+	attributes.ForceBasicAuth = ptr.Deref(spec.ForceBasicAuth, true)
+	attributes.Subdomain = spec.Subdomain
+	attributes.HttpPort = spec.HTTPPort
+	attributes.HttpsPort = spec.HTTPSPort
+	attributes.PathEnabled = spec.PathEnabled
 
-	return dockerProxy
+	return attributes
+}
+
+// containerProxyAttributes converts the index settings shared by Docker and
+// OCI proxy repositories. The index type is always sent, the format's default
+// when the spec sets none, so that drift detection notices an index changed
+// outside of the provider.
+func containerProxyAttributes(spec *repositoryv1alpha1.ContainerProxyConfig, defaultIndexType string) v395.DockerProxyAttributes {
+	attributes := v395.DockerProxyAttributes{IndexType: defaultIndexType}
+	if spec == nil {
+		return attributes
+	}
+
+	attributes.IndexType = ptr.Deref(spec.IndexType, defaultIndexType)
+	attributes.IndexUrl = spec.IndexURL
+	attributes.CacheForeignLayers = spec.CacheForeignLayers
+	attributes.ForeignLayerUrlWhitelist = spec.ForeignLayerUrlWhitelist
+
+	return attributes
 }
 
 // apt converts the APT specific configuration of a hosted repository.
@@ -424,12 +440,91 @@ func (d desiredRepo) nugetProxy() v395.NugetAttributes {
 	return nugetProxy
 }
 
-// cargo converts the Cargo specific configuration.
-func (d desiredRepo) cargo() *v395.CargoAttributes {
-	spec := d.params().Cargo
+// requireAuthentication converts whether a repository overrides anonymous
+// access. It is always sent, false when the spec leaves it unset, so that
+// removing the setting from the spec turns it off in Nexus too.
+func requireAuthentication(spec *repositoryv1alpha1.RequireAuthenticationConfig) *bool {
 	if spec == nil {
-		return &v395.CargoAttributes{RequireAuthentication: new(false)}
+		return new(false)
 	}
 
-	return &v395.CargoAttributes{RequireAuthentication: new(ptr.Deref(spec.RequireAuthentication, false))}
+	return new(ptr.Deref(spec.RequireAuthentication, false))
+}
+
+// cargo converts the Cargo specific configuration.
+func (d desiredRepo) cargo() *v395.CargoAttributes {
+	return &v395.CargoAttributes{RequireAuthentication: requireAuthentication(d.params().Cargo)}
+}
+
+// swift converts the Swift specific configuration of a proxy repository.
+func (d desiredRepo) swift() *v395.SwiftAttributes {
+	return &v395.SwiftAttributes{RequireAuthentication: requireAuthentication(d.params().Swift)}
+}
+
+// terraform converts the Terraform specific configuration of a group
+// repository.
+func (d desiredRepo) terraform() *v395.TerraformAttributes {
+	return &v395.TerraformAttributes{RequireAuthentication: requireAuthentication(d.params().Terraform)}
+}
+
+// terraformSigning converts the PGP key of a Terraform hosted repository.
+// Nexus rejects a hosted repository without one, which the CRD enforces too.
+func (d desiredRepo) terraformSigning() v395.TerraformSigningAttributes {
+	spec := d.params().TerraformSigning
+	if spec == nil {
+		return v395.TerraformSigningAttributes{}
+	}
+
+	return v395.TerraformSigningAttributes{Keypair: spec.Keypair, Passphrase: spec.Passphrase}
+}
+
+// alpineSigning converts the RSA key of an alpine repository, nil when the
+// spec gives none. Nexus requires one for proxy and group repositories, which
+// the CRD enforces too.
+func (d desiredRepo) alpineSigning() *v395.AlpineSigningRepositoriesAttributes {
+	spec := d.params().AlpineSigning
+	if spec == nil {
+		return nil
+	}
+
+	return &v395.AlpineSigningRepositoriesAttributes{Keypair: spec.Keypair, Passphrase: spec.Passphrase}
+}
+
+// oci converts the OCI specific configuration, which shares the settings and
+// defaults of the Docker block.
+func (d desiredRepo) oci() v395.OciAttributes {
+	return v395.OciAttributes(containerAttributes(d.params().Oci))
+}
+
+// ociProxy converts the index configuration of an OCI proxy repository. It is
+// always sent, with the REGISTRY index Nexus defaults OCI proxies to when the
+// spec sets none, so that removing the block resets a custom index and drift
+// detection notices one set outside of the provider.
+func (d desiredRepo) ociProxy() *v395.OciProxyAttributes {
+	attributes := containerProxyAttributes(d.params().OciProxy, defaultOciIndexType)
+
+	return &v395.OciProxyAttributes{
+		IndexType:                &attributes.IndexType,
+		IndexUrl:                 attributes.IndexUrl,
+		CacheForeignLayers:       attributes.CacheForeignLayers,
+		ForeignLayerUrlWhitelist: attributes.ForeignLayerUrlWhitelist,
+	}
+}
+
+// cosign converts the cosign signature enforcement of an OCI repository. It is
+// always sent, NONE when the spec declares no block, so that removing the
+// block turns enforcement off and drift detection notices enforcement turned
+// on outside of the provider. The CRD only accepts the certificate regexes
+// with KEYLESS enforcement, since Nexus drops them otherwise.
+func (d desiredRepo) cosign() *v395.OciCosignConfiguration {
+	spec := d.params().Cosign
+	if spec == nil {
+		return &v395.OciCosignConfiguration{Enforcement: cosignEnforcementNone}
+	}
+
+	return &v395.OciCosignConfiguration{
+		Enforcement:   spec.Enforcement,
+		IdentityRegex: spec.IdentityRegex,
+		IssuerRegex:   spec.IssuerRegex,
+	}
 }

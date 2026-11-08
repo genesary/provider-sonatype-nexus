@@ -11,7 +11,7 @@ func init() {
 			get[v395.CargoHostedApiRepository]((*nexusAPI).GetCargoHostedRepository),
 			create((*nexusAPI).CreateCargoHostedRepository, v395.ApiCreateCargoHostedRepositoryRequest.CargoHostedRepositoryApiRequest),
 			update((*nexusAPI).UpdateCargoHostedRepository, v395.ApiUpdateCargoHostedRepositoryRequest.CargoHostedRepositoryApiRequest),
-			buildCargoHosted,
+			buildHosted,
 		),
 		proxy(
 			get[v395.CargoProxyApiRepository]((*nexusAPI).GetCargoProxyRepository),
@@ -28,38 +28,18 @@ func init() {
 	)
 }
 
-// buildCargoHosted renders a Cargo hosted repository payload.
-func buildCargoHosted(desired desiredRepo) v395.CargoHostedRepositoryApiRequest {
-	return v395.CargoHostedRepositoryApiRequest{
-		Name:    desired.name(),
-		Online:  desired.online(),
-		Storage: desired.hostedStorage(),
-		Cleanup: desired.cleanup(),
-	}
-}
-
 // buildCargoProxy renders a Cargo proxy repository payload.
 func buildCargoProxy(desired desiredRepo) v395.CargoProxyRepositoryApiRequest {
-	return v395.CargoProxyRepositoryApiRequest{
-		Name:            desired.name(),
-		Online:          desired.online(),
-		Storage:         desired.storage(),
-		Proxy:           desired.proxy(),
-		NegativeCache:   desired.negativeCache(),
-		HttpClient:      desired.httpClient(),
-		RoutingRuleName: desired.routingRule(),
-		Cargo:           desired.cargo(),
-		Cleanup:         desired.cleanup(),
-	}
+	repo := buildProxy[v395.CargoProxyRepositoryApiRequest](desired)
+	repo.Cargo = desired.cargo()
+
+	return repo
 }
 
 // buildCargoGroup renders a Cargo group repository payload.
 func buildCargoGroup(desired desiredRepo) v395.CargoGroupRepositoryApiRequest {
-	return v395.CargoGroupRepositoryApiRequest{
-		Name:    desired.name(),
-		Online:  desired.online(),
-		Storage: desired.storage(),
-		Group:   desired.group(),
-		Cargo:   desired.cargo(),
-	}
+	repo := buildGroup[v395.CargoGroupRepositoryApiRequest](desired)
+	repo.Cargo = desired.cargo()
+
+	return repo
 }

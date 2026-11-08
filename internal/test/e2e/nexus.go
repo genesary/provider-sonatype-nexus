@@ -161,6 +161,12 @@ func (f *Framework) FetchCargoProxyRepo(name string) (*v395.CargoProxyApiReposit
 	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetCargoProxyRepository(context.Background(), name).Execute())
 }
 
+// FetchRepository returns the format agnostic summary of the repository with
+// the given name, or (nil, nil) if absent.
+func (f *Framework) FetchRepository(name string) (*v395.RepositoryXO, error) {
+	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetRepositories(context.Background(), name).Execute())
+}
+
 // FetchCapability returns the capability with the given ID, or (nil, nil) if absent.
 func (f *Framework) FetchCapability(id string) (*v395.CapabilityDTO, error) {
 	return ignoreAbsent(f.capabilities.Get(context.Background(), id))

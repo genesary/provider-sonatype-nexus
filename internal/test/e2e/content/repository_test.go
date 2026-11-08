@@ -189,7 +189,7 @@ func TestDockerHostedRepository(t *testing.T) {
 				Storage: &contentv1alpha1.RepositoryStorage{
 					BlobStoreName: defaultBlobStore,
 				},
-				Docker: &contentv1alpha1.DockerConfig{
+				Docker: &contentv1alpha1.ContainerConfig{
 					V1Enabled:      ptrTo(false),
 					ForceBasicAuth: ptrTo(true),
 				},
@@ -523,7 +523,7 @@ func TestCargoRepositoryUpdate(t *testing.T) {
 					RemoteURL:     "https://crates.io",
 					ContentMaxAge: ptrTo(int32(1440)),
 				},
-				Cargo: &contentv1alpha1.CargoConfig{RequireAuthentication: ptrTo(false)},
+				Cargo: &contentv1alpha1.RequireAuthenticationConfig{RequireAuthentication: ptrTo(false)},
 			},
 		},
 	}

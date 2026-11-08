@@ -23,44 +23,26 @@ func init() {
 			get[v395.MavenGroupApiRepository]((*nexusAPI).GetMavenGroupRepository),
 			create((*nexusAPI).CreateMavenGroupRepository, v395.ApiCreateMavenGroupRepositoryRequest.MavenGroupRepositoryApiRequest),
 			update((*nexusAPI).UpdateMavenGroupRepository, v395.ApiUpdateMavenGroupRepositoryRequest.MavenGroupRepositoryApiRequest),
-			buildMavenGroup,
+			buildGroup,
 		),
 	)
 }
 
 // buildMavenHosted renders a Maven hosted repository payload.
 func buildMavenHosted(desired desiredRepo) v395.MavenHostedRepositoryApiRequest {
-	return v395.MavenHostedRepositoryApiRequest{
-		Name:    desired.name(),
-		Online:  desired.online(),
-		Storage: desired.hostedStorage(),
-		Cleanup: desired.cleanup(),
-		Maven:   desired.maven(),
-	}
+	repo := buildHosted[v395.MavenHostedRepositoryApiRequest](desired)
+	repo.Maven = desired.maven()
+
+	return repo
 }
 
 // buildMavenProxy renders a Maven proxy repository payload.
+//
+// Maven group repositories are registered with the shared group builder: the
+// Maven block is left out on purpose, as Nexus does not accept it for groups.
 func buildMavenProxy(desired desiredRepo) v395.MavenProxyRepositoryApiRequest {
-	return v395.MavenProxyRepositoryApiRequest{
-		Name:            desired.name(),
-		Online:          desired.online(),
-		Storage:         desired.storage(),
-		Maven:           desired.maven(),
-		Proxy:           desired.proxy(),
-		NegativeCache:   desired.negativeCache(),
-		HttpClient:      desired.httpClientWithPreemptiveAuth(),
-		RoutingRuleName: desired.routingRule(),
-		Cleanup:         desired.cleanup(),
-	}
-}
+	repo := buildPreemptiveProxy[v395.MavenProxyRepositoryApiRequest](desired)
+	repo.Maven = desired.maven()
 
-// buildMavenGroup renders a Maven group repository payload. The Maven block is
-// left out on purpose: Nexus does not accept it for group repositories.
-func buildMavenGroup(desired desiredRepo) v395.MavenGroupRepositoryApiRequest {
-	return v395.MavenGroupRepositoryApiRequest{
-		Name:    desired.name(),
-		Online:  desired.online(),
-		Storage: desired.storage(),
-		Group:   desired.group(),
-	}
+	return repo
 }

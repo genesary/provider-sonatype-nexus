@@ -1,0 +1,27 @@
+# Terraform hosted repository example
+apiVersion: content.nexus.crossplane.io/v1alpha1
+kind: Repository
+metadata:
+  name: terraform-hosted
+  namespace: default
+spec:
+  forProvider:
+    name: terraform-hosted
+    format: terraform
+    type: hosted
+    online: true
+    storage:
+      blobStoreName: default
+      strictContentTypeValidation: true
+      writePolicy: ALLOW
+    # Nexus signs the providers it serves with this PGP key, which is
+    # required for Terraform hosted repositories. Export one with
+    # gpg --export-secret-key --armor.
+    terraformSigning:
+      keypair: |
+        -----BEGIN PGP PRIVATE KEY BLOCK-----
+        <armored PGP private key>
+        -----END PGP PRIVATE KEY BLOCK-----
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

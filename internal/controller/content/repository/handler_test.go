@@ -2,8 +2,12 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"slices"
+	"sync"
 	"testing"
 
 	pkgerrors "github.com/pkg/errors"
@@ -57,7 +61,7 @@ func newRawOps(api *fakeAPI) typedOps[v395.RawHostedRepositoryApiRequest, v395.R
 
 			return nil
 		},
-		build: buildRawHosted,
+		build: buildHosted[v395.RawHostedRepositoryApiRequest],
 	}
 }
 
@@ -202,26 +206,34 @@ func TestDispatcherRejectsUnsupportedType(t *testing.T) {
 func TestRegisteredFormats(t *testing.T) {
 	t.Parallel()
 
+	all := []string{repoTypeGroup, repoTypeHosted, repoTypeProxy}
 	wantTypes := map[string][]string{
-		"apt":         {repoTypeHosted, repoTypeProxy},
-		"cargo":       {repoTypeGroup, repoTypeHosted, repoTypeProxy},
-		"cocoapods":   {repoTypeProxy},
-		"conan":       {repoTypeHosted, repoTypeProxy},
-		"conda":       {repoTypeProxy},
-		"docker":      {repoTypeGroup, repoTypeHosted, repoTypeProxy},
-		"gitlfs":      {repoTypeHosted},
-		"go":          {repoTypeGroup, repoTypeProxy},
-		"helm":        {repoTypeHosted, repoTypeProxy},
-		"huggingface": {repoTypeProxy},
-		"maven2":      {repoTypeGroup, repoTypeHosted, repoTypeProxy},
-		"npm":         {repoTypeGroup, repoTypeHosted, repoTypeProxy},
-		"nuget":       {repoTypeGroup, repoTypeHosted, repoTypeProxy},
-		"p2":          {repoTypeProxy},
-		"pypi":        {repoTypeGroup, repoTypeHosted, repoTypeProxy},
-		"r":           {repoTypeGroup, repoTypeHosted, repoTypeProxy},
-		"raw":         {repoTypeGroup, repoTypeHosted, repoTypeProxy},
-		"rubygems":    {repoTypeGroup, repoTypeHosted, repoTypeProxy},
-		"yum":         {repoTypeGroup, repoTypeHosted, repoTypeProxy},
+		"alpine":        all,
+		"ansiblegalaxy": all,
+		"apt":           {repoTypeHosted, repoTypeProxy},
+		"cargo":         all,
+		"cocoapods":     {repoTypeProxy},
+		"composer":      all,
+		"conan":         all,
+		"conda":         all,
+		"docker":        all,
+		"gitlfs":        {repoTypeHosted},
+		"go":            all,
+		"helm":          all,
+		"huggingface":   {repoTypeProxy},
+		"maven2":        all,
+		"npm":           all,
+		"nuget":         all,
+		"oci":           all,
+		"p2":            {repoTypeProxy},
+		"pub":           all,
+		"pypi":          all,
+		"r":             all,
+		"raw":           all,
+		"rubygems":      all,
+		"swift":         all,
+		"terraform":     all,
+		"yum":           all,
 	}
 
 	for format, types := range wantTypes {
@@ -258,10 +270,10 @@ func TestBuildersApplyFormatSpecificSettings(t *testing.T) {
 		Spec: repositoryv1alpha1.RepositorySpec{
 			ForProvider: repositoryv1alpha1.RepositoryParameters{
 				Name:        "repo",
-				Cargo:       &repositoryv1alpha1.CargoConfig{RequireAuthentication: new(true)},
+				Cargo:       &repositoryv1alpha1.RequireAuthenticationConfig{RequireAuthentication: new(true)},
 				YumSigning:  &repositoryv1alpha1.YumSigningConfig{Keypair: new("key")},
 				RoutingRule: new("block-all"),
-				DockerProxy: &repositoryv1alpha1.DockerProxyConfig{
+				DockerProxy: &repositoryv1alpha1.ContainerProxyConfig{
 					IndexType:          new("CUSTOM"),
 					IndexURL:           new("https://index.example.com"),
 					CacheForeignLayers: new(true),
@@ -311,30 +323,265 @@ func TestBuildersApplyDefaults(t *testing.T) {
 		},
 	}}
 
-	hostedRepo := buildRawHosted(desired)
+	hostedRepo := buildHosted[v395.RawHostedRepositoryApiRequest](desired)
 	if hostedRepo.Storage.BlobStoreName != defaultBlobStoreName || !hostedRepo.Online {
-		t.Errorf("buildRawHosted() = %+v, want the default blob store and online", hostedRepo.Storage)
+		t.Errorf("buildHosted() = %+v, want the default blob store and online", hostedRepo.Storage)
 	}
 
 	if hostedRepo.Cleanup != nil {
-		t.Error("buildRawHosted() set a cleanup block the spec does not declare")
+		t.Error("buildHosted() set a cleanup block the spec does not declare")
 	}
 
-	proxyRepo := buildRawProxy(desired)
+	proxyRepo := buildProxy[v395.RawProxyRepositoryApiRequest](desired)
 	if proxyRepo.Proxy.ContentMaxAge != defaultMaxAge || proxyRepo.Proxy.MetadataMaxAge != defaultMaxAge {
-		t.Errorf("buildRawProxy() proxy = %+v, want the default max ages", proxyRepo.Proxy)
+		t.Errorf("buildProxy() proxy = %+v, want the default max ages", proxyRepo.Proxy)
 	}
 
 	if !proxyRepo.NegativeCache.Enabled || proxyRepo.NegativeCache.TimeToLive != defaultNegativeCacheTTL {
-		t.Errorf("buildRawProxy() negativeCache = %+v, want enabled with the default TTL", proxyRepo.NegativeCache)
+		t.Errorf("buildProxy() negativeCache = %+v, want enabled with the default TTL", proxyRepo.NegativeCache)
 	}
 
 	if !proxyRepo.HttpClient.GetAutoBlock() || proxyRepo.HttpClient.GetBlocked() {
-		t.Errorf("buildRawProxy() httpClient = %+v, want autoBlock and not blocked", proxyRepo.HttpClient)
+		t.Errorf("buildProxy() httpClient = %+v, want autoBlock and not blocked", proxyRepo.HttpClient)
 	}
 
 	nugetRepo := buildNugetProxy(desired).NugetProxy
 	if nugetRepo.GetQueryCacheItemMaxAge() != defaultNugetQueryCacheItemMaxAge || nugetRepo.GetNugetVersion() != defaultNugetVersion {
 		t.Errorf("buildNugetProxy() nugetProxy = %+v, want the CRD defaults", nugetRepo)
+	}
+}
+
+// TestFormatBindingsReachTheirEndpoints drives every registered format and
+// repository type through a fake Nexus, and checks each operation reaches the
+// endpoint of that format and type with that repository's payload. The
+// bindings are type checked, but nothing else stops a type from being wired
+// to the endpoints of another one.
+func TestFormatBindingsReachTheirEndpoints(t *testing.T) {
+	t.Parallel()
+
+	for _, format := range supportedFormats() {
+		for _, repoType := range getHandler(format).SupportedTypes() {
+			t.Run(format+"/"+repoType, func(t *testing.T) {
+				t.Parallel()
+
+				recorder := &requestRecorder{}
+				server := httptest.NewServer(recorder)
+				t.Cleanup(server.Close)
+
+				client, err := nexus.NewClient(nexus.Credentials{URL: server.URL})
+				if err != nil {
+					t.Fatalf("NewClient() error = %v", err)
+				}
+
+				api := client.RepositoryManagementAPI
+				handler := getHandler(format)
+				desired := newDesired(format, repoType)
+				name := desired.name()
+
+				segment := format
+				if format == "maven2" {
+					segment = "maven"
+				}
+
+				endpoint := "/service/rest/v1/repositories/" + segment + "/" + repoType
+
+				state, err := handler.Observe(context.Background(), api, name, repoType, desired)
+				if err != nil || state.exists {
+					t.Errorf("Observe() = %+v (err %v), want a missing repository", state, err)
+				}
+
+				recorder.expect(t, http.MethodGet, endpoint+"/"+name, "")
+
+				err = handler.Create(context.Background(), api, repoType, desired)
+				if err != nil {
+					t.Errorf("Create() error = %v", err)
+				}
+
+				recorder.expect(t, http.MethodPost, endpoint, name)
+
+				err = handler.Update(context.Background(), api, name, repoType, desired)
+				if err != nil {
+					t.Errorf("Update() error = %v", err)
+				}
+
+				recorder.expect(t, http.MethodPut, endpoint+"/"+name, name)
+
+				err = handler.Delete(context.Background(), api, name, repoType)
+				if err != nil {
+					t.Errorf("Delete() error = %v", err)
+				}
+
+				recorder.expect(t, http.MethodDelete, "/service/rest/v1/repositories/"+name, "")
+			})
+		}
+	}
+}
+
+// requestRecorder is a fake Nexus that records the last request it served. It
+// reports every repository as missing and accepts every write.
+type requestRecorder struct {
+	mu     sync.Mutex
+	method string
+	path   string
+	body   map[string]any
+}
+
+// ServeHTTP records the request and answers like Nexus would.
+func (r *requestRecorder) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.method, r.path, r.body = req.Method, req.URL.Path, nil
+	_ = json.NewDecoder(req.Body).Decode(&r.body)
+
+	switch req.Method {
+	case http.MethodGet:
+		w.WriteHeader(http.StatusNotFound)
+	case http.MethodPost:
+		w.WriteHeader(http.StatusCreated)
+	default:
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// expect checks the last request against the method and path an operation
+// should have used, and, for a write, that it submitted the named repository.
+func (r *requestRecorder) expect(t *testing.T, method, path, name string) {
+	t.Helper()
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.method != method || r.path != path {
+		t.Errorf("request = %s %s, want %s %s", r.method, r.path, method, path)
+	}
+
+	if name != "" && r.body["name"] != name {
+		t.Errorf("%s %s submitted name %v, want %q", method, path, r.body["name"], name)
+	}
+}
+
+// newDesired builds the desired state of a repository of format and type with
+// only the settings the CRD requires.
+func newDesired(format, repoType string) desiredRepo {
+	params := repositoryv1alpha1.RepositoryParameters{
+		Name:   format + "-" + repoType,
+		Format: format,
+		Type:   repoType,
+	}
+
+	return desiredRepo{repo: &repositoryv1alpha1.Repository{Spec: repositoryv1alpha1.RepositorySpec{ForProvider: params}}}
+}
+
+// TestNewFormatBuilders checks the settings specific to the formats the
+// generated client added reach their payloads, with their defaults.
+func TestNewFormatBuilders(t *testing.T) {
+	t.Parallel()
+
+	empty := newDesired("any", repoTypeProxy)
+
+	configured := newDesired("any", repoTypeProxy)
+	configured.repo.Spec.ForProvider = repositoryv1alpha1.RepositoryParameters{
+		Name:             "repo",
+		AlpineSigning:    &repositoryv1alpha1.AlpineSigningConfig{Keypair: "rsa", Passphrase: new("secret")},
+		TerraformSigning: &repositoryv1alpha1.TerraformSigningConfig{Keypair: "pgp"},
+		Swift:            &repositoryv1alpha1.RequireAuthenticationConfig{RequireAuthentication: new(true)},
+		Terraform:        &repositoryv1alpha1.RequireAuthenticationConfig{RequireAuthentication: new(true)},
+		Oci:              &repositoryv1alpha1.ContainerConfig{PathEnabled: new(true), HTTPPort: new(int32(8082))},
+		OciProxy:         &repositoryv1alpha1.ContainerProxyConfig{IndexType: new("CUSTOM"), IndexURL: new("https://index.example.com")},
+		Cosign:           &repositoryv1alpha1.CosignConfig{Enforcement: "KEYLESS", IssuerRegex: new("^https://token.actions.githubusercontent.com$")},
+	}
+
+	if got := buildAlpineHosted(empty); got.AlpineSigning != nil {
+		t.Error("buildAlpineHosted() set a signing key the spec does not declare")
+	}
+
+	if got := buildAlpineProxy(configured).AlpineSigning; got.Keypair != "rsa" || ptr.Deref(got.Passphrase, "") != "secret" {
+		t.Errorf("buildAlpineProxy() alpineSigning = %+v, want the spec key", got)
+	}
+
+	if got := buildAlpineGroup(configured).AlpineSigning; got.Keypair != "rsa" {
+		t.Errorf("buildAlpineGroup() alpineSigning = %+v, want the spec key", got)
+	}
+
+	if got := buildTerraformHosted(configured).TerraformSigning; got.Keypair != "pgp" || got.Passphrase != nil {
+		t.Errorf("buildTerraformHosted() terraformSigning = %+v, want the spec key", got)
+	}
+
+	if buildSwiftProxy(empty).Swift.GetRequireAuthentication() || buildTerraformGroup(empty).Terraform.GetRequireAuthentication() {
+		t.Error("requireAuthentication defaults to true, want false")
+	}
+
+	if !buildSwiftProxy(configured).Swift.GetRequireAuthentication() {
+		t.Error("buildSwiftProxy() dropped swift.requireAuthentication")
+	}
+
+	if !buildTerraformGroup(configured).Terraform.GetRequireAuthentication() {
+		t.Error("buildTerraformGroup() dropped terraform.requireAuthentication")
+	}
+
+	// Nexus resets a block a PUT leaves out, so the defaults are always sent
+	// and compared, which catches settings changed outside of the provider.
+	if got := buildOciHosted(empty); !got.Oci.ForceBasicAuth || got.Oci.V1Enabled || got.Cosign.GetEnforcement() != "NONE" {
+		t.Errorf("buildOciHosted() = %+v, want forceBasicAuth, no V1 API and no cosign enforcement", got)
+	}
+
+	if got := buildOciProxy(empty).OciProxy; ptr.Deref(got.IndexType, "") != defaultOciIndexType || got.IndexUrl != nil {
+		t.Errorf("buildOciProxy() ociProxy = %+v, want the REGISTRY index Nexus defaults to", got)
+	}
+
+	if got := buildDockerProxy(empty).DockerProxy; got.IndexType != defaultDockerIndexType {
+		t.Errorf("buildDockerProxy() dockerProxy = %+v, want the HUB index Nexus defaults to", got)
+	}
+
+	ociProxy := buildOciProxy(configured)
+	if !ptr.Deref(ociProxy.Oci.PathEnabled, false) || ptr.Deref(ociProxy.Oci.HttpPort, 0) != 8082 {
+		t.Errorf("buildOciProxy() oci = %+v, want the spec settings", ociProxy.Oci)
+	}
+
+	if ptr.Deref(ociProxy.OciProxy.IndexType, "") != "CUSTOM" || ptr.Deref(ociProxy.OciProxy.IndexUrl, "") != "https://index.example.com" {
+		t.Errorf("buildOciProxy() ociProxy = %+v, want the custom index", ociProxy.OciProxy)
+	}
+
+	if got := buildOciGroup(configured).Cosign; got.Enforcement != "KEYLESS" || got.IssuerRegex == nil {
+		t.Errorf("buildOciGroup() cosign = %+v, want the issuer regex enforced", got)
+	}
+}
+
+// TestSharedBuildersApplyOptionalBlocks checks the shared builders submit the
+// cleanup policies and routing rule a spec declares, and the variants of the
+// blocks a format picks.
+func TestSharedBuildersApplyOptionalBlocks(t *testing.T) {
+	t.Parallel()
+
+	desired := newDesired("raw", repoTypeProxy)
+	desired.httpPassword = "password"
+	desired.repo.Spec.ForProvider.RoutingRule = new("block-all")
+	desired.repo.Spec.ForProvider.Cleanup = &repositoryv1alpha1.RepositoryCleanup{}
+	desired.repo.Spec.ForProvider.Group = &repositoryv1alpha1.GroupConfig{MemberNames: []string{"a"}, WritableMember: new("a")}
+	desired.repo.Spec.ForProvider.HTTPClient = &repositoryv1alpha1.HTTPClientConfig{
+		Authentication: &repositoryv1alpha1.HTTPClientAuthentication{Type: new("username"), Username: new("user")},
+	}
+
+	proxyRepo := buildProxy[v395.RawProxyRepositoryApiRequest](desired)
+	if ptr.Deref(proxyRepo.RoutingRuleName, "") != "block-all" {
+		t.Error("buildProxy() dropped routingRule")
+	}
+
+	if proxyRepo.Cleanup == nil || proxyRepo.Cleanup.PolicyNames == nil {
+		t.Error("buildProxy() dropped an empty cleanup block, which clears the policies")
+	}
+
+	preemptive := buildPreemptiveProxy[v395.PypiProxyRepositoryApiRequest](desired)
+	if preemptive.HttpClient == nil || preemptive.HttpClient.Authentication.GetPassword() != "password" {
+		t.Errorf("buildPreemptiveProxy() httpClient = %+v, want the resolved password", preemptive.HttpClient)
+	}
+
+	if got := buildDeployGroup[v395.NpmGroupRepositoryApiRequest](desired).Group; ptr.Deref(got.WritableMember, "") != "a" {
+		t.Errorf("buildDeployGroup() group = %+v, want writable member a", got)
+	}
+
+	if got := buildDockerHosted(desired).Storage; got.WritePolicy != defaultWritePolicy || got.BlobStoreName != defaultBlobStoreName {
+		t.Errorf("buildDockerHosted() storage = %+v, want the hosted defaults", got)
 	}
 }

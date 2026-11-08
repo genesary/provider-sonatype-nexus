@@ -1,0 +1,25 @@
+# OCI hosted repository example
+apiVersion: content.nexus.crossplane.io/v1alpha1
+kind: Repository
+metadata:
+  name: oci-hosted
+  namespace: default
+spec:
+  forProvider:
+    name: oci-hosted
+    format: oci
+    type: hosted
+    online: true
+    storage:
+      blobStoreName: default
+      strictContentTypeValidation: true
+      writePolicy: ALLOW
+    oci:
+      forceBasicAuth: true
+      v1Enabled: false
+      pathEnabled: true
+    cosign:
+      enforcement: NONE
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

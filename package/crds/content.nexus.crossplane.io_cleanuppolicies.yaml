@@ -88,6 +88,8 @@ spec:
                       Use * to apply to all formats.
                     enum:
                     - '*'
+                    - alpine
+                    - ansiblegalaxy
                     - apt
                     - bower
                     - cargo
@@ -103,11 +105,15 @@ spec:
                     - maven2
                     - npm
                     - nuget
+                    - oci
                     - p2
+                    - pub
                     - pypi
                     - r
                     - raw
                     - rubygems
+                    - swift
+                    - terraform
                     - yum
                     type: string
                   name:

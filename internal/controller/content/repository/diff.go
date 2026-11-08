@@ -13,10 +13,13 @@ import (
 // provider sent, which would otherwise report drift on every single reconcile:
 //
 // the signing keys and the HTTP client credentials are redacted or dropped by
-// the API, as any credential should be.
+// the API, as any credential should be. Terraform does echo its signing key
+// back, but it is excluded too, so that no format compares credentials.
 var unmanagedPaths = map[string]struct{}{
 	"aptSigning":                {},
 	"yumSigning":                {},
+	"alpineSigning":             {},
+	"terraformSigning":          {},
 	"httpClient.authentication": {},
 }
 
