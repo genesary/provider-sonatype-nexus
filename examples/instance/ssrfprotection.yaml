@@ -1,0 +1,18 @@
+---
+apiVersion: instance.nexus.crossplane.io/v1alpha1
+kind: SSRFProtection
+metadata:
+  name: default
+  namespace: default
+spec:
+  forProvider:
+    enabled: true
+    allowedIPs:
+      - 10.0.0.50
+      - 192.168.1.100
+    allowedDomains:
+      - internal.corp.com
+      - registry.local
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

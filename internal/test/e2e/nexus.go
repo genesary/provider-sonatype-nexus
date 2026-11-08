@@ -83,6 +83,13 @@ func (f *Framework) ListSSLCertificates() ([]v395.ApiCertificate, error) {
 	return certs, nexusclient.APIError(resp, err)
 }
 
+// FetchSSRFProtection returns the Nexus SSRF protection settings.
+func (f *Framework) FetchSSRFProtection() (*v395.SsrfProtectionConfigurationXO, error) {
+	config, resp, err := f.Nexus.SecurityManagementSSRFProtectionAPI.ListSecuritySsrfProtection(context.Background()).Execute()
+
+	return config, nexusclient.APIError(resp, err)
+}
+
 // CleanupPoliciesAvailable returns true if the Nexus instance exposes the
 // cleanup-policies REST API (Nexus Repository Pro feature).
 func (f *Framework) CleanupPoliciesAvailable() bool {
