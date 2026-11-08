@@ -84,5 +84,5 @@ The [`examples`](../examples) directory has an example of every kind but `Licens
 | ----------- | ---------- |
 | [`examples/content`](../examples/content) | Repositories (Maven hosted, proxy and group, Docker, npm, Hugging Face, P2), `CleanupPolicy`, `ContentSelector`, `RoutingRule` |
 | [`examples/iam`](../examples/iam) | `User`, `Role`, `Privilege` (application, repository-view, wildcard), `AnonymousAccess`, `LDAP`, `SAML`, `UserTokenConfiguration`, a role built with references |
-| [`examples/instance`](../examples/instance) | `BlobStore` (File and S3), `Capability`, `IQServerConfiguration`, `SecurityRealm`, `SecuritySSLTruststore` |
+| [`examples/instance`](../examples/instance) | `BlobStore` (File and S3), `Capability`, `IQServerConfiguration`, `SecurityRealm`, `SecuritySSLTruststore`, `SSRFProtection` |
 | [`examples/providerconfig.yaml`](../examples/providerconfig.yaml) | `ProviderConfig`, `ClusterProviderConfig` and their Secrets |

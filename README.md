@@ -29,8 +29,13 @@ This provider enables you to manage Nexus Repository Manager resources using Kub
 | `License` | `instance.nexus.crossplane.io` | Nexus Pro license |
 | `SecurityRealm` | `instance.nexus.crossplane.io` | Active security realms and their order |
 | `SecuritySSLTruststore` | `instance.nexus.crossplane.io` | Certificates of the Nexus SSL truststore |
+| `SSRFProtection` | `instance.nexus.crossplane.io` | SSRF protection and its allowed IP and domain exceptions |
 
 Repositories are supported for Maven2, npm, Docker and 23 other formats. See [Supported Repository Formats](docs/repository-formats.md) for the full list and the types of each.
+
+### Instance-wide settings
+
+`AnonymousAccess`, `IQServerConfiguration`, `License`, `SAML`, `SecurityRealm`, `SSRFProtection` and `UserTokenConfiguration` each manage a setting Nexus holds once per instance. Declare at most one of each kind per Nexus instance, across all namespaces and ProviderConfigs that point at it. The provider does not enforce this: two resources of the same kind keep overwriting each other's settings. Deleting an `IQServerConfiguration`, `License`, `SAML` or `SSRFProtection` also disables, removes or resets the setting in Nexus, even while another resource of that kind still declares it.
 
 ## Quick Start
 
