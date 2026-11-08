@@ -1,0 +1,21 @@
+# Requires scripting to be enabled in Nexus: set
+# nexus.scripts.allowCreation=true in <nexus-data>/etc/nexus.properties and
+# restart Nexus. The provider stores the script; it never runs it. Anyone
+# allowed to run scripts in Nexus can execute it with the rights of the Nexus
+# server.
+apiVersion: instance.nexus.crossplane.io/v1alpha1
+kind: Script
+metadata:
+  name: list-repositories
+  namespace: default
+spec:
+  forProvider:
+    name: list-repositories
+    type: groovy
+    content: |
+      import groovy.json.JsonOutput
+
+      return JsonOutput.toJson(repository.repositoryManager.browse().collect { it.name })
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

@@ -28,6 +28,7 @@ This provider enables you to manage Nexus Repository Manager resources using Kub
 | `HTTPClient` | `instance.nexus.crossplane.io` | Outbound HTTP client settings: User-Agent, timeout, retries and HTTP/HTTPS proxies (Pro) |
 | `IQServerConfiguration` | `instance.nexus.crossplane.io` | Sonatype IQ Server integration |
 | `License` | `instance.nexus.crossplane.io` | Nexus Pro license |
+| `Script` | `instance.nexus.crossplane.io` | Scripts stored through the Nexus scripting API (must be enabled, see [Scripts](#scripts)) |
 | `SecurityRealm` | `instance.nexus.crossplane.io` | Active security realms and their order |
 | `SecuritySSLTruststore` | `instance.nexus.crossplane.io` | Certificates of the Nexus SSL truststore |
 | `SSRFProtection` | `instance.nexus.crossplane.io` | SSRF protection and its allowed IP and domain exceptions |
@@ -38,6 +39,12 @@ Repositories are supported for Maven2, npm, Docker and 23 other formats. See [Su
 ### Instance-wide settings
 
 `AnonymousAccess`, `IQServerConfiguration`, `License`, `SAML`, `SecurityRealm`, `SSRFProtection` and `UserTokenConfiguration` each manage a setting Nexus holds once per instance. Declare at most one of each kind per Nexus instance, across all namespaces and ProviderConfigs that point at it. The provider does not enforce this: two resources of the same kind keep overwriting each other's settings. Deleting an `IQServerConfiguration`, `License`, `SAML` or `SSRFProtection` also disables, removes or resets the setting in Nexus, even while another resource of that kind still declares it.
+
+### Scripts
+
+A `Script` stores a script, usually Groovy, through the Nexus scripting API. The provider never runs it. A stored script is arbitrary code that any user allowed to run scripts can execute with the full rights of the Nexus server, so treat permission to create `Script` resources like administrator access to Nexus.
+
+Nexus disables script creation by default. To use `Script`, set `nexus.scripts.allowCreation=true` in `<nexus-data>/etc/nexus.properties` (or pass `-Dnexus.scripts.allowCreation=true` to the JVM) and restart Nexus. Until then, a `Script` reports `Synced=False` with an error saying how to enable it.
 
 ## Quick Start
 

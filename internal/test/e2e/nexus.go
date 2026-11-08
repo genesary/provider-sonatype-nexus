@@ -229,3 +229,14 @@ func (f *Framework) FetchTask(name string) (*v395.TaskXO, error) {
 func (f *Framework) UpdateTask(id string, task v395.UpdateTasksRequest) error {
 	return f.tasks.Update(context.Background(), id, task)
 }
+
+// FetchScript returns the script with the given name, or (nil, nil) if absent.
+func (f *Framework) FetchScript(name string) (*v395.ScriptXO, error) {
+	return absentAsNil(f.Nexus.ScriptAPI.GetScript(context.Background(), name).Execute())
+}
+
+// SetScript replaces the script with the given name directly, bypassing the
+// provider.
+func (f *Framework) SetScript(script v395.ScriptXO) error {
+	return nexusclient.APIError(f.Nexus.ScriptAPI.UpdateScript(context.Background(), script.Name).ScriptXO(script).Execute())
+}

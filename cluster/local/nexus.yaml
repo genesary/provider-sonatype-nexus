@@ -25,8 +25,11 @@ spec:
           ports:
             - containerPort: 8081
           env:
+            # nexus.scripts.allowCreation enables the scripting API, which
+            # Nexus disables by default, so that the Script e2e test can
+            # store scripts. It only affects this test instance.
             - name: INSTALL4J_ADD_VM_PARAMS
-              value: "-Xms512m -Xmx512m -XX:MaxDirectMemorySize=512m"
+              value: "-Xms512m -Xmx512m -XX:MaxDirectMemorySize=512m -Dnexus.scripts.allowCreation=true"
             - name: NEXUS_SECURITY_RANDOMPASSWORD
               value: "false"
           resources:
