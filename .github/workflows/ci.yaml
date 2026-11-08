@@ -184,8 +184,12 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-24.04
     needs: [detect-noop, lint, unit-tests]
-    if: needs.detect-noop.outputs.noop != 'true'
-    timeout-minutes: 30
+    # Pushes to main already ran the e2e on their pull request.
+    if: needs.detect-noop.outputs.noop != 'true' && !(github.event_name == 'push' && github.ref == 'refs/heads/main')
+    # Above the go test timeout (E2E_TEST_TIMEOUT, 30m) plus the build and
+    # setup: a job cancelled on its own timeout skips the failure() steps,
+    # so no diagnostics would be collected.
+    timeout-minutes: 45
 
     env:
       # Skip the integration script's own kind teardown trap so the

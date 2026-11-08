@@ -49,16 +49,7 @@ type Conditioned interface {
 // WaitForReady polls until obj reports both Synced=True and Ready=True.
 // The supplied object is updated in-place with the latest observed state.
 func (f *Framework) WaitForReady(ctx context.Context, obj Conditioned, timeout time.Duration) error {
-	key := client.ObjectKeyFromObject(obj)
-
-	return wait.PollUntilContextTimeout(ctx, pollInterval, timeout, true, func(ctx context.Context) (bool, error) {
-		err := f.Kube.Get(ctx, key, obj)
-		if err != nil {
-			return false, err
-		}
-
-		return isReady(obj), nil
-	})
+	return f.waitForReady(ctx, obj, timeout, false)
 }
 
 // WaitForReadyNudged is WaitForReady for a managed resource whose first
@@ -71,6 +62,12 @@ func (f *Framework) WaitForReady(ctx context.Context, obj Conditioned, timeout t
 // an annotation on it every pollInterval, which its controller reconciles
 // straight away whatever the backoff.
 func (f *Framework) WaitForReadyNudged(ctx context.Context, obj Conditioned, timeout time.Duration) error {
+	return f.waitForReady(ctx, obj, timeout, true)
+}
+
+// waitForReady polls until obj is Ready, nudging it on each poll it is not
+// when nudge is set.
+func (f *Framework) waitForReady(ctx context.Context, obj Conditioned, timeout time.Duration, nudge bool) error {
 	key := client.ObjectKeyFromObject(obj)
 
 	return wait.PollUntilContextTimeout(ctx, pollInterval, timeout, true, func(ctx context.Context) (bool, error) {
@@ -79,8 +76,9 @@ func (f *Framework) WaitForReadyNudged(ctx context.Context, obj Conditioned, tim
 			return false, err
 		}
 
-		if isReady(obj) {
-			return true, nil
+		ready := isReady(obj)
+		if ready || !nudge {
+			return ready, nil
 		}
 
 		// A merge patch carries no resourceVersion, so it cannot fail on a

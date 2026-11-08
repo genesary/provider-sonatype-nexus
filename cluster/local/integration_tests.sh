@@ -72,15 +72,17 @@ if [ "${E2E_PRELOAD_IMAGES:-false}" = "true" ]; then
     # host platform's layers, which makes `kind load docker-image` fail with
     # "content digest ... not found"; fall back to a single-platform archive.
     kind_load_image() {
-        local image=$1 archive
+        local image=$1 archive status=0
         if "${KIND}" load docker-image "${image}" --name="${KIND_CLUSTER_NAME}"; then
             return 0
         fi
         echo "kind load docker-image failed for ${image}, retrying with a single-platform archive"
         archive="$(mktemp)"
-        docker save --platform "$(docker version --format '{{.Server.Os}}/{{.Server.Arch}}')" -o "${archive}" "${image}"
-        "${KIND}" load image-archive "${archive}" --name="${KIND_CLUSTER_NAME}"
+        # Remove the archive (the size of the image) even when a step fails.
+        docker save --platform "$(docker version --format '{{.Server.Os}}/{{.Server.Arch}}')" -o "${archive}" "${image}" &&
+            "${KIND}" load image-archive "${archive}" --name="${KIND_CLUSTER_NAME}" || status=$?
         rm -f "${archive}"
+        return "${status}"
     }
 
     # The image is pinned in the manifest, which Renovate keeps up to date;
@@ -208,6 +210,13 @@ until wait_for_crds_created 90; do
     fi
     echo "only ${count}/${expected_crd_count} CRDs created after attempt ${attempt}/${max_attempts}; recreating Provider to force a fresh ProviderRevision"
     "${KUBECTL}" delete "provider.pkg.crossplane.io/${PACKAGE_NAME}" --wait=true --timeout=60s || true
+    # The CRDs the deleted revision owned are garbage collected in the
+    # background. Wait for them to be gone, or the next count would include
+    # CRDs about to disappear, and the new revision could not recreate them.
+    stale_crds="$(provider_crds)"
+    if [ -n "${stale_crds}" ]; then
+        echo "${stale_crds}" | xargs "${KUBECTL}" wait --for=delete --timeout=120s || true
+    fi
     make -C "${projectdir}" "local.xpkg.deploy.provider.${PACKAGE_NAME}"
     attempt=$((attempt + 1))
 done
