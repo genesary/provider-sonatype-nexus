@@ -54,9 +54,7 @@ func setupProviderConfig(mgr ctrl.Manager, opts helpers.Options, config client.O
 		UsageList: v1alpha1.ProviderConfigUsageListGroupVersionKind,
 	}
 
-	reconciler := providerconfig.NewReconciler(mgr, kinds,
-		providerconfig.WithLogger(opts.Logger.WithValues("controller", name)),
-		providerconfig.WithRecorder(helpers.NewEventRecorder(mgr, name, opts.EventFilterFunctions...)))
+	reconciler := providerconfig.NewReconciler(mgr, kinds, helpers.ProviderConfigReconcilerOptions(mgr, name, opts)...)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).

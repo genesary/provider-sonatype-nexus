@@ -8,12 +8,10 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/providerconfig"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
-
-// sharedOptions is the number of options every controller gets.
-const sharedOptions = 3
 
 // recorderManager is a manager that only provides event recorders.
 type recorderManager struct {
@@ -60,8 +58,8 @@ func TestReconcilerOptions(t *testing.T) {
 			}
 
 			got := ReconcilerOptions(recorderManager{}, "test", testOptions(), specific...)
-			if len(got) != sharedOptions+test.specific {
-				t.Fatalf("ReconcilerOptions() returned %d options, want %d", len(got), sharedOptions+test.specific)
+			if len(got) != maxSharedReconcilerOptions+test.specific {
+				t.Fatalf("ReconcilerOptions() returned %d options, want %d", len(got), maxSharedReconcilerOptions+test.specific)
 			}
 
 			for _, option := range got[len(got)-test.specific:] {
@@ -72,5 +70,22 @@ func TestReconcilerOptions(t *testing.T) {
 				t.Errorf("last options applied specific options %v, want %v", applied, wantApplied)
 			}
 		})
+	}
+}
+
+// TestProviderConfigReconcilerOptions checks that the providerconfig
+// reconciler options set a logger and an event recorder.
+func TestProviderConfigReconcilerOptions(t *testing.T) {
+	t.Parallel()
+
+	const wantOptions = 2
+
+	got := ProviderConfigReconcilerOptions(recorderManager{}, "test", testOptions())
+	if len(got) != wantOptions {
+		t.Fatalf("ProviderConfigReconcilerOptions() returned %d options, want %d", len(got), wantOptions)
+	}
+
+	for _, option := range got {
+		option(&providerconfig.Reconciler{})
 	}
 }
