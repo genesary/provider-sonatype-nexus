@@ -194,10 +194,5 @@ func (e *external) Disconnect(_ context.Context) error {
 // taskName returns the Nexus name of the task: its external name, or the
 // spec name until the external name is set.
 func taskName(task *instancev1alpha1.Task) string {
-	name := meta.GetExternalName(task)
-	if name == "" {
-		return task.Spec.ForProvider.Name
-	}
-
-	return name
+	return helpers.ExternalNameOr(task, task.Spec.ForProvider.Name)
 }

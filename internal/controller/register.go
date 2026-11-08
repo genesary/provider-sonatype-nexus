@@ -26,6 +26,7 @@ import (
 	instancehttpclient "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/httpclient"
 	instanceiqserver "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/iqserverconfiguration"
 	instancelicense "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/license"
+	instancescript "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/script"
 	instancesecurityrealm "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/securityrealm"
 	instancessltruststore "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/securityssltruststore"
 	instancessrf "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/ssrfprotection"
@@ -58,6 +59,7 @@ var managedControllers = []managedController{
 	{instancehttpclient.Setup, instancev1alpha1.HTTPClientGroupVersionKind},
 	{instanceiqserver.Setup, instancev1alpha1.IQServerConfigurationGroupVersionKind},
 	{instancelicense.Setup, instancev1alpha1.LicenseGroupVersionKind},
+	{instancescript.Setup, instancev1alpha1.ScriptGroupVersionKind},
 	{instancesecurityrealm.Setup, instancev1alpha1.SecurityRealmGroupVersionKind},
 	{instancessltruststore.Setup, instancev1alpha1.SecuritySSLTruststoreGroupVersionKind},
 	{instancessrf.Setup, instancev1alpha1.SSRFProtectionGroupVersionKind},

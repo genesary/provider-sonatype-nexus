@@ -7,6 +7,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -69,4 +70,16 @@ func SpecExternalName[T resource.Managed](kube client.Client, name func(T) strin
 
 		return errors.Wrap(kube.Update(ctx, managedResource), errUpdateExternalName)
 	})
+}
+
+// ExternalNameOr returns the external name of obj, or fallback while none is
+// set. Kinds whose external name is seeded by WithSpecExternalName pass the
+// spec identifier as fallback.
+func ExternalNameOr(obj metav1.Object, fallback string) string {
+	name := meta.GetExternalName(obj)
+	if name == "" {
+		return fallback
+	}
+
+	return name
 }

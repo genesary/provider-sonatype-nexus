@@ -98,10 +98,7 @@ type external struct {
 
 // Observe checks whether the external resource exists and is up-to-date.
 func (e *external) Observe(ctx context.Context, roleRes *iamv1alpha1.Role) (managed.ExternalObservation, error) {
-	roleID := meta.GetExternalName(roleRes)
-	if roleID == "" {
-		roleID = roleRes.Spec.ForProvider.ID
-	}
+	roleID := helpers.ExternalNameOr(roleRes, roleRes.Spec.ForProvider.ID)
 
 	observed, err := e.client.Get(ctx, roleID)
 	if err != nil {
@@ -142,10 +139,7 @@ func (e *external) Create(ctx context.Context, roleRes *iamv1alpha1.Role) (manag
 
 // Update reconciles the Role to the desired state.
 func (e *external) Update(ctx context.Context, roleRes *iamv1alpha1.Role) (managed.ExternalUpdate, error) {
-	roleID := meta.GetExternalName(roleRes)
-	if roleID == "" {
-		roleID = roleRes.Spec.ForProvider.ID
-	}
+	roleID := helpers.ExternalNameOr(roleRes, roleRes.Spec.ForProvider.ID)
 
 	roleData := iamclient.GenerateRole(roleRes)
 
@@ -159,10 +153,7 @@ func (e *external) Update(ctx context.Context, roleRes *iamv1alpha1.Role) (manag
 
 // Delete removes the Role from Nexus.
 func (e *external) Delete(ctx context.Context, roleRes *iamv1alpha1.Role) (managed.ExternalDelete, error) {
-	roleID := meta.GetExternalName(roleRes)
-	if roleID == "" {
-		roleID = roleRes.Spec.ForProvider.ID
-	}
+	roleID := helpers.ExternalNameOr(roleRes, roleRes.Spec.ForProvider.ID)
 
 	err := e.client.Delete(ctx, roleID)
 	if err != nil {

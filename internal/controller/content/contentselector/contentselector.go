@@ -98,10 +98,7 @@ type external struct {
 
 // Observe checks whether the external resource exists and is up-to-date.
 func (e *external) Observe(ctx context.Context, contentSelector *contentv1alpha1.ContentSelector) (managed.ExternalObservation, error) {
-	name := meta.GetExternalName(contentSelector)
-	if name == "" {
-		name = contentSelector.Spec.ForProvider.Name
-	}
+	name := helpers.ExternalNameOr(contentSelector, contentSelector.Spec.ForProvider.Name)
 
 	observed, err := e.client.Get(ctx, name)
 	if err != nil {
@@ -139,10 +136,7 @@ func (e *external) Create(ctx context.Context, contentSelector *contentv1alpha1.
 
 // Update updates the external resource to match the desired state.
 func (e *external) Update(ctx context.Context, contentSelector *contentv1alpha1.ContentSelector) (managed.ExternalUpdate, error) {
-	name := meta.GetExternalName(contentSelector)
-	if name == "" {
-		name = contentSelector.Spec.ForProvider.Name
-	}
+	name := helpers.ExternalNameOr(contentSelector, contentSelector.Spec.ForProvider.Name)
 
 	err := e.client.Update(ctx, name, contentclient.GenerateContentSelectorUpdate(contentSelector))
 	if err != nil {
@@ -154,10 +148,7 @@ func (e *external) Update(ctx context.Context, contentSelector *contentv1alpha1.
 
 // Delete deletes the external resource.
 func (e *external) Delete(ctx context.Context, contentSelector *contentv1alpha1.ContentSelector) (managed.ExternalDelete, error) {
-	name := meta.GetExternalName(contentSelector)
-	if name == "" {
-		name = contentSelector.Spec.ForProvider.Name
-	}
+	name := helpers.ExternalNameOr(contentSelector, contentSelector.Spec.ForProvider.Name)
 
 	err := e.client.Delete(ctx, name)
 	if err != nil {

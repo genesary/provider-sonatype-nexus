@@ -110,10 +110,7 @@ type external struct {
 
 // Observe checks whether the external resource exists and is up-to-date.
 func (e *external) Observe(ctx context.Context, userRes *iamv1alpha1.User) (managed.ExternalObservation, error) {
-	userID := meta.GetExternalName(userRes)
-	if userID == "" {
-		userID = userRes.Spec.ForProvider.UserID
-	}
+	userID := helpers.ExternalNameOr(userRes, userRes.Spec.ForProvider.UserID)
 
 	observed, err := e.client.Get(ctx, userID)
 	if err != nil {
@@ -185,10 +182,7 @@ func (e *external) Create(ctx context.Context, userRes *iamv1alpha1.User) (manag
 
 // Update reconciles the User to the desired state.
 func (e *external) Update(ctx context.Context, userRes *iamv1alpha1.User) (managed.ExternalUpdate, error) {
-	userID := meta.GetExternalName(userRes)
-	if userID == "" {
-		userID = userRes.Spec.ForProvider.UserID
-	}
+	userID := helpers.ExternalNameOr(userRes, userRes.Spec.ForProvider.UserID)
 
 	secrets := nexus.MemoizeSecrets(e.kube)
 
@@ -225,10 +219,7 @@ func (e *external) Update(ctx context.Context, userRes *iamv1alpha1.User) (manag
 
 // Delete removes the User from Nexus.
 func (e *external) Delete(ctx context.Context, userRes *iamv1alpha1.User) (managed.ExternalDelete, error) {
-	userID := meta.GetExternalName(userRes)
-	if userID == "" {
-		userID = userRes.Spec.ForProvider.UserID
-	}
+	userID := helpers.ExternalNameOr(userRes, userRes.Spec.ForProvider.UserID)
 
 	err := e.client.Delete(ctx, userID)
 	if err != nil {

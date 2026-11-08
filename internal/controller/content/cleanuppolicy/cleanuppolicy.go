@@ -98,10 +98,7 @@ type external struct {
 
 // Observe checks whether the external resource exists and is up-to-date.
 func (e *external) Observe(ctx context.Context, cleanupPolicy *contentv1alpha1.CleanupPolicy) (managed.ExternalObservation, error) {
-	name := meta.GetExternalName(cleanupPolicy)
-	if name == "" {
-		name = cleanupPolicy.Spec.ForProvider.Name
-	}
+	name := helpers.ExternalNameOr(cleanupPolicy, cleanupPolicy.Spec.ForProvider.Name)
 
 	observed, err := e.client.Get(ctx, name)
 	if err != nil {
@@ -149,10 +146,7 @@ func (e *external) Update(ctx context.Context, cleanupPolicy *contentv1alpha1.Cl
 
 // Delete deletes the external resource.
 func (e *external) Delete(ctx context.Context, cleanupPolicy *contentv1alpha1.CleanupPolicy) (managed.ExternalDelete, error) {
-	name := meta.GetExternalName(cleanupPolicy)
-	if name == "" {
-		name = cleanupPolicy.Spec.ForProvider.Name
-	}
+	name := helpers.ExternalNameOr(cleanupPolicy, cleanupPolicy.Spec.ForProvider.Name)
 
 	err := e.client.Delete(ctx, name)
 	if err != nil {
