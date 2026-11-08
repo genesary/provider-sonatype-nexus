@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -27,6 +28,7 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
@@ -118,6 +120,7 @@ func newManager(cfg *rest.Config, parsed flags) (ctrl.Manager, error) {
 
 	mgr, err := ctrl.NewManager(ratelimiter.LimitRESTConfig(cfg, parsed.MaxReconcileRate), ctrl.Options{
 		Scheme: scheme,
+		Client: clientOptions(parsed.EnableSecretCache),
 		Cache:  cache.Options{SyncPeriod: &parsed.SyncInterval},
 
 		// controller-runtime defaults to 15s leases with a 10s renewal
@@ -154,6 +157,19 @@ func newScheme() (*runtime.Scheme, error) {
 	}
 
 	return scheme, nil
+}
+
+// clientOptions returns the manager client options, which also apply to the
+// connection details publisher. Kinds listed in DisableFor are read directly
+// from the API server instead of the informer cache, so the provider only
+// needs to be allowed to get the objects it reads, rather than to list and
+// watch all of them. The manager fills in the cache reader and the rest.
+func clientOptions(enableSecretCache bool) client.Options {
+	if enableSecretCache {
+		return client.Options{}
+	}
+
+	return client.Options{Cache: &client.CacheOptions{DisableFor: []client.Object{&corev1.Secret{}}}}
 }
 
 // controllerOptions returns the options shared by the provider controllers.

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"slices"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -60,5 +62,37 @@ func TestNewChangeLogOptionsRelativePath(t *testing.T) {
 		if err == nil {
 			t.Errorf("newChangeLogOptions(%q) error = nil, want an error", path)
 		}
+	}
+}
+
+// TestClientOptions checks that Secrets are only read directly from the API
+// server when the Secret cache is disabled.
+func TestClientOptions(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		enableSecretCache bool
+		wantUncached      []string
+	}{
+		"SecretCacheEnabled":  {enableSecretCache: true},
+		"SecretCacheDisabled": {enableSecretCache: false, wantUncached: []string{fmt.Sprintf("%T", &corev1.Secret{})}},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			var uncached []string
+
+			if opts := clientOptions(test.enableSecretCache); opts.Cache != nil {
+				for _, object := range opts.Cache.DisableFor {
+					uncached = append(uncached, fmt.Sprintf("%T", object))
+				}
+			}
+
+			if !slices.Equal(uncached, test.wantUncached) {
+				t.Errorf("clientOptions() reads %v from the API server, want %v", uncached, test.wantUncached)
+			}
+		})
 	}
 }

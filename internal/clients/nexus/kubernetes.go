@@ -64,7 +64,7 @@ func WithDefaultKey(selector *xpv2.LocalSecretKeySelector, key string) *xpv2.Loc
 // secret in namespace, the namespace of the object that declares selector.
 func GetSecretBytes(
 	ctx context.Context,
-	kube kubeclient.Client,
+	kube kubeclient.Reader,
 	namespace string,
 	selector *xpv2.LocalSecretKeySelector,
 ) ([]byte, error) {

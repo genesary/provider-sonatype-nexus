@@ -30,7 +30,7 @@ const clusterProviderConfigKind = "ClusterProviderConfig"
 // referenced by mg and extracts Nexus credentials from the referenced secret.
 // It dispatches on providerConfigRef.Kind: ClusterProviderConfig is looked up
 // cluster-wide; ProviderConfig (or empty) is looked up in mg's namespace.
-func GetCredentials(ctx context.Context, kube kubeclient.Client, managed interface {
+func GetCredentials(ctx context.Context, kube kubeclient.Reader, managed interface {
 	GetNamespace() string
 	GetProviderConfigReference() *xpv2.ProviderConfigReference
 }) (Credentials, error) {
@@ -63,7 +63,7 @@ func GetCredentials(ctx context.Context, kube kubeclient.Client, managed interfa
 // GetCredentialsFromSpec extracts Nexus credentials from a ProviderConfigSpec.
 // namespace is the namespace of the ProviderConfig that holds spec; its
 // Secrets are always read from there.
-func GetCredentialsFromSpec(ctx context.Context, kube kubeclient.Client, namespace string, spec v1alpha1.ProviderConfigSpec) (Credentials, error) {
+func GetCredentialsFromSpec(ctx context.Context, kube kubeclient.Reader, namespace string, spec v1alpha1.ProviderConfigSpec) (Credentials, error) {
 	return resolveCredentials(ctx, kube, spec.URL, spec.InsecureSkipVerify,
 		credentialSource{source: spec.Username.Source, selector: toSelector(spec.Username.SecretRef, namespace)},
 		credentialSource{source: spec.Password.Source, selector: toSelector(spec.Password.SecretRef, namespace)},
@@ -73,7 +73,7 @@ func GetCredentialsFromSpec(ctx context.Context, kube kubeclient.Client, namespa
 // getCredentialsFromClusterSpec extracts Nexus credentials from a
 // ClusterProviderConfigSpec. It is cluster-scoped and authored by cluster
 // administrators, so its selectors name the namespace of their Secret.
-func getCredentialsFromClusterSpec(ctx context.Context, kube kubeclient.Client, spec v1alpha1.ClusterProviderConfigSpec) (Credentials, error) {
+func getCredentialsFromClusterSpec(ctx context.Context, kube kubeclient.Reader, spec v1alpha1.ClusterProviderConfigSpec) (Credentials, error) {
 	return resolveCredentials(ctx, kube, spec.URL, spec.InsecureSkipVerify,
 		credentialSource{source: spec.Username.Source, selector: spec.Username.SecretRef},
 		credentialSource{source: spec.Password.Source, selector: spec.Password.SecretRef},
@@ -87,8 +87,9 @@ type credentialSource struct {
 	selector *xpv2.SecretKeySelector
 }
 
-// resolveCredentials reads the Secrets selected by usernameSrc and passwordSrc.
-func resolveCredentials(ctx context.Context, kube kubeclient.Client, url string, insecure *bool, usernameSrc, passwordSrc credentialSource) (Credentials, error) {
+// resolveCredentials reads the Secrets selected by usernameSrc and passwordSrc,
+// fetching a Secret that holds both only once.
+func resolveCredentials(ctx context.Context, kube kubeclient.Reader, url string, insecure *bool, usernameSrc, passwordSrc credentialSource) (Credentials, error) {
 	for _, cred := range []struct {
 		name string
 		src  credentialSource
@@ -101,6 +102,8 @@ func resolveCredentials(ctx context.Context, kube kubeclient.Client, url string,
 			return Credentials{}, errors.Errorf("secretRef is required for %s", cred.name)
 		}
 	}
+
+	kube = MemoizeSecrets(kube)
 
 	username, err := readSecretValue(ctx, kube, usernameSrc.selector)
 	if err != nil {
@@ -122,7 +125,7 @@ func resolveCredentials(ctx context.Context, kube kubeclient.Client, url string,
 
 // GetSecretValue retrieves a value from a Secret in namespace, the namespace
 // of the object that declares selector.
-func GetSecretValue(ctx context.Context, kube kubeclient.Client, namespace string, selector *xpv2.LocalSecretKeySelector) (string, error) {
+func GetSecretValue(ctx context.Context, kube kubeclient.Reader, namespace string, selector *xpv2.LocalSecretKeySelector) (string, error) {
 	if selector == nil {
 		return "", errors.New("secretKeySelector is nil")
 	}
@@ -131,7 +134,7 @@ func GetSecretValue(ctx context.Context, kube kubeclient.Client, namespace strin
 }
 
 // readSecretValue retrieves the value selected by selector.
-func readSecretValue(ctx context.Context, kube kubeclient.Client, selector *xpv2.SecretKeySelector) (string, error) {
+func readSecretValue(ctx context.Context, kube kubeclient.Reader, selector *xpv2.SecretKeySelector) (string, error) {
 	secret := &corev1.Secret{}
 
 	err := kube.Get(ctx, types.NamespacedName{Name: selector.Name, Namespace: selector.Namespace}, secret)
