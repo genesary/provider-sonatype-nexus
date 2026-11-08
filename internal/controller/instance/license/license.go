@@ -270,7 +270,7 @@ func (e *external) fetchFromEndpoint(ctx context.Context, licenseCR *instancev1a
 // doEndpointRequest performs the HTTP GET for the license file. namespace is
 // the License namespace, which the credential secret selectors are bound to.
 func (e *external) doEndpointRequest(ctx context.Context, namespace, url string, creds *instancev1alpha1.LicenseEndpointCredentials) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
+	req, err := nexus.NewRequest(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot build endpoint request")
 	}
@@ -280,7 +280,7 @@ func (e *external) doEndpointRequest(ctx context.Context, namespace, url string,
 		return nil, err
 	}
 
-	resp, err := endpointClient.Do(req)
+	resp, err := nexus.Do(endpointClient, req)
 	if err != nil {
 		return nil, errors.Wrap(err, "endpoint request failed")
 	}
