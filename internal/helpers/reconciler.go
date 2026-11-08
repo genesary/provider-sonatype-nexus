@@ -3,6 +3,7 @@ package helpers
 import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/providerconfig"
@@ -11,7 +12,7 @@ import (
 
 // maxSharedReconcilerOptions is the most options ReconcilerOptions shares
 // between controllers, to size the slice it returns.
-const maxSharedReconcilerOptions = 3
+const maxSharedReconcilerOptions = 4
 
 // Options are the crossplane-runtime controller options, extended with the
 // settings of this provider.
@@ -28,6 +29,10 @@ func ReconcilerOptions(mgr ctrl.Manager, name string, opts Options, specific ...
 		managed.WithPollInterval(opts.PollInterval),
 		managed.WithRecorder(newEventRecorder(mgr, name, opts)),
 	)
+
+	if opts.Features.Enabled(feature.EnableBetaManagementPolicies) {
+		options = append(options, managed.WithManagementPolicies())
+	}
 
 	return append(options, specific...)
 }

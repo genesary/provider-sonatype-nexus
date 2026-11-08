@@ -13,6 +13,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
+// sharedOptions is the number of options every controller gets.
+const sharedOptions = 3
+
 // recorderManager is a manager that only provides event recorders.
 type recorderManager struct {
 	ctrl.Manager
@@ -31,16 +34,33 @@ func testOptions() Options {
 	}}
 }
 
-// TestReconcilerOptions checks that the options of the calling controller are
-// kept, in order, after the shared ones so that they can override them.
+// TestReconcilerOptions checks which options are enabled by each setting, and
+// that the options of the calling controller are kept, in order, after the
+// shared ones so that they can override them.
 func TestReconcilerOptions(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
+		features []feature.Flag
 		specific int
+		want     int
 	}{
-		"NoSpecificOptions": {},
-		"SpecificOptions":   {specific: 2},
+		"NoFeatures": {
+			want: sharedOptions,
+		},
+		"ManagementPolicies": {
+			features: []feature.Flag{feature.EnableBetaManagementPolicies},
+			want:     sharedOptions + 1,
+		},
+		"SpecificOptions": {
+			specific: 2,
+			want:     sharedOptions + 2,
+		},
+		"AllOptions": {
+			features: []feature.Flag{feature.EnableBetaManagementPolicies},
+			specific: 2,
+			want:     sharedOptions + 3,
+		},
 	}
 
 	for name, test := range tests {
@@ -57,9 +77,14 @@ func TestReconcilerOptions(t *testing.T) {
 				specific[index] = func(*managed.Reconciler) { applied = append(applied, index) }
 			}
 
-			got := ReconcilerOptions(recorderManager{}, "test", testOptions(), specific...)
-			if len(got) != maxSharedReconcilerOptions+test.specific {
-				t.Fatalf("ReconcilerOptions() returned %d options, want %d", len(got), maxSharedReconcilerOptions+test.specific)
+			opts := testOptions()
+			for _, flag := range test.features {
+				opts.Features.Enable(flag)
+			}
+
+			got := ReconcilerOptions(recorderManager{}, "test", opts, specific...)
+			if len(got) != test.want {
+				t.Fatalf("ReconcilerOptions() returned %d options, want %d", len(got), test.want)
 			}
 
 			for _, option := range got[len(got)-test.specific:] {
