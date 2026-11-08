@@ -91,6 +91,17 @@ func TestObserve(t *testing.T) {
 			wantExists: true,
 		},
 		{
+			name: "TypeMismatch",
+			getByName: func(string) (*v395.TaskXO, error) {
+				observed := newObservedTask()
+				observed.Type = new("repository.cleanup")
+
+				return observed, nil
+			},
+			wantLookup: "compact-default",
+			wantErr:    true,
+		},
+		{
 			name:         "LooksUpExternalName",
 			externalName: "imported-task",
 			getByName:    func(string) (*v395.TaskXO, error) { return newObservedTask(), nil },
@@ -125,6 +136,10 @@ func TestObserve(t *testing.T) {
 				t.Errorf("GetByName calls = %v, want [%s]", mock.GetByNameCalls, tt.wantLookup)
 			}
 
+			if len(mock.GetByNameTypes) != 1 || mock.GetByNameTypes[0] != cr.Spec.ForProvider.Type {
+				t.Errorf("GetByName types = %v, want [%s]", mock.GetByNameTypes, cr.Spec.ForProvider.Type)
+			}
+
 			if !tt.wantExists {
 				return
 			}
@@ -137,6 +152,33 @@ func TestObserve(t *testing.T) {
 				t.Error("an observed task should be Available")
 			}
 		})
+	}
+}
+
+// TestObserveDeletedTypeMismatch checks that a deleted Task does not claim,
+// and so does not delete, a Nexus task of another type with its name.
+func TestObserveDeletedTypeMismatch(t *testing.T) {
+	t.Parallel()
+
+	mock := taskmocks.NewMockTaskClient()
+	mock.GetByNameFn = func(string) (*v395.TaskXO, error) {
+		observed := newObservedTask()
+		observed.Type = new("repository.cleanup")
+
+		return observed, nil
+	}
+
+	cr := newTestTask()
+	now := metav1.Now()
+	cr.SetDeletionTimestamp(&now)
+
+	obs, err := (&external{client: mock}).Observe(context.Background(), cr)
+	if err != nil {
+		t.Fatalf("Observe() error = %v", err)
+	}
+
+	if obs.ResourceExists {
+		t.Error("a task of another type should not be reported as existing")
 	}
 }
 

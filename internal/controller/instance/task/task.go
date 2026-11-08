@@ -36,6 +36,9 @@ const (
 	errDeleteTask = "cannot delete task from Nexus"
 	// errNoTaskID is returned when the ID of an observed task is unknown.
 	errNoTaskID = "the Nexus task ID is unknown"
+	// errTaskTypeMismatch is returned when the task found under the name has
+	// another type than the spec, which an update cannot change.
+	errTaskTypeMismatch = "a Nexus task with this name already exists with another type"
 )
 
 // Setup adds a controller that reconciles Task managed resources.
@@ -104,7 +107,7 @@ type external struct {
 func (e *external) Observe(ctx context.Context, task *instancev1alpha1.Task) (managed.ExternalObservation, error) {
 	name := taskName(task)
 
-	observed, err := e.client.GetByName(ctx, name)
+	observed, err := e.client.GetByName(ctx, name, task.Spec.ForProvider.Type)
 	if err != nil {
 		if nexus.IsNotFound(err) {
 			return managed.ExternalObservation{ResourceExists: false}, nil
@@ -114,6 +117,18 @@ func (e *external) Observe(ctx context.Context, task *instancev1alpha1.Task) (ma
 	}
 
 	task.Status.AtProvider = instanceclient.GenerateTaskObservation(observed)
+
+	// Nexus cannot change the type of a task, so a task of another type found
+	// under the name is not this one: it is neither updated nor, once the
+	// Task is deleted, deleted.
+	if observed.GetType() != task.Spec.ForProvider.Type {
+		if meta.WasDeleted(task) {
+			return managed.ExternalObservation{ResourceExists: false}, nil
+		}
+
+		return managed.ExternalObservation{}, errors.Errorf("%s: %q has type %q, want %q", errTaskTypeMismatch, name, observed.GetType(), task.Spec.ForProvider.Type)
+	}
+
 	task.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{

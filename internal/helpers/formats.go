@@ -123,32 +123,32 @@ func AreStringSlicesEqual(sliceA, sliceB []string) bool {
 	return true
 }
 
-// AreStringSlicesEqualDeDuped compares two slices of strings for equality,
-// ignoring the order of elements and duplicates.
-// It returns true if both slices contain the same unique strings, regardless
+// AreSlicesEqualDeDuped compares two slices for equality, ignoring the
+// order of elements and duplicates.
+// It returns true if both slices contain the same unique values, regardless
 // of their order and duplicates, and false otherwise.
-func AreStringSlicesEqualDeDuped(sliceA, sliceB []string) bool {
+func AreSlicesEqualDeDuped[T comparable](sliceA, sliceB []T) bool {
 	if len(sliceA) == 0 && len(sliceB) == 0 {
 		return true
 	}
 
-	setA := make(map[string]struct{}, len(sliceA))
-	setB := make(map[string]struct{}, len(sliceB))
-	// Add unique strings from sliceA to setA
-	for _, s := range sliceA {
-		setA[s] = struct{}{}
+	setA := make(map[T]struct{}, len(sliceA))
+	setB := make(map[T]struct{}, len(sliceB))
+	// Add unique values from sliceA to setA
+	for _, v := range sliceA {
+		setA[v] = struct{}{}
 	}
-	// Add unique strings from sliceB to setB
-	for _, s := range sliceB {
-		setB[s] = struct{}{}
+	// Add unique values from sliceB to setB
+	for _, v := range sliceB {
+		setB[v] = struct{}{}
 	}
 	// Compare the sets for equality
 	if len(setA) != len(setB) {
 		return false
 	}
 
-	for s := range setA {
-		if _, exists := setB[s]; !exists {
+	for v := range setA {
+		if _, exists := setB[v]; !exists {
 			return false
 		}
 	}

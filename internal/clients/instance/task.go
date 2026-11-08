@@ -34,7 +34,7 @@ const (
 type TaskClient interface {
 	Create(ctx context.Context, task v395.TaskTemplateXO) (*v395.TaskXO, error)
 	Delete(ctx context.Context, id string) error
-	GetByName(ctx context.Context, name string) (*v395.TaskXO, error)
+	GetByName(ctx context.Context, name, taskType string) (*v395.TaskXO, error)
 	Update(ctx context.Context, id string, task v395.UpdateTasksRequest) error
 }
 
@@ -70,10 +70,32 @@ func (c *taskClient) Delete(ctx context.Context, id string) error {
 
 // GetByName returns the task with the given name, or an error wrapping
 // nexus.ErrNotFound when there is none. Task names are unique in Nexus, but
-// tasks are only addressed by ID, so the task is looked up in the listing.
-// Nexus returns every task in a single page.
-func (c *taskClient) GetByName(ctx context.Context, name string) (*v395.TaskXO, error) {
-	page, resp, err := c.api.ListTasks(ctx).Execute()
+// tasks are only addressed by ID, so the task is looked up in the listing,
+// which Nexus returns in a single page.
+//
+// When taskType is set, only the tasks of that type are listed first, which
+// keeps the steady-state lookup small. Only when none of them has the name
+// are all the tasks listed, so that a task of another type holding the name
+// is still returned for the caller to report.
+func (c *taskClient) GetByName(ctx context.Context, name, taskType string) (*v395.TaskXO, error) {
+	if taskType != "" {
+		task, err := findTaskByName(c.api.ListTasks(ctx).Type_(taskType), name)
+		if err == nil {
+			return task, nil
+		}
+
+		if !errors.Is(err, nexus.ErrNotFound) {
+			return nil, err
+		}
+	}
+
+	return findTaskByName(c.api.ListTasks(ctx), name)
+}
+
+// findTaskByName returns the task with the given name in the listing, or an
+// error wrapping nexus.ErrNotFound when the listing has none.
+func findTaskByName(list v395.ApiListTasksRequest, name string) (*v395.TaskXO, error) {
+	page, resp, err := list.Execute()
 	if err != nil {
 		return nil, nexus.APIError(resp, err)
 	}
@@ -111,8 +133,9 @@ func GenerateTaskCreate(params *instancev1alpha1.TaskParameters) v395.TaskTempla
 // properties Nexus reports for the task. Nexus merges the properties of an
 // update into the ones it holds, and removes a property sent with an empty
 // value, so every observed property the spec leaves out is sent empty: the
-// spec is the complete set. The type cannot change, and Nexus rejects an
-// update that carries it.
+// spec is the complete set. Unlike properties, an alert email left out of
+// an update is cleared, so an unset one is simply omitted. The type cannot
+// change, and Nexus rejects an update that carries it.
 func GenerateTaskUpdate(params *instancev1alpha1.TaskParameters, observedProperties map[string]string) v395.UpdateTasksRequest {
 	properties := desiredTaskProperties(params.Properties)
 
@@ -146,8 +169,10 @@ func generateTaskFrequency(schedule *instancev1alpha1.TaskSchedule) v395.Frequen
 		frequency.StartDate = new(schedule.StartDate.UnixMilli())
 	}
 
+	// An unset offset is sent as UTC rather than left for Nexus to default,
+	// so the expression runs in UTC as documented and reads back as "Z".
 	if schedule.Type == instancev1alpha1.TaskScheduleCron {
-		frequency.TimeZoneOffset = schedule.TimeZoneOffset
+		frequency.TimeZoneOffset = new(ptr.Deref(schedule.TimeZoneOffset, utcOffset))
 	}
 
 	return frequency
@@ -171,7 +196,7 @@ func IsTaskUpToDate(params *instancev1alpha1.TaskParameters, observed *v395.Task
 		return false
 	}
 
-	return maps.Equal(desiredTaskProperties(params.Properties), observedTaskProperties(observed))
+	return maps.Equal(desiredTaskProperties(params.Properties), observed.GetProperties())
 }
 
 // isTaskScheduleUpToDate reports whether the schedule Nexus reports for a
@@ -197,7 +222,7 @@ func isTaskScheduleUpToDate(schedule *instancev1alpha1.TaskSchedule, observed *v
 		}
 	}
 
-	if !sameInt32Set(schedule.RecurringDays, observed.RecurringDays) {
+	if !helpers.AreSlicesEqualDeDuped(schedule.RecurringDays, observed.RecurringDays) {
 		return false
 	}
 
@@ -280,32 +305,12 @@ func desiredTaskProperties(properties map[string]string) map[string]string {
 	return desired
 }
 
-// observedTaskProperties returns the properties Nexus reports for a task,
-// never nil.
-func observedTaskProperties(observed *v395.TaskXO) map[string]string {
-	observedProps := observed.GetProperties()
-	if observedProps == nil {
-		return map[string]string{}
-	}
-
-	return observedProps
-}
-
-// sameInt32Set reports whether a and b hold the same values, ignoring order
-// and duplicates.
-func sameInt32Set(a, b []int32) bool {
-	a, b = slices.Clone(a), slices.Clone(b)
-	slices.Sort(a)
-	slices.Sort(b)
-
-	return slices.Equal(slices.Compact(a), slices.Compact(b))
-}
-
-// nonEmptyMap returns a pointer to a copy of m, or nil when m is empty.
+// nonEmptyMap returns a pointer to m, or nil when m is empty. Callers pass
+// maps they own.
 func nonEmptyMap(m map[string]string) *map[string]string {
 	if len(m) == 0 {
 		return nil
 	}
 
-	return new(maps.Clone(m))
+	return &m
 }

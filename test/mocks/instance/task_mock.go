@@ -20,6 +20,7 @@ type MockTaskClient struct {
 	CreateCalls    []v395.TaskTemplateXO
 	DeleteCalls    []string
 	GetByNameCalls []string
+	GetByNameTypes []string
 	UpdateIDs      []string
 	UpdateCalls    []v395.UpdateTasksRequest
 }
@@ -52,8 +53,9 @@ func (m *MockTaskClient) Delete(_ context.Context, id string) error {
 }
 
 // GetByName mock implementation.
-func (m *MockTaskClient) GetByName(_ context.Context, name string) (*v395.TaskXO, error) {
+func (m *MockTaskClient) GetByName(_ context.Context, name, taskType string) (*v395.TaskXO, error) {
 	m.GetByNameCalls = append(m.GetByNameCalls, name)
+	m.GetByNameTypes = append(m.GetByNameTypes, taskType)
 
 	if m.GetByNameFn != nil {
 		return m.GetByNameFn(name)

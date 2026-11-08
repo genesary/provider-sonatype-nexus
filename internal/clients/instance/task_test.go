@@ -1,8 +1,13 @@
 package instance
 
 import (
+	"context"
+	"errors"
 	"maps"
+	"net/http"
+	"net/http/httptest"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -10,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
 // taskStart is the start date of the scheduled test tasks.
@@ -71,6 +77,98 @@ func newObservedCronTask(offset string) *v395.TaskXO {
 	observed.TimeZoneOffset = new(offset)
 
 	return observed
+}
+
+// TestGetTaskByName checks that a task is looked up among the tasks of its
+// type first, and among all the tasks only when none of them has the name.
+func TestGetTaskByName(t *testing.T) {
+	t.Parallel()
+
+	const (
+		compact = `{"items":[{"id":"1","name":"nightly","type":"blobstore.compact"}]}`
+		all     = `{"items":[{"id":"1","name":"nightly","type":"blobstore.compact"},{"id":"2","name":"cleanup","type":"repository.cleanup"}]}`
+	)
+
+	tests := []struct {
+		name      string
+		task      string
+		taskType  string
+		wantID    string
+		wantQuery []string
+	}{
+		{
+			name:      "FoundAmongItsType",
+			task:      "nightly",
+			taskType:  "blobstore.compact",
+			wantID:    "1",
+			wantQuery: []string{"type=blobstore.compact"},
+		},
+		{
+			name:      "FoundUnderAnotherType",
+			task:      "cleanup",
+			taskType:  "blobstore.compact",
+			wantID:    "2",
+			wantQuery: []string{"type=blobstore.compact", ""},
+		},
+		{
+			name:      "NotFound",
+			task:      "missing",
+			taskType:  "blobstore.compact",
+			wantQuery: []string{"type=blobstore.compact", ""},
+		},
+		{
+			name:      "NoType",
+			task:      "cleanup",
+			wantID:    "2",
+			wantQuery: []string{""},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				mu      sync.Mutex
+				queries []string
+			)
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				queries = append(queries, r.URL.RawQuery)
+				mu.Unlock()
+
+				w.Header().Set("Content-Type", "application/json")
+
+				body := all
+				if r.URL.Query().Get("type") == "blobstore.compact" {
+					body = compact
+				}
+
+				_, _ = w.Write([]byte(body))
+			}))
+			t.Cleanup(server.Close)
+
+			client, err := NewTaskClient(nexus.Credentials{URL: server.URL, Username: "admin", Password: "password"})
+			if err != nil {
+				t.Fatalf("NewTaskClient() error = %v", err)
+			}
+
+			got, err := client.GetByName(context.Background(), tt.task, tt.taskType)
+
+			if tt.wantID == "" {
+				if !errors.Is(err, nexus.ErrNotFound) {
+					t.Errorf("GetByName() error = %v, want nexus.ErrNotFound", err)
+				}
+			} else if err != nil || got.GetId() != tt.wantID {
+				t.Errorf("GetByName() = %+v, %v, want task %s", got, err, tt.wantID)
+			}
+
+			if !slices.Equal(queries, tt.wantQuery) {
+				t.Errorf("list queries = %q, want %q", queries, tt.wantQuery)
+			}
+		})
+	}
 }
 
 // TestIsTaskUpToDate covers drift detection of scheduled tasks.
@@ -406,6 +504,20 @@ func TestGenerateTaskCreate(t *testing.T) {
 	})
 }
 
+// TestGenerateTaskCreateCronDefaultsToUTC checks that a cron schedule without
+// an offset is sent as UTC rather than left for Nexus to default.
+func TestGenerateTaskCreateCronDefaultsToUTC(t *testing.T) {
+	t.Parallel()
+
+	params := newCronTaskParams(nil)
+
+	got := GenerateTaskCreate(&params)
+
+	if got.Frequency.GetTimeZoneOffset() != "Z" {
+		t.Errorf("TimeZoneOffset = %q, want Z when unset", got.Frequency.GetTimeZoneOffset())
+	}
+}
+
 // TestGenerateTaskUpdate checks the update request built from a spec and the
 // observed properties.
 func TestGenerateTaskUpdate(t *testing.T) {
@@ -433,6 +545,20 @@ func TestGenerateTaskUpdate(t *testing.T) {
 	want := map[string]string{"blobstoreName": "default", "blobsOlderThan": ""}
 	if got.Properties == nil || !maps.Equal(*got.Properties, want) {
 		t.Errorf("Properties = %v, want %v", got.Properties, want)
+	}
+}
+
+// TestGenerateTaskUpdateClearsAlertEmail checks that an update for a spec
+// without an alert email omits it, which Nexus treats as clearing it.
+func TestGenerateTaskUpdateClearsAlertEmail(t *testing.T) {
+	t.Parallel()
+
+	params := newWeeklyTaskParams()
+
+	got := GenerateTaskUpdate(&params, nil)
+
+	if got.AlertEmail != nil {
+		t.Errorf("AlertEmail = %q, want nil so that Nexus clears it", *got.AlertEmail)
 	}
 }
 

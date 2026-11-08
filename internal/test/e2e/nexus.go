@@ -221,7 +221,7 @@ func (f *Framework) FetchRoutingRule(name string) (*v395.RoutingRuleXO, error) {
 // FetchTask returns the scheduled task with the given name, or (nil, nil) if
 // absent.
 func (f *Framework) FetchTask(name string) (*v395.TaskXO, error) {
-	return ignoreAbsent(f.tasks.GetByName(context.Background(), name))
+	return ignoreAbsent(f.tasks.GetByName(context.Background(), name, ""))
 }
 
 // UpdateTask replaces the scheduled task with the given ID directly,

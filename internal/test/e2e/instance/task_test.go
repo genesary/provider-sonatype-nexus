@@ -35,7 +35,8 @@ import (
 
 // TestTaskLifecycle checks that a Task creates a weekly blob store
 // compaction in Nexus, corrects drift made outside the provider, including a
-// property added behind its back, and deletes the task once deleted.
+// property and an alert email added behind its back, and deletes the task
+// once deleted.
 func TestTaskLifecycle(t *testing.T) {
 	t.Parallel()
 
@@ -74,6 +75,7 @@ func TestTaskLifecycle(t *testing.T) {
 		slices.Sort(days)
 
 		return got.GetEnabled() &&
+			got.GetAlertEmail() == "" &&
 			got.GetSchedule() == "weekly" &&
 			got.StartDate != nil && got.StartDate.Equal(start.Time) &&
 			slices.Equal(days, []int32{1, 7}) &&
@@ -103,10 +105,12 @@ func TestTaskLifecycle(t *testing.T) {
 	}
 
 	// Drift made directly in Nexus must be reverted to the spec, and the
-	// property added out of band removed: the spec is the complete set.
+	// property and alert email added out of band removed: the spec is the
+	// complete set.
 	err = f.UpdateTask(got.GetId(), v395.UpdateTasksRequest{
 		Name:                  taskName,
 		Enabled:               false,
+		AlertEmail:            new("drift@example.com"),
 		NotificationCondition: "FAILURE",
 		Frequency:             v395.FrequencyXO{Schedule: "manual"},
 		Properties:            &map[string]string{"blobstoreName": "default", "blobsOlderThan": "7"},
