@@ -34,8 +34,6 @@ import (
 )
 
 const (
-	// errNotRepository is returned when the managed resource is not a Repository.
-	errNotRepository = "managed resource is not a Repository custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when getting the ProviderConfig fails.
@@ -64,9 +62,12 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(repositoryv1alpha1.RepositoryGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*repositoryv1alpha1.Repository](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
+		}),
+		helpers.WithSpecExternalName(mgr.GetClient(), func(cr *repositoryv1alpha1.Repository) string {
+			return cr.Spec.ForProvider.Name
 		}),
 	)
 
@@ -85,30 +86,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, rec, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect creates an ExternalClient for the Repository controller.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isRepo := managedRes.(*repositoryv1alpha1.Repository)
-	if !isRepo {
-		return nil, errors.New(errNotRepository)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+// Connect creates a TypedExternalClient for the Repository controller.
+func (c *connector) Connect(ctx context.Context, repoCR *repositoryv1alpha1.Repository) (managed.TypedExternalClient[*repositoryv1alpha1.Repository], error) {
+	err := c.usage.Track(ctx, repoCR)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, repoCR)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -126,7 +117,7 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	// client is the Nexus repository API.
 	client *nexusAPI
@@ -144,12 +135,7 @@ type external struct {
 // password: Nexus never returns credentials, so they take no part in drift
 // detection. Credentials are compared through the fingerprint recorded when
 // they were last applied instead, which needs the Secret's metadata only.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	repoCR, isRepo := managedRes.(*repositoryv1alpha1.Repository)
-	if !isRepo {
-		return managed.ExternalObservation{}, errors.New(errNotRepository)
-	}
-
+func (e *external) Observe(ctx context.Context, repoCR *repositoryv1alpha1.Repository) (managed.ExternalObservation, error) {
 	handler, err := e.handlerFor(repoCR)
 	if err != nil {
 		return managed.ExternalObservation{}, err
@@ -185,12 +171,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 }
 
 // Create creates the Repository in Nexus.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	repoCR, isRepo := managedRes.(*repositoryv1alpha1.Repository)
-	if !isRepo {
-		return managed.ExternalCreation{}, errors.New(errNotRepository)
-	}
-
+func (e *external) Create(ctx context.Context, repoCR *repositoryv1alpha1.Repository) (managed.ExternalCreation, error) {
 	handler, err := e.handlerFor(repoCR)
 	if err != nil {
 		return managed.ExternalCreation{}, err
@@ -231,12 +212,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update reconciles the Repository in Nexus with the spec.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	repoCR, isRepo := managedRes.(*repositoryv1alpha1.Repository)
-	if !isRepo {
-		return managed.ExternalUpdate{}, errors.New(errNotRepository)
-	}
-
+func (e *external) Update(ctx context.Context, repoCR *repositoryv1alpha1.Repository) (managed.ExternalUpdate, error) {
 	handler, err := e.handlerFor(repoCR)
 	if err != nil {
 		return managed.ExternalUpdate{}, err
@@ -265,12 +241,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete removes the Repository from Nexus.
-func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	repoCR, isRepo := managedRes.(*repositoryv1alpha1.Repository)
-	if !isRepo {
-		return managed.ExternalDelete{}, errors.New(errNotRepository)
-	}
-
+func (e *external) Delete(ctx context.Context, repoCR *repositoryv1alpha1.Repository) (managed.ExternalDelete, error) {
 	handler, err := e.handlerFor(repoCR)
 	if err != nil {
 		return managed.ExternalDelete{}, err

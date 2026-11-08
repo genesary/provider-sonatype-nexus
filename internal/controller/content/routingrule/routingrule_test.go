@@ -202,18 +202,6 @@ func TestObserve(t *testing.T) {
 	}
 }
 
-// TestObserve_WrongType tests Observe with wrong resource type.
-func TestObserve_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: contentmocks.NewMockRoutingRuleClient()}
-
-	_, err := e.Observe(context.Background(), nil)
-	if err == nil {
-		t.Error("Observe() with nil managed resource should return error")
-	}
-}
-
 // TestObserve_UpdatesAtProvider checks that Observe populates AtProvider.
 func TestObserve_UpdatesAtProvider(t *testing.T) {
 	t.Parallel()

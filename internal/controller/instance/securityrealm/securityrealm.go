@@ -19,8 +19,6 @@ import (
 )
 
 const (
-	// errNotSecurityRealm means the managed resource is not a SecurityRealm.
-	errNotSecurityRealm = "managed resource is not a SecurityRealm custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
@@ -29,6 +27,8 @@ const (
 	errNewClient = "cannot create new Nexus client"
 	// errGetRealms is returned when retrieving active realms fails.
 	errGetRealms = "cannot get active realms from Nexus"
+	// errGetAvailableRealms is returned when retrieving available realms fails.
+	errGetAvailableRealms = "cannot get available realms from Nexus"
 	// errActivateRealms is returned when activating realms fails.
 	errActivateRealms = "cannot activate realms in Nexus"
 )
@@ -38,7 +38,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(instancev1alpha1.SecurityRealmGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*instancev1alpha1.SecurityRealm](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
@@ -59,30 +59,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isSecurityRealm := managedRes.(*instancev1alpha1.SecurityRealm)
-	if !isSecurityRealm {
-		return nil, errors.New(errNotSecurityRealm)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+// Connect produces a TypedExternalClient for the given managed resource.
+func (c *connector) Connect(ctx context.Context, securityRealm *instancev1alpha1.SecurityRealm) (managed.TypedExternalClient[*instancev1alpha1.SecurityRealm], error) {
+	err := c.usage.Track(ctx, securityRealm)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, securityRealm)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -95,18 +85,13 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{client: realmClient}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	client instanceclient.SecurityRealmClient
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	securityRealm, isSecurityRealm := managedRes.(*instancev1alpha1.SecurityRealm)
-	if !isSecurityRealm {
-		return managed.ExternalObservation{}, errors.New(errNotSecurityRealm)
-	}
-
+func (e *external) Observe(ctx context.Context, securityRealm *instancev1alpha1.SecurityRealm) (managed.ExternalObservation, error) {
 	// SecurityRealm is a singleton; report absent when being deleted so the
 	// finalizer can be cleared.
 	if securityRealm.GetDeletionTimestamp() != nil {
@@ -118,7 +103,11 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetRealms)
 	}
 
-	availableRealms, _ := e.client.ListAvailable(ctx)
+	availableRealms, err := e.client.ListAvailable(ctx)
+	if err != nil {
+		return managed.ExternalObservation{}, errors.Wrap(err, errGetAvailableRealms)
+	}
+
 	securityRealm.Status.AtProvider = instanceclient.GenerateSecurityRealmObservation(availableRealms, activeRealms)
 	securityRealm.SetConditions(nexusv1alpha1.Available())
 
@@ -129,12 +118,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 }
 
 // Create activates the desired security realms.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	securityRealm, isSecurityRealm := managedRes.(*instancev1alpha1.SecurityRealm)
-	if !isSecurityRealm {
-		return managed.ExternalCreation{}, errors.New(errNotSecurityRealm)
-	}
-
+func (e *external) Create(ctx context.Context, securityRealm *instancev1alpha1.SecurityRealm) (managed.ExternalCreation, error) {
 	err := e.client.Activate(ctx, securityRealm.Spec.ForProvider.ActiveRealms)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errActivateRealms)
@@ -144,12 +128,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update activates the desired security realms.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	securityRealm, isSecurityRealm := managedRes.(*instancev1alpha1.SecurityRealm)
-	if !isSecurityRealm {
-		return managed.ExternalUpdate{}, errors.New(errNotSecurityRealm)
-	}
-
+func (e *external) Update(ctx context.Context, securityRealm *instancev1alpha1.SecurityRealm) (managed.ExternalUpdate, error) {
 	err := e.client.Activate(ctx, securityRealm.Spec.ForProvider.ActiveRealms)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errActivateRealms)
@@ -159,7 +138,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete is a no-op; SecurityRealm is a singleton and cannot be deleted.
-func (e *external) Delete(_ context.Context, _ resource.Managed) (managed.ExternalDelete, error) {
+func (e *external) Delete(_ context.Context, _ *instancev1alpha1.SecurityRealm) (managed.ExternalDelete, error) {
 	return managed.ExternalDelete{}, nil
 }
 

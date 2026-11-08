@@ -169,18 +169,6 @@ func TestObserve(t *testing.T) {
 	}
 }
 
-// TestObserve_WrongType tests Observe with wrong resource type.
-func TestObserve_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: iammocks.NewMockAnonymousAccessClient()}
-
-	_, err := e.Observe(context.Background(), nil)
-	if err == nil {
-		t.Error("Observe() with nil managed resource should return error")
-	}
-}
-
 // TestCreate tests the Create method.
 func TestCreate(t *testing.T) {
 	t.Parallel()
@@ -248,18 +236,6 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-// TestCreate_WrongType tests Create with wrong resource type.
-func TestCreate_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: iammocks.NewMockAnonymousAccessClient()}
-
-	_, err := e.Create(context.Background(), nil)
-	if err == nil {
-		t.Error("Create() with nil managed resource should return error")
-	}
-}
-
 // TestUpdate tests the Update method.
 func TestUpdate(t *testing.T) {
 	t.Parallel()
@@ -323,18 +299,6 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
-// TestUpdate_WrongType tests Update with wrong resource type.
-func TestUpdate_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: iammocks.NewMockAnonymousAccessClient()}
-
-	_, err := e.Update(context.Background(), nil)
-	if err == nil {
-		t.Error("Update() with nil managed resource should return error")
-	}
-}
-
 // TestDelete tests that Delete is a no-op for the singleton AnonymousAccess.
 func TestDelete(t *testing.T) {
 	t.Parallel()
@@ -363,22 +327,6 @@ func TestDisconnect(t *testing.T) {
 	err := e.Disconnect(context.Background())
 	if err != nil {
 		t.Errorf("Disconnect() returned unexpected error: %v", err)
-	}
-}
-
-// TestConnect_WrongType tests Connect with wrong resource type.
-func TestConnect_WrongType(t *testing.T) {
-	t.Parallel()
-
-	c := &connector{}
-
-	_, err := c.Connect(context.Background(), nil)
-	if err == nil {
-		t.Error("Connect() with nil managed resource should return error")
-	}
-
-	if err.Error() != errNotAnonymousAccess {
-		t.Errorf("Connect() error = %q, want %q", err.Error(), errNotAnonymousAccess)
 	}
 }
 

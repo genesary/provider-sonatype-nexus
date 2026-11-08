@@ -19,8 +19,6 @@ import (
 )
 
 const (
-	// errNotSAML means the managed resource is not a SAML custom resource.
-	errNotSAML = "managed resource is not a SAML custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
@@ -40,7 +38,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(iamv1alpha1.SAMLGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*iamv1alpha1.SAML](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
@@ -61,30 +59,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isSAML := managedRes.(*iamv1alpha1.SAML)
-	if !isSAML {
-		return nil, errors.New(errNotSAML)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+// Connect produces a TypedExternalClient for the given managed resource.
+func (c *connector) Connect(ctx context.Context, samlCR *iamv1alpha1.SAML) (managed.TypedExternalClient[*iamv1alpha1.SAML], error) {
+	err := c.usage.Track(ctx, samlCR)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, samlCR)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -97,18 +85,13 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{client: samlClient}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	client iamclient.SAMLClient
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	samlCR, isSAML := managedRes.(*iamv1alpha1.SAML)
-	if !isSAML {
-		return managed.ExternalObservation{}, errors.New(errNotSAML)
-	}
-
+func (e *external) Observe(ctx context.Context, samlCR *iamv1alpha1.SAML) (managed.ExternalObservation, error) {
 	observed, err := e.client.Read(ctx)
 	if err != nil {
 		if nexus.IsNotFound(err) {
@@ -132,12 +115,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 }
 
 // Create creates the desired SAML configuration in Nexus.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	samlCR, isSAML := managedRes.(*iamv1alpha1.SAML)
-	if !isSAML {
-		return managed.ExternalCreation{}, errors.New(errNotSAML)
-	}
-
+func (e *external) Create(ctx context.Context, samlCR *iamv1alpha1.SAML) (managed.ExternalCreation, error) {
 	err := e.client.Apply(ctx, iamclient.GenerateSAML(samlCR))
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errApplySAML)
@@ -147,12 +125,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update reconciles the SAML configuration to the desired state.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	samlCR, isSAML := managedRes.(*iamv1alpha1.SAML)
-	if !isSAML {
-		return managed.ExternalUpdate{}, errors.New(errNotSAML)
-	}
-
+func (e *external) Update(ctx context.Context, samlCR *iamv1alpha1.SAML) (managed.ExternalUpdate, error) {
 	err := e.client.Apply(ctx, iamclient.GenerateSAML(samlCR))
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errApplySAML)
@@ -162,12 +135,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete removes the SAML configuration from Nexus.
-func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	_, isSAML := managedRes.(*iamv1alpha1.SAML)
-	if !isSAML {
-		return managed.ExternalDelete{}, errors.New(errNotSAML)
-	}
-
+func (e *external) Delete(ctx context.Context, _ *iamv1alpha1.SAML) (managed.ExternalDelete, error) {
 	err := e.client.Delete(ctx)
 	if err != nil {
 		if nexus.IsNotFound(err) {

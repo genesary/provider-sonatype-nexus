@@ -22,8 +22,6 @@ import (
 )
 
 const (
-	// errNotBlobStore is returned when the managed resource is not a BlobStore.
-	errNotBlobStore = "managed resource is not a BlobStore custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when getting the ProviderConfig fails.
@@ -52,9 +50,12 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(instancev1alpha1.BlobStoreGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*instancev1alpha1.BlobStore](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
+		}),
+		helpers.WithSpecExternalName(mgr.GetClient(), func(cr *instancev1alpha1.BlobStore) string {
+			return cr.Spec.ForProvider.Name
 		}),
 	)
 
@@ -73,30 +74,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, rec, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect creates an ExternalClient for the BlobStore controller.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isBlobStore := managedRes.(*instancev1alpha1.BlobStore)
-	if !isBlobStore {
-		return nil, errors.New(errNotBlobStore)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+// Connect creates a TypedExternalClient for the BlobStore controller.
+func (c *connector) Connect(ctx context.Context, blobStore *instancev1alpha1.BlobStore) (managed.TypedExternalClient[*instancev1alpha1.BlobStore], error) {
+	err := c.usage.Track(ctx, blobStore)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, blobStore)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -113,7 +104,7 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	genericClient instance.BlobStoreClient
 	s3Client      instance.BlobStoreS3Client
@@ -121,12 +112,7 @@ type external struct {
 }
 
 // Observe checks if the BlobStore resource exists and is up-to-date.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	blobStore, isBlobStore := managedRes.(*instancev1alpha1.BlobStore)
-	if !isBlobStore {
-		return managed.ExternalObservation{}, errors.New(errNotBlobStore)
-	}
-
+func (e *external) Observe(ctx context.Context, blobStore *instancev1alpha1.BlobStore) (managed.ExternalObservation, error) {
 	switch blobStore.Spec.ForProvider.Type {
 	case blobStoreTypeFile:
 		return e.observeFileBlobStore(ctx, blobStore)
@@ -180,12 +166,7 @@ func observeTypedBlobStore[T any](
 }
 
 // Create creates a new BlobStore resource.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	blobStore, isBlobStore := managedRes.(*instancev1alpha1.BlobStore)
-	if !isBlobStore {
-		return managed.ExternalCreation{}, errors.New(errNotBlobStore)
-	}
-
+func (e *external) Create(ctx context.Context, blobStore *instancev1alpha1.BlobStore) (managed.ExternalCreation, error) {
 	switch blobStore.Spec.ForProvider.Type {
 	case blobStoreTypeFile:
 		fileBlobStore := generateFileBlobStore(blobStore)
@@ -217,12 +198,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update modifies an existing BlobStore resource.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	blobStore, isBlobStore := managedRes.(*instancev1alpha1.BlobStore)
-	if !isBlobStore {
-		return managed.ExternalUpdate{}, errors.New(errNotBlobStore)
-	}
-
+func (e *external) Update(ctx context.Context, blobStore *instancev1alpha1.BlobStore) (managed.ExternalUpdate, error) {
 	name := meta.GetExternalName(blobStore)
 	if name == "" {
 		name = blobStore.Spec.ForProvider.Name
@@ -257,12 +233,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete removes an existing BlobStore resource.
-func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	blobStore, isBlobStore := managedRes.(*instancev1alpha1.BlobStore)
-	if !isBlobStore {
-		return managed.ExternalDelete{}, errors.New(errNotBlobStore)
-	}
-
+func (e *external) Delete(ctx context.Context, blobStore *instancev1alpha1.BlobStore) (managed.ExternalDelete, error) {
 	name := meta.GetExternalName(blobStore)
 	if name == "" {
 		name = blobStore.Spec.ForProvider.Name

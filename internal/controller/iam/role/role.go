@@ -20,8 +20,6 @@ import (
 )
 
 const (
-	// errNotRole means the managed resource is not a Role custom resource.
-	errNotRole = "managed resource is not a Role custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
@@ -43,9 +41,12 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(iamv1alpha1.RoleGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*iamv1alpha1.Role](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
+		}),
+		helpers.WithSpecExternalName(mgr.GetClient(), func(cr *iamv1alpha1.Role) string {
+			return cr.Spec.ForProvider.ID
 		}),
 	)
 
@@ -64,30 +65,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isRole := managedRes.(*iamv1alpha1.Role)
-	if !isRole {
-		return nil, errors.New(errNotRole)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+// Connect produces a TypedExternalClient for the given managed resource.
+func (c *connector) Connect(ctx context.Context, roleRes *iamv1alpha1.Role) (managed.TypedExternalClient[*iamv1alpha1.Role], error) {
+	err := c.usage.Track(ctx, roleRes)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, roleRes)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -100,18 +91,13 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{client: roleClient}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	client iamclient.RoleClient
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	roleRes, isRole := managedRes.(*iamv1alpha1.Role)
-	if !isRole {
-		return managed.ExternalObservation{}, errors.New(errNotRole)
-	}
-
+func (e *external) Observe(ctx context.Context, roleRes *iamv1alpha1.Role) (managed.ExternalObservation, error) {
 	roleID := meta.GetExternalName(roleRes)
 	if roleID == "" {
 		roleID = roleRes.Spec.ForProvider.ID
@@ -141,12 +127,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 }
 
 // Create creates the desired Role in Nexus.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	roleRes, isRole := managedRes.(*iamv1alpha1.Role)
-	if !isRole {
-		return managed.ExternalCreation{}, errors.New(errNotRole)
-	}
-
+func (e *external) Create(ctx context.Context, roleRes *iamv1alpha1.Role) (managed.ExternalCreation, error) {
 	roleData := iamclient.GenerateRole(roleRes)
 
 	err := e.client.Create(ctx, roleData)
@@ -160,12 +141,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update reconciles the Role to the desired state.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	roleRes, isRole := managedRes.(*iamv1alpha1.Role)
-	if !isRole {
-		return managed.ExternalUpdate{}, errors.New(errNotRole)
-	}
-
+func (e *external) Update(ctx context.Context, roleRes *iamv1alpha1.Role) (managed.ExternalUpdate, error) {
 	roleID := meta.GetExternalName(roleRes)
 	if roleID == "" {
 		roleID = roleRes.Spec.ForProvider.ID
@@ -182,12 +158,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete removes the Role from Nexus.
-func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	roleRes, isRole := managedRes.(*iamv1alpha1.Role)
-	if !isRole {
-		return managed.ExternalDelete{}, errors.New(errNotRole)
-	}
-
+func (e *external) Delete(ctx context.Context, roleRes *iamv1alpha1.Role) (managed.ExternalDelete, error) {
 	roleID := meta.GetExternalName(roleRes)
 	if roleID == "" {
 		roleID = roleRes.Spec.ForProvider.ID

@@ -20,8 +20,6 @@ import (
 )
 
 const (
-	// errNotCapability means the managed resource is not a Capability.
-	errNotCapability = "managed resource is not a Capability custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
@@ -45,10 +43,11 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(instancev1alpha1.CapabilityGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*instancev1alpha1.Capability](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
+		helpers.WithServerAssignedExternalName(),
 	)
 
 	reconciler := managed.NewReconciler(mgr, resource.ManagedKind(instancev1alpha1.CapabilityGroupVersionKind), reconcilerOpts...)
@@ -66,30 +65,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isCapability := managedRes.(*instancev1alpha1.Capability)
-	if !isCapability {
-		return nil, errors.New(errNotCapability)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+// Connect produces a TypedExternalClient for the given managed resource.
+func (c *connector) Connect(ctx context.Context, capabilityCR *instancev1alpha1.Capability) (managed.TypedExternalClient[*instancev1alpha1.Capability], error) {
+	err := c.usage.Track(ctx, capabilityCR)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, capabilityCR)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -102,18 +91,13 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{client: capClient}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	client instanceclient.CapabilityClient
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	capabilityCR, isCapability := managedRes.(*instancev1alpha1.Capability)
-	if !isCapability {
-		return managed.ExternalObservation{}, errors.New(errNotCapability)
-	}
-
+func (e *external) Observe(ctx context.Context, capabilityCR *instancev1alpha1.Capability) (managed.ExternalObservation, error) {
 	id := meta.GetExternalName(capabilityCR)
 	if id == "" {
 		return managed.ExternalObservation{ResourceExists: false}, nil
@@ -141,45 +125,42 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 	}, nil
 }
 
-// Create creates the external resource, adopting an existing one if a
-// capability with the same TypeId already exists
-// (e.g. singleton types like Audit).
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	capabilityCR, isCapability := managedRes.(*instancev1alpha1.Capability)
-	if !isCapability {
-		return managed.ExternalCreation{}, errors.New(errNotCapability)
+// Create creates the external resource. When Nexus refuses it because the
+// type allows only one instance and that instance exists - as it always does
+// for types like Audit, which Nexus creates itself - Create adopts it.
+// Capabilities of types that allow several instances are never adopted.
+func (e *external) Create(ctx context.Context, capabilityCR *instancev1alpha1.Capability) (managed.ExternalCreation, error) {
+	params := &capabilityCR.Spec.ForProvider
+
+	created, err := e.client.Create(ctx, instanceclient.GenerateCapabilityCreate(params))
+	if err == nil {
+		meta.SetExternalName(capabilityCR, created.GetId())
+
+		return managed.ExternalCreation{}, nil
 	}
 
-	existing, err := e.client.List(ctx)
-	if err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, errListCapabilities)
+	if !errors.Is(err, instanceclient.ErrCapabilityExists) {
+		return managed.ExternalCreation{}, errors.Wrap(err, errCreateCap)
 	}
 
-	for _, existingCapability := range existing {
-		if existingCapability.GetType() == capabilityCR.Spec.ForProvider.TypeId {
-			meta.SetExternalName(capabilityCR, existingCapability.GetId())
+	existing, listErr := e.client.List(ctx)
+	if listErr != nil {
+		return managed.ExternalCreation{}, errors.Wrap(listErr, errListCapabilities)
+	}
+
+	for idx := range existing {
+		if instanceclient.IsSameCapabilityInstance(params, &existing[idx]) {
+			meta.SetExternalName(capabilityCR, existing[idx].GetId())
 
 			return managed.ExternalCreation{}, nil
 		}
 	}
 
-	created, err := e.client.Create(ctx, instanceclient.GenerateCapabilityCreate(&capabilityCR.Spec.ForProvider))
-	if err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, errCreateCap)
-	}
-
-	meta.SetExternalName(capabilityCR, created.GetId())
-
-	return managed.ExternalCreation{}, nil
+	return managed.ExternalCreation{}, errors.Wrap(err, errCreateCap)
 }
 
 // Update updates the external resource to match the desired state.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	capabilityCR, isCapability := managedRes.(*instancev1alpha1.Capability)
-	if !isCapability {
-		return managed.ExternalUpdate{}, errors.New(errNotCapability)
-	}
-
+func (e *external) Update(ctx context.Context, capabilityCR *instancev1alpha1.Capability) (managed.ExternalUpdate, error) {
 	id := meta.GetExternalName(capabilityCR)
 
 	err := e.client.Update(ctx, id, instanceclient.GenerateCapabilityUpdate(&capabilityCR.Spec.ForProvider, id))
@@ -191,12 +172,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete deletes the external resource.
-func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	capabilityCR, isCapability := managedRes.(*instancev1alpha1.Capability)
-	if !isCapability {
-		return managed.ExternalDelete{}, errors.New(errNotCapability)
-	}
-
+func (e *external) Delete(ctx context.Context, capabilityCR *instancev1alpha1.Capability) (managed.ExternalDelete, error) {
 	id := meta.GetExternalName(capabilityCR)
 	if id == "" {
 		return managed.ExternalDelete{}, nil

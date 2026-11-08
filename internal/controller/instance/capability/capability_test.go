@@ -208,19 +208,6 @@ func TestObserve(t *testing.T) {
 	}
 }
 
-// TestObserve_WrongType verifies Observe returns an error for non-Capability
-// resources.
-func TestObserve_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: capabilitymocks.NewMockCapabilityClient()}
-
-	_, err := e.Observe(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Observe() expected error for wrong type, got nil")
-	}
-}
-
 // TestObserve_UpdatesAtProvider verifies Observe populates AtProvider.
 func TestObserve_UpdatesAtProvider(t *testing.T) {
 	t.Parallel()
@@ -264,9 +251,6 @@ func TestCreate(t *testing.T) {
 			name: "Success",
 			cr:   newTestCapability("cap", "DockerBearerTokenRealm"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.ListFn = func() ([]instanceclient.Capability, error) {
-					return []instanceclient.Capability{}, nil
-				}
 				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
 					return &instanceclient.Capability{Id: new("server-id-123"), Type: new("DockerBearerTokenRealm")}, nil
 				}
@@ -275,11 +259,33 @@ func TestCreate(t *testing.T) {
 			wantExtName: "server-id-123",
 		},
 		{
-			name: "AdoptExisting",
-			cr:   newTestCapability("cap", "audit"),
+			// A type that allows several instances is created even when one of
+			// the type exists, rather than adopting that one.
+			name: "MultiInstanceTypeNotAdopted",
+			cr:   newTestCapability("cap", "webhook.repository"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
 				mc.ListFn = func() ([]instanceclient.Capability, error) {
 					return []instanceclient.Capability{
+						{Id: new("someone-elses-webhook"), Type: new("webhook.repository")},
+					}, nil
+				}
+				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
+					return &instanceclient.Capability{Id: new("new-webhook"), Type: new("webhook.repository")}, nil
+				}
+			},
+			wantErr:     false,
+			wantExtName: "new-webhook",
+		},
+		{
+			name: "AdoptExistingSingleton",
+			cr:   newTestCapability("cap", "audit"),
+			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
+				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
+					return nil, instanceclient.ErrCapabilityExists
+				}
+				mc.ListFn = func() ([]instanceclient.Capability, error) {
+					return []instanceclient.Capability{
+						{Id: new("other-id"), Type: new("baseurl")},
 						{Id: new("existing-id-456"), Type: new("audit")},
 					}, nil
 				}
@@ -288,9 +294,47 @@ func TestCreate(t *testing.T) {
 			wantExtName: "existing-id-456",
 		},
 		{
-			name: "ListError",
-			cr:   newTestCapability("cap", "DockerBearerTokenRealm"),
+			name: "AdoptMultiInstanceMatchingIdentity",
+			cr: func() *instancev1alpha1.Capability {
+				cr := newTestCapability("cap", "webhook.repository")
+				cr.Spec.ForProvider.Properties = map[string]string{"repository": "maven-releases", "url": "https://hook.example", "names": "component"}
+
+				return cr
+			}(),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
+				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
+					return nil, instanceclient.ErrCapabilityExists
+				}
+				mc.ListFn = func() ([]instanceclient.Capability, error) {
+					return []instanceclient.Capability{
+						{Id: new("other-repo"), Type: new("webhook.repository"), Properties: &map[string]string{"repository": "npm", "url": "https://hook.example"}},
+						{Id: new("same-repo"), Type: new("webhook.repository"), Properties: &map[string]string{"repository": "maven-releases", "url": "https://hook.example", "names": "asset"}},
+					}, nil
+				}
+			},
+			wantErr:     false,
+			wantExtName: "same-repo",
+		},
+		{
+			name: "ExistsButNoMatchingInstance",
+			cr:   newTestCapability("cap", "audit"),
+			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
+				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
+					return nil, instanceclient.ErrCapabilityExists
+				}
+				mc.ListFn = func() ([]instanceclient.Capability, error) {
+					return []instanceclient.Capability{{Id: new("other-id"), Type: new("baseurl")}}, nil
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "ListError",
+			cr:   newTestCapability("cap", "audit"),
+			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
+				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
+					return nil, instanceclient.ErrCapabilityExists
+				}
 				mc.ListFn = func() ([]instanceclient.Capability, error) {
 					return nil, errors.New("nexus unavailable")
 				}
@@ -302,7 +346,7 @@ func TestCreate(t *testing.T) {
 			cr:   newTestCapability("cap", "DockerBearerTokenRealm"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
 				mc.ListFn = func() ([]instanceclient.Capability, error) {
-					return []instanceclient.Capability{}, nil
+					return []instanceclient.Capability{{Id: new("existing"), Type: new("DockerBearerTokenRealm")}}, nil
 				}
 				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
 					return nil, errors.New("nexus unavailable")
@@ -331,19 +375,6 @@ func TestCreate(t *testing.T) {
 				t.Errorf("external-name = %q, want %q", meta.GetExternalName(tt.cr), tt.wantExtName)
 			}
 		})
-	}
-}
-
-// TestCreate_WrongType verifies Create returns an error for non-Capability
-// resources.
-func TestCreate_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: capabilitymocks.NewMockCapabilityClient()}
-
-	_, err := e.Create(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Create() expected error for wrong type, got nil")
 	}
 }
 
@@ -394,19 +425,6 @@ func TestUpdate(t *testing.T) {
 				t.Errorf("Update() error = %v, wantErr = %v", err, tt.wantErr)
 			}
 		})
-	}
-}
-
-// TestUpdate_WrongType verifies Update returns an error for non-Capability
-// resources.
-func TestUpdate_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: capabilitymocks.NewMockCapabilityClient()}
-
-	_, err := e.Update(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Update() expected error for wrong type, got nil")
 	}
 }
 
@@ -476,19 +494,6 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-// TestDelete_WrongType verifies Delete returns an error for non-Capability
-// resources.
-func TestDelete_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: capabilitymocks.NewMockCapabilityClient()}
-
-	_, err := e.Delete(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Delete() expected error for wrong type, got nil")
-	}
-}
-
 // newTestScheme registers nexus v1alpha1 types in a new scheme.
 func newTestScheme(t *testing.T) *runtime.Scheme {
 	t.Helper()
@@ -501,23 +506,6 @@ func newTestScheme(t *testing.T) *runtime.Scheme {
 	}
 
 	return s
-}
-
-// TestConnect_WrongType verifies Connect returns an error for non-Capability
-// resources.
-func TestConnect_WrongType(t *testing.T) {
-	t.Parallel()
-
-	c := &connector{}
-
-	_, err := c.Connect(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Connect() expected error for wrong type, got nil")
-	}
-
-	if err.Error() != errNotCapability {
-		t.Errorf("Connect() error = %q, want %q", err.Error(), errNotCapability)
-	}
 }
 
 // TestConnect_TrackError verifies Connect returns an error when ProviderConfig

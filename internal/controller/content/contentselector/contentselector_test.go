@@ -196,18 +196,6 @@ func TestObserve(t *testing.T) {
 	}
 }
 
-// TestObserve_WrongType tests Observe with wrong resource type.
-func TestObserve_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: contentmocks.NewMockContentSelectorClient()}
-
-	_, err := e.Observe(context.Background(), nil)
-	if err == nil {
-		t.Error("Observe() with nil managed resource should return error")
-	}
-}
-
 // TestCreate tests the Create method.
 func TestCreate(t *testing.T) {
 	t.Parallel()
@@ -272,18 +260,6 @@ func TestCreate(t *testing.T) {
 				tt.validate(t, mc)
 			}
 		})
-	}
-}
-
-// TestCreate_WrongType tests Create with wrong resource type.
-func TestCreate_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: contentmocks.NewMockContentSelectorClient()}
-
-	_, err := e.Create(context.Background(), nil)
-	if err == nil {
-		t.Error("Create() with nil managed resource should return error")
 	}
 }
 
@@ -354,18 +330,6 @@ func TestUpdate(t *testing.T) {
 				tt.validate(t, mc)
 			}
 		})
-	}
-}
-
-// TestUpdate_WrongType tests Update with wrong resource type.
-func TestUpdate_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: contentmocks.NewMockContentSelectorClient()}
-
-	_, err := e.Update(context.Background(), nil)
-	if err == nil {
-		t.Error("Update() with nil managed resource should return error")
 	}
 }
 
@@ -464,34 +428,6 @@ func TestDelete(t *testing.T) {
 				tt.validate(t, mc)
 			}
 		})
-	}
-}
-
-// TestDelete_WrongType tests Delete with wrong resource type.
-func TestDelete_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: contentmocks.NewMockContentSelectorClient()}
-
-	_, err := e.Delete(context.Background(), nil)
-	if err == nil {
-		t.Error("Delete() with nil managed resource should return error")
-	}
-}
-
-// TestConnect_WrongType tests Connect with wrong resource type.
-func TestConnect_WrongType(t *testing.T) {
-	t.Parallel()
-
-	c := &connector{}
-
-	_, err := c.Connect(context.Background(), nil)
-	if err == nil {
-		t.Error("Connect() with nil managed resource should return error")
-	}
-
-	if err.Error() != errNotContentSelector {
-		t.Errorf("Connect() error = %q, want %q", err.Error(), errNotContentSelector)
 	}
 }
 

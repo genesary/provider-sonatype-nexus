@@ -202,18 +202,6 @@ func TestObserve(t *testing.T) {
 	}
 }
 
-// TestObserve_WrongType verifies Observe rejects invalid managed resources.
-func TestObserve_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: instancemocks.NewMockIQServerClient()}
-
-	_, err := e.Observe(context.Background(), nil)
-	if err == nil {
-		t.Error("Observe() with nil managed resource should return error")
-	}
-}
-
 // TestCreate covers the Create method across all meaningful branches.
 func TestCreate(t *testing.T) {
 	t.Parallel()
@@ -281,18 +269,6 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-// TestCreate_WrongType verifies Create rejects invalid managed resources.
-func TestCreate_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: instancemocks.NewMockIQServerClient()}
-
-	_, err := e.Create(context.Background(), nil)
-	if err == nil {
-		t.Error("Create() with nil managed resource should return error")
-	}
-}
-
 // TestUpdate covers the Update method across all meaningful branches.
 func TestUpdate(t *testing.T) {
 	t.Parallel()
@@ -356,18 +332,6 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
-// TestUpdate_WrongType verifies Update rejects invalid managed resources.
-func TestUpdate_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: instancemocks.NewMockIQServerClient()}
-
-	_, err := e.Update(context.Background(), nil)
-	if err == nil {
-		t.Error("Update() with nil managed resource should return error")
-	}
-}
-
 // TestDelete covers the Delete method across all meaningful branches.
 func TestDelete(t *testing.T) {
 	t.Parallel()
@@ -427,18 +391,6 @@ func TestDelete(t *testing.T) {
 	}
 }
 
-// TestDelete_WrongType verifies Delete rejects invalid managed resources.
-func TestDelete_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: instancemocks.NewMockIQServerClient()}
-
-	_, err := e.Delete(context.Background(), nil)
-	if err == nil {
-		t.Error("Delete() with nil managed resource should return error")
-	}
-}
-
 // TestDisconnect verifies Disconnect is a no-op.
 func TestDisconnect(t *testing.T) {
 	t.Parallel()
@@ -448,22 +400,6 @@ func TestDisconnect(t *testing.T) {
 	err := e.Disconnect(context.Background())
 	if err != nil {
 		t.Errorf("Disconnect() returned unexpected error: %v", err)
-	}
-}
-
-// TestConnect_WrongType verifies Connect rejects invalid managed resources.
-func TestConnect_WrongType(t *testing.T) {
-	t.Parallel()
-
-	c := &connector{}
-
-	_, err := c.Connect(context.Background(), nil)
-	if err == nil {
-		t.Error("Connect() with nil managed resource should return error")
-	}
-
-	if err.Error() != errNotIQServerConfiguration {
-		t.Errorf("Connect() error = %q, want %q", err.Error(), errNotIQServerConfiguration)
 	}
 }
 

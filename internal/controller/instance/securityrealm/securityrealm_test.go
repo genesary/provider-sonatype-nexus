@@ -119,7 +119,7 @@ func TestObserve(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name: "ListAvailableRealmsError_StillObserves",
+			name: "ListAvailableRealmsError",
 			cr:   newTestSecurityRealm("singleton", []string{"NexusAuthenticatingRealm"}),
 			mockSetup: func(mc *iammocks.MockSecurityRealmClient) {
 				mc.ListActiveFn = func() ([]string, error) {
@@ -129,9 +129,7 @@ func TestObserve(t *testing.T) {
 					return nil, errors.New("unavailable")
 				}
 			},
-			wantExists:   true,
-			wantUpToDate: true,
-			wantErr:      false,
+			wantErr: true,
 		},
 	}
 
@@ -161,18 +159,6 @@ func TestObserve(t *testing.T) {
 				t.Errorf("Observe() ResourceUpToDate = %v, want %v", obs.ResourceUpToDate, tt.wantUpToDate)
 			}
 		})
-	}
-}
-
-// TestObserve_WrongType tests Observe with wrong resource type.
-func TestObserve_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: iammocks.NewMockSecurityRealmClient()}
-
-	_, err := e.Observe(context.Background(), nil)
-	if err == nil {
-		t.Error("Observe() with nil managed resource should return error")
 	}
 }
 
@@ -272,18 +258,6 @@ func TestCreate(t *testing.T) {
 	}
 }
 
-// TestCreate_WrongType tests Create with wrong resource type.
-func TestCreate_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: iammocks.NewMockSecurityRealmClient()}
-
-	_, err := e.Create(context.Background(), nil)
-	if err == nil {
-		t.Error("Create() with nil managed resource should return error")
-	}
-}
-
 // TestUpdate tests the Update method.
 func TestUpdate(t *testing.T) {
 	t.Parallel()
@@ -354,18 +328,6 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
-// TestUpdate_WrongType tests Update with wrong resource type.
-func TestUpdate_WrongType(t *testing.T) {
-	t.Parallel()
-
-	e := &external{client: iammocks.NewMockSecurityRealmClient()}
-
-	_, err := e.Update(context.Background(), nil)
-	if err == nil {
-		t.Error("Update() with nil managed resource should return error")
-	}
-}
-
 // TestDelete tests that Delete is a no-op for the singleton SecurityRealm.
 func TestDelete(t *testing.T) {
 	t.Parallel()
@@ -394,22 +356,6 @@ func TestDisconnect(t *testing.T) {
 	err := e.Disconnect(context.Background())
 	if err != nil {
 		t.Errorf("Disconnect() returned unexpected error: %v", err)
-	}
-}
-
-// TestConnect_WrongType tests Connect with wrong resource type.
-func TestConnect_WrongType(t *testing.T) {
-	t.Parallel()
-
-	c := &connector{}
-
-	_, err := c.Connect(context.Background(), nil)
-	if err == nil {
-		t.Error("Connect() with nil managed resource should return error")
-	}
-
-	if err.Error() != errNotSecurityRealm {
-		t.Errorf("Connect() error = %q, want %q", err.Error(), errNotSecurityRealm)
 	}
 }
 

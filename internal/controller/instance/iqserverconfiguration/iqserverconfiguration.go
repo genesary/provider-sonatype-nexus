@@ -20,9 +20,6 @@ import (
 )
 
 const (
-	// errNotIQServerConfiguration means managed resource
-	// is not an IQServerConfiguration.
-	errNotIQServerConfiguration = "managed resource is not an IQServerConfiguration custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
@@ -49,7 +46,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(instancev1alpha1.IQServerConfigurationGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*instancev1alpha1.IQServerConfiguration](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
@@ -77,23 +74,13 @@ type connector struct {
 }
 
 // Connect creates the external IQ Server client.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, ok := managedRes.(*instancev1alpha1.IQServerConfiguration)
-	if !ok {
-		return nil, errors.New(errNotIQServerConfiguration)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+func (c *connector) Connect(ctx context.Context, iqConfig *instancev1alpha1.IQServerConfiguration) (managed.TypedExternalClient[*instancev1alpha1.IQServerConfiguration], error) {
+	err := c.usage.Track(ctx, iqConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, iqConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -106,19 +93,14 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	return &external{client: iqClient, kube: c.kube}, nil
 }
 
-// external implements managed.ExternalClient for IQServerConfiguration.
+// external implements managed.TypedExternalClient for IQServerConfiguration.
 type external struct {
 	client instanceclient.IQServerClient
 	kube   client.Client
 }
 
 // Observe checks the current IQ Server configuration against desired state.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	iqConfig, ok := managedRes.(*instancev1alpha1.IQServerConfiguration)
-	if !ok {
-		return managed.ExternalObservation{}, errors.New(errNotIQServerConfiguration)
-	}
-
+func (e *external) Observe(ctx context.Context, iqConfig *instancev1alpha1.IQServerConfiguration) (managed.ExternalObservation, error) {
 	observed, err := e.client.Get(ctx)
 	if err != nil {
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetIQServer)
@@ -146,12 +128,7 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 // Create applies the IQ Server configuration in Nexus.
 // IQ Server config is a singleton; Create simply applies the spec.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	iqConfig, ok := managedRes.(*instancev1alpha1.IQServerConfiguration)
-	if !ok {
-		return managed.ExternalCreation{}, errors.New(errNotIQServerConfiguration)
-	}
-
+func (e *external) Create(ctx context.Context, iqConfig *instancev1alpha1.IQServerConfiguration) (managed.ExternalCreation, error) {
 	fingerprint, err := e.applyConfig(ctx, iqConfig)
 	if err != nil {
 		return managed.ExternalCreation{}, err
@@ -169,12 +146,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update applies the IQ Server configuration in Nexus.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	iqConfig, ok := managedRes.(*instancev1alpha1.IQServerConfiguration)
-	if !ok {
-		return managed.ExternalUpdate{}, errors.New(errNotIQServerConfiguration)
-	}
-
+func (e *external) Update(ctx context.Context, iqConfig *instancev1alpha1.IQServerConfiguration) (managed.ExternalUpdate, error) {
 	fingerprint, err := e.applyConfig(ctx, iqConfig)
 	if err != nil {
 		return managed.ExternalUpdate{}, err
@@ -187,12 +159,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 // Delete disables the IQ Server integration in Nexus.
 // IQ Server config is a singleton; Delete disables rather than removes.
-func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	_, ok := managedRes.(*instancev1alpha1.IQServerConfiguration)
-	if !ok {
-		return managed.ExternalDelete{}, errors.New(errNotIQServerConfiguration)
-	}
-
+func (e *external) Delete(ctx context.Context, _ *instancev1alpha1.IQServerConfiguration) (managed.ExternalDelete, error) {
 	err := e.client.Disable(ctx)
 	if err != nil {
 		return managed.ExternalDelete{}, errors.Wrap(err, errDeleteIQServer)

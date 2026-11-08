@@ -35,8 +35,6 @@ var endpointClient = &http.Client{
 }
 
 const (
-	// errNotLicense means the managed resource is not a License.
-	errNotLicense = "managed resource is not a License custom resource"
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
 	errTrackPCUsage = "cannot track ProviderConfig usage"
 	// errGetPC is returned when retrieving the ProviderConfig fails.
@@ -60,7 +58,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(instancev1alpha1.LicenseGroupKind)
 
 	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
-		managed.WithExternalConnector(&connector{
+		managed.WithTypedExternalConnector[*instancev1alpha1.License](&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
@@ -81,30 +79,20 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
-// connector implements managed.ExternalConnector.
+// connector implements managed.TypedExternalConnector.
 type connector struct {
 	kube  client.Client
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
-func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isLicense := managedRes.(*instancev1alpha1.License)
-	if !isLicense {
-		return nil, errors.New(errNotLicense)
-	}
-
-	modernMG, isModern := managedRes.(resource.ModernManaged)
-	if !isModern {
-		return nil, errors.New("managed resource is not a ModernManaged")
-	}
-
-	err := c.usage.Track(ctx, modernMG)
+// Connect produces a TypedExternalClient for the given managed resource.
+func (c *connector) Connect(ctx context.Context, licenseCR *instancev1alpha1.License) (managed.TypedExternalClient[*instancev1alpha1.License], error) {
+	err := c.usage.Track(ctx, licenseCR)
 	if err != nil {
 		return nil, errors.Wrap(err, errTrackPCUsage)
 	}
 
-	creds, err := nexus.GetCredentials(ctx, c.kube, modernMG)
+	creds, err := nexus.GetCredentials(ctx, c.kube, licenseCR)
 	if err != nil {
 		return nil, errors.Wrap(err, errGetPC)
 	}
@@ -120,21 +108,21 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 	}, nil
 }
 
-// external implements managed.ExternalClient.
+// external implements managed.TypedExternalClient.
 type external struct {
 	client instanceclient.LicenseClient
 	kube   client.Client
 }
 
 // Observe checks whether the license is installed and up to date.
-func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	licenseCR, isLicense := managedRes.(*instancev1alpha1.License)
-	if !isLicense {
-		return managed.ExternalObservation{}, errors.New(errNotLicense)
-	}
-
+//
+// While the License is being deleted, Observe only reports whether Nexus has a
+// license installed, so the reconciler calls Delete when there is one. It does
+// not read the desired license then: its Secret or endpoint may already be
+// gone, and an error would block the finalizer.
+func (e *external) Observe(ctx context.Context, licenseCR *instancev1alpha1.License) (managed.ExternalObservation, error) {
 	if licenseCR.GetDeletionTimestamp() != nil {
-		return managed.ExternalObservation{ResourceExists: false}, nil
+		return e.observeInstalled(ctx, licenseCR)
 	}
 
 	desiredBytes, err := e.fetchDesiredLicense(ctx, licenseCR)
@@ -144,36 +132,18 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 
 	currentHash := instanceclient.HashLicense(desiredBytes)
 
-	nexusInfo, err := e.client.GetLicense(ctx)
-	if errors.Is(err, instanceclient.ErrNoLicense) {
-		prevHash := licenseCR.Status.AtProvider.InstalledHash
-		licenseCR.Status.AtProvider = instanceclient.GenerateLicenseObservation(nil, prevHash)
-		licenseCR.SetConditions(nexusv1alpha1.Available())
-
-		return managed.ExternalObservation{ResourceExists: false}, nil
+	observation, err := e.observeInstalled(ctx, licenseCR)
+	if err != nil || !observation.ResourceExists {
+		return observation, err
 	}
 
-	if err != nil {
-		return managed.ExternalObservation{}, errors.Wrap(err, errGetLicense)
-	}
+	observation.ResourceUpToDate = instanceclient.IsLicenseUpToDate(licenseCR, currentHash)
 
-	prevHash := licenseCR.Status.AtProvider.InstalledHash
-	licenseCR.Status.AtProvider = instanceclient.GenerateLicenseObservation(nexusInfo, prevHash)
-	licenseCR.SetConditions(nexusv1alpha1.Available())
-
-	return managed.ExternalObservation{
-		ResourceExists:   true,
-		ResourceUpToDate: instanceclient.IsLicenseUpToDate(licenseCR, currentHash),
-	}, nil
+	return observation, nil
 }
 
 // Create installs the license on Nexus for the first time.
-func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	licenseCR, isLicense := managedRes.(*instancev1alpha1.License)
-	if !isLicense {
-		return managed.ExternalCreation{}, errors.New(errNotLicense)
-	}
-
+func (e *external) Create(ctx context.Context, licenseCR *instancev1alpha1.License) (managed.ExternalCreation, error) {
 	data, err := e.applyLicense(ctx, licenseCR)
 	if err != nil {
 		return managed.ExternalCreation{}, err
@@ -185,12 +155,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Update reinstalls the license when it drifts from the desired state.
-func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	licenseCR, isLicense := managedRes.(*instancev1alpha1.License)
-	if !isLicense {
-		return managed.ExternalUpdate{}, errors.New(errNotLicense)
-	}
-
+func (e *external) Update(ctx context.Context, licenseCR *instancev1alpha1.License) (managed.ExternalUpdate, error) {
 	data, err := e.applyLicense(ctx, licenseCR)
 	if err != nil {
 		return managed.ExternalUpdate{}, err
@@ -202,12 +167,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 }
 
 // Delete removes the license from Nexus.
-func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	_, isLicense := managedRes.(*instancev1alpha1.License)
-	if !isLicense {
-		return managed.ExternalDelete{}, errors.New(errNotLicense)
-	}
-
+func (e *external) Delete(ctx context.Context, _ *instancev1alpha1.License) (managed.ExternalDelete, error) {
 	err := e.client.DeleteLicense(ctx)
 	if err != nil {
 		return managed.ExternalDelete{}, errors.Wrap(err, errDeleteLicense)
@@ -219,6 +179,28 @@ func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (man
 // Disconnect is a no-op; the HTTP client has no persistent connection.
 func (e *external) Disconnect(_ context.Context) error {
 	return nil
+}
+
+// observeInstalled reports whether Nexus has a license installed and records
+// it in Status.AtProvider. It marks the License Available only when one is.
+func (e *external) observeInstalled(ctx context.Context, licenseCR *instancev1alpha1.License) (managed.ExternalObservation, error) {
+	prevHash := licenseCR.Status.AtProvider.InstalledHash
+
+	nexusInfo, err := e.client.GetLicense(ctx)
+	if errors.Is(err, instanceclient.ErrNoLicense) {
+		licenseCR.Status.AtProvider = instanceclient.GenerateLicenseObservation(nil, prevHash)
+
+		return managed.ExternalObservation{ResourceExists: false}, nil
+	}
+
+	if err != nil {
+		return managed.ExternalObservation{}, errors.Wrap(err, errGetLicense)
+	}
+
+	licenseCR.Status.AtProvider = instanceclient.GenerateLicenseObservation(nexusInfo, prevHash)
+	licenseCR.SetConditions(nexusv1alpha1.Available())
+
+	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
 }
 
 // applyLicense fetches the desired license, installs it on Nexus, records the
@@ -239,11 +221,8 @@ func (e *external) applyLicense(ctx context.Context, licenseCR *instancev1alpha1
 	before := licenseCR.DeepCopy()
 	licenseCR.Status.AtProvider.InstalledHash = hash
 
-	err = e.kube.Status().Patch(ctx, licenseCR, client.MergeFrom(before))
-	if err != nil {
-		// Non-fatal: next Observe will retry reconciliation.
-		_ = err
-	}
+	// Non-fatal: next Observe will retry reconciliation.
+	_ = e.kube.Status().Patch(ctx, licenseCR, client.MergeFrom(before))
 
 	return data, nil
 }
