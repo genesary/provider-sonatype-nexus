@@ -93,6 +93,18 @@ if [ "${E2E_PRELOAD_IMAGES:-false}" = "true" ]; then
     kind_load_image "${nexus_image}"
 fi
 
+# Start Nexus right away: it needs nothing from Crossplane or the provider,
+# and its first boot (about a minute) is the longest step of the setup, so
+# its image pull and boot overlap with installing Crossplane and the provider
+# instead of running after them. The kubelet pulls images in parallel (see
+# kind.yaml), and the Nexus image (under 500 MiB) is small enough not to hold
+# up the Crossplane images local.xpkg.deploy.provider waits on (60s each).
+# nexus_setup.sh re-applies the same manifest (idempotently) and waits for
+# Nexus later, once the provider CRDs its ProviderConfigs need are
+# established.
+echo_step "starting Nexus in the background"
+"${KUBECTL}" --context="kind-${KIND_CLUSTER_NAME}" apply -f "${nexus_manifest}"
+
 echo_step "installing crossplane"
 make -C "${projectdir}" controlplane.up
 
@@ -157,16 +169,6 @@ echo_step "deploying ${PACKAGE_NAME} provider package (CREATION_GRACE_PERIOD=${E
 # See build/makelib/local.xpkg.mk.
 make -C "${projectdir}" "local.xpkg.deploy.provider.${PACKAGE_NAME}"
 
-# Start Nexus now, so that its image pull and slow first boot (a few minutes)
-# overlap with the provider establishing instead of running after it. Not any
-# earlier: the Crossplane pod and its dev sidecar pull their own images while
-# local.xpkg.deploy.provider waits on them, and the kind node also pulling
-# Nexus then slows those waits down. nexus_setup.sh re-applies the same
-# manifest (idempotently) and waits for Nexus later, once the provider CRDs
-# its ProviderConfigs need are established.
-echo_step "starting Nexus in the background"
-"${KUBECTL}" apply -f "${nexus_manifest}"
-
 # Crossplane's ProviderRevision establish reconciler has a known flake with
 # large packages: on a fresh install it sometimes establishes only a subset of
 # the package's CRDs and never converges on the rest, with no error or warning
@@ -215,7 +217,7 @@ echo_step "waiting for provider to become healthy"
 "${KUBECTL}" wait "provider.pkg.crossplane.io/${PACKAGE_NAME}" \
     --for=condition=healthy --timeout=300s
 
-echo_step "deploying Nexus and configuring ProviderConfig"
+echo_step "waiting for Nexus and configuring ProviderConfigs"
 KUBECTL="${KUBECTL}" "${projectdir}/cluster/local/nexus_setup.sh"
 
 echo_step "running e2e Go suite"
