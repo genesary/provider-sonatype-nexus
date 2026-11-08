@@ -217,3 +217,15 @@ func (f *Framework) FetchCapability(id string) (*v395.CapabilityDTO, error) {
 func (f *Framework) FetchRoutingRule(name string) (*v395.RoutingRuleXO, error) {
 	return absentAsNil(f.Nexus.RoutingRulesAPI.GetRoutingRules(context.Background(), name).Execute())
 }
+
+// FetchTask returns the scheduled task with the given name, or (nil, nil) if
+// absent.
+func (f *Framework) FetchTask(name string) (*v395.TaskXO, error) {
+	return ignoreAbsent(f.tasks.GetByName(context.Background(), name))
+}
+
+// UpdateTask replaces the scheduled task with the given ID directly,
+// bypassing the provider.
+func (f *Framework) UpdateTask(id string, task v395.UpdateTasksRequest) error {
+	return f.tasks.Update(context.Background(), id, task)
+}

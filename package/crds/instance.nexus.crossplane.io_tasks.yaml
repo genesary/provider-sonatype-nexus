@@ -1,0 +1,396 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.21.0
+  name: tasks.instance.nexus.crossplane.io
+spec:
+  group: instance.nexus.crossplane.io
+  names:
+    categories:
+    - crossplane
+    - managed
+    - nexus
+    kind: Task
+    listKind: TaskList
+    plural: tasks
+    singular: task
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.conditions[?(@.type=='Ready')].status
+      name: READY
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='Synced')].status
+      name: SYNCED
+      type: string
+    - jsonPath: .metadata.annotations.crossplane\.io/external-name
+      name: EXTERNAL-NAME
+      type: string
+    - jsonPath: .spec.forProvider.type
+      name: TYPE
+      type: string
+    - jsonPath: .status.atProvider.nextRun
+      name: NEXT-RUN
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          Task manages a Nexus scheduled task, such as a repository cleanup, a blob
+          store compaction or an index rebuild. Its external name is the task name.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: TaskSpec defines the desired state of a Task.
+            properties:
+              forProvider:
+                description: ForProvider holds the provider-specific configuration
+                  for this resource.
+                properties:
+                  alertEmail:
+                    description: |-
+                      AlertEmail is the address Nexus notifies about task runs. If unset, no
+                      notification is sent.
+                    type: string
+                  enabled:
+                    default: true
+                    description: Enabled specifies whether the task runs on its schedule.
+                    type: boolean
+                  name:
+                    description: |-
+                      Name of the task. Nexus requires task names to be unique, and the task
+                      is looked up by this name.
+                    minLength: 1
+                    type: string
+                    x-kubernetes-validations:
+                    - message: Name is immutable.
+                      rule: self == oldSelf
+                  notificationCondition:
+                    default: FAILURE
+                    description: |-
+                      NotificationCondition selects the runs Nexus notifies the alert email
+                      about: failed runs only, or every run.
+                    enum:
+                    - FAILURE
+                    - SUCCESS_FAILURE
+                    type: string
+                  properties:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Properties are the type-specific settings of the task, such as
+                      blobstoreName or repositoryName. They are the complete set: a property
+                      the spec leaves out is removed from the task. Nexus rejects unknown
+                      properties and requires the ones the type marks as required. A property
+                      set to an empty string is treated as unset.
+                    type: object
+                  schedule:
+                    description: Schedule defines when the task runs.
+                    properties:
+                      cronExpression:
+                        description: |-
+                          CronExpression is the Quartz cron expression of a cron schedule, with
+                          a seconds field, such as "0 0 2 * * ?".
+                        minLength: 1
+                        type: string
+                      recurringDays:
+                        description: |-
+                          RecurringDays are the days the task runs on: 1 (Sunday) to 7
+                          (Saturday) for a weekly schedule, 1 to 31 or 999 (the last day of the
+                          month) for a monthly one.
+                        items:
+                          format: int32
+                          type: integer
+                        maxItems: 32
+                        type: array
+                        x-kubernetes-list-type: set
+                      startDate:
+                        description: |-
+                          StartDate is when the schedule starts: the single run of a once
+                          schedule, and the first run and time of day of the hourly, daily,
+                          weekly and monthly ones. Nexus keeps it to the minute. Required for
+                          those schedules, and not allowed for manual and cron ones: Nexus
+                          ignores it on a cron schedule.
+                        format: date-time
+                        type: string
+                      timeZoneOffset:
+                        description: |-
+                          TimeZoneOffset is the UTC offset the cron expression is evaluated in,
+                          such as "Z" or "+02:00". If unset, the expression is evaluated in UTC.
+                        pattern: ^(Z|[+-](0[0-9]|1[0-4]):[0-5][0-9])$
+                        type: string
+                      type:
+                        description: Type of the schedule.
+                        enum:
+                        - manual
+                        - once
+                        - hourly
+                        - daily
+                        - weekly
+                        - monthly
+                        - cron
+                        type: string
+                    required:
+                    - type
+                    type: object
+                    x-kubernetes-validations:
+                    - message: startDate is required for once, hourly, daily, weekly
+                        and monthly schedules, and not allowed for manual and cron
+                        ones.
+                      rule: (self.type in ['manual', 'cron']) != has(self.startDate)
+                    - message: recurringDays is required for weekly and monthly schedules,
+                        and only allowed for them.
+                      rule: (self.type in ['weekly', 'monthly']) == (has(self.recurringDays)
+                        && size(self.recurringDays) > 0)
+                    - message: Weekly recurringDays must be between 1 (Sunday) and
+                        7 (Saturday).
+                      rule: self.type != 'weekly' || !has(self.recurringDays) || self.recurringDays.all(d,
+                        d >= 1 && d <= 7)
+                    - message: Monthly recurringDays must be between 1 and 31, or
+                        999 for the last day of the month.
+                      rule: self.type != 'monthly' || !has(self.recurringDays) ||
+                        self.recurringDays.all(d, (d >= 1 && d <= 31) || d == 999)
+                    - message: cronExpression is required for a cron schedule, and
+                        only allowed for it.
+                      rule: (self.type == 'cron') == has(self.cronExpression)
+                    - message: timeZoneOffset is only allowed for a cron schedule.
+                      rule: self.type == 'cron' || !has(self.timeZoneOffset)
+                  type:
+                    description: |-
+                      Type is the task type identifier, such as repository.cleanup,
+                      blobstore.compact or repository.docker.gc. GET
+                      /service/rest/v1/tasks/templates lists the types a Nexus instance
+                      offers. Tasks of type script can only be created when Nexus scripting
+                      is enabled (nexus.scripts.allowCreation=true).
+                    minLength: 1
+                    type: string
+                    x-kubernetes-validations:
+                    - message: Type is immutable.
+                      rule: self == oldSelf
+                required:
+                - name
+                - schedule
+                - type
+                type: object
+              managementPolicies:
+                default:
+                - '*'
+                description: |-
+                  THIS IS A BETA FIELD. It is on by default but can be opted out
+                  through a Crossplane feature flag.
+                  ManagementPolicies specify the array of actions Crossplane is allowed to
+                  take on the managed and external resources.
+                  See the design doc for more information: https://github.com/crossplane/crossplane/blob/499895a25d1a1a0ba1604944ef98ac7a1a71f197/design/design-doc-observe-only-resources.md?plain=1#L223
+                  and this one: https://github.com/crossplane/crossplane/blob/444267e84783136daa93568b364a5f01228cacbe/design/one-pager-ignore-changes.md
+                items:
+                  description: |-
+                    A ManagementAction represents an action that the Crossplane controllers
+                    can take on an external resource.
+                  enum:
+                  - Observe
+                  - Create
+                  - Update
+                  - Delete
+                  - LateInitialize
+                  - '*'
+                  type: string
+                type: array
+              providerConfigRef:
+                default:
+                  kind: ClusterProviderConfig
+                  name: default
+                description: |-
+                  ProviderConfigReference specifies how the provider that will be used to
+                  create, observe, update, and delete this managed resource should be
+                  configured.
+                properties:
+                  kind:
+                    description: Kind of the referenced object.
+                    type: string
+                  name:
+                    description: Name of the referenced object.
+                    type: string
+                required:
+                - kind
+                - name
+                type: object
+              writeConnectionSecretToRef:
+                description: |-
+                  WriteConnectionSecretToReference specifies the namespace and name of a
+                  Secret to which any connection details for this managed resource should
+                  be written. Connection details frequently include the endpoint, username,
+                  and password required to connect to the managed resource.
+                properties:
+                  name:
+                    description: Name of the secret.
+                    type: string
+                required:
+                - name
+                type: object
+            required:
+            - forProvider
+            type: object
+          status:
+            description: TaskStatus represents the observed state of a Task.
+            properties:
+              atProvider:
+                description: AtProvider holds the provider-specific observed state.
+                properties:
+                  alertEmail:
+                    description: AlertEmail is the observed alert email.
+                    type: string
+                  currentState:
+                    description: CurrentState is the state of the task, such as WAITING
+                      or RUNNING.
+                    type: string
+                  enabled:
+                    description: Enabled is the observed enabled state.
+                    type: boolean
+                  id:
+                    description: ID is the identifier Nexus assigned to the task.
+                    type: string
+                  lastRun:
+                    description: LastRun is when the last run started.
+                    format: date-time
+                    type: string
+                  lastRunResult:
+                    description: LastRunResult is the result of the last run, such
+                      as OK or FAILED.
+                    type: string
+                  message:
+                    description: Message is the message Nexus reports for the task.
+                    type: string
+                  nextRun:
+                    description: NextRun is when the task runs next.
+                    format: date-time
+                    type: string
+                  notificationCondition:
+                    description: NotificationCondition is the observed notification
+                      condition.
+                    type: string
+                  properties:
+                    additionalProperties:
+                      type: string
+                    description: Properties are the observed type-specific settings.
+                    type: object
+                  schedule:
+                    description: Schedule is the observed schedule.
+                    properties:
+                      cronExpression:
+                        description: CronExpression is the observed cron expression.
+                        type: string
+                      recurringDays:
+                        description: RecurringDays are the observed recurring days.
+                        items:
+                          format: int32
+                          type: integer
+                        type: array
+                      startDate:
+                        description: StartDate is the observed start date.
+                        format: date-time
+                        type: string
+                      timeZoneOffset:
+                        description: TimeZoneOffset is the observed time zone offset
+                          of a cron schedule.
+                        type: string
+                      type:
+                        description: Type is the observed schedule type, spelled as
+                          in the spec.
+                        type: string
+                    type: object
+                  type:
+                    description: Type is the observed task type.
+                    type: string
+                  typeName:
+                    description: TypeName is the human-readable name of the task type.
+                    type: string
+                type: object
+              conditions:
+                description: Conditions of the resource.
+                items:
+                  description: A Condition that may apply to a resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        LastTransitionTime is the last time this condition transitioned from one
+                        status to another.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        A Message containing details about this condition's last transition from
+                        one status to another, if any.
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        ObservedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      type: integer
+                    reason:
+                      description: A Reason for this condition's last transition from
+                        one status to another.
+                      type: string
+                    status:
+                      description: Status of this condition; is it currently True,
+                        False, or Unknown?
+                      type: string
+                    type:
+                      description: |-
+                        Type of this condition. At most one of each condition type may apply to
+                        a resource at any point in time.
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              lastHandledReconcileAt:
+                description: |-
+                  LastHandledReconcileAt holds the value of the most recent
+                  reconcile-requested-at annotation token that the controller has
+                  processed. Users can compare this to the annotation to determine
+                  whether a reconcile request has been handled.
+                type: string
+              observedGeneration:
+                description: |-
+                  ObservedGeneration is the latest metadata.generation
+                  which resulted in either a ready state, or stalled due to error
+                  it can not recover from without human intervention.
+                format: int64
+                type: integer
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

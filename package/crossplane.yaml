@@ -21,7 +21,7 @@ metadata:
         UserTokenConfiguration
       - Instance: BlobStore (File and S3), Capability, HTTPClient,
         IQServerConfiguration, License, SecurityRealm, SecuritySSLTruststore,
-        SSRFProtection
+        SSRFProtection, Task
 
       For setup, provider flags and examples, see the repository
       [README](https://github.com/genesary/provider-sonatype-nexus/blob/main/README.md).

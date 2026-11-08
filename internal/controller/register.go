@@ -29,6 +29,7 @@ import (
 	instancesecurityrealm "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/securityrealm"
 	instancessltruststore "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/securityssltruststore"
 	instancessrf "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/ssrfprotection"
+	instancetask "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/task"
 	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
@@ -60,6 +61,7 @@ var managedControllers = []managedController{
 	{instancesecurityrealm.Setup, instancev1alpha1.SecurityRealmGroupVersionKind},
 	{instancessltruststore.Setup, instancev1alpha1.SecuritySSLTruststoreGroupVersionKind},
 	{instancessrf.Setup, instancev1alpha1.SSRFProtectionGroupVersionKind},
+	{instancetask.Setup, instancev1alpha1.TaskGroupVersionKind},
 }
 
 // Setup adds all Nexus controllers to the supplied manager. The ProviderConfig
