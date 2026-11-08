@@ -5,11 +5,13 @@ import (
 	"errors"
 	"math"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	changelogsv1alpha1 "github.com/crossplane/crossplane-runtime/v2/apis/changelogs/proto/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
@@ -52,13 +54,17 @@ func (nopChangeLogger) Log(context.Context, resource.Managed, changelogsv1alpha1
 	return nil
 }
 
-// testOptions returns the options of a provider with no feature enabled.
+// testOptions returns the options of a provider with no feature enabled and
+// the default creation grace period, as the provider runs with by default.
 func testOptions() Options {
-	return Options{Options: controller.Options{
-		Logger:           logging.NewNopLogger(),
-		Features:         &feature.Flags{},
-		ChangeLogOptions: &controller.ChangeLogOptions{ChangeLogger: nopChangeLogger{}},
-	}}
+	return Options{
+		Options: controller.Options{
+			Logger:           logging.NewNopLogger(),
+			Features:         &feature.Flags{},
+			ChangeLogOptions: &controller.ChangeLogOptions{ChangeLogger: nopChangeLogger{}},
+		},
+		CreationGracePeriod: DefaultCreationGracePeriod,
+	}
 }
 
 // TestReconcilerOptions checks which options are enabled by each setting, and
@@ -629,43 +635,38 @@ func TestReconcilerOptionsApplyPollJitter(t *testing.T) {
 	}
 }
 
-// TestValidateCreationGracePeriod checks that only a negative period is
-// rejected.
-func TestValidateCreationGracePeriod(t *testing.T) {
-	t.Parallel()
+// pendingEventReason is the reason of the event crossplane-runtime records
+// while it waits out the creation grace period. Its constant is unexported.
+const pendingEventReason = "PendingExternalResource"
 
-	tests := map[string]struct {
-		period  time.Duration
-		wantErr bool
-	}{
-		"Default":  {period: DefaultCreationGracePeriod},
-		"Zero":     {},
-		"Negative": {period: -time.Second, wantErr: true},
-	}
-
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			err := ValidateCreationGracePeriod(test.period)
-			if (err != nil) != test.wantErr {
-				t.Errorf("ValidateCreationGracePeriod(%v) error = %v, want error %t", test.period, err, test.wantErr)
+// recordedReason drains the events of a fake recorder and returns whether one
+// had the given reason.
+func recordedReason(recorder *record.FakeRecorder, reason string) bool {
+	for {
+		select {
+		case recorded := <-recorder.Events:
+			if strings.Contains(recorded, " "+reason+" ") {
+				return true
 			}
-		})
+		default:
+			return false
+		}
 	}
 }
 
 // TestReconcilerOptionsCreationGracePeriod checks, through a real reconcile
 // of a resource that was just created and is not reported by Nexus, that the
-// grace period makes the reconciler wait, and that zero disables it.
+// grace period makes the reconciler stop and wait for it to end, and that
+// zero disables it.
 func TestReconcilerOptionsCreationGracePeriod(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
-		period     time.Duration
-		wantCreate bool
+		period      time.Duration
+		wantCreate  bool
+		wantPending bool
 	}{
-		"WaitsDuringThePeriod": {period: time.Hour},
+		"WaitsDuringThePeriod": {period: time.Hour, wantPending: true},
 		"ZeroDisablesIt":       {wantCreate: true},
 	}
 
@@ -694,12 +695,22 @@ func TestReconcilerOptionsCreationGracePeriod(t *testing.T) {
 			opts := testOptions()
 			opts.CreationGracePeriod = test.period
 
+			// Replaces the shared recorder, as specific options come last.
+			recorder := record.NewFakeRecorder(10)
+
 			reconcileRoleWith(t, opts, role, func(client.Client) []managed.ReconcilerOption {
-				return []managed.ReconcilerOption{managed.WithExternalConnector(connector)}
+				return []managed.ReconcilerOption{
+					managed.WithExternalConnector(connector),
+					managed.WithRecorder(event.NewAPIRecorder(recorder)),
+				}
 			})
 
 			if created != test.wantCreate {
 				t.Errorf("Create() called = %t, want %t", created, test.wantCreate)
+			}
+
+			if pending := recordedReason(recorder, pendingEventReason); pending != test.wantPending {
+				t.Errorf("%s event recorded = %t, want %t", pendingEventReason, pending, test.wantPending)
 			}
 		})
 	}

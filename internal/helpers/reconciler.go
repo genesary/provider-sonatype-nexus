@@ -49,18 +49,11 @@ type Options struct {
 	CreationGracePeriod time.Duration
 }
 
-// DefaultCreationGracePeriod is the default Options.CreationGracePeriod, the
-// one crossplane-runtime applies when none is configured.
+// DefaultCreationGracePeriod is the default Options.CreationGracePeriod. It was
+// chosen to match crossplane-runtime's own default, which is unexported. The
+// provider always passes this value explicitly, so a crossplane-runtime
+// upgrade that changes its default does not change the provider's.
 const DefaultCreationGracePeriod = 30 * time.Second
-
-// ValidateCreationGracePeriod returns an error if period is negative.
-func ValidateCreationGracePeriod(period time.Duration) error {
-	if period < 0 {
-		return errors.Errorf("creation grace period must not be negative, got %s", period)
-	}
-
-	return nil
-}
 
 // MaxPollJitterPercentage is the highest accepted Options.PollJitterPercentage.
 // It keeps the poll interval well above zero, as a zero requeue delay would

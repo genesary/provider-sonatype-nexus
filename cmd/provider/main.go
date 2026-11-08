@@ -72,8 +72,13 @@ func main() {
 		kingpin.Fatalf("--min-poll-interval must not be negative, got %s", parsed.MinPollInterval)
 	}
 
+	// A negative period would silently disable it, which only 0 is meant to
+	// do.
+	if parsed.CreationGracePeriod < 0 {
+		kingpin.Fatalf("--creation-grace-period must not be negative, got %s", parsed.CreationGracePeriod)
+	}
+
 	kingpin.FatalIfError(helpers.ValidatePollJitterPercentage(parsed.PollJitterPercentage), "Invalid --poll-jitter-percentage")
-	kingpin.FatalIfError(helpers.ValidateCreationGracePeriod(parsed.CreationGracePeriod), "Invalid creation grace period")
 
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
