@@ -196,15 +196,16 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, err
 	}
 
-	// Fingerprint before reading the password: if the Secret changes in
-	// between, the recorded fingerprint is the older one and the next Observe
-	// re-applies the credentials.
-	fingerprint, err := e.credentialsFingerprint(ctx, repoCR)
+	// One Secret read serves both the fingerprint and the password, so the
+	// recorded fingerprint describes exactly the password applied.
+	secrets := nexus.MemoizeSecrets(e.kube)
+
+	fingerprint, err := e.credentialsFingerprint(ctx, secrets, repoCR)
 	if err != nil {
 		return managed.ExternalCreation{}, err
 	}
 
-	desired, err := e.desiredState(ctx, repoCR)
+	desired, err := e.desiredState(ctx, secrets, repoCR)
 	if err != nil {
 		return managed.ExternalCreation{}, err
 	}
@@ -241,12 +242,14 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalUpdate{}, err
 	}
 
-	fingerprint, err := e.credentialsFingerprint(ctx, repoCR)
+	secrets := nexus.MemoizeSecrets(e.kube)
+
+	fingerprint, err := e.credentialsFingerprint(ctx, secrets, repoCR)
 	if err != nil {
 		return managed.ExternalUpdate{}, err
 	}
 
-	desired, err := e.desiredState(ctx, repoCR)
+	desired, err := e.desiredState(ctx, secrets, repoCR)
 	if err != nil {
 		return managed.ExternalUpdate{}, err
 	}
@@ -297,9 +300,9 @@ func (e *external) handlerFor(repoCR *repositoryv1alpha1.Repository) (formatHand
 }
 
 // desiredState assembles the desired repository, resolving the secrets the
-// spec references.
-func (e *external) desiredState(ctx context.Context, repoCR *repositoryv1alpha1.Repository) (desiredRepo, error) {
-	password, err := e.resolveHTTPClientPassword(ctx, repoCR)
+// spec references through kube.
+func (e *external) desiredState(ctx context.Context, kube client.Reader, repoCR *repositoryv1alpha1.Repository) (desiredRepo, error) {
+	password, err := resolveHTTPClientPassword(ctx, kube, repoCR)
 	if err != nil {
 		return desiredRepo{}, errors.Wrap(err, errResolvePassword)
 	}
@@ -314,8 +317,9 @@ func (e *external) repositoryURL(name string) string {
 
 // credentialsFingerprint fingerprints the credentials the Repository applies
 // that Nexus redacts on read: the HTTP client authentication, including its
-// password Secret, and the APT and Yum signing keys.
-func (e *external) credentialsFingerprint(ctx context.Context, repoCR *repositoryv1alpha1.Repository) (string, error) {
+// password Secret, and the APT and Yum signing keys. It reads the Secret
+// through kube.
+func (e *external) credentialsFingerprint(ctx context.Context, kube client.Reader, repoCR *repositoryv1alpha1.Repository) (string, error) {
 	params := repoCR.Spec.ForProvider
 
 	var authentication *repositoryv1alpha1.HTTPClientAuthentication
@@ -337,7 +341,7 @@ func (e *external) credentialsFingerprint(ctx context.Context, repoCR *repositor
 		passwordRef = authentication.PasswordSecretRef
 	}
 
-	fingerprint, err := nexus.CredentialsFingerprint(ctx, e.kube, repoCR.GetNamespace(), spec, passwordRef)
+	fingerprint, err := nexus.CredentialsFingerprint(ctx, kube, repoCR.GetNamespace(), spec, passwordRef)
 
 	return fingerprint, errors.Wrap(err, errFingerprint)
 }
@@ -352,7 +356,7 @@ func (e *external) credentialsUpToDate(ctx context.Context, repoCR *repositoryv1
 		return true, nil
 	}
 
-	fingerprint, err := e.credentialsFingerprint(ctx, repoCR)
+	fingerprint, err := e.credentialsFingerprint(ctx, e.kube, repoCR)
 	if err != nil {
 		return false, err
 	}
@@ -363,13 +367,13 @@ func (e *external) credentialsUpToDate(ctx context.Context, repoCR *repositoryv1
 // resolveHTTPClientPassword resolves the password from a Kubernetes secret if
 // httpClient.authentication.passwordSecretRef is configured. It returns an
 // empty password when the spec references no secret.
-func (e *external) resolveHTTPClientPassword(ctx context.Context, repoCR *repositoryv1alpha1.Repository) (string, error) {
+func resolveHTTPClientPassword(ctx context.Context, kube client.Reader, repoCR *repositoryv1alpha1.Repository) (string, error) {
 	httpClient := repoCR.Spec.ForProvider.HTTPClient
 	if httpClient == nil || httpClient.Authentication == nil || httpClient.Authentication.PasswordSecretRef == nil {
 		return "", nil
 	}
 
-	return nexus.GetSecretValue(ctx, e.kube, repoCR.GetNamespace(), httpClient.Authentication.PasswordSecretRef)
+	return nexus.GetSecretValue(ctx, kube, repoCR.GetNamespace(), httpClient.Authentication.PasswordSecretRef)
 }
 
 // repositoryName returns the name that identifies the repository in Nexus.

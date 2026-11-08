@@ -327,12 +327,15 @@ func (e *external) applyEndpointCredentials(ctx context.Context, namespace strin
 	}
 
 	if creds.UsernameSecretRef != nil && creds.PasswordSecretRef != nil {
-		username, err := nexus.GetSecretValue(ctx, e.kube, namespace, creds.UsernameSecretRef)
+		// Username and password are usually two keys of one Secret.
+		secrets := nexus.MemoizeSecrets(e.kube)
+
+		username, err := nexus.GetSecretValue(ctx, secrets, namespace, creds.UsernameSecretRef)
 		if err != nil {
 			return errors.Wrap(err, "cannot get endpoint username")
 		}
 
-		password, err := nexus.GetSecretValue(ctx, e.kube, namespace, creds.PasswordSecretRef)
+		password, err := nexus.GetSecretValue(ctx, secrets, namespace, creds.PasswordSecretRef)
 		if err != nil {
 			return errors.Wrap(err, "cannot get endpoint password")
 		}

@@ -161,15 +161,16 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotLDAP)
 	}
 
-	// Fingerprint before reading the password: if the Secret changes in
-	// between, the recorded fingerprint is the older one and the next Observe
-	// re-applies the password.
-	fingerprint, err := e.credentialsFingerprint(ctx, ldapCR)
+	// One Secret read serves both the fingerprint and the password, so the
+	// recorded fingerprint describes exactly the password applied.
+	secrets := nexus.MemoizeSecrets(e.kube)
+
+	fingerprint, err := credentialsFingerprint(ctx, secrets, ldapCR)
 	if err != nil {
 		return managed.ExternalCreation{}, err
 	}
 
-	password, err := e.getAuthPassword(ctx, ldapCR)
+	password, err := getAuthPassword(ctx, secrets, ldapCR)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errGetAuthPassword)
 	}
@@ -208,12 +209,14 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		ldapName = ldapCR.Spec.ForProvider.Name
 	}
 
-	fingerprint, err := e.credentialsFingerprint(ctx, ldapCR)
+	secrets := nexus.MemoizeSecrets(e.kube)
+
+	fingerprint, err := credentialsFingerprint(ctx, secrets, ldapCR)
 	if err != nil {
 		return managed.ExternalUpdate{}, err
 	}
 
-	password, err := e.getAuthPassword(ctx, ldapCR)
+	password, err := getAuthPassword(ctx, secrets, ldapCR)
 	if err != nil {
 		return managed.ExternalUpdate{}, errors.Wrap(err, errGetAuthPassword)
 	}
@@ -260,9 +263,9 @@ func (e *external) Disconnect(_ context.Context) error {
 }
 
 // credentialsFingerprint fingerprints the auth password Secret the LDAP
-// connection references.
-func (e *external) credentialsFingerprint(ctx context.Context, ldapCR *iamv1alpha1.LDAP) (string, error) {
-	fingerprint, err := nexus.CredentialsFingerprint(ctx, e.kube, ldapCR.GetNamespace(), nil, ldapCR.Spec.ForProvider.AuthPasswordSecretRef)
+// connection references, reading it through kube.
+func credentialsFingerprint(ctx context.Context, kube client.Reader, ldapCR *iamv1alpha1.LDAP) (string, error) {
+	fingerprint, err := nexus.CredentialsFingerprint(ctx, kube, ldapCR.GetNamespace(), nil, ldapCR.Spec.ForProvider.AuthPasswordSecretRef)
 
 	return fingerprint, errors.Wrap(err, errFingerprint)
 }
@@ -277,7 +280,7 @@ func (e *external) credentialsUpToDate(ctx context.Context, ldapCR *iamv1alpha1.
 		return true, nil
 	}
 
-	fingerprint, err := e.credentialsFingerprint(ctx, ldapCR)
+	fingerprint, err := credentialsFingerprint(ctx, e.kube, ldapCR)
 	if err != nil {
 		return false, err
 	}
@@ -285,14 +288,16 @@ func (e *external) credentialsUpToDate(ctx context.Context, ldapCR *iamv1alpha1.
 	return fingerprint == ldapCR.Status.AtProvider.CredentialsFingerprint, nil
 }
 
-// getAuthPassword retrieves the LDAP auth password from the referenced secret.
-func (e *external) getAuthPassword(
+// getAuthPassword retrieves the LDAP auth password from the referenced secret
+// through kube.
+func getAuthPassword(
 	ctx context.Context,
+	kube client.Reader,
 	ldapCR *iamv1alpha1.LDAP,
 ) (string, error) {
 	if ldapCR.Spec.ForProvider.AuthPasswordSecretRef == nil {
 		return "", nil
 	}
 
-	return nexus.GetSecretValue(ctx, e.kube, ldapCR.GetNamespace(), ldapCR.Spec.ForProvider.AuthPasswordSecretRef)
+	return nexus.GetSecretValue(ctx, kube, ldapCR.GetNamespace(), ldapCR.Spec.ForProvider.AuthPasswordSecretRef)
 }

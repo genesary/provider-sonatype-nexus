@@ -13,7 +13,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/gate"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/customresourcesgate"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
 	"github.com/go-logr/logr"
@@ -122,7 +121,7 @@ func newManager(cfg *rest.Config, parsed flags) (ctrl.Manager, error) {
 	mgr, err := ctrl.NewManager(ratelimiter.LimitRESTConfig(cfg, parsed.MaxReconcileRate), ctrl.Options{
 		Scheme: scheme,
 		Client: clientOptions(parsed.EnableSecretCache),
-		Cache:  cacheOptions(parsed.SyncInterval),
+		Cache:  cache.Options{SyncPeriod: &parsed.SyncInterval},
 
 		// controller-runtime defaults to 15s leases with a 10s renewal
 		// deadline, which a busy provider can miss and lose leadership.
@@ -160,37 +159,17 @@ func newScheme() (*runtime.Scheme, error) {
 	return scheme, nil
 }
 
-// cacheOptions returns the manager cache options.
-//
-// The safe-start gate watches every CustomResourceDefinition of the cluster,
-// not only the ones of this provider, and only reads their group, kind,
-// versions and status. Their schemas, by far their largest part, are stripped
-// before they enter the informer cache. CRDs read through the cache are
-// therefore incomplete and must never be written back to the API server.
-func cacheOptions(syncInterval time.Duration) cache.Options {
-	return cache.Options{
-		SyncPeriod: &syncInterval,
-		ByObject: map[client.Object]cache.ByObject{
-			&apiextensionsv1.CustomResourceDefinition{}: {
-				Transform: customresourcesgate.TransformStripCRDSchema,
-			},
-		},
-	}
-}
-
 // clientOptions returns the manager client options, which also apply to the
 // connection details publisher. Kinds listed in DisableFor are read directly
 // from the API server instead of the informer cache, so the provider only
 // needs to be allowed to get the objects it reads, rather than to list and
-// watch all of them.
+// watch all of them. The manager fills in the cache reader and the rest.
 func clientOptions(enableSecretCache bool) client.Options {
-	opts := client.Options{Cache: &client.CacheOptions{}}
-
-	if !enableSecretCache {
-		opts.Cache.DisableFor = append(opts.Cache.DisableFor, &corev1.Secret{})
+	if enableSecretCache {
+		return client.Options{}
 	}
 
-	return opts
+	return client.Options{Cache: &client.CacheOptions{DisableFor: []client.Object{&corev1.Secret{}}}}
 }
 
 // controllerOptions returns the options shared by the provider controllers.

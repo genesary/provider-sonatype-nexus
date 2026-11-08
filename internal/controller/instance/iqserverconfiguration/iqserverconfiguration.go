@@ -209,15 +209,16 @@ func (e *external) Disconnect(_ context.Context) error {
 // applyConfig resolves credentials and pushes the config to Nexus. It returns
 // the fingerprint of the credentials it applied.
 func (e *external) applyConfig(ctx context.Context, iqConfig *instancev1alpha1.IQServerConfiguration) (string, error) {
-	// Fingerprint before reading the credentials: if a Secret changes in
-	// between, the recorded fingerprint is the older one and the next Observe
-	// re-applies the credentials.
-	fingerprint, err := e.credentialsFingerprint(ctx, iqConfig)
+	// One read per Secret serves both the fingerprint and the credentials, so
+	// the recorded fingerprint describes exactly the credentials applied.
+	secrets := nexus.MemoizeSecrets(e.kube)
+
+	fingerprint, err := credentialsFingerprint(ctx, secrets, iqConfig)
 	if err != nil {
 		return "", err
 	}
 
-	username, password, err := e.resolveCredentials(ctx, iqConfig)
+	username, password, err := resolveCredentials(ctx, secrets, iqConfig)
 	if err != nil {
 		return "", err
 	}
@@ -233,11 +234,11 @@ func (e *external) applyConfig(ctx context.Context, iqConfig *instancev1alpha1.I
 }
 
 // credentialsFingerprint fingerprints the credential Secrets the IQ Server
-// configuration references.
-func (e *external) credentialsFingerprint(ctx context.Context, iqConfig *instancev1alpha1.IQServerConfiguration) (string, error) {
+// configuration references, reading them through kube.
+func credentialsFingerprint(ctx context.Context, kube client.Reader, iqConfig *instancev1alpha1.IQServerConfiguration) (string, error) {
 	params := iqConfig.Spec.ForProvider
 
-	fingerprint, err := nexus.CredentialsFingerprint(ctx, e.kube, iqConfig.GetNamespace(), nil, params.UsernameSecretRef, params.PasswordSecretRef)
+	fingerprint, err := nexus.CredentialsFingerprint(ctx, kube, iqConfig.GetNamespace(), nil, params.UsernameSecretRef, params.PasswordSecretRef)
 
 	return fingerprint, errors.Wrap(err, errFingerprint)
 }
@@ -252,7 +253,7 @@ func (e *external) credentialsUpToDate(ctx context.Context, iqConfig *instancev1
 		return true, nil
 	}
 
-	fingerprint, err := e.credentialsFingerprint(ctx, iqConfig)
+	fingerprint, err := credentialsFingerprint(ctx, e.kube, iqConfig)
 	if err != nil {
 		return false, err
 	}
@@ -260,17 +261,18 @@ func (e *external) credentialsUpToDate(ctx context.Context, iqConfig *instancev1
 	return fingerprint == iqConfig.Status.AtProvider.CredentialsFingerprint, nil
 }
 
-// resolveCredentials reads username and password from Kubernetes Secrets.
-func (e *external) resolveCredentials(ctx context.Context, iqConfig *instancev1alpha1.IQServerConfiguration) (username, password string, err error) {
+// resolveCredentials reads username and password from Kubernetes Secrets
+// through kube.
+func resolveCredentials(ctx context.Context, kube client.Reader, iqConfig *instancev1alpha1.IQServerConfiguration) (username, password string, err error) {
 	if iqConfig.Spec.ForProvider.UsernameSecretRef != nil {
-		username, err = nexus.GetSecretValue(ctx, e.kube, iqConfig.GetNamespace(), iqConfig.Spec.ForProvider.UsernameSecretRef)
+		username, err = nexus.GetSecretValue(ctx, kube, iqConfig.GetNamespace(), iqConfig.Spec.ForProvider.UsernameSecretRef)
 		if err != nil {
 			return "", "", errors.Wrap(err, errGetUsername)
 		}
 	}
 
 	if iqConfig.Spec.ForProvider.PasswordSecretRef != nil {
-		password, err = nexus.GetSecretValue(ctx, e.kube, iqConfig.GetNamespace(), iqConfig.Spec.ForProvider.PasswordSecretRef)
+		password, err = nexus.GetSecretValue(ctx, kube, iqConfig.GetNamespace(), iqConfig.Spec.ForProvider.PasswordSecretRef)
 		if err != nil {
 			return "", "", errors.Wrap(err, errGetPassword)
 		}

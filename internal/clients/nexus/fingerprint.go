@@ -28,9 +28,13 @@ import (
 // is applied alongside the credentials but not reported back by Nexus; it is
 // JSON-encoded into the fingerprint and may be nil. namespace binds the
 // selectors as in GetSecretValue.
+//
+// A caller that also reads the selected values should pass the same
+// MemoizeSecrets reader to both, so that each Secret is fetched once and the
+// fingerprint describes exactly the values that were read.
 func CredentialsFingerprint(
 	ctx context.Context,
-	kube kubeclient.Client,
+	kube kubeclient.Reader,
 	namespace string,
 	spec any,
 	selectors ...*xpv2.LocalSecretKeySelector,

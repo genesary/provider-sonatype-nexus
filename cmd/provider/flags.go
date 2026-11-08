@@ -43,7 +43,7 @@ func newApp(name string, parsed *flags) *kingpin.Application {
 		IntVar(&parsed.MaxReconcileRate)
 	app.Flag("enable-management-policies", "Enable support for Management Policies. Disable with --no-enable-management-policies.").Default("true").Envar("ENABLE_MANAGEMENT_POLICIES").
 		BoolVar(&parsed.EnableManagementPolicies)
-	app.Flag("enable-secret-cache", "Serve Kubernetes Secret reads from the informer cache, which requires cluster-wide list and watch on Secrets. Disable to read each Secret directly from the API server.").Default("true").Envar("ENABLE_SECRET_CACHE").
+	app.Flag("enable-secret-cache", "Serve Kubernetes Secret reads from the informer cache, which requires cluster-wide list and watch on Secrets. Disable with --no-enable-secret-cache to read each Secret directly from the API server.").Default("true").Envar("ENABLE_SECRET_CACHE").
 		BoolVar(&parsed.EnableSecretCache)
 	app.Flag("enable-changelogs", "Enable support for capturing change logs during reconciliation.").Default("false").Envar("ENABLE_CHANGE_LOGS").
 		BoolVar(&parsed.EnableChangeLogs)

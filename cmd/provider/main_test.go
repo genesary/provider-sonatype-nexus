@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"slices"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -70,35 +72,26 @@ func TestClientOptions(t *testing.T) {
 
 	tests := map[string]struct {
 		enableSecretCache bool
-		wantUncached      bool
+		wantUncached      []string
 	}{
 		"SecretCacheEnabled":  {enableSecretCache: true},
-		"SecretCacheDisabled": {enableSecretCache: false, wantUncached: true},
+		"SecretCacheDisabled": {enableSecretCache: false, wantUncached: []string{fmt.Sprintf("%T", &corev1.Secret{})}},
 	}
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			opts := clientOptions(test.enableSecretCache)
-			if opts.Cache == nil {
-				t.Fatal("clientOptions().Cache is nil")
-			}
+			var uncached []string
 
-			uncached := false
-
-			for _, object := range opts.Cache.DisableFor {
-				if _, isSecret := object.(*corev1.Secret); isSecret {
-					uncached = true
+			if opts := clientOptions(test.enableSecretCache); opts.Cache != nil {
+				for _, object := range opts.Cache.DisableFor {
+					uncached = append(uncached, fmt.Sprintf("%T", object))
 				}
 			}
 
-			if uncached != test.wantUncached {
-				t.Errorf("Secrets read from the API server = %t, want %t", uncached, test.wantUncached)
-			}
-
-			if len(opts.Cache.DisableFor) > 1 {
-				t.Errorf("clientOptions() disables the cache for %d kinds, want at most 1", len(opts.Cache.DisableFor))
+			if !slices.Equal(uncached, test.wantUncached) {
+				t.Errorf("clientOptions() reads %v from the API server, want %v", uncached, test.wantUncached)
 			}
 		})
 	}

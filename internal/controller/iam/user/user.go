@@ -166,15 +166,16 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.New(errNotUser)
 	}
 
-	// Fingerprint before reading the password: if the Secret changes in
-	// between, the recorded fingerprint is the older one and the next Observe
-	// re-applies the password.
-	fingerprint, err := e.credentialsFingerprint(ctx, userRes)
+	// One Secret read serves both the fingerprint and the password, so the
+	// recorded fingerprint describes exactly the password applied.
+	secrets := nexus.MemoizeSecrets(e.kube)
+
+	fingerprint, err := credentialsFingerprint(ctx, secrets, userRes)
 	if err != nil {
 		return managed.ExternalCreation{}, err
 	}
 
-	password, err := e.getPassword(ctx, userRes)
+	password, err := getPassword(ctx, secrets, userRes)
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errGetPassword)
 	}
@@ -213,7 +214,9 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 		userID = userRes.Spec.ForProvider.UserID
 	}
 
-	fingerprint, err := e.credentialsFingerprint(ctx, userRes)
+	secrets := nexus.MemoizeSecrets(e.kube)
+
+	fingerprint, err := credentialsFingerprint(ctx, secrets, userRes)
 	if err != nil {
 		return managed.ExternalUpdate{}, err
 	}
@@ -226,7 +229,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 	}
 
 	if userRes.Spec.ForProvider.PasswordSecretRef != nil {
-		password, err := e.getPassword(ctx, userRes)
+		password, err := getPassword(ctx, secrets, userRes)
 		if err != nil {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errGetPassword)
 		}
@@ -273,9 +276,10 @@ func (e *external) Disconnect(_ context.Context) error {
 	return nil
 }
 
-// credentialsFingerprint fingerprints the password Secret the User references.
-func (e *external) credentialsFingerprint(ctx context.Context, userRes *iamv1alpha1.User) (string, error) {
-	fingerprint, err := nexus.CredentialsFingerprint(ctx, e.kube, userRes.GetNamespace(), nil, userRes.Spec.ForProvider.PasswordSecretRef)
+// credentialsFingerprint fingerprints the password Secret the User references,
+// reading it through kube.
+func credentialsFingerprint(ctx context.Context, kube client.Reader, userRes *iamv1alpha1.User) (string, error) {
+	fingerprint, err := nexus.CredentialsFingerprint(ctx, kube, userRes.GetNamespace(), nil, userRes.Spec.ForProvider.PasswordSecretRef)
 
 	return fingerprint, errors.Wrap(err, errFingerprint)
 }
@@ -290,7 +294,7 @@ func (e *external) credentialsUpToDate(ctx context.Context, userRes *iamv1alpha1
 		return true, nil
 	}
 
-	fingerprint, err := e.credentialsFingerprint(ctx, userRes)
+	fingerprint, err := credentialsFingerprint(ctx, e.kube, userRes)
 	if err != nil {
 		return false, err
 	}
@@ -298,9 +302,10 @@ func (e *external) credentialsUpToDate(ctx context.Context, userRes *iamv1alpha1
 	return fingerprint == userRes.Status.AtProvider.CredentialsFingerprint, nil
 }
 
-// getPassword retrieves the password from the referenced secret.
-func (e *external) getPassword(
+// getPassword retrieves the password from the referenced secret through kube.
+func getPassword(
 	ctx context.Context,
+	kube client.Reader,
 	userRes *iamv1alpha1.User,
 ) (string, error) {
 	if userRes.Spec.ForProvider.PasswordSecretRef == nil {
@@ -309,5 +314,5 @@ func (e *external) getPassword(
 
 	secretRef := nexus.WithDefaultKey(userRes.Spec.ForProvider.PasswordSecretRef, defaultPasswordKey)
 
-	return nexus.GetSecretValue(ctx, e.kube, userRes.GetNamespace(), secretRef)
+	return nexus.GetSecretValue(ctx, kube, userRes.GetNamespace(), secretRef)
 }
