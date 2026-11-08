@@ -123,12 +123,17 @@ func controllerLogger(opts Options, name string) logging.Logger {
 // pollJitterHook returns a hook spreading the poll interval by a percentage of
 // its value, which unlike the fixed jitter of managed.WithPollJitterHook scales
 // with the per-resource intervals set through crossplane.io/poll-interval.
-// Jitter never takes an interval that respects minPollInterval below it: the
-// range is cut at the minimum rather than the result, so that intervals close
-// to it do not all land on the same value. The upper bound saturates, because
-// the annotation accepts intervals close to the largest duration.
+// Jitter never goes below minPollInterval: the range is cut at the minimum
+// rather than the result, so that intervals close to it do not all land on the
+// same value. Positive intervals must be at least minPollInterval, which the
+// managed reconciler ensures when given the same minimum through
+// managed.WithMinPollInterval and a poll interval no lower than it, as
+// ReconcilerOptions does. The upper bound saturates, because
+// the annotation accepts intervals close to the largest duration. The
+// percentage is capped at MaxPollJitterPercentage, so that options built
+// without ValidatePollJitterPercentage cannot produce a zero requeue delay.
 func pollJitterHook(percentage int, minPollInterval time.Duration) managed.PollIntervalHook {
-	fraction := float64(percentage) / percent
+	fraction := float64(min(percentage, MaxPollJitterPercentage)) / percent
 
 	return func(_ resource.Managed, pollInterval time.Duration) time.Duration {
 		spread := time.Duration(float64(pollInterval) * fraction)
@@ -136,7 +141,7 @@ func pollJitterHook(percentage int, minPollInterval time.Duration) managed.PollI
 			return pollInterval
 		}
 
-		lowest := max(pollInterval-spread, min(pollInterval, minPollInterval))
+		lowest := max(pollInterval-spread, minPollInterval)
 		highest := pollInterval + min(spread, math.MaxInt64-pollInterval)
 
 		return lowest + rand.N(highest-lowest+1) //nolint:gosec // Spreading polls needs no secure randomness.

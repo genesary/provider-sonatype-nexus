@@ -446,15 +446,14 @@ func TestPollJitterHook(t *testing.T) {
 			wantMin:         30 * time.Second,
 			wantMax:         33 * time.Second,
 		},
-		"KeepsAnIntervalBelowTheMinimum": {
-			percentage:      10,
-			minPollInterval: 30 * time.Second,
-			pollInterval:    10 * time.Second,
-			wantMin:         10 * time.Second,
-			wantMax:         11 * time.Second,
-		},
 		"MaximumPercentageStaysPositive": {
 			percentage:   MaxPollJitterPercentage,
+			pollInterval: time.Minute,
+			wantMin:      30 * time.Second,
+			wantMax:      90 * time.Second,
+		},
+		"ClampsAnOutOfRangePercentage": {
+			percentage:   4 * MaxPollJitterPercentage,
 			pollInterval: time.Minute,
 			wantMin:      30 * time.Second,
 			wantMax:      90 * time.Second,

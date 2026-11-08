@@ -43,7 +43,7 @@ func newApp(name string, parsed *flags) *kingpin.Application {
 		DurationVar(&parsed.PollInterval)
 	app.Flag("min-poll-interval", "Shortest poll interval a resource may request with the crossplane.io/poll-interval annotation. Shorter requests are raised to this value, or to --poll when that is shorter. Must not be negative, 0 removes the limit.").Default("30s").Envar("MIN_POLL_INTERVAL").
 		DurationVar(&parsed.MinPollInterval)
-	app.Flag("poll-jitter-percentage", "Spread each poll by up to this percentage of its interval, in both directions but never below --min-poll-interval. 0 disables it, and it cannot exceed "+strconv.Itoa(helpers.MaxPollJitterPercentage)+".").Default("10").Envar("POLL_JITTER_PERCENTAGE").
+	app.Flag("poll-jitter-percentage", "Spread each poll by up to this percentage of its interval, in both directions but never below the shortest allowed poll interval (see --min-poll-interval). 0 disables it, and it cannot exceed "+strconv.Itoa(helpers.MaxPollJitterPercentage)+".").Default("10").Envar("POLL_JITTER_PERCENTAGE").
 		IntVar(&parsed.PollJitterPercentage)
 	app.Flag("poll-state-metric", "How often the state metrics of the managed resources are recorded.").Default("5s").Envar("POLL_STATE_METRIC_INTERVAL").
 		DurationVar(&parsed.PollStateMetricInterval)
