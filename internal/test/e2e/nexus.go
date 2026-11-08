@@ -90,6 +90,14 @@ func (f *Framework) FetchSSRFProtection() (*v395.SsrfProtectionConfigurationXO, 
 	return config, nexusclient.APIError(resp, err)
 }
 
+// SetSSRFProtection replaces the Nexus SSRF protection settings directly,
+// bypassing the provider.
+func (f *Framework) SetSSRFProtection(config v395.SsrfProtectionConfigurationXO) error {
+	_, resp, err := f.Nexus.SecurityManagementSSRFProtectionAPI.UpdateSecuritySsrfProtection(context.Background()).SsrfProtectionConfigurationXO(config).Execute()
+
+	return nexusclient.APIError(resp, err)
+}
+
 // CleanupPoliciesAvailable returns true if the Nexus instance exposes the
 // cleanup-policies REST API (Nexus Repository Pro feature).
 func (f *Framework) CleanupPoliciesAvailable() bool {

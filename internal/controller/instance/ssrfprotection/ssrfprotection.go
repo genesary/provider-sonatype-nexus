@@ -103,11 +103,12 @@ func (e *external) Observe(ctx context.Context, ssrf *instancev1alpha1.SSRFProte
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetSSRF)
 	}
 
+	ssrf.Status.AtProvider = instanceclient.GenerateSSRFProtectionObservation(observed)
+
 	if meta.WasDeleted(ssrf) && instanceclient.IsDefaultSSRFProtection(observed) {
 		return managed.ExternalObservation{ResourceExists: false}, nil
 	}
 
-	ssrf.Status.AtProvider = instanceclient.GenerateSSRFProtectionObservation(observed)
 	ssrf.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{
@@ -119,22 +120,12 @@ func (e *external) Observe(ctx context.Context, ssrf *instancev1alpha1.SSRFProte
 // Create applies the SSRF protection settings in Nexus. They are a
 // singleton, so Create applies the spec like Update.
 func (e *external) Create(ctx context.Context, ssrf *instancev1alpha1.SSRFProtection) (managed.ExternalCreation, error) {
-	err := e.client.Update(ctx, instanceclient.GenerateSSRFProtectionUpdate(&ssrf.Spec.ForProvider))
-	if err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, errUpdateSSRF)
-	}
-
-	return managed.ExternalCreation{}, nil
+	return managed.ExternalCreation{}, e.apply(ctx, ssrf)
 }
 
 // Update applies the SSRF protection settings in Nexus.
 func (e *external) Update(ctx context.Context, ssrf *instancev1alpha1.SSRFProtection) (managed.ExternalUpdate, error) {
-	err := e.client.Update(ctx, instanceclient.GenerateSSRFProtectionUpdate(&ssrf.Spec.ForProvider))
-	if err != nil {
-		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateSSRF)
-	}
-
-	return managed.ExternalUpdate{}, nil
+	return managed.ExternalUpdate{}, e.apply(ctx, ssrf)
 }
 
 // Delete restores the Nexus default SSRF protection settings: protection
@@ -151,4 +142,9 @@ func (e *external) Delete(ctx context.Context, _ *instancev1alpha1.SSRFProtectio
 // Disconnect is a no-op; the Nexus HTTP client has no persistent connection.
 func (e *external) Disconnect(_ context.Context) error {
 	return nil
+}
+
+// apply replaces the Nexus SSRF protection settings with the spec.
+func (e *external) apply(ctx context.Context, ssrf *instancev1alpha1.SSRFProtection) error {
+	return errors.Wrap(e.client.Update(ctx, instanceclient.GenerateSSRFProtectionUpdate(&ssrf.Spec.ForProvider)), errUpdateSSRF)
 }

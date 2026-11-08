@@ -34,11 +34,17 @@ func newTestSSRF() *instancev1alpha1.SSRFProtection {
 	}
 }
 
-// newDeletedTestSSRF returns an SSRFProtection that is being deleted.
+// newDeletedTestSSRF returns an SSRFProtection that is being deleted, whose
+// status still reports the exceptions observed before the deletion.
 func newDeletedTestSSRF() *instancev1alpha1.SSRFProtection {
 	cr := newTestSSRF()
 	now := metav1.NewTime(time.Now())
 	cr.DeletionTimestamp = &now
+	cr.Status.AtProvider = instancev1alpha1.SSRFProtectionObservation{
+		Enabled:        true,
+		AllowedIPs:     []string{"10.0.0.50"},
+		AllowedDomains: []string{"registry.local"},
+	}
 
 	return cr
 }
@@ -159,7 +165,9 @@ func TestObserve(t *testing.T) {
 				t.Errorf("Observe() ResourceUpToDate = %v, want %v", obs.ResourceUpToDate, tt.wantUpToDate)
 			}
 
-			if tt.wantExists && len(tt.cr.Status.AtProvider.AllowedIPs) != len(tt.observed.AllowedIPs) {
+			// The status follows Nexus on every successful Get, including the
+			// one that finds the defaults restored during deletion.
+			if tt.getErr == nil && len(tt.cr.Status.AtProvider.AllowedIPs) != len(tt.observed.AllowedIPs) {
 				t.Errorf("Observe() AtProvider.AllowedIPs = %v, want %v", tt.cr.Status.AtProvider.AllowedIPs, tt.observed.AllowedIPs)
 			}
 		})

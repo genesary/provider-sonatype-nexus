@@ -34,8 +34,8 @@ import (
 // pollInterval is how often the wait helpers poll the API server.
 const pollInterval = 2 * time.Second
 
-// nudgeAnnotation is the annotation WaitForReadyNudged sets to make the
-// controller of a managed resource reconcile it.
+// nudgeAnnotation is the annotation Nudge sets to make the controller of a
+// managed resource reconcile it.
 const nudgeAnnotation = "e2e.nexus.crossplane.io/nudged-at"
 
 // Conditioned is the slim contract every Crossplane managed resource
@@ -81,16 +81,25 @@ func (f *Framework) waitForReady(ctx context.Context, obj Conditioned, timeout t
 			return ready, nil
 		}
 
-		// A merge patch carries no resourceVersion, so it cannot fail on a
-		// conflict with the controller's own updates.
-		patch := fmt.Sprintf(`{"metadata":{"annotations":{%q:%q}}}`, nudgeAnnotation, time.Now().Format(time.RFC3339Nano))
-		err = f.Kube.Patch(ctx, obj, client.RawPatch(types.MergePatchType, []byte(patch)))
-		if err != nil {
-			return false, fmt.Errorf("nudging %s/%s: %w", obj.GetNamespace(), obj.GetName(), err)
-		}
-
-		return false, nil
+		return false, f.Nudge(ctx, obj)
 	})
+}
+
+// Nudge sets an annotation on obj, which its controller reconciles straight
+// away rather than at its next poll or after its requeue backoff. Use it to
+// make the controller observe a change made directly in Nexus, such as drift
+// injected by a test.
+func (f *Framework) Nudge(ctx context.Context, obj client.Object) error {
+	// A merge patch carries no resourceVersion, so it cannot fail on a
+	// conflict with the controller's own updates.
+	patch := fmt.Sprintf(`{"metadata":{"annotations":{%q:%q}}}`, nudgeAnnotation, time.Now().Format(time.RFC3339Nano))
+
+	err := f.Kube.Patch(ctx, obj, client.RawPatch(types.MergePatchType, []byte(patch)))
+	if err != nil {
+		return fmt.Errorf("nudging %s/%s: %w", obj.GetNamespace(), obj.GetName(), err)
+	}
+
+	return nil
 }
 
 // isReady reports whether obj has both Synced=True and Ready=True.

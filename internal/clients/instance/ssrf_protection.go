@@ -3,6 +3,7 @@ package instance
 import (
 	"context"
 
+	"github.com/pkg/errors"
 	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	"k8s.io/utils/ptr"
 
@@ -10,6 +11,10 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
+
+// ErrNoSSRFProtection is returned when Nexus answers without SSRF protection
+// settings.
+var ErrNoSSRFProtection = errors.New("nexus returned no SSRF protection settings")
 
 // SSRFProtectionClient provides methods for the Nexus SSRF protection
 // settings.
@@ -39,6 +44,10 @@ func (c *ssrfProtectionClient) Get(ctx context.Context) (*v395.SsrfProtectionCon
 	config, resp, err := c.api.ListSecuritySsrfProtection(ctx).Execute()
 	if err != nil {
 		return nil, nexus.APIError(resp, err)
+	}
+
+	if config == nil {
+		return nil, ErrNoSSRFProtection
 	}
 
 	return config, nil

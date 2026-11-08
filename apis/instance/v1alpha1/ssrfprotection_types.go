@@ -71,9 +71,14 @@ type SSRFProtectionStatus struct {
 // +kubebuilder:resource:scope=Namespaced,categories={crossplane,managed,nexus}
 
 // SSRFProtection manages the Nexus SSRF protection settings, which control
-// whether repository connectors may reach private network addresses. It is a
-// singleton: declare at most one per Nexus instance. Deleting it restores the
-// Nexus default, protection enabled with no exceptions.
+// whether repository connectors may reach private network addresses.
+//
+// It is a singleton: declare at most one SSRFProtection per Nexus instance,
+// across all namespaces and ProviderConfigs pointing at that instance. The
+// provider does not enforce this. With two of them, each reconcile replaces
+// the settings the other applied, so Nexus flaps between the two specs, and
+// deleting either one restores the Nexus default (protection enabled with no
+// exceptions) until the other's next reconcile.
 type SSRFProtection struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
