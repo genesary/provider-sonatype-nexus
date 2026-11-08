@@ -47,12 +47,6 @@ const (
 	defaultS3Region = "DEFAULT"
 )
 
-// SetupGated adds a controller that reconciles BlobStore resources once
-// their CustomResourceDefinition is established.
-func SetupGated(mgr ctrl.Manager, opts helpers.Options) error {
-	return helpers.SetupGated(mgr, opts, Setup, instancev1alpha1.BlobStoreGroupVersionKind)
-}
-
 // Setup creates a controller for BlobStore resources.
 func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(instancev1alpha1.BlobStoreGroupKind)

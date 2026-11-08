@@ -44,12 +44,6 @@ const (
 	errFingerprint = "cannot fingerprint auth password secret"
 )
 
-// SetupGated adds a controller that reconciles LDAP resources once their
-// CustomResourceDefinition is established.
-func SetupGated(mgr ctrl.Manager, opts helpers.Options) error {
-	return helpers.SetupGated(mgr, opts, Setup, iamv1alpha1.LDAPGroupVersionKind)
-}
-
 // Setup adds a controller that reconciles LDAP resources.
 func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(iamv1alpha1.LDAPGroupKind)

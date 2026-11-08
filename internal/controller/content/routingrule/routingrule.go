@@ -38,12 +38,6 @@ const (
 	errDeleteRoutingRule = "cannot delete routing rule from Nexus"
 )
 
-// SetupGated adds a controller that reconciles RoutingRule resources once
-// their CustomResourceDefinition is established.
-func SetupGated(mgr ctrl.Manager, opts helpers.Options) error {
-	return helpers.SetupGated(mgr, opts, Setup, contentv1alpha1.RoutingRuleGroupVersionKind)
-}
-
 // Setup adds a controller that reconciles RoutingRule managed resources.
 func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(contentv1alpha1.RoutingRuleGroupKind)

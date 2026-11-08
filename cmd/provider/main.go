@@ -13,7 +13,6 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/gate"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/customresourcesgate"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
 	"github.com/go-logr/logr"
@@ -28,7 +27,6 @@ import (
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
@@ -88,7 +86,6 @@ func main() {
 		log.Info("Alpha feature enabled", "flag", feature.EnableAlphaChangeLogs, "socket", parsed.ChangeLogsSocketPath)
 	}
 
-	kingpin.FatalIfError(customresourcesgate.Setup(mgr, opts.Options), "Cannot setup CRD gate controller")
 	kingpin.FatalIfError(nexuscontroller.Setup(mgr, opts), "Cannot setup Nexus controllers")
 
 	log.Info("Starting controller manager", "version", version.Version)
@@ -121,7 +118,7 @@ func newManager(cfg *rest.Config, parsed flags) (ctrl.Manager, error) {
 
 	mgr, err := ctrl.NewManager(ratelimiter.LimitRESTConfig(cfg, parsed.MaxReconcileRate), ctrl.Options{
 		Scheme: scheme,
-		Cache:  cacheOptions(parsed.SyncInterval),
+		Cache:  cache.Options{SyncPeriod: &parsed.SyncInterval},
 
 		// controller-runtime defaults to 15s leases with a 10s renewal
 		// deadline, which a busy provider can miss and lose leadership.
@@ -145,9 +142,7 @@ func newManager(cfg *rest.Config, parsed flags) (ctrl.Manager, error) {
 
 // newScheme returns the manager scheme: the Kubernetes built-in types, which
 // the provider reads Secrets through, CustomResourceDefinitions, which the
-// safe-start gate watches, and the provider's own APIs. It must be complete
-// before the manager is built, which resolves the types of
-// cache.Options.ByObject against it.
+// safe-start gate watches, and the provider's own APIs.
 func newScheme() (*runtime.Scheme, error) {
 	scheme := runtime.NewScheme()
 
@@ -159,24 +154,6 @@ func newScheme() (*runtime.Scheme, error) {
 	}
 
 	return scheme, nil
-}
-
-// cacheOptions returns the manager cache options.
-//
-// The safe-start gate watches every CustomResourceDefinition of the cluster,
-// not only the ones of this provider, and only reads their group, kind,
-// versions and status. Their schemas, by far their largest part, are stripped
-// before they enter the informer cache. CRDs read through the cache are
-// therefore incomplete and must never be written back to the API server.
-func cacheOptions(syncInterval time.Duration) cache.Options {
-	return cache.Options{
-		SyncPeriod: &syncInterval,
-		ByObject: map[client.Object]cache.ByObject{
-			&apiextensionsv1.CustomResourceDefinition{}: {
-				Transform: customresourcesgate.TransformStripCRDSchema,
-			},
-		},
-	}
 }
 
 // controllerOptions returns the options shared by the provider controllers.

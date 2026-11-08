@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -51,6 +52,27 @@ func TestSetupGated(t *testing.T) {
 		}
 	})
 
+	t.Run("WithTypedNilGate", func(t *testing.T) {
+		t.Parallel()
+
+		opts := testOptions()
+		opts.Gate = (*recordingGate)(nil)
+		calls := 0
+
+		err := SetupGated(nil, opts, func(ctrl.Manager, Options) error {
+			calls++
+
+			return nil
+		}, gvk)
+		if err != nil {
+			t.Fatalf("SetupGated() error = %v", err)
+		}
+
+		if calls != 1 {
+			t.Errorf("setup ran %d times, want 1", calls)
+		}
+	})
+
 	t.Run("WithGate", func(t *testing.T) {
 		t.Parallel()
 
@@ -59,7 +81,7 @@ func TestSetupGated(t *testing.T) {
 		opts.Gate = recorder
 		calls := 0
 
-		err := SetupGated(nil, opts, func(ctrl.Manager, Options) error {
+		err := SetupGated(&runnableManager{}, opts, func(ctrl.Manager, Options) error {
 			calls++
 
 			return nil
@@ -86,24 +108,51 @@ func TestSetupGated(t *testing.T) {
 	t.Run("WithGateSetupFails", func(t *testing.T) {
 		t.Parallel()
 
+		mgr := &runnableManager{}
 		recorder := &recordingGate{}
 		opts := testOptions()
 		opts.Gate = recorder
 
-		err := SetupGated(nil, opts, func(ctrl.Manager, Options) error { return errSetup }, gvk)
+		err := SetupGated(mgr, opts, func(ctrl.Manager, Options) error { return errSetup }, gvk)
 		if err != nil {
 			t.Fatalf("SetupGated() error = %v", err)
 		}
 
-		defer func() {
-			recovered := recover()
+		if len(mgr.added) != 1 {
+			t.Fatalf("SetupGated() added %d runnables, want 1", len(mgr.added))
+		}
 
-			recoveredErr, isErr := recovered.(error)
-			if !isErr || !errors.Is(recoveredErr, errSetup) {
-				t.Errorf("released setup panicked with %v, want %v", recovered, errSetup)
-			}
-		}()
+		// The gate runs released callbacks in their own goroutine.
+		go recorder.fns[0]()
 
+		err = mgr.added[0].Start(t.Context())
+		if !errors.Is(err, errSetup) {
+			t.Errorf("runnable error = %v, want %v", err, errSetup)
+		}
+	})
+
+	t.Run("WithGateManagerStopped", func(t *testing.T) {
+		t.Parallel()
+
+		mgr := &runnableManager{}
+		recorder := &recordingGate{}
+		opts := testOptions()
+		opts.Gate = recorder
+
+		err := SetupGated(mgr, opts, func(ctrl.Manager, Options) error { return errSetup }, gvk)
+		if err != nil {
+			t.Fatalf("SetupGated() error = %v", err)
+		}
+
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+
+		err = mgr.added[0].Start(ctx)
+		if err != nil {
+			t.Errorf("runnable error = %v once stopped, want nil", err)
+		}
+
+		// A setup failing once nothing receives its error must not block.
 		recorder.fns[0]()
 	})
 }

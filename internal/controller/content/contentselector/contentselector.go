@@ -38,12 +38,6 @@ const (
 	errDeleteContentSelector = "cannot delete content selector from Nexus"
 )
 
-// SetupGated adds a controller that reconciles ContentSelector resources
-// once their CustomResourceDefinition is established.
-func SetupGated(mgr ctrl.Manager, opts helpers.Options) error {
-	return helpers.SetupGated(mgr, opts, Setup, contentv1alpha1.ContentSelectorGroupVersionKind)
-}
-
 // Setup adds a controller that reconciles ContentSelector managed resources.
 func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(contentv1alpha1.ContentSelectorGroupKind)

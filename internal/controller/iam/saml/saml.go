@@ -35,12 +35,6 @@ const (
 	errDeleteSAML = "cannot delete SAML configuration from Nexus"
 )
 
-// SetupGated adds a controller that reconciles SAML resources once their
-// CustomResourceDefinition is established.
-func SetupGated(mgr ctrl.Manager, opts helpers.Options) error {
-	return helpers.SetupGated(mgr, opts, Setup, iamv1alpha1.SAMLGroupVersionKind)
-}
-
 // Setup adds a controller that reconciles SAML resources.
 func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(iamv1alpha1.SAMLGroupKind)

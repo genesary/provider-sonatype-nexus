@@ -54,12 +54,16 @@ echo_step "waiting for provider to become healthy"
     --for=condition=healthy --timeout=300s
 
 echo_step "waiting for all provider CRDs to be Established"
-# Poll until at least one CRD in our API groups appears (the label crossplane sets
-# is on the revision, not the CRDs themselves, so select by group name instead).
+# Poll until every CRD of the package appears (the label crossplane sets is on
+# the revision, not the CRDs themselves, so select by group name instead). With
+# safe-start, the managed resource CRDs are only created once their
+# ManagedResourceDefinitions are activated, after the ProviderConfig ones, so
+# the first CRDs to appear are not all of them.
+crd_expected=$(find "${projectdir}/package/crds" -name '*.yaml' | wc -l)
 crd_deadline=$(( $(date +%s) + 120 ))
 while true; do
     crd_count=$("${KUBECTL}" get crd --no-headers 2>/dev/null | grep -c '\.nexus\.crossplane\.io' || true)
-    [ "${crd_count}" -gt 0 ] && break
+    [ "${crd_count}" -ge "${crd_expected}" ] && break
     if [ "$(date +%s)" -ge "${crd_deadline}" ]; then
         echo_error "timed out waiting for provider CRDs to appear"
     fi
