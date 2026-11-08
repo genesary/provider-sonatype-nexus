@@ -270,10 +270,10 @@ func TestBuildersApplyFormatSpecificSettings(t *testing.T) {
 		Spec: repositoryv1alpha1.RepositorySpec{
 			ForProvider: repositoryv1alpha1.RepositoryParameters{
 				Name:        "repo",
-				Cargo:       &repositoryv1alpha1.CargoConfig{RequireAuthentication: new(true)},
+				Cargo:       &repositoryv1alpha1.RequireAuthenticationConfig{RequireAuthentication: new(true)},
 				YumSigning:  &repositoryv1alpha1.YumSigningConfig{Keypair: new("key")},
 				RoutingRule: new("block-all"),
-				DockerProxy: &repositoryv1alpha1.DockerProxyConfig{
+				DockerProxy: &repositoryv1alpha1.ContainerProxyConfig{
 					IndexType:          new("CUSTOM"),
 					IndexURL:           new("https://index.example.com"),
 					CacheForeignLayers: new(true),
@@ -485,11 +485,11 @@ func TestNewFormatBuilders(t *testing.T) {
 		Name:             "repo",
 		AlpineSigning:    &repositoryv1alpha1.AlpineSigningConfig{Keypair: "rsa", Passphrase: new("secret")},
 		TerraformSigning: &repositoryv1alpha1.TerraformSigningConfig{Keypair: "pgp"},
-		Swift:            &repositoryv1alpha1.SwiftConfig{RequireAuthentication: new(true)},
-		Terraform:        &repositoryv1alpha1.TerraformConfig{RequireAuthentication: new(true)},
-		Oci:              &repositoryv1alpha1.OciConfig{PathEnabled: new(true), HTTPPort: new(int32(8082))},
-		OciProxy:         &repositoryv1alpha1.OciProxyConfig{IndexType: new("REGISTRY")},
-		Cosign:           &repositoryv1alpha1.CosignConfig{Enforcement: "NONE", IssuerRegex: new("^https://token.actions.githubusercontent.com$")},
+		Swift:            &repositoryv1alpha1.RequireAuthenticationConfig{RequireAuthentication: new(true)},
+		Terraform:        &repositoryv1alpha1.RequireAuthenticationConfig{RequireAuthentication: new(true)},
+		Oci:              &repositoryv1alpha1.ContainerConfig{PathEnabled: new(true), HTTPPort: new(int32(8082))},
+		OciProxy:         &repositoryv1alpha1.ContainerProxyConfig{IndexType: new("CUSTOM"), IndexURL: new("https://index.example.com")},
+		Cosign:           &repositoryv1alpha1.CosignConfig{Enforcement: "KEYLESS", IssuerRegex: new("^https://token.actions.githubusercontent.com$")},
 	}
 
 	if got := buildAlpineHosted(empty); got.AlpineSigning != nil {
@@ -520,12 +520,18 @@ func TestNewFormatBuilders(t *testing.T) {
 		t.Error("buildTerraformGroup() dropped terraform.requireAuthentication")
 	}
 
-	if got := buildOciHosted(empty); !got.Oci.ForceBasicAuth || got.Oci.V1Enabled || got.Cosign != nil {
-		t.Errorf("buildOciHosted() = %+v, want forceBasicAuth, no V1 API and no cosign block", got)
+	// Nexus resets a block a PUT leaves out, so the defaults are always sent
+	// and compared, which catches settings changed outside of the provider.
+	if got := buildOciHosted(empty); !got.Oci.ForceBasicAuth || got.Oci.V1Enabled || got.Cosign.GetEnforcement() != "NONE" {
+		t.Errorf("buildOciHosted() = %+v, want forceBasicAuth, no V1 API and no cosign enforcement", got)
 	}
 
-	if got := buildOciProxy(empty); got.OciProxy != nil {
-		t.Errorf("buildOciProxy() ociProxy = %+v, want none", got.OciProxy)
+	if got := buildOciProxy(empty).OciProxy; ptr.Deref(got.IndexType, "") != defaultOciIndexType || got.IndexUrl != nil {
+		t.Errorf("buildOciProxy() ociProxy = %+v, want the REGISTRY index Nexus defaults to", got)
+	}
+
+	if got := buildDockerProxy(empty).DockerProxy; got.IndexType != defaultDockerIndexType {
+		t.Errorf("buildDockerProxy() dockerProxy = %+v, want the HUB index Nexus defaults to", got)
 	}
 
 	ociProxy := buildOciProxy(configured)
@@ -533,15 +539,10 @@ func TestNewFormatBuilders(t *testing.T) {
 		t.Errorf("buildOciProxy() oci = %+v, want the spec settings", ociProxy.Oci)
 	}
 
-	if ptr.Deref(ociProxy.OciProxy.IndexType, "") != "REGISTRY" {
-		t.Errorf("buildOciProxy() ociProxy = %+v, want indexType REGISTRY", ociProxy.OciProxy)
+	if ptr.Deref(ociProxy.OciProxy.IndexType, "") != "CUSTOM" || ptr.Deref(ociProxy.OciProxy.IndexUrl, "") != "https://index.example.com" {
+		t.Errorf("buildOciProxy() ociProxy = %+v, want the custom index", ociProxy.OciProxy)
 	}
 
-	if got := buildOciGroup(configured).Cosign; got == nil || got.Enforcement != "NONE" || got.IssuerRegex != nil {
-		t.Errorf("buildOciGroup() cosign = %+v, want the spec enforcement without the regexes it ignores", got)
-	}
-
-	configured.repo.Spec.ForProvider.Cosign.Enforcement = "KEYLESS"
 	if got := buildOciGroup(configured).Cosign; got.Enforcement != "KEYLESS" || got.IssuerRegex == nil {
 		t.Errorf("buildOciGroup() cosign = %+v, want the issuer regex enforced", got)
 	}

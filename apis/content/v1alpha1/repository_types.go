@@ -9,8 +9,7 @@ import (
 )
 
 // RepositoryParameters defines the desired state of a Repository.
-// +kubebuilder:validation:XValidation:rule="self.format != 'alpine' || self.type == 'hosted' || has(self.alpineSigning)",message="alpineSigning is required for alpine proxy and group repositories."
-// +kubebuilder:validation:XValidation:rule="self.format != 'terraform' || self.type != 'hosted' || has(self.terraformSigning)",message="terraformSigning is required for terraform hosted repositories."
+// +kubebuilder:validation:XValidation:rule="self.format != 'terraform' || self.type == 'group' || !has(self.terraform)",message="terraform is only supported on terraform group repositories: Nexus ignores requireAuthentication on the other types."
 type RepositoryParameters struct {
 	// Name of the repository.
 	// +kubebuilder:validation:Required
@@ -48,11 +47,11 @@ type RepositoryParameters struct {
 
 	// Docker specific configuration.
 	// +kubebuilder:validation:Optional
-	Docker *DockerConfig `json:"docker,omitempty"`
+	Docker *ContainerConfig `json:"docker,omitempty"`
 
 	// DockerProxy specific configuration for Docker proxy repositories.
 	// +kubebuilder:validation:Optional
-	DockerProxy *DockerProxyConfig `json:"dockerProxy,omitempty"`
+	DockerProxy *ContainerProxyConfig `json:"dockerProxy,omitempty"`
 
 	// Proxy configuration for proxy repositories.
 	// +kubebuilder:validation:Optional
@@ -109,36 +108,41 @@ type RepositoryParameters struct {
 
 	// Cargo specific configuration.
 	// +kubebuilder:validation:Optional
-	Cargo *CargoConfig `json:"cargo,omitempty"`
+	Cargo *RequireAuthenticationConfig `json:"cargo,omitempty"`
 
-	// Oci specific configuration for OCI repositories.
+	// Oci specific configuration for OCI repositories. It takes the same
+	// settings as docker.
 	// +kubebuilder:validation:Optional
-	Oci *OciConfig `json:"oci,omitempty"`
+	Oci *ContainerConfig `json:"oci,omitempty"`
 
-	// OciProxy specific configuration for OCI proxy repositories.
+	// OciProxy specific configuration for OCI proxy repositories. It takes
+	// the same settings as dockerProxy.
 	// +kubebuilder:validation:Optional
-	OciProxy *OciProxyConfig `json:"ociProxy,omitempty"`
+	OciProxy *ContainerProxyConfig `json:"ociProxy,omitempty"`
 
-	// Cosign signature enforcement for OCI repositories.
+	// Cosign signature enforcement for OCI repositories. Enforcement is NONE
+	// when it is left out.
 	// +kubebuilder:validation:Optional
 	Cosign *CosignConfig `json:"cosign,omitempty"`
 
 	// AlpineSigning is the RSA key Nexus signs the APK index of an alpine
-	// repository with. It is required for proxy and group repositories.
+	// repository with. It is required for proxy and group repositories,
+	// unless the managementPolicies only observe the repository.
 	// +kubebuilder:validation:Optional
 	AlpineSigning *AlpineSigningConfig `json:"alpineSigning,omitempty"`
 
 	// Swift specific configuration for Swift proxy repositories.
 	// +kubebuilder:validation:Optional
-	Swift *SwiftConfig `json:"swift,omitempty"`
+	Swift *RequireAuthenticationConfig `json:"swift,omitempty"`
 
 	// Terraform specific configuration for Terraform group repositories.
 	// +kubebuilder:validation:Optional
-	Terraform *TerraformConfig `json:"terraform,omitempty"`
+	Terraform *RequireAuthenticationConfig `json:"terraform,omitempty"`
 
 	// TerraformSigning is the PGP key Nexus signs the providers of a
 	// Terraform hosted repository with. It is required for hosted
-	// repositories.
+	// repositories, unless the managementPolicies only observe the
+	// repository.
 	// +kubebuilder:validation:Optional
 	TerraformSigning *TerraformSigningConfig `json:"terraformSigning,omitempty"`
 
@@ -221,28 +225,39 @@ type MavenConfig struct {
 	ContentDisposition *string `json:"contentDisposition,omitempty"`
 }
 
-// DockerConfig defines Docker specific configuration.
-type DockerConfig struct {
-	// V1Enabled allows clients to use V1 Docker registry API.
+// ContainerConfig defines the registry settings of a Docker or OCI
+// repository.
+type ContainerConfig struct {
+	// V1Enabled allows clients to use the V1 registry API.
 	// +kubebuilder:validation:Optional
 	V1Enabled *bool `json:"v1Enabled,omitempty"`
 
-	// ForceBasicAuth forces basic authentication.
+	// ForceBasicAuth forces basic authentication. It defaults to true; the
+	// Docker or OCI Bearer Token realm is required when it is disabled.
 	// +kubebuilder:validation:Optional
 	ForceBasicAuth *bool `json:"forceBasicAuth,omitempty"`
 
-	// HTTPPort for Docker registry.
+	// HTTPPort creates an HTTP connector at this port.
 	// +kubebuilder:validation:Optional
 	HTTPPort *int32 `json:"httpPort,omitempty"`
 
-	// HTTPSPort for Docker registry.
+	// HTTPSPort creates an HTTPS connector at this port.
 	// +kubebuilder:validation:Optional
 	HTTPSPort *int32 `json:"httpsPort,omitempty"`
 
-	// Subdomain for Docker registry.
+	// Subdomain serves the repository at this subdomain.
 	// +kubebuilder:validation:Optional
 	Subdomain *string `json:"subdomain,omitempty"`
+
+	// PathEnabled allows the repository name in image paths.
+	// +kubebuilder:validation:Optional
+	PathEnabled *bool `json:"pathEnabled,omitempty"`
 }
+
+// DockerConfig is the former name of ContainerConfig.
+//
+// Deprecated: use ContainerConfig, which the oci block shares.
+type DockerConfig = ContainerConfig
 
 // ProxyConfig defines proxy configuration for proxy repositories.
 type ProxyConfig struct {
@@ -427,14 +442,16 @@ type AptSigningConfig struct {
 	Passphrase *string `json:"passphrase,omitempty"`
 }
 
-// DockerProxyConfig defines Docker proxy specific configuration.
-type DockerProxyConfig struct {
-	// IndexType is the type of Docker index (HUB, REGISTRY, CUSTOM).
+// ContainerProxyConfig defines the index settings of a Docker or OCI proxy
+// repository.
+type ContainerProxyConfig struct {
+	// IndexType is the type of index (HUB, REGISTRY, CUSTOM). It defaults to
+	// HUB for docker and to REGISTRY for oci, as Nexus does.
 	// +kubebuilder:validation:Enum=HUB;REGISTRY;CUSTOM
 	// +kubebuilder:validation:Optional
 	IndexType *string `json:"indexType,omitempty"`
 
-	// IndexURL is the URL of the Docker index to use (for CUSTOM type).
+	// IndexURL is the URL of the index to use (for CUSTOM type).
 	// +kubebuilder:validation:Optional
 	IndexURL *string `json:"indexUrl,omitempty"`
 
@@ -446,6 +463,11 @@ type DockerProxyConfig struct {
 	// +kubebuilder:validation:Optional
 	ForeignLayerUrlWhitelist []string `json:"foreignLayerUrlWhitelist,omitempty"`
 }
+
+// DockerProxyConfig is the former name of ContainerProxyConfig.
+//
+// Deprecated: use ContainerProxyConfig, which the ociProxy block shares.
+type DockerProxyConfig = ContainerProxyConfig
 
 // NugetProxyConfig defines NuGet proxy specific configuration.
 type NugetProxyConfig struct {
@@ -468,64 +490,23 @@ type BowerConfig struct {
 	RewritePackageUrls *bool `json:"rewritePackageUrls,omitempty"`
 }
 
-// CargoConfig defines Cargo specific configuration.
-type CargoConfig struct {
-	// RequireAuthentication indicates if this repository requires authentication.
+// RequireAuthenticationConfig defines whether a Cargo, Swift or Terraform
+// repository overrides anonymous access.
+type RequireAuthenticationConfig struct {
+	// RequireAuthentication indicates if this repository requires
+	// authentication. It is turned off when left unset.
 	// +kubebuilder:validation:Optional
 	RequireAuthentication *bool `json:"requireAuthentication,omitempty"`
 }
 
-// OciConfig defines OCI specific configuration.
-type OciConfig struct {
-	// V1Enabled allows clients to use the V1 API.
-	// +kubebuilder:validation:Optional
-	V1Enabled *bool `json:"v1Enabled,omitempty"`
-
-	// ForceBasicAuth forces basic authentication. The OCI Bearer Token
-	// realm is required when it is disabled.
-	// +kubebuilder:default=true
-	// +kubebuilder:validation:Optional
-	ForceBasicAuth *bool `json:"forceBasicAuth,omitempty"`
-
-	// HTTPPort creates an HTTP connector at this port.
-	// +kubebuilder:validation:Optional
-	HTTPPort *int32 `json:"httpPort,omitempty"`
-
-	// HTTPSPort creates an HTTPS connector at this port.
-	// +kubebuilder:validation:Optional
-	HTTPSPort *int32 `json:"httpsPort,omitempty"`
-
-	// Subdomain serves the repository at this subdomain.
-	// +kubebuilder:validation:Optional
-	Subdomain *string `json:"subdomain,omitempty"`
-
-	// PathEnabled allows the repository name in OCI image paths.
-	// +kubebuilder:validation:Optional
-	PathEnabled *bool `json:"pathEnabled,omitempty"`
-}
-
-// OciProxyConfig defines OCI proxy specific configuration.
-type OciProxyConfig struct {
-	// IndexType is the type of OCI index (HUB, REGISTRY, CUSTOM).
-	// +kubebuilder:validation:Enum=HUB;REGISTRY;CUSTOM
-	// +kubebuilder:validation:Optional
-	IndexType *string `json:"indexType,omitempty"`
-
-	// IndexURL is the URL of the OCI index to use (for CUSTOM type).
-	// +kubebuilder:validation:Optional
-	IndexURL *string `json:"indexUrl,omitempty"`
-
-	// CacheForeignLayers allows downloading and caching foreign layers.
-	// +kubebuilder:validation:Optional
-	CacheForeignLayers *bool `json:"cacheForeignLayers,omitempty"`
-
-	// ForeignLayerURLWhitelist is a list of regex patterns for allowed
-	// foreign layer URLs.
-	// +kubebuilder:validation:Optional
-	ForeignLayerURLWhitelist []string `json:"foreignLayerUrlWhitelist,omitempty"`
-}
+// CargoConfig is the former name of RequireAuthenticationConfig.
+//
+// Deprecated: use RequireAuthenticationConfig, which the swift and terraform
+// blocks share.
+type CargoConfig = RequireAuthenticationConfig
 
 // CosignConfig defines the cosign signature enforcement of an OCI repository.
+// +kubebuilder:validation:XValidation:rule="self.enforcement == 'KEYLESS' || (!has(self.identityRegex) && !has(self.issuerRegex))",message="identityRegex and issuerRegex require KEYLESS enforcement: Nexus drops them otherwise."
 type CosignConfig struct {
 	// Enforcement is the cosign enforcement mode. NONE disables enforcement;
 	// KEYLESS requires a valid cosign signature attached as an OCI referrer
@@ -536,12 +517,12 @@ type CosignConfig struct {
 	Enforcement string `json:"enforcement"`
 
 	// IdentityRegex is matched against the Fulcio certificate Subject
-	// Alternative Name.
+	// Alternative Name. It requires KEYLESS enforcement.
 	// +kubebuilder:validation:Optional
 	IdentityRegex *string `json:"identityRegex,omitempty"`
 
 	// IssuerRegex is matched against the OIDC issuer extension of the Fulcio
-	// certificate.
+	// certificate. It requires KEYLESS enforcement.
 	// +kubebuilder:validation:Optional
 	IssuerRegex *string `json:"issuerRegex,omitempty"`
 }
@@ -567,20 +548,6 @@ type TerraformSigningConfig struct {
 	// Passphrase to access the PGP signing key.
 	// +kubebuilder:validation:Optional
 	Passphrase *string `json:"passphrase,omitempty"`
-}
-
-// SwiftConfig defines Swift specific configuration.
-type SwiftConfig struct {
-	// RequireAuthentication indicates if this repository requires authentication.
-	// +kubebuilder:validation:Optional
-	RequireAuthentication *bool `json:"requireAuthentication,omitempty"`
-}
-
-// TerraformConfig defines Terraform specific configuration.
-type TerraformConfig struct {
-	// RequireAuthentication indicates if this repository requires authentication.
-	// +kubebuilder:validation:Optional
-	RequireAuthentication *bool `json:"requireAuthentication,omitempty"`
 }
 
 // RepositoryObservation represents the observed state of a Repository.
@@ -627,6 +594,12 @@ type RepositoryObservation struct {
 }
 
 // RepositorySpec defines the desired state of Repository.
+//
+// The signing keys Nexus requires are only required when the provider may
+// create or update the repository: one imported with Observe alone is never
+// written to.
+// +kubebuilder:validation:XValidation:rule="(has(self.managementPolicies) && self.managementPolicies.all(p, p != '*' && p != 'Create' && p != 'Update')) || self.forProvider.format != 'alpine' || self.forProvider.type == 'hosted' || has(self.forProvider.alpineSigning)",message="alpineSigning is required for alpine proxy and group repositories the provider may create or update."
+// +kubebuilder:validation:XValidation:rule="(has(self.managementPolicies) && self.managementPolicies.all(p, p != '*' && p != 'Create' && p != 'Update')) || self.forProvider.format != 'terraform' || self.forProvider.type != 'hosted' || has(self.forProvider.terraformSigning)",message="terraformSigning is required for terraform hosted repositories the provider may create or update."
 type RepositorySpec struct {
 	xpv2.ManagedResourceSpec `json:",inline"`
 

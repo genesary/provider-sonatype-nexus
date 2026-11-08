@@ -54,7 +54,12 @@ spec:
           metadata:
             type: object
           spec:
-            description: RepositorySpec defines the desired state of Repository.
+            description: |-
+              RepositorySpec defines the desired state of Repository.
+
+              The signing keys Nexus requires are only required when the provider may
+              create or update the repository: one imported with Observe alone is never
+              written to.
             properties:
               forProvider:
                 description: RepositoryParameters defines the desired state of a Repository.
@@ -62,7 +67,8 @@ spec:
                   alpineSigning:
                     description: |-
                       AlpineSigning is the RSA key Nexus signs the APK index of an alpine
-                      repository with. It is required for proxy and group repositories.
+                      repository with. It is required for proxy and group repositories,
+                      unless the managementPolicies only observe the repository.
                     properties:
                       keypair:
                         description: Keypair is the RSA signing key pair (PEM armored
@@ -113,8 +119,9 @@ spec:
                     description: Cargo specific configuration.
                     properties:
                       requireAuthentication:
-                        description: RequireAuthentication indicates if this repository
-                          requires authentication.
+                        description: |-
+                          RequireAuthentication indicates if this repository requires
+                          authentication. It is turned off when left unset.
                         type: boolean
                     type: object
                   cleanup:
@@ -208,7 +215,9 @@ spec:
                         type: array
                     type: object
                   cosign:
-                    description: Cosign signature enforcement for OCI repositories.
+                    description: |-
+                      Cosign signature enforcement for OCI repositories. Enforcement is NONE
+                      when it is left out.
                     properties:
                       enforcement:
                         description: |-
@@ -223,35 +232,47 @@ spec:
                       identityRegex:
                         description: |-
                           IdentityRegex is matched against the Fulcio certificate Subject
-                          Alternative Name.
+                          Alternative Name. It requires KEYLESS enforcement.
                         type: string
                       issuerRegex:
                         description: |-
                           IssuerRegex is matched against the OIDC issuer extension of the Fulcio
-                          certificate.
+                          certificate. It requires KEYLESS enforcement.
                         type: string
                     required:
                     - enforcement
                     type: object
+                    x-kubernetes-validations:
+                    - message: 'identityRegex and issuerRegex require KEYLESS enforcement:
+                        Nexus drops them otherwise.'
+                      rule: self.enforcement == 'KEYLESS' || (!has(self.identityRegex)
+                        && !has(self.issuerRegex))
                   docker:
                     description: Docker specific configuration.
                     properties:
                       forceBasicAuth:
-                        description: ForceBasicAuth forces basic authentication.
+                        description: |-
+                          ForceBasicAuth forces basic authentication. It defaults to true; the
+                          Docker or OCI Bearer Token realm is required when it is disabled.
                         type: boolean
                       httpPort:
-                        description: HTTPPort for Docker registry.
+                        description: HTTPPort creates an HTTP connector at this port.
                         format: int32
                         type: integer
                       httpsPort:
-                        description: HTTPSPort for Docker registry.
+                        description: HTTPSPort creates an HTTPS connector at this
+                          port.
                         format: int32
                         type: integer
+                      pathEnabled:
+                        description: PathEnabled allows the repository name in image
+                          paths.
+                        type: boolean
                       subdomain:
-                        description: Subdomain for Docker registry.
+                        description: Subdomain serves the repository at this subdomain.
                         type: string
                       v1Enabled:
-                        description: V1Enabled allows clients to use V1 Docker registry
+                        description: V1Enabled allows clients to use the V1 registry
                           API.
                         type: boolean
                     type: object
@@ -270,16 +291,17 @@ spec:
                           type: string
                         type: array
                       indexType:
-                        description: IndexType is the type of Docker index (HUB, REGISTRY,
-                          CUSTOM).
+                        description: |-
+                          IndexType is the type of index (HUB, REGISTRY, CUSTOM). It defaults to
+                          HUB for docker and to REGISTRY for oci, as Nexus does.
                         enum:
                         - HUB
                         - REGISTRY
                         - CUSTOM
                         type: string
                       indexUrl:
-                        description: IndexURL is the URL of the Docker index to use
-                          (for CUSTOM type).
+                        description: IndexURL is the URL of the index to use (for
+                          CUSTOM type).
                         type: string
                     type: object
                   format:
@@ -559,13 +581,14 @@ spec:
                         type: integer
                     type: object
                   oci:
-                    description: Oci specific configuration for OCI repositories.
+                    description: |-
+                      Oci specific configuration for OCI repositories. It takes the same
+                      settings as docker.
                     properties:
                       forceBasicAuth:
-                        default: true
                         description: |-
-                          ForceBasicAuth forces basic authentication. The OCI Bearer Token
-                          realm is required when it is disabled.
+                          ForceBasicAuth forces basic authentication. It defaults to true; the
+                          Docker or OCI Bearer Token realm is required when it is disabled.
                         type: boolean
                       httpPort:
                         description: HTTPPort creates an HTTP connector at this port.
@@ -577,40 +600,43 @@ spec:
                         format: int32
                         type: integer
                       pathEnabled:
-                        description: PathEnabled allows the repository name in OCI
-                          image paths.
+                        description: PathEnabled allows the repository name in image
+                          paths.
                         type: boolean
                       subdomain:
                         description: Subdomain serves the repository at this subdomain.
                         type: string
                       v1Enabled:
-                        description: V1Enabled allows clients to use the V1 API.
+                        description: V1Enabled allows clients to use the V1 registry
+                          API.
                         type: boolean
                     type: object
                   ociProxy:
-                    description: OciProxy specific configuration for OCI proxy repositories.
+                    description: |-
+                      OciProxy specific configuration for OCI proxy repositories. It takes
+                      the same settings as dockerProxy.
                     properties:
                       cacheForeignLayers:
                         description: CacheForeignLayers allows downloading and caching
                           foreign layers.
                         type: boolean
                       foreignLayerUrlWhitelist:
-                        description: |-
-                          ForeignLayerURLWhitelist is a list of regex patterns for allowed
-                          foreign layer URLs.
+                        description: ForeignLayerUrlWhitelist is a list of regex patterns
+                          for allowed foreign layer URLs.
                         items:
                           type: string
                         type: array
                       indexType:
-                        description: IndexType is the type of OCI index (HUB, REGISTRY,
-                          CUSTOM).
+                        description: |-
+                          IndexType is the type of index (HUB, REGISTRY, CUSTOM). It defaults to
+                          HUB for docker and to REGISTRY for oci, as Nexus does.
                         enum:
                         - HUB
                         - REGISTRY
                         - CUSTOM
                         type: string
                       indexUrl:
-                        description: IndexURL is the URL of the OCI index to use (for
+                        description: IndexURL is the URL of the index to use (for
                           CUSTOM type).
                         type: string
                     type: object
@@ -829,8 +855,9 @@ spec:
                     description: Swift specific configuration for Swift proxy repositories.
                     properties:
                       requireAuthentication:
-                        description: RequireAuthentication indicates if this repository
-                          requires authentication.
+                        description: |-
+                          RequireAuthentication indicates if this repository requires
+                          authentication. It is turned off when left unset.
                         type: boolean
                     type: object
                   terraform:
@@ -838,15 +865,17 @@ spec:
                       repositories.
                     properties:
                       requireAuthentication:
-                        description: RequireAuthentication indicates if this repository
-                          requires authentication.
+                        description: |-
+                          RequireAuthentication indicates if this repository requires
+                          authentication. It is turned off when left unset.
                         type: boolean
                     type: object
                   terraformSigning:
                     description: |-
                       TerraformSigning is the PGP key Nexus signs the providers of a
                       Terraform hosted repository with. It is required for hosted
-                      repositories.
+                      repositories, unless the managementPolicies only observe the
+                      repository.
                     properties:
                       keypair:
                         description: Keypair is the PGP signing key pair (armored
@@ -901,10 +930,9 @@ spec:
                 - type
                 type: object
                 x-kubernetes-validations:
-                - message: alpineSigning is required for alpine proxy and group repositories.
-                  rule: self.format != 'alpine' || self.type == 'hosted' || has(self.alpineSigning)
-                - message: terraformSigning is required for terraform hosted repositories.
-                  rule: self.format != 'terraform' || self.type != 'hosted' || has(self.terraformSigning)
+                - message: 'terraform is only supported on terraform group repositories:
+                    Nexus ignores requireAuthentication on the other types.'
+                  rule: self.format != 'terraform' || self.type == 'group' || !has(self.terraform)
               managementPolicies:
                 default:
                 - '*'
@@ -963,6 +991,17 @@ spec:
             required:
             - forProvider
             type: object
+            x-kubernetes-validations:
+            - message: alpineSigning is required for alpine proxy and group repositories
+                the provider may create or update.
+              rule: (has(self.managementPolicies) && self.managementPolicies.all(p,
+                p != '*' && p != 'Create' && p != 'Update')) || self.forProvider.format
+                != 'alpine' || self.forProvider.type == 'hosted' || has(self.forProvider.alpineSigning)
+            - message: terraformSigning is required for terraform hosted repositories
+                the provider may create or update.
+              rule: (has(self.managementPolicies) && self.managementPolicies.all(p,
+                p != '*' && p != 'Create' && p != 'Update')) || self.forProvider.format
+                != 'terraform' || self.forProvider.type != 'hosted' || has(self.forProvider.terraformSigning)
           status:
             description: RepositoryStatus defines the observed state of Repository.
             properties:
