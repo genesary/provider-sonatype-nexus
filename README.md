@@ -25,6 +25,7 @@ This provider enables you to manage Nexus Repository Manager resources using Kub
 | `UserTokenConfiguration` | `iam.nexus.crossplane.io` | User token settings |
 | `BlobStore` | `instance.nexus.crossplane.io` | File or S3-based blob storage |
 | `Capability` | `instance.nexus.crossplane.io` | Nexus capabilities |
+| `EmailConfiguration` | `instance.nexus.crossplane.io` | Email (SMTP) server settings used for notifications |
 | `HTTPClient` | `instance.nexus.crossplane.io` | Outbound HTTP client settings: User-Agent, timeout, retries and HTTP/HTTPS proxies (Pro) |
 | `IQServerConfiguration` | `instance.nexus.crossplane.io` | Sonatype IQ Server integration |
 | `License` | `instance.nexus.crossplane.io` | Nexus Pro license |
@@ -38,7 +39,7 @@ Repositories are supported for Maven2, npm, Docker and 23 other formats. See [Su
 
 ### Instance-wide settings
 
-`AnonymousAccess`, `IQServerConfiguration`, `License`, `SAML`, `SecurityRealm`, `SSRFProtection` and `UserTokenConfiguration` each manage a setting Nexus holds once per instance. Declare at most one of each kind per Nexus instance, across all namespaces and ProviderConfigs that point at it. The provider does not enforce this: two resources of the same kind keep overwriting each other's settings. Deleting an `IQServerConfiguration`, `License`, `SAML` or `SSRFProtection` also disables, removes or resets the setting in Nexus, even while another resource of that kind still declares it.
+`AnonymousAccess`, `EmailConfiguration`, `IQServerConfiguration`, `License`, `SAML`, `SecurityRealm`, `SSRFProtection` and `UserTokenConfiguration` each manage a setting Nexus holds once per instance. Declare at most one of each kind per Nexus instance, across all namespaces and ProviderConfigs that point at it. The provider does not enforce this: two resources of the same kind keep overwriting each other's settings. Deleting an `EmailConfiguration`, `IQServerConfiguration`, `License`, `SAML` or `SSRFProtection` also disables, removes or resets the setting in Nexus, even while another resource of that kind still declares it.
 
 ### Scripts
 

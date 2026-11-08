@@ -32,11 +32,11 @@ Things to know before disabling it:
 
 - **Permissions:** the provider needs `get` on every Secret it reads:
   `ProviderConfig` credentials and the Secret references of managed resources
-  (user passwords, repository HTTP client, HTTP proxy and LDAP bind passwords,
-  S3 keys, IQ Server credentials, license files). It needs `get`, `create` and
-  `patch` on connection Secrets (`writeConnectionSecretToRef`) in their
-  namespace. `get` and `patch` can be restricted with `resourceNames`, `create`
-  cannot.
+  (user passwords, repository HTTP client, HTTP proxy, SMTP and LDAP bind
+  passwords, S3 keys, IQ Server credentials, license files). It needs `get`,
+  `create` and `patch` on connection Secrets (`writeConnectionSecretToRef`) in
+  their namespace. `get` and `patch` can be restricted with `resourceNames`,
+  `create` cannot.
 - **Existing grants:** the flag does not change RBAC. Crossplane still grants
   the provider every verb on every Secret of the cluster, and a narrower Role
   does not take that away. See
