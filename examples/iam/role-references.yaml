@@ -11,13 +11,15 @@ spec:
   forProvider:
     id: maven-release-managers
     name: Maven Release Managers
-    description: Reads and deploys to the Maven releases repository
+    description: Reads the Maven releases repository and inherits the platform team's roles
     # Resolves to the Nexus name of the Privilege maven-releases-read
     # (examples/iam/privilege-repository-view.yaml).
     privilegeRefs:
       - name: maven-releases-read
     # Resolves to the Nexus IDs of every Role of this namespace labelled
-    # nexus.crossplane.io/team: platform.
+    # nexus.crossplane.io/team: platform, such as developer-role
+    # (examples/iam/role.yaml). A selector that matches no Role fails to
+    # resolve, unless its policy.resolution is Optional.
     roleSelector:
       matchLabels:
         nexus.crossplane.io/team: platform

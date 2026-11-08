@@ -5,6 +5,8 @@ kind: Role
 metadata:
   name: developer-role
   namespace: default
+  labels:
+    nexus.crossplane.io/team: platform
 spec:
   forProvider:
     id: developer-role

@@ -30,7 +30,7 @@ This provider enables you to manage Nexus Repository Manager resources using Kub
 | `SecurityRealm` | `instance.nexus.crossplane.io` | Active security realms and their order |
 | `SecuritySSLTruststore` | `instance.nexus.crossplane.io` | Certificates of the Nexus SSL truststore |
 
-Repositories are supported for Maven2, npm, Docker, Raw, NuGet, PyPI, RubyGems, Yum, APT, Helm, Go, R, Conan, Conda, Cocoapods, Git LFS and Cargo, among others. See [Supported Repository Formats](docs/repository-formats.md) for the full list and the types of each.
+Repositories are supported for Maven2, npm, Docker and 16 other formats. See [Supported Repository Formats](docs/repository-formats.md) for the full list and the types of each.
 
 ## Quick Start
 
@@ -54,7 +54,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: nexus-username
-  namespace: crossplane-system
+  namespace: default
 type: Opaque
 stringData:
   username: admin
@@ -63,20 +63,20 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: nexus-password
-  namespace: crossplane-system
+  namespace: default
 type: Opaque
 stringData:
   password: admin123
 ```
 
-**3. Create a ProviderConfig:**
+**3. Create a ProviderConfig** in the namespace of the managed resources it serves, `default` in every example:
 
 ```yaml
 apiVersion: nexus.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
   name: default
-  namespace: crossplane-system
+  namespace: default
 spec:
   url: http://nexus.example.com:8081
   insecureSkipVerify: false

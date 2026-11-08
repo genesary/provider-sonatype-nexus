@@ -70,10 +70,11 @@ expects `NEXUS_URL`, `NEXUS_USER` and `NEXUS_PASS`.
 │   ├── controller/             # Controllers, by API group
 │   ├── helpers/                # Shared reconciler options and helpers
 │   └── test/e2e/               # E2E test suite
-├── cluster/                    # Provider image and e2e scripts
-├── e2e/                        # E2E kind cluster and Nexus manifests
+├── cluster/                    # Provider image, e2e scripts, kind and Nexus manifests
+├── hack/                       # License boilerplate and scaffolding scripts
 ├── examples/                   # Example manifests
-└── package/                    # Crossplane package metadata and generated CRDs
+├── package/                    # Crossplane package metadata and generated CRDs
+└── test/mocks/                 # Generated mocks of the Nexus API clients
 ```
 
 ## Running Locally
