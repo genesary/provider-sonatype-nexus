@@ -1,1 +1,5 @@
+// Package {{ .Env.APIVERSION | strings.ToLower }} contains managed resources for the {{ .Env.PROVIDER }} {{ .Env.GROUP | strings.ToLower }} group.
+// +kubebuilder:object:generate=true
+// +groupName={{ .Env.GROUP | strings.ToLower }}.{{ .Env.PROVIDER | strings.ToLower }}.crossplane.io
+// +versionName={{ .Env.APIVERSION | strings.ToLower }}
 package {{ .Env.APIVERSION | strings.ToLower }}

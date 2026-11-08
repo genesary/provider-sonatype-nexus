@@ -1,6 +1,8 @@
 package helpers
 
 import (
+	"time"
+
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
@@ -15,12 +17,33 @@ import (
 
 // maxSharedReconcilerOptions is the most options ReconcilerOptions shares
 // between controllers, to size the slice it returns.
-const maxSharedReconcilerOptions = 6
+const maxSharedReconcilerOptions = 7
 
 // Options are the crossplane-runtime controller options, extended with the
 // settings of this provider.
 type Options struct {
 	controller.Options
+
+	// MinPollInterval is the shortest poll interval a resource may request
+	// through the crossplane.io/poll-interval annotation. Shorter requests are
+	// raised to it, which keeps the annotation from letting one resource use
+	// the reconcile budget shared by all tenants, or flood Nexus with
+	// requests. Zero removes the limit. It never exceeds PollInterval, see
+	// minPollInterval.
+	MinPollInterval time.Duration
+}
+
+// minPollInterval returns the floor applied to the poll interval annotation.
+// It is capped at the poll interval, so that an annotation can always ask for
+// the polling every resource without one already gets: with --poll=10s and the
+// default 30s minimum, an annotation of 20s would otherwise be raised to 30s,
+// polling slower than unannotated resources.
+func minPollInterval(opts Options) time.Duration {
+	if opts.PollInterval > 0 && opts.PollInterval < opts.MinPollInterval {
+		return opts.PollInterval
+	}
+
+	return opts.MinPollInterval
 }
 
 // ReconcilerOptions returns the managed reconciler options shared by every
@@ -30,6 +53,7 @@ func ReconcilerOptions(mgr ctrl.Manager, name string, opts Options, specific ...
 	options = append(options,
 		managed.WithLogger(controllerLogger(opts, name)),
 		managed.WithPollInterval(opts.PollInterval),
+		managed.WithMinPollInterval(minPollInterval(opts)),
 		managed.WithRecorder(newEventRecorder(mgr, name, opts)),
 	)
 

@@ -3,11 +3,9 @@ package {{ .Env.APIVERSION }}
 import (
 	"reflect"
 
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	xpv1 "github.com/crossplane/crossplane-runtime/v2/apis/common/v1"
-	xpv2 "github.com/crossplane/crossplane-runtime/v2/apis/common/v2"
 )
 
 // {{ .Env.KIND }}Parameters are the configurable fields of a {{ .Env.KIND }}.
@@ -24,13 +22,15 @@ type {{ .Env.KIND }}Observation struct {
 // A {{ .Env.KIND }}Spec defines the desired state of a {{ .Env.KIND }}.
 type {{ .Env.KIND }}Spec struct {
 	xpv2.ManagedResourceSpec `json:",inline"`
-	ForProvider              {{ .Env.KIND }}Parameters `json:"forProvider"`
+
+	ForProvider {{ .Env.KIND }}Parameters `json:"forProvider"`
 }
 
 // A {{ .Env.KIND }}Status represents the observed state of a {{ .Env.KIND }}.
 type {{ .Env.KIND }}Status struct {
-	xpv1.ResourceStatus `json:",inline"`
-	AtProvider          {{ .Env.KIND }}Observation `json:"atProvider,omitempty"`
+	xpv2.ManagedResourceStatus `json:",inline"`
+
+	AtProvider {{ .Env.KIND }}Observation `json:"atProvider,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -52,21 +52,23 @@ type {{ .Env.KIND }} struct {
 
 // +kubebuilder:object:root=true
 
-// {{ .Env.KIND }}List contains a list of {{ .Env.KIND }}
+// {{ .Env.KIND }}List contains a list of {{ .Env.KIND }}.
 type {{ .Env.KIND }}List struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []{{ .Env.KIND }} `json:"items"`
+
+	Items []{{ .Env.KIND }} `json:"items"`
 }
 
 // {{ .Env.KIND }} type metadata.
 var (
 	{{ .Env.KIND }}Kind             = reflect.TypeFor[{{ .Env.KIND }}]().Name()
-	{{ .Env.KIND }}GroupKind        = schema.GroupKind{Group: Group, Kind: {{ .Env.KIND }}Kind}.String()
+	{{ .Env.KIND }}GroupKind        = schema.GroupKind{Group: APIGroup, Kind: {{ .Env.KIND }}Kind}.String()
 	{{ .Env.KIND }}KindAPIVersion   = {{ .Env.KIND }}Kind + "." + SchemeGroupVersion.String()
 	{{ .Env.KIND }}GroupVersionKind = SchemeGroupVersion.WithKind({{ .Env.KIND }}Kind)
 )
 
+// init registers the {{ .Env.KIND }} types with the scheme.
 func init() {
 	SchemeBuilder.Register(&{{ .Env.KIND }}{}, &{{ .Env.KIND }}List{})
 }
