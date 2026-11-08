@@ -49,54 +49,21 @@ echo_step "installing Crossplane ${CROSSPLANE_VERSION}"
 echo_step "deploying ${PACKAGE_NAME} provider package"
 make -C "${projectdir}" "local.xpkg.deploy.provider.${PACKAGE_NAME}"
 
-echo_step "granting provider service account permission to watch CRDs"
-echo "waiting for provider service account to be created..."
-provider_sa=""
-for _ in $(seq 1 60); do
-    provider_sa="$("${KUBECTL}" get sa -n crossplane-system -o name 2>/dev/null \
-        | grep "${PACKAGE_NAME}" | head -1 | sed 's|^serviceaccount/||')"
-    if [ -n "${provider_sa}" ]; then break; fi
-    sleep 2
-done
-if [ -z "${provider_sa}" ]; then
-    echo_error "provider service account did not appear within 120s"
-fi
-echo "binding ServiceAccount ${provider_sa} to CRD watch role"
-"${KUBECTL}" apply -f - <<EOF
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: ${PACKAGE_NAME}-crd-watcher
-rules:
-  - apiGroups: ["apiextensions.k8s.io"]
-    resources: ["customresourcedefinitions"]
-    verbs: ["get", "list", "watch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: ${PACKAGE_NAME}-crd-watcher
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: ${PACKAGE_NAME}-crd-watcher
-subjects:
-  - kind: ServiceAccount
-    name: ${provider_sa}
-    namespace: crossplane-system
-EOF
-
 echo_step "waiting for provider to become healthy"
 "${KUBECTL}" wait "provider.pkg.crossplane.io/${PACKAGE_NAME}" \
     --for=condition=healthy --timeout=300s
 
 echo_step "waiting for all provider CRDs to be Established"
-# Poll until at least one CRD in our API groups appears (the label crossplane sets
-# is on the revision, not the CRDs themselves, so select by group name instead).
+# Poll until every CRD of the package appears (the label crossplane sets is on
+# the revision, not the CRDs themselves, so select by group name instead). With
+# safe-start, the managed resource CRDs are only created once their
+# ManagedResourceDefinitions are activated, after the ProviderConfig ones, so
+# the first CRDs to appear are not all of them.
+crd_expected=$(find "${projectdir}/package/crds" -name '*.yaml' | wc -l)
 crd_deadline=$(( $(date +%s) + 120 ))
 while true; do
     crd_count=$("${KUBECTL}" get crd --no-headers 2>/dev/null | grep -c '\.nexus\.crossplane\.io' || true)
-    [ "${crd_count}" -gt 0 ] && break
+    [ "${crd_count}" -ge "${crd_expected}" ] && break
     if [ "$(date +%s)" -ge "${crd_deadline}" ]; then
         echo_error "timed out waiting for provider CRDs to appear"
     fi

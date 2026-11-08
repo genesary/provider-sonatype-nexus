@@ -10,6 +10,7 @@ import (
 	changelogsv1alpha1 "github.com/crossplane/crossplane-runtime/v2/apis/changelogs/proto/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/gate"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
@@ -18,7 +19,9 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
@@ -138,11 +141,12 @@ func newManager(cfg *rest.Config, parsed flags) (ctrl.Manager, error) {
 }
 
 // newScheme returns the manager scheme: the Kubernetes built-in types, which
-// the provider reads Secrets through, and the provider's own APIs.
+// the provider reads Secrets through, CustomResourceDefinitions, which the
+// safe-start gate watches, and the provider's own APIs.
 func newScheme() (*runtime.Scheme, error) {
 	scheme := runtime.NewScheme()
 
-	builder := runtime.NewSchemeBuilder(clientgoscheme.AddToScheme, apis.AddToScheme)
+	builder := runtime.NewSchemeBuilder(clientgoscheme.AddToScheme, apiextensionsv1.AddToScheme, apis.AddToScheme)
 
 	err := builder.AddToScheme(scheme)
 	if err != nil {
@@ -169,6 +173,7 @@ func controllerOptions(log logging.Logger, parsed flags) helpers.Options {
 			PollInterval:            parsed.PollInterval,
 			GlobalRateLimiter:       ratelimiter.NewGlobal(parsed.MaxReconcileRate),
 			Features:                &feature.Flags{},
+			Gate:                    new(gate.Gate[schema.GroupVersionKind]),
 			MetricOptions: &controller.MetricOptions{
 				PollStateMetricInterval: parsed.PollStateMetricInterval,
 				MRMetrics:               metricRecorder,

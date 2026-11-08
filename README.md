@@ -159,6 +159,27 @@ for example `args: ["--debug", "--poll=5m"]`.
 | `--enable-changelogs` (`ENABLE_CHANGE_LOGS`) | `false` | Alpha. Send a [change log](https://docs.crossplane.io/latest/guides/change-logs/) entry for every create, update and delete of a Nexus resource. Enable it with `--enable-changelogs` or `ENABLE_CHANGE_LOGS=true`: `--enable-changelogs=true` is rejected. |
 | `--changelogs-socket-path` (`CHANGELOGS_SOCKET_PATH`) | `/var/run/changelogs/changelogs.sock` | Absolute path of the change logs sidecar socket, when change logs are enabled. |
 
+### Activating Managed Resources
+
+The package declares Crossplane's `safe-start` capability. Crossplane installs
+a `ManagedResourceDefinition` for each kind and only creates its CRD once a
+[`ManagedResourceActivationPolicy`](https://docs.crossplane.io/latest/managed-resources/managed-resource-activation-policies/)
+activates it. The default policy installed with Crossplane activates every
+kind. The provider starts the controller of each kind once its CRD is
+established, so it runs fine with only some of its kinds activated. For
+example, to only manage repositories and blob stores:
+
+```yaml
+apiVersion: apiextensions.crossplane.io/v1alpha1
+kind: ManagedResourceActivationPolicy
+metadata:
+  name: nexus-storage
+spec:
+  activate:
+    - repositories.content.nexus.crossplane.io
+    - blobstores.instance.nexus.crossplane.io
+```
+
 ### Metrics
 
 The provider serves Prometheus metrics on port `8080` at `/metrics`. Besides

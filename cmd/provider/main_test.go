@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/iam/v1alpha1"
@@ -25,6 +26,7 @@ func TestNewScheme(t *testing.T) {
 		nexusv1alpha1.ProviderConfigGroupVersionKind,
 		nexusv1alpha1.ClusterProviderConfigGroupVersionKind,
 		iamv1alpha1.RoleGroupVersionKind,
+		apiextensionsv1.SchemeGroupVersion.WithKind("CustomResourceDefinition"),
 	} {
 		if !scheme.Recognizes(gvk) {
 			t.Errorf("newScheme() does not recognize %s", gvk)
