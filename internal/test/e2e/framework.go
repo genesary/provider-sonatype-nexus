@@ -58,11 +58,12 @@ type Framework struct {
 	// ProviderConfigName is the ProviderConfig managed resources should reference.
 	ProviderConfigName string
 
-	// users and capabilities are the provider's own clients, for the
+	// users, capabilities and tasks are the provider's own clients, for the
 	// resources Nexus cannot read by ID, so tests look them up the same way
 	// the controllers do.
 	users        iamclient.UserClient
 	capabilities instanceclient.CapabilityClient
+	tasks        instanceclient.TaskClient
 }
 
 // New constructs a Framework, failing the test immediately on missing config
@@ -114,6 +115,11 @@ func New(t *testing.T) *Framework {
 		t.Fatalf("building nexus capability client: %v", err)
 	}
 
+	tasks, err := instanceclient.NewTaskClient(creds)
+	if err != nil {
+		t.Fatalf("building nexus task client: %v", err)
+	}
+
 	pc := os.Getenv(EnvProviderConfig)
 	if pc == "" {
 		pc = DefaultProviderConfigName
@@ -125,6 +131,7 @@ func New(t *testing.T) *Framework {
 		ProviderConfigName: pc,
 		users:              users,
 		capabilities:       capabilities,
+		tasks:              tasks,
 	}
 }
 

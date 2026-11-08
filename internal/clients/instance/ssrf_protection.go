@@ -93,11 +93,11 @@ func IsSSRFProtectionUpToDate(cr *instancev1alpha1.SSRFProtection, observed *v39
 		return false
 	}
 
-	if !helpers.AreStringSlicesEqualDeDuped(params.AllowedIPs, observed.AllowedIPs) {
+	if !helpers.AreSlicesEqualDeDuped(params.AllowedIPs, observed.AllowedIPs) {
 		return false
 	}
 
-	return helpers.AreStringSlicesEqualDeDuped(params.AllowedDomains, observed.AllowedDomains)
+	return helpers.AreSlicesEqualDeDuped(params.AllowedDomains, observed.AllowedDomains)
 }
 
 // GenerateSSRFProtectionObservation converts the SSRF protection settings to

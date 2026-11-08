@@ -777,8 +777,8 @@ func TestAreStringSlicesEqual(t *testing.T) {
 	}
 }
 
-// TestAreStringSlicesEqualDeDuped tests equality of deduplicated string slices.
-func TestAreStringSlicesEqualDeDuped(t *testing.T) {
+// TestAreSlicesEqualDeDuped tests equality of deduplicated string slices.
+func TestAreSlicesEqualDeDuped(t *testing.T) {
 	t.Parallel()
 
 	tests := map[string]struct {
@@ -812,11 +812,29 @@ func TestAreStringSlicesEqualDeDuped(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			got := AreStringSlicesEqualDeDuped(tc.a, tc.b)
+			got := AreSlicesEqualDeDuped(tc.a, tc.b)
 			if got != tc.want {
-				t.Errorf("AreStringSlicesEqualDeDuped() = %v, want %v", got, tc.want)
+				t.Errorf("AreSlicesEqualDeDuped() = %v, want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestAreSlicesEqualDeDupedInts tests AreSlicesEqualDeDuped on a
+// non-string element type.
+func TestAreSlicesEqualDeDupedInts(t *testing.T) {
+	t.Parallel()
+
+	if !AreSlicesEqualDeDuped([]int32{3, 1, 1}, []int32{1, 3}) {
+		t.Error("AreSlicesEqualDeDuped({3, 1, 1}, {1, 3}) = false, want true")
+	}
+
+	if AreSlicesEqualDeDuped([]int32{1, 2}, []int32{1, 3}) {
+		t.Error("AreSlicesEqualDeDuped({1, 2}, {1, 3}) = true, want false")
+	}
+
+	if !AreSlicesEqualDeDuped[int32](nil, []int32{}) {
+		t.Error("AreSlicesEqualDeDuped(nil, {}) = false, want true")
 	}
 }
 

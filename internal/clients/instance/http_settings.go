@@ -150,7 +150,7 @@ func IsHTTPSettingsUpToDate(cr *instancev1alpha1.HTTPClient, observed *v395.Http
 		return false
 	}
 
-	return helpers.AreStringSlicesEqualDeDuped(params.NonProxyHosts, observed.NonProxyHosts)
+	return helpers.AreSlicesEqualDeDuped(params.NonProxyHosts, observed.NonProxyHosts)
 }
 
 // isProxyUpToDate reports whether an observed proxy matches the spec. A
