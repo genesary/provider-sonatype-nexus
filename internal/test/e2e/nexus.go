@@ -147,6 +147,11 @@ func (f *Framework) FetchBlobStoreFile(name string) (*v395.FileBlobStoreApiModel
 	return absentAsNil(f.Nexus.BlobStoreAPI.GetBlobstoresFile(context.Background(), name).Execute())
 }
 
+// FetchBlobStoreAzure returns the Azure blobstore with the given name, or (nil, nil) if absent.
+func (f *Framework) FetchBlobStoreAzure(name string) (*v395.AzureBlobStoreApiModel, error) {
+	return absentAsNil(f.Nexus.BlobStoreAPI.GetBlobstoresAzure(context.Background(), name).Execute())
+}
+
 // FetchMavenHostedRepo returns the Maven hosted repository with the given name.
 func (f *Framework) FetchMavenHostedRepo(name string) (*v395.MavenHostedApiRepository, error) {
 	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetMavenHostedRepository(context.Background(), name).Execute())

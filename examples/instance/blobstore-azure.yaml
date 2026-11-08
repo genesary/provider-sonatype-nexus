@@ -1,0 +1,38 @@
+---
+# Azure Blob Storage BlobStore example. Azure blob stores require Nexus
+# Repository Pro: Nexus Community Edition refuses them with 402 Payment
+# Required. The container must already exist in the storage account.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: azure-storage-secret
+  namespace: default
+type: Opaque
+stringData:
+  accountKey: <storage-account-key>
+---
+apiVersion: instance.nexus.crossplane.io/v1alpha1
+kind: BlobStore
+metadata:
+  name: my-azure-blobstore
+  namespace: default
+spec:
+  forProvider:
+    name: my-azure-blobstore
+    type: Azure
+    azureConfig:
+      accountName: mystorageaccount
+      containerName: nexus-blobs
+      # ACCOUNTKEY, MANAGEDIDENTITY or ENVIRONMENTVARIABLE. Only ACCOUNTKEY
+      # takes accountKeySecretRef, which it requires.
+      authenticationMethod: ACCOUNTKEY
+      accountKeySecretRef:
+        name: azure-storage-secret
+        key: accountKey
+      preSignedUrlEnabled: false
+    softQuota:
+      type: spaceUsedQuota
+      limit: 1073741824 # 1GB in bytes
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default
