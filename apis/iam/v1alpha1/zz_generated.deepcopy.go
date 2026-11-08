@@ -491,10 +491,30 @@ func (in *PrivilegeParameters) DeepCopyInto(out *PrivilegeParameters) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.RepositoryRef != nil {
+		in, out := &in.RepositoryRef, &out.RepositoryRef
+		*out = new(v2.Reference)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.RepositorySelector != nil {
+		in, out := &in.RepositorySelector, &out.RepositorySelector
+		*out = new(v2.Selector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.ContentSelector != nil {
 		in, out := &in.ContentSelector, &out.ContentSelector
 		*out = new(string)
 		**out = **in
+	}
+	if in.ContentSelectorRef != nil {
+		in, out := &in.ContentSelectorRef, &out.ContentSelectorRef
+		*out = new(v2.Reference)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.ContentSelectorSelector != nil {
+		in, out := &in.ContentSelectorSelector, &out.ContentSelectorSelector
+		*out = new(v2.Selector)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.ScriptName != nil {
 		in, out := &in.ScriptName, &out.ScriptName
@@ -659,10 +679,34 @@ func (in *RoleParameters) DeepCopyInto(out *RoleParameters) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.PrivilegeRefs != nil {
+		in, out := &in.PrivilegeRefs, &out.PrivilegeRefs
+		*out = make([]v2.Reference, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.PrivilegeSelector != nil {
+		in, out := &in.PrivilegeSelector, &out.PrivilegeSelector
+		*out = new(v2.Selector)
+		(*in).DeepCopyInto(*out)
+	}
 	if in.Roles != nil {
 		in, out := &in.Roles, &out.Roles
 		*out = make([]string, len(*in))
 		copy(*out, *in)
+	}
+	if in.RoleRefs != nil {
+		in, out := &in.RoleRefs, &out.RoleRefs
+		*out = make([]v2.Reference, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.RoleSelector != nil {
+		in, out := &in.RoleSelector, &out.RoleSelector
+		*out = new(v2.Selector)
+		(*in).DeepCopyInto(*out)
 	}
 }
 
@@ -994,6 +1038,18 @@ func (in *UserParameters) DeepCopyInto(out *UserParameters) {
 		in, out := &in.Roles, &out.Roles
 		*out = make([]string, len(*in))
 		copy(*out, *in)
+	}
+	if in.RoleRefs != nil {
+		in, out := &in.RoleRefs, &out.RoleRefs
+		*out = make([]v2.Reference, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
+	if in.RoleSelector != nil {
+		in, out := &in.RoleSelector, &out.RoleSelector
+		*out = new(v2.Selector)
+		(*in).DeepCopyInto(*out)
 	}
 	if in.PasswordSecretRef != nil {
 		in, out := &in.PasswordSecretRef, &out.PasswordSecretRef

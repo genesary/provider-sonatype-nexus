@@ -27,9 +27,29 @@ type RoleParameters struct {
 	// +kubebuilder:validation:Optional
 	Privileges []string `json:"privileges,omitempty"`
 
+	// PrivilegeRefs resolve privileges from Privilege managed resources in
+	// the Role's namespace. Resolved names replace privileges.
+	// +kubebuilder:validation:Optional
+	PrivilegeRefs []xpv2.Reference `json:"privilegeRefs,omitempty"`
+
+	// PrivilegeSelector selects Privilege managed resources in the Role's
+	// namespace to resolve privileges.
+	// +kubebuilder:validation:Optional
+	PrivilegeSelector *xpv2.Selector `json:"privilegeSelector,omitempty"`
+
 	// Roles are other roles contained by this role.
 	// +kubebuilder:validation:Optional
 	Roles []string `json:"roles,omitempty"`
+
+	// RoleRefs resolve roles from Role managed resources in the Role's
+	// namespace. Resolved IDs replace roles.
+	// +kubebuilder:validation:Optional
+	RoleRefs []xpv2.Reference `json:"roleRefs,omitempty"`
+
+	// RoleSelector selects Role managed resources in the Role's namespace,
+	// other than the Role itself, to resolve roles.
+	// +kubebuilder:validation:Optional
+	RoleSelector *xpv2.Selector `json:"roleSelector,omitempty"`
 }
 
 // RoleObservation is the observed state of a Role.

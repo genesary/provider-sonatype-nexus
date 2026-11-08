@@ -47,9 +47,29 @@ type PrivilegeParameters struct {
 	// +kubebuilder:validation:Optional
 	Repository *string `json:"repository,omitempty"`
 
+	// RepositoryRef resolves repository from a Repository managed resource
+	// in the Privilege's namespace.
+	// +kubebuilder:validation:Optional
+	RepositoryRef *xpv2.Reference `json:"repositoryRef,omitempty"`
+
+	// RepositorySelector selects a Repository managed resource in the
+	// Privilege's namespace to resolve repository.
+	// +kubebuilder:validation:Optional
+	RepositorySelector *xpv2.Selector `json:"repositorySelector,omitempty"`
+
 	// ContentSelector name for repository-content-selector type privilege.
 	// +kubebuilder:validation:Optional
 	ContentSelector *string `json:"contentSelector,omitempty"`
+
+	// ContentSelectorRef resolves contentSelector from a ContentSelector
+	// managed resource in the Privilege's namespace.
+	// +kubebuilder:validation:Optional
+	ContentSelectorRef *xpv2.Reference `json:"contentSelectorRef,omitempty"`
+
+	// ContentSelectorSelector selects a ContentSelector managed resource in
+	// the Privilege's namespace to resolve contentSelector.
+	// +kubebuilder:validation:Optional
+	ContentSelectorSelector *xpv2.Selector `json:"contentSelectorSelector,omitempty"`
 
 	// ScriptName for script type privilege.
 	// +kubebuilder:validation:Optional

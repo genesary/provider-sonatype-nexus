@@ -55,6 +55,11 @@ const (
 	// errFingerprint is returned when the repository credentials cannot be
 	// fingerprinted.
 	errFingerprint = "cannot fingerprint repository credentials"
+	// errEmptyBlobStoreName is returned when the spec declares storage
+	// without a blob store, which happens when an Optional blobStoreNameRef or
+	// blobStoreNameSelector resolves to nothing. Nexus would reject the
+	// request, and a repository cannot move to another blob store later.
+	errEmptyBlobStoreName = "spec.forProvider.storage.blobStoreName is empty: set it, or reference a BlobStore that is Ready"
 )
 
 // Setup creates a controller for Repository resources.
@@ -271,8 +276,12 @@ func (e *external) handlerFor(repoCR *repositoryv1alpha1.Repository) (formatHand
 }
 
 // desiredState assembles the desired repository, resolving the secrets the
-// spec references through kube.
+// spec references through kube. It fails when the spec cannot be applied.
 func (e *external) desiredState(ctx context.Context, kube client.Reader, repoCR *repositoryv1alpha1.Repository) (desiredRepo, error) {
+	if storage := repoCR.Spec.ForProvider.Storage; storage != nil && storage.BlobStoreName == "" {
+		return desiredRepo{}, errors.New(errEmptyBlobStoreName)
+	}
+
 	password, err := resolveHTTPClientPassword(ctx, kube, repoCR)
 	if err != nil {
 		return desiredRepo{}, errors.Wrap(err, errResolvePassword)
