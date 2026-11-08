@@ -2,6 +2,7 @@ package nexus
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"io"
 	"net"
@@ -22,6 +23,15 @@ func recordedSleeps(delays *[]time.Duration) func(context.Context, time.Duration
 
 		return ctx.Err()
 	}
+}
+
+// testJitterOffset is what offsetJitter adds to every backoff, so that tests
+// can tell a jittered backoff from a delay that is waited out as it is.
+const testJitterOffset = time.Millisecond
+
+// offsetJitter is a deterministic jitter adding testJitterOffset.
+func offsetJitter(backoff time.Duration) time.Duration {
+	return backoff + testJitterOffset
 }
 
 // TestRetryTransportStatuses checks which responses are retried, how many
@@ -60,14 +70,14 @@ func TestRetryTransportStatuses(t *testing.T) {
 			statuses:   []int{http.StatusBadGateway, http.StatusOK},
 			wantCalls:  2,
 			wantStatus: http.StatusOK,
-			wantDelays: []time.Duration{initialRetryDelay},
+			wantDelays: []time.Duration{initialRetryDelay + testJitterOffset},
 		},
 		"GatewayTimeoutIsRetriedWithBackoff": {
 			method:     http.MethodPut,
 			statuses:   []int{http.StatusGatewayTimeout, http.StatusGatewayTimeout, http.StatusGatewayTimeout},
 			wantCalls:  maxRequestAttempts,
 			wantStatus: http.StatusGatewayTimeout,
-			wantDelays: []time.Duration{initialRetryDelay, 2 * initialRetryDelay},
+			wantDelays: []time.Duration{initialRetryDelay + testJitterOffset, 2*initialRetryDelay + testJitterOffset},
 		},
 		"UnavailableHonorsRetryAfter": {
 			method:     http.MethodDelete,
@@ -84,13 +94,20 @@ func TestRetryTransportStatuses(t *testing.T) {
 			wantCalls:  1,
 			wantStatus: http.StatusTooManyRequests,
 		},
+		"RetryAfterTooLongForADurationIsReturned": {
+			method:     http.MethodGet,
+			statuses:   []int{http.StatusTooManyRequests},
+			retryAfter: "99999999999999999",
+			wantCalls:  1,
+			wantStatus: http.StatusTooManyRequests,
+		},
 		"InvalidRetryAfterFallsBackToBackoff": {
 			method:     http.MethodGet,
 			statuses:   []int{http.StatusTooManyRequests, http.StatusOK},
 			retryAfter: "Wed, 21 Oct 2026 07:28:00 GMT",
 			wantCalls:  2,
 			wantStatus: http.StatusOK,
-			wantDelays: []time.Duration{initialRetryDelay},
+			wantDelays: []time.Duration{initialRetryDelay + testJitterOffset},
 		},
 		"PostIsNeverRetried": {
 			method:     http.MethodPost,
@@ -126,6 +143,7 @@ func TestRetryTransportStatuses(t *testing.T) {
 
 			transport := newRetryTransport(http.DefaultTransport)
 			transport.sleep = recordedSleeps(&delays)
+			transport.jitter = offsetJitter
 
 			req, err := http.NewRequestWithContext(context.Background(), test.method, srv.URL, strings.NewReader("payload"))
 			if err != nil {
@@ -201,6 +219,18 @@ func TestRetryTransportErrors(t *testing.T) {
 			err:       context.Canceled,
 			wantCalls: 1,
 		},
+		"UnknownHostIsNotRetried": {
+			err:       &net.OpError{Op: "dial", Net: "tcp", Err: &net.DNSError{Err: "no such host", Name: "nexus.invalid", IsNotFound: true}},
+			wantCalls: 1,
+		},
+		"CertificateVerificationFailureIsNotRetried": {
+			err:       &tls.CertificateVerificationError{Err: errors.New("x509: certificate signed by unknown authority")},
+			wantCalls: 1,
+		},
+		"PlainHTTPServerIsNotRetried": {
+			err:       tls.RecordHeaderError{Msg: "first record does not look like a TLS handshake"},
+			wantCalls: 1,
+		},
 	}
 
 	for name, test := range tests {
@@ -262,6 +292,78 @@ func TestRetryTransportStopsWhenCancelled(t *testing.T) {
 
 	if base.calls != 1 {
 		t.Errorf("RoundTrip() sent %d requests, want 1", base.calls)
+	}
+}
+
+// TestRetryTransportReturnsWhenDeadlineIsTooClose checks that a response is
+// returned as it is, rather than waited on, when the request deadline would
+// expire before the next attempt.
+func TestRetryTransportReturnsWhenDeadlineIsTooClose(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int32
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+		w.Header().Set("Retry-After", "5")
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	t.Cleanup(srv.Close)
+
+	var delays []time.Duration
+
+	transport := newRetryTransport(http.DefaultTransport)
+	transport.sleep = recordedSleeps(&delays)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	t.Cleanup(cancel)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL, http.NoBody)
+	if err != nil {
+		t.Fatalf("NewRequest() error = %v", err)
+	}
+
+	resp, err := transport.RoundTrip(req)
+	if err != nil {
+		t.Fatalf("RoundTrip() error = %v", err)
+	}
+
+	_ = resp.Body.Close()
+
+	if resp.StatusCode != http.StatusServiceUnavailable || calls.Load() != 1 || len(delays) != 0 {
+		t.Errorf("RoundTrip() = %d after %d requests and waits %v, want %d after 1 request and no wait",
+			resp.StatusCode, calls.Load(), delays, http.StatusServiceUnavailable)
+	}
+}
+
+// TestSpreadBackoff checks that backoffs are spread within
+// retryJitterFraction of their value, and actually spread.
+func TestSpreadBackoff(t *testing.T) {
+	t.Parallel()
+
+	const draws = 1000
+
+	backoff := initialRetryDelay
+	lowest := backoff - time.Duration(float64(backoff)*retryJitterFraction)
+	highest := backoff + time.Duration(float64(backoff)*retryJitterFraction)
+
+	seen := make(map[time.Duration]struct{})
+
+	for range draws {
+		delay := spreadBackoff(backoff)
+		if delay < lowest || delay > highest {
+			t.Fatalf("spreadBackoff(%v) = %v, want within [%v, %v]", backoff, delay, lowest, highest)
+		}
+
+		seen[delay] = struct{}{}
+	}
+
+	if len(seen) < 2 {
+		t.Errorf("spreadBackoff(%v) returned %d distinct delays over %d draws, want them spread", backoff, len(seen), draws)
+	}
+
+	if got := spreadBackoff(0); got != 0 {
+		t.Errorf("spreadBackoff(0) = %v, want 0", got)
 	}
 }
 

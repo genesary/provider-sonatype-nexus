@@ -2,7 +2,10 @@ package nexus
 
 import (
 	"context"
+	"crypto/tls"
 	"io"
+	"math"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"strconv"
@@ -21,6 +24,11 @@ const (
 	// attempts. Delays stay short so that they use little of RequestTimeout,
 	// which bounds all the attempts of a request together.
 	initialRetryDelay = 500 * time.Millisecond
+
+	// retryJitterFraction spreads each backoff delay by up to this fraction
+	// of its value, in both directions, so that workers failing together do
+	// not retry together. The delay keeps its mean.
+	retryJitterFraction = 0.5
 
 	// maxRetryDelay caps the backoff between attempts, and the wait that a
 	// Retry-After header may ask for. A response asking for longer is
@@ -46,12 +54,15 @@ type retryTransport struct {
 
 	// sleep waits for delay, or until ctx is done. Tests replace it.
 	sleep func(ctx context.Context, delay time.Duration) error
+
+	// jitter spreads a backoff delay. Tests replace it.
+	jitter func(backoff time.Duration) time.Duration
 }
 
 // newRetryTransport returns a retryTransport sending its requests through
 // base.
 func newRetryTransport(base http.RoundTripper) *retryTransport {
-	return &retryTransport{base: base, sleep: sleepContext}
+	return &retryTransport{base: base, sleep: sleepContext, jitter: spreadBackoff}
 }
 
 // RoundTrip implements [http.RoundTripper].
@@ -68,8 +79,8 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 		resp, err := t.base.RoundTrip(attemptReq)
 
-		delay, retry := retryDelay(resp, err, attempt)
-		if !retry || req.Context().Err() != nil {
+		delay, retry := t.retryDelay(resp, err, attempt)
+		if !retry || !withinDeadline(req.Context(), delay) {
 			if err != nil {
 				return nil, err
 			}
@@ -118,13 +129,14 @@ func rewind(req *http.Request, attempt int) (*http.Request, error) {
 }
 
 // retryDelay returns how long to wait before sending attempt+1, and whether
-// to send it at all, given the outcome of attempt.
-func retryDelay(resp *http.Response, err error, attempt int) (time.Duration, bool) {
+// to send it at all, given the outcome of attempt. The backoff is spread by
+// t.jitter, but a Retry-After delay is waited out as the server asked.
+func (t *retryTransport) retryDelay(resp *http.Response, err error, attempt int) (time.Duration, bool) {
 	if attempt >= maxRequestAttempts {
 		return 0, false
 	}
 
-	backoff := min(initialRetryDelay<<(attempt-1), maxRetryDelay)
+	backoff := min(t.jitter(initialRetryDelay<<(attempt-1)), maxRetryDelay)
 
 	if err != nil {
 		return backoff, isRetryableError(err)
@@ -145,11 +157,53 @@ func retryDelay(resp *http.Response, err error, attempt int) (time.Duration, boo
 	}
 }
 
+// spreadBackoff returns a delay drawn uniformly within retryJitterFraction of
+// backoff, in both directions.
+func spreadBackoff(backoff time.Duration) time.Duration {
+	spread := time.Duration(float64(backoff) * retryJitterFraction)
+	if spread <= 0 {
+		return backoff
+	}
+
+	return backoff - spread + rand.N(2*spread+1) //nolint:gosec // Spreading retries needs no secure randomness.
+}
+
+// withinDeadline reports whether ctx is still live and leaves more than delay
+// before its deadline. Waiting out a delay that the deadline cuts short would
+// hold the reconcile worker for nothing, and replace the response or error
+// worth reporting with a timeout.
+func withinDeadline(ctx context.Context, delay time.Duration) bool {
+	if ctx.Err() != nil {
+		return false
+	}
+
+	deadline, set := ctx.Deadline()
+
+	return !set || time.Until(deadline) > delay
+}
+
 // isRetryableError reports whether a transport error is worth another
 // attempt. A timeout is not: a Nexus that stalls would make each attempt wait
-// out the whole request timeout. Neither is a cancelled or expired context.
+// out the whole request timeout. Neither is a cancelled or expired context,
+// nor a misconfiguration that every attempt would hit again: an unknown host,
+// a certificate that fails verification, or a server not speaking TLS.
 func isRetryableError(err error) bool {
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) && dnsErr.IsNotFound {
+		return false
+	}
+
+	var certErr *tls.CertificateVerificationError
+	if errors.As(err, &certErr) {
+		return false
+	}
+
+	var recordErr tls.RecordHeaderError
+	if errors.As(err, &recordErr) {
 		return false
 	}
 
@@ -159,11 +213,16 @@ func isRetryableError(err error) bool {
 }
 
 // parseRetryAfter parses the delay-seconds form of a Retry-After header. The
-// HTTP-date form is not supported, and reads as unset.
+// HTTP-date form is not supported, and reads as unset. A delay too long for a
+// [time.Duration] reads as the longest one, rather than wrapping around.
 func parseRetryAfter(value string) (time.Duration, bool) {
 	seconds, err := strconv.Atoi(value)
 	if err != nil || seconds < 0 {
 		return 0, false
+	}
+
+	if int64(seconds) > math.MaxInt64/int64(time.Second) {
+		return time.Duration(math.MaxInt64), true
 	}
 
 	return time.Duration(seconds) * time.Second, true
