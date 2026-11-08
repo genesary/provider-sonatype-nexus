@@ -205,15 +205,20 @@ func TestGenerateEmailConfigurationUpdate(t *testing.T) {
 		}
 
 		for name, value := range map[string]*bool{
-			"StartTlsEnabled":               got.StartTlsEnabled,
-			"StartTlsRequired":              got.StartTlsRequired,
-			"SslOnConnectEnabled":           got.SslOnConnectEnabled,
-			"SslServerIdentityCheckEnabled": got.SslServerIdentityCheckEnabled,
-			"NexusTrustStoreEnabled":        got.NexusTrustStoreEnabled,
+			"StartTlsEnabled":        got.StartTlsEnabled,
+			"StartTlsRequired":       got.StartTlsRequired,
+			"SslOnConnectEnabled":    got.SslOnConnectEnabled,
+			"NexusTrustStoreEnabled": got.NexusTrustStoreEnabled,
 		} {
 			if value == nil || *value {
 				t.Errorf("%s = %v, want an explicit false", name, value)
 			}
+		}
+
+		// Certificate verification is on unless the spec turns it off, so
+		// enabling TLS never silently accepts any certificate.
+		if value := got.SslServerIdentityCheckEnabled; value == nil || !*value {
+			t.Errorf("SslServerIdentityCheckEnabled = %v, want the default true", value)
 		}
 	})
 }

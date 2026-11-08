@@ -75,6 +75,11 @@ func IsResetEmailConfiguration(observed *v395.ApiEmailConfiguration) bool {
 // GenerateEmailConfigurationUpdate builds the email server configuration
 // from the CR spec and the resolved password, empty when the spec references
 // none.
+//
+// An empty password is sent as no password at all. Nexus does not keep the
+// stored password then: a PUT without one clears it, so removing
+// passwordSecretRef or emptying the Secret value takes effect (verified on
+// Nexus 3.96, which treats an omitted, null, empty or blank password alike).
 func GenerateEmailConfigurationUpdate(params *instancev1alpha1.EmailConfigurationParameters, password string) v395.ApiEmailConfiguration {
 	config := v395.ApiEmailConfiguration{
 		Enabled:                       new(ptr.Deref(params.Enabled, true)),
@@ -86,7 +91,7 @@ func GenerateEmailConfigurationUpdate(params *instancev1alpha1.EmailConfiguratio
 		StartTlsEnabled:               new(ptr.Deref(params.StartTLSEnabled, false)),
 		StartTlsRequired:              new(ptr.Deref(params.StartTLSRequired, false)),
 		SslOnConnectEnabled:           new(ptr.Deref(params.SSLOnConnectEnabled, false)),
-		SslServerIdentityCheckEnabled: new(ptr.Deref(params.SSLServerIdentityCheckEnabled, false)),
+		SslServerIdentityCheckEnabled: new(ptr.Deref(params.SSLServerIdentityCheckEnabled, true)),
 		NexusTrustStoreEnabled:        new(ptr.Deref(params.NexusTrustStoreEnabled, false)),
 	}
 
@@ -103,25 +108,12 @@ func GenerateEmailConfigurationUpdate(params *instancev1alpha1.EmailConfiguratio
 // reports an unset user name or subject prefix as either null or an empty
 // string, so both count as unset.
 func IsEmailConfigurationUpToDate(cr *instancev1alpha1.EmailConfiguration, observed *v395.ApiEmailConfiguration) bool {
-	return desiredEmailConfigurationObservation(&cr.Spec.ForProvider) == GenerateEmailConfigurationObservation(observed)
-}
+	// The desired configuration goes through the same conversion as the
+	// observed one, so the spec defaults are stated once, in
+	// GenerateEmailConfigurationUpdate.
+	desired := GenerateEmailConfigurationUpdate(&cr.Spec.ForProvider, "")
 
-// desiredEmailConfigurationObservation returns the observation of a Nexus
-// email server configuration matching the spec.
-func desiredEmailConfigurationObservation(params *instancev1alpha1.EmailConfigurationParameters) instancev1alpha1.EmailConfigurationObservation {
-	return instancev1alpha1.EmailConfigurationObservation{
-		Enabled:                       ptr.Deref(params.Enabled, true),
-		Host:                          params.Host,
-		Port:                          int(helpers.ClampInt32(params.Port)),
-		Username:                      ptr.Deref(params.Username, ""),
-		FromAddress:                   params.FromAddress,
-		SubjectPrefix:                 ptr.Deref(params.SubjectPrefix, ""),
-		StartTLSEnabled:               ptr.Deref(params.StartTLSEnabled, false),
-		StartTLSRequired:              ptr.Deref(params.StartTLSRequired, false),
-		SSLOnConnectEnabled:           ptr.Deref(params.SSLOnConnectEnabled, false),
-		SSLServerIdentityCheckEnabled: ptr.Deref(params.SSLServerIdentityCheckEnabled, false),
-		NexusTrustStoreEnabled:        ptr.Deref(params.NexusTrustStoreEnabled, false),
-	}
+	return GenerateEmailConfigurationObservation(&desired) == GenerateEmailConfigurationObservation(observed)
 }
 
 // GenerateEmailConfigurationObservation converts the email server

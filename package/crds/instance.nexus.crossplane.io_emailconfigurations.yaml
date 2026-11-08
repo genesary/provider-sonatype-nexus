@@ -97,6 +97,7 @@ spec:
                       NexusTrustStoreEnabled verifies the SMTP server certificate against
                       the Nexus truststore (see SecuritySSLTruststore) rather than the JVM
                       one.
+                      If unset, will default to false.
                     type: boolean
                   passwordSecretRef:
                     description: |-
@@ -119,22 +120,29 @@ spec:
                     minimum: 1
                     type: integer
                   sslOnConnectEnabled:
-                    description: SSLOnConnectEnabled connects to the SMTP server over
-                      SSL/TLS.
+                    description: |-
+                      SSLOnConnectEnabled connects to the SMTP server over SSL/TLS.
+                      If unset, will default to false.
                     type: boolean
                   sslServerIdentityCheckEnabled:
+                    default: true
                     description: |-
                       SSLServerIdentityCheckEnabled verifies the SMTP server certificate
-                      when TLS or SSL is used.
+                      when STARTTLS or SSL/TLS is used. Disabling it lets anyone able to
+                      intercept the connection read the SMTP password and the emails. It has
+                      no effect on a plain connection.
+                      If unset, will default to true.
                     type: boolean
                   startTlsEnabled:
-                    description: StartTLSEnabled enables STARTTLS when the SMTP server
-                      supports it.
+                    description: |-
+                      StartTLSEnabled enables STARTTLS when the SMTP server supports it.
+                      If unset, will default to false.
                     type: boolean
                   startTlsRequired:
                     description: |-
                       StartTLSRequired refuses to send emails when the SMTP server does not
                       support STARTTLS.
+                      If unset, will default to false.
                     type: boolean
                   subjectPrefix:
                     description: SubjectPrefix is prepended to the subject of every

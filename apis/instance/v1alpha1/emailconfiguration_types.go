@@ -10,8 +10,8 @@ import (
 
 // EmailConfigurationParameters are the configurable Nexus email server
 // settings (Administration, System, Email Server). They replace the whole
-// Nexus configuration: an unset boolean is applied as false and an unset
-// string as empty.
+// Nexus configuration: an unset boolean is applied as its documented default
+// and an unset string as empty.
 type EmailConfigurationParameters struct {
 	// Enabled indicates whether Nexus sends emails.
 	// If unset, will default to true.
@@ -55,26 +55,34 @@ type EmailConfigurationParameters struct {
 	SubjectPrefix *string `json:"subjectPrefix,omitempty"`
 
 	// StartTLSEnabled enables STARTTLS when the SMTP server supports it.
+	// If unset, will default to false.
 	// +kubebuilder:validation:Optional
 	StartTLSEnabled *bool `json:"startTlsEnabled,omitempty"`
 
 	// StartTLSRequired refuses to send emails when the SMTP server does not
 	// support STARTTLS.
+	// If unset, will default to false.
 	// +kubebuilder:validation:Optional
 	StartTLSRequired *bool `json:"startTlsRequired,omitempty"`
 
 	// SSLOnConnectEnabled connects to the SMTP server over SSL/TLS.
+	// If unset, will default to false.
 	// +kubebuilder:validation:Optional
 	SSLOnConnectEnabled *bool `json:"sslOnConnectEnabled,omitempty"`
 
 	// SSLServerIdentityCheckEnabled verifies the SMTP server certificate
-	// when TLS or SSL is used.
+	// when STARTTLS or SSL/TLS is used. Disabling it lets anyone able to
+	// intercept the connection read the SMTP password and the emails. It has
+	// no effect on a plain connection.
+	// If unset, will default to true.
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=true
 	SSLServerIdentityCheckEnabled *bool `json:"sslServerIdentityCheckEnabled,omitempty"`
 
 	// NexusTrustStoreEnabled verifies the SMTP server certificate against
 	// the Nexus truststore (see SecuritySSLTruststore) rather than the JVM
 	// one.
+	// If unset, will default to false.
 	// +kubebuilder:validation:Optional
 	NexusTrustStoreEnabled *bool `json:"nexusTrustStoreEnabled,omitempty"`
 }

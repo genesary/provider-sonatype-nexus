@@ -50,6 +50,8 @@ func newObservedConfiguration() *v395.ApiEmailConfiguration {
 		Username:        new("nexus"),
 		FromAddress:     "nexus@example.com",
 		StartTlsEnabled: new(true),
+		// Applied by default, as the spec leaves it unset.
+		SslServerIdentityCheckEnabled: new(true),
 	}
 }
 
