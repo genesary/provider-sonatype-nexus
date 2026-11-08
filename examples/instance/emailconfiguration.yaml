@@ -1,0 +1,39 @@
+---
+# Secret containing the SMTP password
+apiVersion: v1
+kind: Secret
+metadata:
+  name: smtp-credentials
+  namespace: default
+type: Opaque
+stringData:
+  password: "smtpPassword123!"
+---
+# Nexus resolves the host when the settings are applied. It refuses a host it
+# cannot resolve, and, while SSRF protection is enabled, a host resolving to a
+# private or loopback address: allow such a host in SSRFProtection
+# (allowedDomains or allowedIPs) first.
+apiVersion: instance.nexus.crossplane.io/v1alpha1
+kind: EmailConfiguration
+metadata:
+  name: smtp
+  namespace: default
+spec:
+  forProvider:
+    enabled: true
+    host: smtp.example.com
+    port: 587
+    username: nexus-notifications@example.com
+    passwordSecretRef:
+      name: smtp-credentials
+      key: password
+    fromAddress: nexus@example.com
+    subjectPrefix: "[Nexus]"
+    startTlsEnabled: true
+    startTlsRequired: true
+    sslOnConnectEnabled: false
+    sslServerIdentityCheckEnabled: true
+    nexusTrustStoreEnabled: false
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

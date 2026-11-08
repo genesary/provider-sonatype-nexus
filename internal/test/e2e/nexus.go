@@ -240,3 +240,22 @@ func (f *Framework) FetchScript(name string) (*v395.ScriptXO, error) {
 func (f *Framework) SetScript(script v395.ScriptXO) error {
 	return nexusclient.APIError(f.Nexus.ScriptAPI.UpdateScript(context.Background(), script.Name).ScriptXO(script).Execute())
 }
+
+// FetchEmailConfiguration returns the Nexus email server configuration.
+func (f *Framework) FetchEmailConfiguration() (*v395.ApiEmailConfiguration, error) {
+	config, resp, err := f.Nexus.EmailAPI.ListEmail(context.Background()).Execute()
+
+	return config, nexusclient.APIError(resp, err)
+}
+
+// SetEmailConfiguration replaces the Nexus email server configuration
+// directly, bypassing the provider.
+func (f *Framework) SetEmailConfiguration(config v395.ApiEmailConfiguration) error {
+	return nexusclient.APIError(f.Nexus.EmailAPI.UpdateEmail(context.Background()).ApiEmailConfiguration(config).Execute())
+}
+
+// ResetEmailConfiguration resets the Nexus email server configuration
+// directly, bypassing the provider.
+func (f *Framework) ResetEmailConfiguration() error {
+	return nexusclient.APIError(f.Nexus.EmailAPI.DeleteEmail(context.Background()).Execute())
+}
