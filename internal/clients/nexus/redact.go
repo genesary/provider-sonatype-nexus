@@ -1,6 +1,9 @@
 package nexus
 
 import (
+	"context"
+	"io"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -47,6 +50,8 @@ func RedactURLError(err error) error {
 		return err
 	}
 
+	// The url.Error is redacted in place, so that errors.As on any error
+	// sharing it, including err itself, finds the redacted URL.
 	urlErr.URL = redacted
 
 	// Wrappers such as errors.Wrap compute their message eagerly, so it may
@@ -65,8 +70,49 @@ func RedactURLError(err error) error {
 	return err
 }
 
+// ParseURL is [url.Parse] with any error passed through RedactURLError. Code
+// outside this package parses URLs through it, which the forbidigo linter
+// enforces, so that a URL holding secrets never reaches an error message.
+func ParseURL(rawURL string) (*url.URL, error) {
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, RedactURLError(err)
+	}
+
+	return parsed, nil
+}
+
+// NewRequest is [http.NewRequestWithContext] with any error passed through
+// RedactURLError. Code outside this package builds requests through it, which
+// the forbidigo linter enforces.
+func NewRequest(ctx context.Context, method, rawURL string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, rawURL, body)
+	if err != nil {
+		return nil, RedactURLError(err)
+	}
+
+	return req, nil
+}
+
+// Do sends req with client, passing any error through RedactURLError. Code
+// outside this package sends requests through it, which the forbidigo linter
+// enforces.
+func Do(client *http.Client, req *http.Request) (*http.Response, error) {
+	resp, err := client.Do(req) //nolint:gosec // G704: requesting a user-configured URL is the point: the ProviderConfig Nexus URL or a License endpointUrl
+	if err != nil {
+		return nil, RedactURLError(err)
+	}
+
+	return resp, nil
+}
+
 // redactURL returns rawURL without its query string, fragment and userinfo.
+// It is idempotent: redacting an already redacted URL returns it unchanged.
 func redactURL(rawURL string) string {
+	if rawURL == redactedURL {
+		return rawURL
+	}
+
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		return redactedURL

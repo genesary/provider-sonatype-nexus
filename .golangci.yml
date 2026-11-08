@@ -31,6 +31,26 @@ linters:
       check-blank: false
       exclude-functions:
         - fmt:.*,io/ioutil:^Read.*
+    forbidigo:
+      analyze-types: true
+      forbid:
+        # forbidigo's default rule, which setting forbid replaces.
+        - pattern: ^(fmt\.Print(|f|ln)|print|println)$
+        # These return errors that quote the URL, which can carry secrets:
+        # userinfo, a pre-signed signature, an access token. Use
+        # nexus.ParseURL, nexus.NewRequest and nexus.Do, which redact it.
+        - pattern: ^url\.Parse(RequestURI)?$
+          pkg: ^net/url$
+          msg: use nexus.ParseURL, which redacts the URL from its error
+        - pattern: ^http\.NewRequest(WithContext)?$
+          pkg: ^net/http$
+          msg: use nexus.NewRequest, which redacts the URL from its error
+        - pattern: ^http\.(Get|Head|Post|PostForm)$
+          pkg: ^net/http$
+          msg: use nexus.NewRequest and nexus.Do, which redact the URL from their errors
+        - pattern: ^http\.Client\.(Do|Get|Head|Post|PostForm)$
+          pkg: ^net/http$
+          msg: use nexus.Do, which redacts the URL from its error
     goconst:
       min-occurrences: 2
       match-constant: false
@@ -123,6 +143,12 @@ linters:
           - gocritic
         path: _test\.go
         text: (unnamedResult|exitAfterDefer)
+      # The nexus client package implements the redacting wrappers that the
+      # forbidigo rules point everyone else to.
+      - linters:
+          - forbidigo
+        path: internal/clients/nexus/
+        text: "use nexus\\."
       # The generated Nexus client reads and closes every response body before
       # returning, and hands back an in-memory copy, so the responses its
       # callers receive hold no connection to release.

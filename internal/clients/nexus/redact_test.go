@@ -88,7 +88,12 @@ func TestAPIErrorRedactsTransportErrors(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	_, resp, err := client.SecurityManagementUsersAPI.ListSecurityUsers(context.Background()).UserId("secret-user").Execute()
+	// A cancelled context fails the request with a url.Error at once, rather
+	// than after the retry transport has backed off.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, resp, err := client.SecurityManagementUsersAPI.ListSecurityUsers(ctx).UserId("secret-user").Execute()
 	if resp != nil {
 		_ = resp.Body.Close()
 	}
@@ -107,23 +112,82 @@ func TestAPIErrorRedactsTransportErrors(t *testing.T) {
 	}
 }
 
-// TestRedactURLErrorOfARealRequest checks the redaction of an error returned
-// by net/http itself.
-func TestRedactURLErrorOfARealRequest(t *testing.T) {
+// TestDoRedactsTransportErrors checks that Do does not report the query of
+// the URL of a request that fails at the transport layer.
+func TestDoRedactsTransportErrors(t *testing.T) {
 	t.Parallel()
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, "http://127.0.0.1:1/license?token=secret", http.NoBody)
+	req, err := NewRequest(context.Background(), http.MethodGet, "http://127.0.0.1:1/license?token=secret", http.NoBody)
 	if err != nil {
 		t.Fatalf("NewRequest() error = %v", err)
 	}
 
-	resp, err := (&http.Client{}).Do(req)
+	resp, err := Do(&http.Client{}, req)
 	if resp != nil {
 		_ = resp.Body.Close()
 	}
 
-	got := RedactURLError(pkgerrors.Wrap(err, "endpoint request failed"))
-	if got == nil || strings.Contains(got.Error(), "secret") {
-		t.Errorf("RedactURLError() = %v, want the error without the token", got)
+	if err == nil || strings.Contains(err.Error(), "secret") {
+		t.Errorf("Do() error = %v, want an error without the token", err)
+	}
+
+	if !strings.Contains(err.Error(), "http://127.0.0.1:1/license") {
+		t.Errorf("Do() error = %q does not name the request path", err.Error())
+	}
+}
+
+// TestParseAndNewRequestRedactUnparseableURLs checks that ParseURL and
+// NewRequest do not report a URL that does not parse.
+func TestParseAndNewRequestRedactUnparseableURLs(t *testing.T) {
+	t.Parallel()
+
+	const rawURL = "https://admin:p%ss@nexus.example.com/?token=secret"
+
+	_, parseErr := ParseURL(rawURL)
+	_, requestErr := NewRequest(context.Background(), http.MethodGet, rawURL, http.NoBody)
+
+	for name, err := range map[string]error{"ParseURL": parseErr, "NewRequest": requestErr} {
+		if err == nil {
+			t.Errorf("%s() error = nil, want a parse error", name)
+
+			continue
+		}
+
+		if strings.Contains(err.Error(), "admin") || strings.Contains(err.Error(), "secret") {
+			t.Errorf("%s() error = %q reports the URL", name, err.Error())
+		}
+	}
+}
+
+// TestRedactURLErrorIsIdempotent checks that redacting an error twice leaves
+// it as the first redaction did.
+func TestRedactURLErrorIsIdempotent(t *testing.T) {
+	t.Parallel()
+
+	for _, rawURL := range []string{
+		"https://bucket.example.com/license.lic?X-Amz-Signature=secret",
+		"https://nexus.example.com/%zz?token=secret",
+	} {
+		once := RedactURLError(&url.Error{Op: "Get", URL: rawURL, Err: errors.New("failed")}).Error()
+
+		twice := RedactURLError(RedactURLError(&url.Error{Op: "Get", URL: rawURL, Err: errors.New("failed")})).Error()
+		if twice != once {
+			t.Errorf("RedactURLError() twice = %q, want %q", twice, once)
+		}
+	}
+}
+
+// TestNewClientRedactsAnUnparseableURL checks that a Nexus URL that does not
+// parse, for example because of a password with a stray %, is not reported.
+func TestNewClientRedactsAnUnparseableURL(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewClient(Credentials{URL: "https://admin:p%ss@nexus.example.com"})
+	if err == nil {
+		t.Fatal("NewClient() error = nil, want a parse error")
+	}
+
+	if strings.Contains(err.Error(), "admin") || strings.Contains(err.Error(), "p%ss") {
+		t.Errorf("NewClient() error = %q reports the URL userinfo", err.Error())
 	}
 }

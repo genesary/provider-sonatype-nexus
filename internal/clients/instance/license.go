@@ -96,7 +96,7 @@ func (c *licenseClient) InstallLicense(ctx context.Context, licenseData []byte) 
 		return errors.Wrap(err, "cannot resolve the Nexus API URL")
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+licenseAPIPath, bytes.NewReader(licenseData))
+	req, err := nexus.NewRequest(ctx, http.MethodPost, baseURL+licenseAPIPath, bytes.NewReader(licenseData))
 	if err != nil {
 		return errors.Wrap(err, "cannot build POST license request")
 	}
@@ -104,9 +104,9 @@ func (c *licenseClient) InstallLicense(ctx context.Context, licenseData []byte) 
 	req.Header.Set("Content-Type", "application/octet-stream")
 	req.Header.Set("User-Agent", cfg.UserAgent)
 
-	resp, err := cfg.HTTPClient.Do(req)
+	resp, err := nexus.Do(cfg.HTTPClient, req)
 	if err != nil {
-		return errors.Wrap(nexus.RedactURLError(err), "POST license request failed")
+		return errors.Wrap(err, "POST license request failed")
 	}
 
 	defer resp.Body.Close() //nolint:errcheck // response body close error is not actionable here

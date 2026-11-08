@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -31,7 +30,7 @@ func NewClient(creds Credentials) (*v395.APIClient, error) {
 		return nil, errors.New("nexus URL is empty")
 	}
 
-	nexusURL, err := url.Parse(creds.URL)
+	nexusURL, err := ParseURL(creds.URL)
 	if err != nil {
 		return nil, errors.Wrap(err, "cannot parse the nexus URL")
 	}
