@@ -4,7 +4,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: nexus-username
-  namespace: crossplane-system
+  namespace: default
 type: Opaque
 stringData:
   username: admin
@@ -14,7 +14,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: nexus-password
-  namespace: crossplane-system
+  namespace: default
 type: Opaque
 stringData:
   password: admin123
@@ -24,7 +24,7 @@ apiVersion: nexus.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
   name: default
-  namespace: crossplane-system
+  namespace: default
 spec:
   url: http://nexus.example.com:8081
   insecureSkipVerify: false
@@ -51,11 +51,11 @@ spec:
     source: Secret
     secretRef:
       name: nexus-username
-      namespace: crossplane-system
+      namespace: default
       key: username
   password:
     source: Secret
     secretRef:
       name: nexus-password
-      namespace: crossplane-system
+      namespace: default
       key: password

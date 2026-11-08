@@ -8,54 +8,33 @@ This provider enables you to manage Nexus Repository Manager resources using Kub
 
 ## Supported Resources
 
-| Resource | Description |
-|----------|-------------|
-| `ProviderConfig` | Configuration for connecting to Nexus |
-| `BlobStore` | File or S3-based blob storage |
-| `Repository` | Repositories for various formats (hosted, proxy, group) |
-| `User` | Nexus user accounts |
-| `Role` | Security roles with privileges |
-| `Privilege` | Security privileges (application, repository-view, wildcard) |
-| `ContentSelector` | Content selectors for fine-grained access control |
-| `SecurityRealm` | Security realm configuration |
-| `AnonymousAccess` | Anonymous access settings |
-| `LDAP` | LDAP server configuration |
-| `SAML` | SAML identity provider configuration |
-| `UserTokenConfiguration` | User token settings |
+| Resource | API group | Description |
+| ---------- | ----------- | ------------- |
+| `ProviderConfig` | `nexus.crossplane.io` | Connection to a Nexus instance, used by the managed resources of its namespace |
+| `ClusterProviderConfig` | `nexus.crossplane.io` | Connection to a Nexus instance, usable from any namespace |
+| `Repository` | `content.nexus.crossplane.io` | Repositories for various formats (hosted, proxy, group) |
+| `CleanupPolicy` | `content.nexus.crossplane.io` | Component cleanup policies |
+| `ContentSelector` | `content.nexus.crossplane.io` | Content selectors for fine-grained access control |
+| `RoutingRule` | `content.nexus.crossplane.io` | Routing rules for proxy repositories |
+| `User` | `iam.nexus.crossplane.io` | Nexus user accounts |
+| `Role` | `iam.nexus.crossplane.io` | Security roles with privileges |
+| `Privilege` | `iam.nexus.crossplane.io` | Security privileges (application, repository-view, wildcard, ...) |
+| `AnonymousAccess` | `iam.nexus.crossplane.io` | Anonymous access settings |
+| `LDAP` | `iam.nexus.crossplane.io` | LDAP server configuration |
+| `SAML` | `iam.nexus.crossplane.io` | SAML identity provider configuration |
+| `UserTokenConfiguration` | `iam.nexus.crossplane.io` | User token settings |
+| `BlobStore` | `instance.nexus.crossplane.io` | File or S3-based blob storage |
+| `Capability` | `instance.nexus.crossplane.io` | Nexus capabilities |
+| `IQServerConfiguration` | `instance.nexus.crossplane.io` | Sonatype IQ Server integration |
+| `License` | `instance.nexus.crossplane.io` | Nexus Pro license |
+| `SecurityRealm` | `instance.nexus.crossplane.io` | Active security realms and their order |
+| `SecuritySSLTruststore` | `instance.nexus.crossplane.io` | Certificates of the Nexus SSL truststore |
 
-### Supported Repository Formats
+Repositories are supported for Maven2, npm, Docker and 16 other formats. See [Supported Repository Formats](docs/repository-formats.md) for the full list and the types of each.
 
-The provider supports the following repository formats:
+## Quick Start
 
-- **Maven2** (hosted, proxy, group)
-- **npm** (hosted, proxy, group)
-- **Docker** (hosted, proxy, group)
-- **Raw** (hosted, proxy, group)
-- **NuGet** (hosted, proxy, group)
-- **PyPI** (hosted, proxy, group)
-- **RubyGems** (hosted, proxy, group)
-- **Yum** (hosted, proxy, group)
-- **APT** (hosted, proxy)
-- **Helm** (hosted, proxy)
-- **Go** (proxy, group)
-- **R** (hosted, proxy, group)
-- **Conan** (proxy)
-- **Conda** (proxy)
-- **Cocoapods** (proxy)
-- **Bower** (hosted, proxy, group)
-- **Git LFS** (hosted)
-- **Cargo** (hosted, proxy, group)
-
-## Installation
-
-### Prerequisites
-
-- Kubernetes cluster with Crossplane installed
-- Sonatype Nexus Repository Manager instance
-
-### Install via Crossplane (Recommended)
-
-Apply a `Provider` manifest to let Crossplane manage the installation:
+**1. Install the provider** (requires a cluster with Crossplane and a Nexus instance):
 
 ```yaml
 apiVersion: pkg.crossplane.io/v1
@@ -63,42 +42,19 @@ kind: Provider
 metadata:
   name: provider-sonatype-nexus
 spec:
-  package: ghcr.io/genesary/provider-sonatype-nexus:v0.1.0
+  package: ghcr.io/genesary/provider-sonatype-nexus:v0.3.1
 ```
 
-Crossplane will pull the package, extract the CRDs and RBAC rules, and start the controller automatically.
+Or with the CLI: `crossplane xpkg install provider ghcr.io/genesary/provider-sonatype-nexus:v0.3.1`
 
-### Install via CLI
-
-```bash
-kubectl crossplane install provider ghcr.io/genesary/provider-sonatype-nexus:v0.1.0
-```
-
-### Manual Installation (without Crossplane package manager)
-
-If you prefer to deploy the controller directly:
-
-```bash
-# Apply CRDs
-kubectl apply -f package/crds/
-
-# Deploy the controller (adjust the image tag as needed)
-kubectl apply -f e2e/manifests/provider.yaml
-```
-
-## Configuration
-
-### Create Secrets with Nexus Credentials
-
-Each sensitive field is referenced from its own Kubernetes Secret, allowing credentials
-provisioned outside of Crossplane to be referenced directly:
+**2. Store the credentials.** Each sensitive field is referenced from its own Secret:
 
 ```yaml
 apiVersion: v1
 kind: Secret
 metadata:
   name: nexus-username
-  namespace: crossplane-system
+  namespace: default
 type: Opaque
 stringData:
   username: admin
@@ -107,20 +63,20 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: nexus-password
-  namespace: crossplane-system
+  namespace: default
 type: Opaque
 stringData:
   password: admin123
 ```
 
-### Create a ProviderConfig
+**3. Create a ProviderConfig** in the namespace of the managed resources it serves, `default` in every example:
 
 ```yaml
 apiVersion: nexus.crossplane.io/v1alpha1
 kind: ProviderConfig
 metadata:
   name: default
-  namespace: crossplane-system
+  namespace: default
 spec:
   url: http://nexus.example.com:8081
   insecureSkipVerify: false
@@ -136,511 +92,24 @@ spec:
       key: password
 ```
 
-Secret references on namespaced objects (ProviderConfig and every managed
-resource) have no `namespace` field: they always refer to Secrets in the object's own
-namespace. Only a ClusterProviderConfig names the namespace of its Secrets.
-
-### Provider Flags
-
-The provider binary takes the flags below. Each one can also be set through
-the environment variable in parentheses. Set them through a
-[`DeploymentRuntimeConfig`](https://docs.crossplane.io/latest/packages/providers/#runtime-configuration),
-for example `args: ["--debug", "--poll=5m"]`.
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--debug` (`DEBUG`) | `false` | Run with debug logging, including controller-runtime's own logs. |
-| `--leader-election` (`LEADER_ELECTION`) | `false` | Use leader election, to run several replicas of the provider. |
-| `--poll` (`POLL_INTERVAL`) | `1m` | How often each managed resource is checked for drift. |
-| `--min-poll-interval` (`MIN_POLL_INTERVAL`) | `30s` | Shortest poll interval a resource may request with the `crossplane.io/poll-interval` annotation. Shorter requests are raised to it, or to `--poll` when that is shorter. `0` removes the limit. |
-| `--poll-jitter-percentage` (`POLL_JITTER_PERCENTAGE`) | `10` | Spread each poll by up to this percentage of its interval, in both directions but never below the shortest allowed poll interval (see `--min-poll-interval`), so that resources created together do not poll Nexus together. `0` disables it, the maximum is `50`. |
-| `--creation-grace-period` (`CREATION_GRACE_PERIOD`) | `30s` | How long after a create a report that the resource does not exist is not trusted. A resource deleted within this period keeps its finalizer until the period ends. `0` disables it. |
-| `--sync` (`SYNC_INTERVAL`) | `1h` | How often every resource is re-listed from the API server and checked for drift. |
-| `--max-reconcile-rate` (`MAX_RECONCILE_RATE`) | `10` | Maximum reconciles per second, across all controllers. It also sets the number of concurrent reconciles per controller and bounds the Kubernetes API client rate. |
-| `--poll-state-metric` (`POLL_STATE_METRIC_INTERVAL`) | `5s` | How often the `crossplane_managed_resource_*` state metrics are recorded. |
-| `--enable-management-policies` (`ENABLE_MANAGEMENT_POLICIES`) | `true` | Honor `spec.managementPolicies`, for example to observe a Nexus resource without managing it. Disable it with `--no-enable-management-policies` or `ENABLE_MANAGEMENT_POLICIES=false`: `--enable-management-policies=false` is rejected. |
-| `--enable-secret-cache` (`ENABLE_SECRET_CACHE`) | `true` | Read Secrets through the informer cache. Disable it with `--no-enable-secret-cache` or `ENABLE_SECRET_CACHE=false`: `--enable-secret-cache=false` is rejected. See [Kubernetes Secret Access](#kubernetes-secret-access). |
-| `--enable-changelogs` (`ENABLE_CHANGE_LOGS`) | `false` | Alpha. Send a [change log](https://docs.crossplane.io/latest/guides/change-logs/) entry for every create, update and delete of a Nexus resource. Enable it with `--enable-changelogs` or `ENABLE_CHANGE_LOGS=true`: `--enable-changelogs=true` is rejected. |
-| `--changelogs-socket-path` (`CHANGELOGS_SOCKET_PATH`) | `/var/run/changelogs/changelogs.sock` | Absolute path of the change logs sidecar socket, when change logs are enabled. |
-
-### Activating Managed Resources
-
-The package declares Crossplane's `safe-start` capability. Crossplane installs
-a `ManagedResourceDefinition` for each kind and only creates its CRD once a
-[`ManagedResourceActivationPolicy`](https://docs.crossplane.io/latest/managed-resources/managed-resource-activation-policies/)
-activates it. The default policy installed with Crossplane activates every
-kind. The provider starts the controller of each kind once its CRD is
-established, so it runs fine with only some of its kinds activated. For
-example, to only manage repositories and blob stores:
-
-```yaml
-apiVersion: apiextensions.crossplane.io/v1alpha1
-kind: ManagedResourceActivationPolicy
-metadata:
-  name: nexus-storage
-spec:
-  activate:
-    - repositories.content.nexus.crossplane.io
-    - blobstores.instance.nexus.crossplane.io
-```
-
-### Kubernetes Secret Access
-
-By default the provider reads Kubernetes Secrets through the controller-runtime
-cache. The first read starts an informer that lists and watches every Secret
-the provider can access and keeps them in memory, which requires cluster-wide
-`list` and `watch` on Secrets.
-
-`--no-enable-secret-cache` (or `ENABLE_SECRET_CACHE=false`) sends each Secret
-read directly to the Kubernetes API instead, so the provider only needs access
-to the Secrets it actually uses. Other kinds stay cached.
-
-```yaml
-apiVersion: pkg.crossplane.io/v1beta1
-kind: DeploymentRuntimeConfig
-metadata:
-  name: provider-sonatype-nexus
-spec:
-  deploymentTemplate:
-    spec:
-      selector: {}
-      template:
-        spec:
-          containers:
-            - name: package-runtime
-              args:
-                - --no-enable-secret-cache
-```
-
-Things to know before disabling it:
-
-- **Permissions:** the provider needs `get` on every Secret it reads:
-  `ProviderConfig` credentials and the Secret references of managed resources
-  (user passwords, repository HTTP client and LDAP bind passwords, S3 keys, IQ
-  Server credentials, license files). It needs `get`, `create` and `patch` on
-  connection Secrets (`writeConnectionSecretToRef`) in their namespace. `get`
-  and `patch` can be restricted with `resourceNames`, `create` cannot.
-- **Existing grants:** the flag does not change RBAC. Crossplane still grants
-  the provider every verb on every Secret of the cluster, and a narrower Role
-  does not take that away. See
-  [Removing Crossplane's Secret Grant](#removing-crossplanes-secret-grant).
-- **API traffic:** every Secret read becomes an API request. Credentials are
-  read on every reconcile, and these requests share the provider's Kubernetes
-  client rate limit, derived from `--max-reconcile-rate`. Each operation reads
-  a given Secret once, even when it uses several of its keys.
-
-#### Removing Crossplane's Secret Grant
-
-Crossplane's RBAC manager creates a `crossplane:provider:<revision>:system`
-ClusterRole for every provider revision and binds it to the ServiceAccount the
-provider runs as. Besides the provider's own resources, that role allows every
-verb on `secrets`, `configmaps`, `events` and `leases` in all namespaces. The
-grant is fixed (checked against Crossplane 2.4.3):
-
-- The RBAC manager re-applies the role whenever its rules differ, so editing it
-  does not last.
-- The binding follows the ServiceAccount of the provider Deployment, so a
-  custom ServiceAccount is bound too.
-
-The only way to drop it is to install Crossplane without the RBAC manager
-(`--set rbacManager.deploy=false` on the `crossplane` Helm chart) and write the
-RBAC yourself. That setting applies to the whole cluster: no provider gets
-generated roles anymore, Crossplane itself loses the aggregated access to
-composite resources it gets for each XRD, and the `crossplane-admin`, `-edit`,
-`-view` and `-browse` aggregated ClusterRoles are not installed. Only choose it
-if you already manage RBAC for every package on the cluster.
-
-With the RBAC manager disabled, give the provider a stable ServiceAccount name,
-because the generated one changes with each revision:
-
-```yaml
-apiVersion: pkg.crossplane.io/v1beta1
-kind: DeploymentRuntimeConfig
-metadata:
-  name: provider-sonatype-nexus
-spec:
-  serviceAccountTemplate:
-    metadata:
-      name: provider-sonatype-nexus
-  deploymentTemplate:
-    spec:
-      selector: {}
-      template:
-        spec:
-          containers:
-            - name: package-runtime
-              args:
-                - --no-enable-secret-cache
-```
-
-Then grant it what the RBAC manager would have, without Secrets, and bind it to
-`provider-sonatype-nexus` in the namespace Crossplane runs providers in
-(`crossplane-system` by default):
-
-```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: provider-sonatype-nexus
-rules:
-  # The provider's own resources.
-  - apiGroups:
-      - nexus.crossplane.io
-      - content.nexus.crossplane.io
-      - iam.nexus.crossplane.io
-      - instance.nexus.crossplane.io
-    resources: ["*"]
-    verbs: [get, list, watch, create, update, patch]
-  - apiGroups:
-      - nexus.crossplane.io
-      - content.nexus.crossplane.io
-      - iam.nexus.crossplane.io
-      - instance.nexus.crossplane.io
-    resources: ["*/finalizers"]
-    verbs: [update]
-  # Events, and leader election with --leader-election.
-  - apiGroups: [""]
-    resources: [events]
-    verbs: [create, patch]
-  - apiGroups: [coordination.k8s.io]
-    resources: [leases]
-    verbs: [get, create, update]
-  # Safe-start: waiting for CRDs to be installed.
-  - apiGroups: [apiextensions.k8s.io]
-    resources: [customresourcedefinitions]
-    verbs: [get, list, watch]
-```
-
-Finally, grant Secret access per namespace with a Role and RoleBinding in each
-namespace that holds provider Secrets, as described under **Permissions** above.
-
-### Metrics
-
-The provider serves Prometheus metrics on port `8080` at `/metrics`. Besides
-the controller-runtime metrics, it records the standard Crossplane managed
-resource metrics for every kind:
-
-- `crossplane_managed_resource_exists`, `_ready` and `_synced`: how many
-  managed resources of each kind exist, are ready and are synced;
-- `crossplane_managed_resource_first_time_to_readiness_seconds`,
-  `_first_time_to_reconcile_seconds`, `_deletion_seconds` and
-  `_drift_seconds`: how long they take to become ready, to be reconciled the
-  first time, to be deleted, and how long they stay drifted.
-
-### Referencing Other Managed Resources
-
-Fields that name another Nexus object can instead reference the managed
-resource that manages it, so that Crossplane fills them in once that resource
-is `Ready`, which means the provider has observed it in Nexus. A reference
-names the managed resource (`metadata.name`), and resolves to its Nexus name.
-A selector picks managed resources by label. Both only match managed resources
-in the referencing resource's own namespace.
-
-Until every resource it references is `Ready`, the referencing resource is not
-created or updated, and its `Synced` condition explains which reference is
-waiting. A selector waits on every resource it matches, except the referencing
-resource itself. A reference or selector whose `policy.resolution` is
-`Optional` skips the resources that are not `Ready` instead; since resolved
-values are kept, add `policy.resolve: Always` for it to pick them up once they
-are `Ready`. Note that a
-`Repository` whose optional `storage.blobStoreNameRef` or
-`storage.blobStoreNameSelector` resolves to nothing fails to reconcile, because
-Nexus needs a blob store.
-
-| Kind | Field | Reference | Selector | Referenced kind |
-|------|-------|-----------|----------|-----------------|
-| `Repository` | `storage.blobStoreName` | `storage.blobStoreNameRef` | `storage.blobStoreNameSelector` | `BlobStore` |
-| `Repository` | `cleanup.policyNames` | `cleanup.policyNameRefs` | `cleanup.policyNameSelector` | `CleanupPolicy` |
-| `Repository` | `group.memberNames` | `group.memberNameRefs` | `group.memberNameSelector` | `Repository` |
-| `Repository` | `routingRule` | `routingRuleRef` | `routingRuleSelector` | `RoutingRule` |
-| `Privilege` | `repository` | `repositoryRef` | `repositorySelector` | `Repository` |
-| `Privilege` | `contentSelector` | `contentSelectorRef` | `contentSelectorSelector` | `ContentSelector` |
-| `Role` | `privileges` | `privilegeRefs` | `privilegeSelector` | `Privilege` |
-| `Role` | `roles` | `roleRefs` | `roleSelector` | `Role` |
-| `User` | `roles` | `roleRefs` | `roleSelector` | `Role` |
-
-```yaml
-apiVersion: iam.nexus.crossplane.io/v1alpha1
-kind: Role
-metadata:
-  name: maven-readers
-  namespace: team-a
-spec:
-  forProvider:
-    id: team-a-maven-readers
-    name: Team A Maven readers
-    privilegeRefs:
-      - name: maven-releases-view
-  providerConfigRef:
-    kind: ProviderConfig
-    name: default
-```
-
-As with every Crossplane provider, resolved values replace the field, and a
-field that already has values is not resolved again unless the reference's
-`policy.resolve` is `Always`. A list therefore holds either literal names or
-references, not both. To reference a built-in Nexus object, such as an
-`nx-*` privilege, observe it with a managed resource whose
-`managementPolicies` is `["Observe"]`.
-
-## Usage Examples
-
-### BlobStore
-
-#### File-based BlobStore
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: BlobStore
-metadata:
-  name: my-file-blobstore
-spec:
-  forProvider:
-    name: my-file-blobstore
-    type: File
-    path: /nexus-data/blobs/my-file-blobstore
-    softQuota:
-      type: spaceRemainingQuota
-      limit: 104857600  # 100MB
-  providerConfigRef:
-    name: nexus-provider-config
-```
-
-### Repository
-
-#### Maven Hosted Repository
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
-metadata:
-  name: maven-releases
-spec:
-  forProvider:
-    name: maven-releases
-    format: maven2
-    type: hosted
-    online: true
-    storage:
-      blobStoreName: default
-    maven:
-      versionPolicy: RELEASE
-      layoutPolicy: STRICT
-  providerConfigRef:
-    name: nexus-provider-config
-```
-
-#### Docker Hosted Repository
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Repository
-metadata:
-  name: docker-hosted
-spec:
-  forProvider:
-    name: docker-hosted
-    format: docker
-    type: hosted
-    online: true
-    docker:
-      httpPort: 8082
-      forceBasicAuth: true
-  providerConfigRef:
-    name: nexus-provider-config
-```
-
-### User
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: User
-metadata:
-  name: developer-user
-  namespace: default
-spec:
-  forProvider:
-    userId: developer
-    firstName: John
-    lastName: Developer
-    email: john.developer@example.com
-    status: active
-    roles:
-      - nx-repository-view-maven2-*-read
-    passwordSecretRef:
-      name: user-password-secret
-      key: password
-  providerConfigRef:
-    name: nexus-provider-config
-```
-
-### Role
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Role
-metadata:
-  name: developer-role
-spec:
-  forProvider:
-    roleId: developer-role
-    name: Developer Role
-    description: Role for developers
-    privileges:
-      - nx-repository-view-maven2-*-read
-      - nx-repository-view-npm-*-read
-    roles: []
-  providerConfigRef:
-    name: nexus-provider-config
-```
-
-### Privilege
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: Privilege
-metadata:
-  name: custom-repo-view
-spec:
-  forProvider:
-    name: custom-repo-view
-    type: repository-view
-    description: Custom repository view privilege
-    repositoryView:
-      format: maven2
-      repository: maven-releases
-      actions:
-        - browse
-        - read
-  providerConfigRef:
-    name: nexus-provider-config
-```
-
-### Content Selector
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: ContentSelector
-metadata:
-  name: release-selector
-spec:
-  forProvider:
-    name: release-selector
-    description: Select only release artifacts
-    expression: format == "maven2" and path =^ "/com/example/"
-  providerConfigRef:
-    name: nexus-provider-config
-```
-
-### Security Realm
-
-```yaml
-apiVersion: nexus.crossplane.io/v1alpha1
-kind: SecurityRealm
-metadata:
-  name: nexus-realms
-spec:
-  forProvider:
-    realms:
-      - NexusAuthenticatingRealm
-      - NexusAuthorizingRealm
-      - DockerToken
-  providerConfigRef:
-    name: nexus-provider-config
-```
-
-## Development
-
-### Prerequisites
-
-- Go 1.24+
-- Docker
-- kubectl
-- Kind (for e2e tests)
-
-### Building
-
-```bash
-# Generate code (DeepCopy methods, CRDs)
-make generate
-
-# Build the provider binary
-make build
-
-# Run unit tests
-make test
-
-# Build Docker image
-make docker-build
-
-# Build Crossplane package with embedded runtime (requires crossplane CLI)
-make xpkg-build
-```
-
-### Running E2E Tests
-
-```bash
-# Run full e2e test cycle (setup + tests)
-make e2e
-
-# Or with cleanup
-make e2e-full
-```
-
-### Project Structure
-
-```
-.
-├── apis/v1alpha1/              # CRD type definitions
-│   ├── blobstore_types.go
-│   ├── repository_types.go
-│   ├── user_types.go
-│   ├── role_types.go
-│   ├── privilege_types.go
-│   ├── contentselector_types.go
-│   ├── securityrealm_types.go
-│   ├── anonymousaccess_types.go
-│   ├── ldap_types.go
-│   ├── saml_types.go
-│   ├── usertokenconfiguration_types.go
-│   └── providerconfig_types.go
-├── cmd/provider/               # Provider entry point
-├── internal/
-│   ├── clients/nexus/          # Nexus client wrapper
-│   └── controller/             # Resource controllers
-│       ├── blobstore/
-│       ├── repository/
-│       ├── user/
-│       ├── role/
-│       ├── privilege/
-│       ├── contentselector/
-│       ├── securityrealm/
-│       ├── anonymousaccess/
-│       ├── ldap/
-│       ├── saml/
-│       └── usertokenconfiguration/
-├── e2e/                        # E2E test infrastructure
-├── examples/                   # Example YAML manifests
-├── package/crds/               # Generated CRDs
-├── test/mocks/                 # Mock implementations
-├── Dockerfile
-├── Makefile
-└── go.mod
-```
-
-### Running Locally
-
-```bash
-# Apply CRDs to your cluster
-kubectl apply -f package/crds/
-
-# Run the provider locally (requires kubeconfig)
-go run ./cmd/provider --debug
-```
+Secret references on namespaced objects (ProviderConfig and every managed resource) have no `namespace` field: they always refer to Secrets in the object's own namespace. Only a `ClusterProviderConfig` names the namespace of its Secrets.
+
+**4. Create managed resources.** Every managed resource is namespaced and names its provider config with `providerConfigRef`. See [Usage Examples](docs/examples.md) and the [`examples`](examples) directory.
+
+## Documentation
+
+| Guide | Contents |
+| ------- | ---------- |
+| [Configuration](docs/configuration.md) | Provider flags, activating managed resources, metrics |
+| [Kubernetes Secret Access](docs/secret-access.md) | Secret cache, required permissions, removing Crossplane's Secret grant |
+| [Referencing Other Managed Resources](docs/references.md) | Reference and selector fields between kinds |
+| [Usage Examples](docs/examples.md) | A blob store, repository, privilege and role chain, and the `examples` directory |
+| [Supported Repository Formats](docs/repository-formats.md) | Formats and repository types |
+| [Development](docs/development.md) | Building, testing, e2e tests, project structure |
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request. See [Development](docs/development.md) to get started.
 
 ## License
 

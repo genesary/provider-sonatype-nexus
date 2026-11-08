@@ -1,0 +1,28 @@
+---
+# A role whose privileges and contained roles come from other managed
+# resources, referenced by name or selected by label. References resolve in the
+# Role's namespace, to the Nexus names of the referenced resources.
+apiVersion: iam.nexus.crossplane.io/v1alpha1
+kind: Role
+metadata:
+  name: maven-release-managers
+  namespace: default
+spec:
+  forProvider:
+    id: maven-release-managers
+    name: Maven Release Managers
+    description: Reads the Maven releases repository and inherits the platform team's roles
+    # Resolves to the Nexus name of the Privilege maven-releases-read
+    # (examples/iam/privilege-repository-view.yaml).
+    privilegeRefs:
+      - name: maven-releases-read
+    # Resolves to the Nexus IDs of every Role of this namespace labelled
+    # nexus.crossplane.io/team: platform, such as developer-role
+    # (examples/iam/role.yaml). A selector that matches no Role fails to
+    # resolve, unless its policy.resolution is Optional.
+    roleSelector:
+      matchLabels:
+        nexus.crossplane.io/team: platform
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default
