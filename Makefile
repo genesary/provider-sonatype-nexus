@@ -106,14 +106,8 @@ KIND_CLUSTER_NAME ?= $(BUILD_REGISTRY)-inttests
 # renovate: datasource=helm depName=crossplane registryUrl=https://charts.crossplane.io/stable
 CROSSPLANE_VERSION ?= 2.4.3
 
--include build/makelib/local.xpkg.mk
 -include build/makelib/controlplane.mk
-
-local-deploy: build controlplane.up local.xpkg.deploy.provider.$(PROJECT_NAME)
-	@$(INFO) running locally built provider
-	@$(KUBECTL) wait crd providers.pkg.crossplane.io --for=create --timeout 5m
-	@$(KUBECTL) wait provider.pkg $(PROJECT_NAME) --for condition=Healthy --for condition=Installed --for=create --timeout 5m
-	@$(OK) running locally built provider
+-include build/makelib/local.xpkg.mk
 
 # e2e.run is the single entry-point for CI: builds → cluster → Nexus → Go suite.
 e2e.run: test-integration

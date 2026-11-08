@@ -49,18 +49,52 @@ for xpkg in "${OUTPUT_DIR}"/xpkg/linux_*/"${PACKAGE_NAME}"-*.xpkg; do
     esac
 done
 
+# controlplane.up cannot choose the node image nor the cluster config, but
+# reuses an existing cluster of the same name, so create it here to run on the
+# pinned Kubernetes version.
 echo_step "creating kind cluster '${KIND_CLUSTER_NAME}' on kindest/node:${KIND_NODE_IMAGE_TAG:?run through make test-integration}"
-"${KIND}" get kubeconfig --name "${KIND_CLUSTER_NAME}" >/dev/null 2>&1 || \
-    "${KIND}" create cluster --name="${KIND_CLUSTER_NAME}" --config="${projectdir}/e2e/kind-config.yaml" \
-        --image="kindest/node:${KIND_NODE_IMAGE_TAG}"
-"${KUBECTL}" config use-context "kind-${KIND_CLUSTER_NAME}"
+if ! "${KIND}" get kubeconfig --name="${KIND_CLUSTER_NAME}" >/dev/null 2>&1; then
+    "${KIND}" create cluster --name="${KIND_CLUSTER_NAME}" --image="kindest/node:${KIND_NODE_IMAGE_TAG}" \
+        --config="${projectdir}/cluster/local/kind.yaml"
+fi
 
-echo_step "installing Crossplane ${CROSSPLANE_VERSION}"
-"${HELM}" repo add crossplane-build-module https://charts.crossplane.io/stable --force-update
-"${HELM}" repo update
-"${HELM}" get notes -n crossplane-system crossplane >/dev/null 2>&1 || \
-    "${HELM}" install crossplane --create-namespace --namespace=crossplane-system \
-        crossplane-build-module/crossplane --version "${CROSSPLANE_VERSION}"
+nexus_manifest="${projectdir}/cluster/local/nexus.yaml"
+
+# By default the kind node pulls the Nexus image itself (the manifest pins a
+# tag, so the pull policy is IfNotPresent). Pre-loading it through the host
+# Docker daemon only pays off when the host cache outlives the cluster, as on
+# a dev machine: `kind load` re-exports and re-imports the image, which costs
+# more than a direct pull on an ephemeral CI runner. Set
+# E2E_PRELOAD_IMAGES=true to reuse the host cache.
+if [ "${E2E_PRELOAD_IMAGES:-false}" = "true" ]; then
+    # kind_load_image loads a pulled image into the kind cluster. Docker hosts
+    # using the containerd image store keep the multi-arch index but only the
+    # host platform's layers, which makes `kind load docker-image` fail with
+    # "content digest ... not found"; fall back to a single-platform archive.
+    kind_load_image() {
+        local image=$1 archive
+        if "${KIND}" load docker-image "${image}" --name="${KIND_CLUSTER_NAME}"; then
+            return 0
+        fi
+        echo "kind load docker-image failed for ${image}, retrying with a single-platform archive"
+        archive="$(mktemp)"
+        docker save --platform "$(docker version --format '{{.Server.Os}}/{{.Server.Arch}}')" -o "${archive}" "${image}"
+        "${KIND}" load image-archive "${archive}" --name="${KIND_CLUSTER_NAME}"
+        rm -f "${archive}"
+    }
+
+    # The image is pinned in the manifest, which Renovate keeps up to date;
+    # read it from there so the pin lives in a single place.
+    nexus_image="$(sed -n 's/^[[:space:]]*image:[[:space:]]*\(docker\.io\/sonatype\/nexus3:[^[:space:]]*\)$/\1/p' "${nexus_manifest}" | head -n1)"
+    [ -n "${nexus_image}" ] || echo_error "could not read the Nexus image from ${nexus_manifest}"
+
+    echo_step "pre-loading the Nexus image from the host Docker cache"
+    docker pull "${nexus_image}"
+    kind_load_image "${nexus_image}"
+fi
+
+echo_step "installing crossplane"
+make -C "${projectdir}" controlplane.up
 
 # The tests delete their resources seconds after creating them. Within the
 # creation grace period (30s by default), the provider does not trust Nexus
@@ -115,38 +149,71 @@ spec:
 EOF_DRC
 
 echo_step "deploying ${PACKAGE_NAME} provider package (CREATION_GRACE_PERIOD=${E2E_CREATION_GRACE_PERIOD}, ENABLE_SECRET_CACHE=${ENABLE_SECRET_CACHE}, args=[${provider_args}])"
+# local.xpkg.deploy.provider.<name> patches Crossplane with a dev sidecar,
+# extracts the xpkg into the cache under the cache key Crossplane >=2.2
+# expects (xpkg.crossplane.internal/dev/<name>@<digest>), kubectl-cps the
+# cache into the sidecar, loads the controller image into kind, and creates a
+# Provider + DeploymentRuntimeConfig wired to the local image.
+# See build/makelib/local.xpkg.mk.
 make -C "${projectdir}" "local.xpkg.deploy.provider.${PACKAGE_NAME}"
 
 # Start Nexus now, so that its image pull and slow first boot (a few minutes)
-# overlap with the provider becoming healthy and its CRDs being established,
-# instead of starting after them. nexus_setup.sh re-applies the same manifest
-# (idempotently) and waits for Nexus later.
+# overlap with the provider establishing instead of running after it. Not any
+# earlier: the Crossplane pod and its dev sidecar pull their own images while
+# local.xpkg.deploy.provider waits on them, and the kind node also pulling
+# Nexus then slows those waits down. nexus_setup.sh re-applies the same
+# manifest (idempotently) and waits for Nexus later, once the provider CRDs
+# its ProviderConfigs need are established.
 echo_step "starting Nexus in the background"
-"${KUBECTL}" apply -f "${projectdir}/e2e/manifests/nexus.yaml"
+"${KUBECTL}" apply -f "${nexus_manifest}"
+
+# Crossplane's ProviderRevision establish reconciler has a known flake with
+# large packages: on a fresh install it sometimes establishes only a subset of
+# the package's CRDs and never converges on the rest, with no error or warning
+# logged. Deleting and recreating the Provider forces a fresh
+# ProviderRevision, which reaches full establishment on a later attempt, so
+# poll for every CRD and retry a bounded number of times rather than failing
+# on the first partial establish. With safe-start, the managed resource CRDs
+# are only created once their ManagedResourceDefinitions are activated, after
+# the ProviderConfig ones, so the first CRDs to appear are not all of them.
+# The label crossplane sets is on the revision, not the CRDs themselves, so
+# select them by group name instead.
+expected_crd_count="$(find "${projectdir}/package/crds" -name '*.yaml' | wc -l | tr -d ' ')"
+
+provider_crds() {
+    "${KUBECTL}" get crds -o name 2>/dev/null | grep '\.nexus\.crossplane\.io$' || true
+}
+
+wait_for_crds_created() {
+    local timeout=$1 elapsed=0
+    while [ "${elapsed}" -lt "${timeout}" ]; do
+        if [ "$(provider_crds | grep -c . || true)" -ge "${expected_crd_count}" ]; then
+            return 0
+        fi
+        sleep 3
+        elapsed=$((elapsed + 3))
+    done
+    return 1
+}
+
+echo_step "waiting for all ${expected_crd_count} provider CRDs to establish"
+max_attempts=5
+attempt=1
+until wait_for_crds_created 90; do
+    count="$(provider_crds | grep -c . || true)"
+    if [ "${attempt}" -ge "${max_attempts}" ]; then
+        echo_error "provider only created ${count}/${expected_crd_count} CRDs after ${max_attempts} attempts"
+    fi
+    echo "only ${count}/${expected_crd_count} CRDs created after attempt ${attempt}/${max_attempts}; recreating Provider to force a fresh ProviderRevision"
+    "${KUBECTL}" delete "provider.pkg.crossplane.io/${PACKAGE_NAME}" --wait=true --timeout=60s || true
+    make -C "${projectdir}" "local.xpkg.deploy.provider.${PACKAGE_NAME}"
+    attempt=$((attempt + 1))
+done
+provider_crds | xargs "${KUBECTL}" wait --for=condition=Established --timeout=120s
 
 echo_step "waiting for provider to become healthy"
 "${KUBECTL}" wait "provider.pkg.crossplane.io/${PACKAGE_NAME}" \
     --for=condition=healthy --timeout=300s
-
-echo_step "waiting for all provider CRDs to be Established"
-# Poll until every CRD of the package appears (the label crossplane sets is on
-# the revision, not the CRDs themselves, so select by group name instead). With
-# safe-start, the managed resource CRDs are only created once their
-# ManagedResourceDefinitions are activated, after the ProviderConfig ones, so
-# the first CRDs to appear are not all of them.
-crd_expected=$(find "${projectdir}/package/crds" -name '*.yaml' | wc -l)
-crd_deadline=$(( $(date +%s) + 120 ))
-while true; do
-    crd_count=$("${KUBECTL}" get crd --no-headers 2>/dev/null | grep -c '\.nexus\.crossplane\.io' || true)
-    [ "${crd_count}" -ge "${crd_expected}" ] && break
-    if [ "$(date +%s)" -ge "${crd_deadline}" ]; then
-        echo_error "timed out waiting for provider CRDs to appear"
-    fi
-    sleep 3
-done
-"${KUBECTL}" get crd --no-headers 2>/dev/null \
-    | grep '\.nexus\.crossplane\.io' | awk '{print $1}' \
-    | xargs "${KUBECTL}" wait crd --for=condition=Established --timeout=120s
 
 echo_step "deploying Nexus and configuring ProviderConfig"
 KUBECTL="${KUBECTL}" "${projectdir}/cluster/local/nexus_setup.sh"
