@@ -15,17 +15,17 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
-	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
+	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	iammocks "github.com/genesary/provider-sonatype-nexus/test/mocks/iam"
 )
 
 // newTestSecurityRealm returns a minimal SecurityRealm for tests.
-func newTestSecurityRealm(name string, activeRealms []string) *iamv1alpha1.SecurityRealm {
-	return &iamv1alpha1.SecurityRealm{
+func newTestSecurityRealm(name string, activeRealms []string) *instancev1alpha1.SecurityRealm {
+	return &instancev1alpha1.SecurityRealm{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Spec: iamv1alpha1.SecurityRealmSpec{
-			ForProvider: iamv1alpha1.SecurityRealmParameters{
+		Spec: instancev1alpha1.SecurityRealmSpec{
+			ForProvider: instancev1alpha1.SecurityRealmParameters{
 				ActiveRealms: activeRealms,
 			},
 		},
@@ -38,7 +38,7 @@ func newTestScheme(t *testing.T) *runtime.Scheme {
 
 	s := runtime.NewScheme()
 
-	err := iamv1alpha1.AddToScheme(s)
+	err := instancev1alpha1.AddToScheme(s)
 	if err != nil {
 		t.Fatalf("AddToScheme(iam) failed: %v", err)
 	}
@@ -57,7 +57,7 @@ func TestObserve(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		cr           *iamv1alpha1.SecurityRealm
+		cr           *instancev1alpha1.SecurityRealm
 		mockSetup    func(*iammocks.MockSecurityRealmClient)
 		wantExists   bool
 		wantUpToDate bool
@@ -65,7 +65,7 @@ func TestObserve(t *testing.T) {
 	}{
 		{
 			name: "DeletionTimestamp_ReportsAbsent",
-			cr: func() *iamv1alpha1.SecurityRealm {
+			cr: func() *instancev1alpha1.SecurityRealm {
 				cr := newTestSecurityRealm("singleton", []string{"NexusAuthenticatingRealm"})
 				now := metav1.NewTime(time.Now())
 				cr.DeletionTimestamp = &now
@@ -211,7 +211,7 @@ func TestCreate(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		cr        *iamv1alpha1.SecurityRealm
+		cr        *instancev1alpha1.SecurityRealm
 		mockSetup func(*iammocks.MockSecurityRealmClient)
 		wantErr   bool
 		validate  func(*testing.T, *iammocks.MockSecurityRealmClient)
@@ -290,7 +290,7 @@ func TestUpdate(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		cr        *iamv1alpha1.SecurityRealm
+		cr        *instancev1alpha1.SecurityRealm
 		mockSetup func(*iammocks.MockSecurityRealmClient)
 		wantErr   bool
 		validate  func(*testing.T, *iammocks.MockSecurityRealmClient)

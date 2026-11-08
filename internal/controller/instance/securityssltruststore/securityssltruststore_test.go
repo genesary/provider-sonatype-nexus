@@ -15,7 +15,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
-	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
+	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	iammocks "github.com/genesary/provider-sonatype-nexus/test/mocks/iam"
@@ -32,14 +32,14 @@ DQEBBQUAA0EAxSPMb7r3v4fhfW6oSaqJN8JgRJAJBfBNOsNhLZYMaO5YoKWXYhGA
 -----END CERTIFICATE-----`
 
 // newTruststoreCR creates a new SecuritySSLTruststore CR for testing.
-func newTruststoreCR(pem string) *iamv1alpha1.SecuritySSLTruststore {
-	return &iamv1alpha1.SecuritySSLTruststore{
+func newTruststoreCR(pem string) *instancev1alpha1.SecuritySSLTruststore {
+	return &instancev1alpha1.SecuritySSLTruststore{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        "test-cert",
 			Annotations: map[string]string{},
 		},
-		Spec: iamv1alpha1.SecuritySSLTruststoreSpec{
-			ForProvider: iamv1alpha1.SecuritySSLTruststoreParameters{
+		Spec: instancev1alpha1.SecuritySSLTruststoreSpec{
+			ForProvider: instancev1alpha1.SecuritySSLTruststoreParameters{
 				Pem: pem,
 			},
 		},
@@ -52,7 +52,7 @@ func newTestScheme(t *testing.T) *runtime.Scheme {
 
 	s := runtime.NewScheme()
 
-	err := iamv1alpha1.AddToScheme(s)
+	err := instancev1alpha1.AddToScheme(s)
 	if err != nil {
 		t.Fatalf("AddToScheme(iam) failed: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestObserve(t *testing.T) {
 
 	tests := []struct {
 		name         string
-		cr           *iamv1alpha1.SecuritySSLTruststore
+		cr           *instancev1alpha1.SecuritySSLTruststore
 		mockSetup    func(*iammocks.MockSSLTruststoreClient)
 		wantExists   bool
 		wantUpToDate bool
@@ -86,7 +86,7 @@ func TestObserve(t *testing.T) {
 		},
 		{
 			name: "ExistsAndUpToDate",
-			cr: func() *iamv1alpha1.SecuritySSLTruststore {
+			cr: func() *instancev1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "cert-id-123")
 
@@ -110,7 +110,7 @@ func TestObserve(t *testing.T) {
 		},
 		{
 			name: "ExistsButPemChanged",
-			cr: func() *iamv1alpha1.SecuritySSLTruststore {
+			cr: func() *instancev1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR("new-pem-content")
 				meta.SetExternalName(cr, "cert-id-123")
 
@@ -129,7 +129,7 @@ func TestObserve(t *testing.T) {
 		},
 		{
 			name: "CertNotFoundInList",
-			cr: func() *iamv1alpha1.SecuritySSLTruststore {
+			cr: func() *instancev1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "cert-id-deleted")
 
@@ -146,7 +146,7 @@ func TestObserve(t *testing.T) {
 		},
 		{
 			name: "APIError",
-			cr: func() *iamv1alpha1.SecuritySSLTruststore {
+			cr: func() *instancev1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "cert-id-123")
 
@@ -198,7 +198,7 @@ func TestCreate(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		cr        *iamv1alpha1.SecuritySSLTruststore
+		cr        *instancev1alpha1.SecuritySSLTruststore
 		mockSetup func(*iammocks.MockSSLTruststoreClient)
 		wantErr   bool
 	}{
@@ -274,13 +274,13 @@ func TestUpdate(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		cr        *iamv1alpha1.SecuritySSLTruststore
+		cr        *instancev1alpha1.SecuritySSLTruststore
 		mockSetup func(*iammocks.MockSSLTruststoreClient)
 		wantErr   bool
 	}{
 		{
 			name: "UpdateSuccess",
-			cr: func() *iamv1alpha1.SecuritySSLTruststore {
+			cr: func() *instancev1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "old-cert-id")
 
@@ -303,7 +303,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "UpdateAddError",
-			cr: func() *iamv1alpha1.SecuritySSLTruststore {
+			cr: func() *instancev1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "old-cert-id")
 
@@ -346,13 +346,13 @@ func TestDelete(t *testing.T) {
 
 	tests := []struct {
 		name      string
-		cr        *iamv1alpha1.SecuritySSLTruststore
+		cr        *instancev1alpha1.SecuritySSLTruststore
 		mockSetup func(*iammocks.MockSSLTruststoreClient)
 		wantErr   bool
 	}{
 		{
 			name: "DeleteSuccess",
-			cr: func() *iamv1alpha1.SecuritySSLTruststore {
+			cr: func() *instancev1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "cert-id-123")
 
@@ -367,7 +367,7 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name: "DeleteNotFound",
-			cr: func() *iamv1alpha1.SecuritySSLTruststore {
+			cr: func() *instancev1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "cert-id-123")
 
@@ -387,7 +387,7 @@ func TestDelete(t *testing.T) {
 		},
 		{
 			name: "DeleteAPIError",
-			cr: func() *iamv1alpha1.SecuritySSLTruststore {
+			cr: func() *instancev1alpha1.SecuritySSLTruststore {
 				cr := newTruststoreCR(testPem)
 				meta.SetExternalName(cr, "cert-id-123")
 

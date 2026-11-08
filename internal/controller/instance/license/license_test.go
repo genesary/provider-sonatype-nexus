@@ -18,19 +18,19 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 
-	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
+	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
-	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
+	instanceclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	nexus "github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	licensefake "github.com/genesary/provider-sonatype-nexus/internal/fake"
 )
 
 // newTestLicense creates a License CR backed by a Kubernetes secret.
-func newTestLicense(name, secretName, secretNS, secretKey string) *iamv1alpha1.License {
-	return &iamv1alpha1.License{
+func newTestLicense(name, secretName, secretNS, secretKey string) *instancev1alpha1.License {
+	return &instancev1alpha1.License{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: secretNS},
-		Spec: iamv1alpha1.LicenseSpec{
-			ForProvider: iamv1alpha1.LicenseParameters{
+		Spec: instancev1alpha1.LicenseSpec{
+			ForProvider: instancev1alpha1.LicenseParameters{
 				LicenseSecretRef: &xpv2.LocalSecretKeySelector{
 					LocalSecretReference: xpv2.LocalSecretReference{
 						Name: secretName,
@@ -43,11 +43,11 @@ func newTestLicense(name, secretName, secretNS, secretKey string) *iamv1alpha1.L
 }
 
 // newTestLicenseWithEndpoint creates a License CR that fetches from a URL.
-func newTestLicenseWithEndpoint(name, endpointURL string) *iamv1alpha1.License {
-	return &iamv1alpha1.License{
+func newTestLicenseWithEndpoint(name, endpointURL string) *instancev1alpha1.License {
+	return &instancev1alpha1.License{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Spec: iamv1alpha1.LicenseSpec{
-			ForProvider: iamv1alpha1.LicenseParameters{
+		Spec: instancev1alpha1.LicenseSpec{
+			ForProvider: instancev1alpha1.LicenseParameters{
 				EndpointURL: &endpointURL,
 			},
 		},
@@ -55,10 +55,10 @@ func newTestLicenseWithEndpoint(name, endpointURL string) *iamv1alpha1.License {
 }
 
 // newTestLicenseNoSource creates a License CR with no license source.
-func newTestLicenseNoSource(name string) *iamv1alpha1.License {
-	return &iamv1alpha1.License{
+func newTestLicenseNoSource(name string) *instancev1alpha1.License {
+	return &instancev1alpha1.License{
 		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Spec:       iamv1alpha1.LicenseSpec{},
+		Spec:       instancev1alpha1.LicenseSpec{},
 	}
 }
 
@@ -68,7 +68,7 @@ func newTestScheme(t *testing.T) *runtime.Scheme {
 
 	s := runtime.NewScheme()
 
-	err := iamv1alpha1.AddToScheme(s)
+	err := instancev1alpha1.AddToScheme(s)
 	if err != nil {
 		t.Fatalf("AddToScheme(iam): %v", err)
 	}
@@ -177,8 +177,8 @@ func TestObserve_NoLicense(t *testing.T) {
 		Build()
 
 	mc := licensefake.NewMockLicenseClient()
-	mc.GetLicenseFn = func(_ context.Context) (*iamclient.LicenseInfo, error) {
-		return nil, iamclient.ErrNoLicense
+	mc.GetLicenseFn = func(_ context.Context) (*instanceclient.LicenseInfo, error) {
+		return nil, instanceclient.ErrNoLicense
 	}
 
 	cr := newTestLicense("test-license", "license-secret", "default", "license.lic")
@@ -206,7 +206,7 @@ func TestObserve_GetLicenseError(t *testing.T) {
 		Build()
 
 	mc := licensefake.NewMockLicenseClient()
-	mc.GetLicenseFn = func(_ context.Context) (*iamclient.LicenseInfo, error) {
+	mc.GetLicenseFn = func(_ context.Context) (*instanceclient.LicenseInfo, error) {
 		return nil, errors.New("nexus unreachable")
 	}
 
@@ -224,7 +224,7 @@ func TestObserve_GetLicenseError(t *testing.T) {
 func TestObserve_ExistsAndUpToDate(t *testing.T) {
 	t.Parallel()
 
-	hash := iamclient.HashLicense(testLicenseData)
+	hash := instanceclient.HashLicense(testLicenseData)
 
 	secret := newLicenseSecret("license-secret", "default", "license.lic", testLicenseData)
 	kubeClient := crfake.NewClientBuilder().
@@ -233,8 +233,8 @@ func TestObserve_ExistsAndUpToDate(t *testing.T) {
 		Build()
 
 	mc := licensefake.NewMockLicenseClient()
-	mc.GetLicenseFn = func(_ context.Context) (*iamclient.LicenseInfo, error) {
-		return &iamclient.LicenseInfo{Fingerprint: "fp-abc"}, nil
+	mc.GetLicenseFn = func(_ context.Context) (*instanceclient.LicenseInfo, error) {
+		return &instanceclient.LicenseInfo{Fingerprint: "fp-abc"}, nil
 	}
 
 	cr := newTestLicense("test-license", "license-secret", "default", "license.lic")
@@ -268,12 +268,12 @@ func TestObserve_ExistsAndOutdated(t *testing.T) {
 		Build()
 
 	mc := licensefake.NewMockLicenseClient()
-	mc.GetLicenseFn = func(_ context.Context) (*iamclient.LicenseInfo, error) {
-		return &iamclient.LicenseInfo{Fingerprint: "fp-abc"}, nil
+	mc.GetLicenseFn = func(_ context.Context) (*instanceclient.LicenseInfo, error) {
+		return &instanceclient.LicenseInfo{Fingerprint: "fp-abc"}, nil
 	}
 
 	cr := newTestLicense("test-license", "license-secret", "default", "license.lic")
-	cr.Status.AtProvider.InstalledHash = iamclient.HashLicense([]byte("old-license-data"))
+	cr.Status.AtProvider.InstalledHash = instanceclient.HashLicense([]byte("old-license-data"))
 	cr.Status.AtProvider.Fingerprint = "fp-abc"
 
 	e := &external{client: mc, kube: kubeClient}
@@ -353,7 +353,7 @@ func TestCreate_Success(t *testing.T) {
 	secret := newLicenseSecret("license-secret", "default", "license.lic", testLicenseData)
 	kubeClient := crfake.NewClientBuilder().
 		WithScheme(newTestScheme(t)).
-		WithStatusSubresource(&iamv1alpha1.License{}).
+		WithStatusSubresource(&instancev1alpha1.License{}).
 		WithObjects(secret).
 		Build()
 
@@ -442,15 +442,15 @@ func TestCreate_WithEndpointAndCache(t *testing.T) {
 	}
 
 	endpointURL := server.URL
-	cr := &iamv1alpha1.License{
+	cr := &instancev1alpha1.License{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-license", Namespace: "default"},
-		Spec: iamv1alpha1.LicenseSpec{
+		Spec: instancev1alpha1.LicenseSpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				WriteConnectionSecretToReference: &xpv2.LocalSecretReference{
 					Name: "license-cache",
 				},
 			},
-			ForProvider: iamv1alpha1.LicenseParameters{
+			ForProvider: instancev1alpha1.LicenseParameters{
 				EndpointURL: &endpointURL,
 			},
 		},
@@ -490,15 +490,15 @@ func TestCreate_EndpointFallbackToCache(t *testing.T) {
 	}
 
 	endpointURL := "http://127.0.0.1:1" // unreachable port
-	cr := &iamv1alpha1.License{
+	cr := &instancev1alpha1.License{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-license", Namespace: "default"},
-		Spec: iamv1alpha1.LicenseSpec{
+		Spec: instancev1alpha1.LicenseSpec{
 			ManagedResourceSpec: xpv2.ManagedResourceSpec{
 				WriteConnectionSecretToReference: &xpv2.LocalSecretReference{
 					Name: "license-cache",
 				},
 			},
-			ForProvider: iamv1alpha1.LicenseParameters{
+			ForProvider: instancev1alpha1.LicenseParameters{
 				EndpointURL: &endpointURL,
 			},
 		},
@@ -527,10 +527,10 @@ func TestCreate_EndpointFailsNoCacheFails(t *testing.T) {
 	mc := licensefake.NewMockLicenseClient()
 
 	endpointURL := "http://127.0.0.1:1" // unreachable
-	cr := &iamv1alpha1.License{
+	cr := &instancev1alpha1.License{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-license", Namespace: "default"},
-		Spec: iamv1alpha1.LicenseSpec{
-			ForProvider: iamv1alpha1.LicenseParameters{
+		Spec: instancev1alpha1.LicenseSpec{
+			ForProvider: instancev1alpha1.LicenseParameters{
 				EndpointURL: &endpointURL,
 			},
 		},
@@ -571,12 +571,12 @@ func TestCreate_WithBasicAuthEndpoint(t *testing.T) {
 	}
 
 	endpointURL := server.URL
-	cr := &iamv1alpha1.License{
+	cr := &instancev1alpha1.License{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-license", Namespace: "default"},
-		Spec: iamv1alpha1.LicenseSpec{
-			ForProvider: iamv1alpha1.LicenseParameters{
+		Spec: instancev1alpha1.LicenseSpec{
+			ForProvider: instancev1alpha1.LicenseParameters{
 				EndpointURL: &endpointURL,
-				EndpointCredentials: &iamv1alpha1.LicenseEndpointCredentials{
+				EndpointCredentials: &instancev1alpha1.LicenseEndpointCredentials{
 					UsernameSecretRef: &xpv2.LocalSecretKeySelector{
 						LocalSecretReference: xpv2.LocalSecretReference{
 							Name: "ep-creds",
@@ -632,12 +632,12 @@ func TestCreate_WithBearerTokenEndpoint(t *testing.T) {
 	}
 
 	endpointURL := server.URL
-	cr := &iamv1alpha1.License{
+	cr := &instancev1alpha1.License{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-license", Namespace: "default"},
-		Spec: iamv1alpha1.LicenseSpec{
-			ForProvider: iamv1alpha1.LicenseParameters{
+		Spec: instancev1alpha1.LicenseSpec{
+			ForProvider: instancev1alpha1.LicenseParameters{
 				EndpointURL: &endpointURL,
-				EndpointCredentials: &iamv1alpha1.LicenseEndpointCredentials{
+				EndpointCredentials: &instancev1alpha1.LicenseEndpointCredentials{
 					PasswordSecretRef: &xpv2.LocalSecretKeySelector{
 						LocalSecretReference: xpv2.LocalSecretReference{
 							Name: "ep-token",

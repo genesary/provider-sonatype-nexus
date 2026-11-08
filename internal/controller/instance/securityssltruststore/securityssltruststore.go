@@ -17,9 +17,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	iamv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
+	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
-	iamclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
+	instanceclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
@@ -49,10 +49,10 @@ var errCertNotFound = errors.New("certificate not found in truststore")
 
 // Setup adds a controller that reconciles SecuritySSLTruststore resources.
 func Setup(mgr ctrl.Manager, opts controller.Options) error {
-	name := managed.ControllerName(iamv1alpha1.SecuritySSLTruststoreGroupKind)
+	name := managed.ControllerName(instancev1alpha1.SecuritySSLTruststoreGroupKind)
 
 	reconciler := managed.NewReconciler(mgr,
-		resource.ManagedKind(iamv1alpha1.SecuritySSLTruststoreGroupVersionKind),
+		resource.ManagedKind(instancev1alpha1.SecuritySSLTruststoreGroupVersionKind),
 		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
@@ -65,7 +65,7 @@ func Setup(mgr ctrl.Manager, opts controller.Options) error {
 		Named(name).
 		WithOptions(opts.ForControllerRuntime()).
 		WithEventFilter(resource.DesiredStateChanged()).
-		For(&iamv1alpha1.SecuritySSLTruststore{}).
+		For(&instancev1alpha1.SecuritySSLTruststore{}).
 		Complete(ratelimiter.NewReconciler(name, reconciler, opts.GlobalRateLimiter))
 }
 
@@ -77,7 +77,7 @@ type connector struct {
 
 // Connect produces an ExternalClient for the given managed resource.
 func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (managed.ExternalClient, error) {
-	_, isTruststore := managedRes.(*iamv1alpha1.SecuritySSLTruststore)
+	_, isTruststore := managedRes.(*instancev1alpha1.SecuritySSLTruststore)
 	if !isTruststore {
 		return nil, errors.New(errNotTruststore)
 	}
@@ -97,7 +97,7 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 		return nil, errors.Wrap(err, errGetPC)
 	}
 
-	sslClient, err := iamclient.NewSSLTruststoreClient(creds)
+	sslClient, err := instanceclient.NewSSLTruststoreClient(creds)
 	if err != nil {
 		return nil, errors.Wrap(err, errNewClient)
 	}
@@ -107,12 +107,12 @@ func (c *connector) Connect(ctx context.Context, managedRes resource.Managed) (m
 
 // external implements managed.ExternalClient.
 type external struct {
-	client iamclient.SSLTruststoreClient
+	client instanceclient.SSLTruststoreClient
 }
 
 // Observe checks whether the external resource exists and is up-to-date.
 func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (managed.ExternalObservation, error) {
-	truststoreCR, isTruststore := managedRes.(*iamv1alpha1.SecuritySSLTruststore)
+	truststoreCR, isTruststore := managedRes.(*instancev1alpha1.SecuritySSLTruststore)
 	if !isTruststore {
 		return managed.ExternalObservation{}, errors.New(errNotTruststore)
 	}
@@ -131,19 +131,19 @@ func (e *external) Observe(ctx context.Context, managedRes resource.Managed) (ma
 		return managed.ExternalObservation{}, errors.Wrap(err, errListCerts)
 	}
 
-	truststoreCR.Status.AtProvider = iamclient.CertToObservation(cert)
+	truststoreCR.Status.AtProvider = instanceclient.CertToObservation(cert)
 
 	truststoreCR.SetConditions(nexusv1alpha1.Available())
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: iamclient.IsCertUpToDate(truststoreCR),
+		ResourceUpToDate: instanceclient.IsCertUpToDate(truststoreCR),
 	}, nil
 }
 
 // Create creates the desired certificate in the Nexus truststore.
 func (e *external) Create(ctx context.Context, managedRes resource.Managed) (managed.ExternalCreation, error) {
-	truststoreCR, isTruststore := managedRes.(*iamv1alpha1.SecuritySSLTruststore)
+	truststoreCR, isTruststore := managedRes.(*instancev1alpha1.SecuritySSLTruststore)
 	if !isTruststore {
 		return managed.ExternalCreation{}, errors.New(errNotTruststore)
 	}
@@ -169,7 +169,7 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 
 // Update reconciles the certificate to the desired state.
 func (e *external) Update(ctx context.Context, managedRes resource.Managed) (managed.ExternalUpdate, error) {
-	truststoreCR, isTruststore := managedRes.(*iamv1alpha1.SecuritySSLTruststore)
+	truststoreCR, isTruststore := managedRes.(*instancev1alpha1.SecuritySSLTruststore)
 	if !isTruststore {
 		return managed.ExternalUpdate{}, errors.New(errNotTruststore)
 	}
@@ -203,7 +203,7 @@ func (e *external) Update(ctx context.Context, managedRes resource.Managed) (man
 
 // Delete removes the certificate from the Nexus truststore.
 func (e *external) Delete(ctx context.Context, managedRes resource.Managed) (managed.ExternalDelete, error) {
-	truststoreCR, isTruststore := managedRes.(*iamv1alpha1.SecuritySSLTruststore)
+	truststoreCR, isTruststore := managedRes.(*instancev1alpha1.SecuritySSLTruststore)
 	if !isTruststore {
 		return managed.ExternalDelete{}, errors.New(errNotTruststore)
 	}
