@@ -1,15 +1,18 @@
 package helpers
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"testing"
 
+	changelogsv1alpha1 "github.com/crossplane/crossplane-runtime/v2/apis/changelogs/proto/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/providerconfig"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -32,11 +35,20 @@ func (recorderManager) GetEventRecorderFor(string) record.EventRecorder {
 	return record.NewFakeRecorder(1)
 }
 
+// nopChangeLogger is a change logger that records nothing.
+type nopChangeLogger struct{}
+
+// Log records nothing.
+func (nopChangeLogger) Log(context.Context, resource.Managed, changelogsv1alpha1.OperationType, error, managed.AdditionalDetails) error {
+	return nil
+}
+
 // testOptions returns the options of a provider with no feature enabled.
 func testOptions() Options {
 	return Options{Options: controller.Options{
-		Logger:   logging.NewNopLogger(),
-		Features: &feature.Flags{},
+		Logger:           logging.NewNopLogger(),
+		Features:         &feature.Flags{},
+		ChangeLogOptions: &controller.ChangeLogOptions{ChangeLogger: nopChangeLogger{}},
 	}}
 }
 
@@ -49,8 +61,10 @@ func TestReconcilerOptions(t *testing.T) {
 	tests := map[string]struct {
 		features []feature.Flag
 		metrics  *controller.MetricOptions
-		specific int
-		want     int
+		// noChangeLogger leaves the change log options without a logger.
+		noChangeLogger bool
+		specific       int
+		want           int
 	}{
 		"NoFeatures": {
 			want: sharedOptions,
@@ -58,6 +72,15 @@ func TestReconcilerOptions(t *testing.T) {
 		"ManagementPolicies": {
 			features: []feature.Flag{feature.EnableBetaManagementPolicies},
 			want:     sharedOptions + 1,
+		},
+		"ChangeLogs": {
+			features: []feature.Flag{feature.EnableAlphaChangeLogs},
+			want:     sharedOptions + 1,
+		},
+		"ChangeLogOptionsWithoutLogger": {
+			features:       []feature.Flag{feature.EnableAlphaChangeLogs},
+			noChangeLogger: true,
+			want:           sharedOptions,
 		},
 		"Metrics": {
 			metrics: &controller.MetricOptions{MRMetrics: managed.NewMRMetricRecorder()},
@@ -72,10 +95,10 @@ func TestReconcilerOptions(t *testing.T) {
 			want:     sharedOptions + 2,
 		},
 		"AllOptions": {
-			features: []feature.Flag{feature.EnableBetaManagementPolicies},
+			features: []feature.Flag{feature.EnableBetaManagementPolicies, feature.EnableAlphaChangeLogs},
 			metrics:  &controller.MetricOptions{MRMetrics: managed.NewMRMetricRecorder()},
 			specific: 2,
-			want:     sharedOptions + 4,
+			want:     sharedOptions + 5,
 		},
 	}
 
@@ -95,6 +118,10 @@ func TestReconcilerOptions(t *testing.T) {
 
 			opts := testOptions()
 			opts.MetricOptions = test.metrics
+
+			if test.noChangeLogger {
+				opts.ChangeLogOptions = &controller.ChangeLogOptions{}
+			}
 
 			for _, flag := range test.features {
 				opts.Features.Enable(flag)

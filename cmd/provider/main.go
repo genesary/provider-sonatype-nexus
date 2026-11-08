@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
+	changelogsv1alpha1 "github.com/crossplane/crossplane-runtime/v2/apis/changelogs/proto/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
@@ -15,6 +16,8 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/statemetrics"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -69,6 +72,15 @@ func main() {
 	if parsed.EnableManagementPolicies {
 		opts.Features.Enable(feature.EnableBetaManagementPolicies)
 		log.Info("Beta feature enabled", "flag", feature.EnableBetaManagementPolicies)
+	}
+
+	if parsed.EnableChangeLogs {
+		changeLogOptions, err := newChangeLogOptions(parsed.ChangeLogsSocketPath)
+		kingpin.FatalIfError(err, "Cannot set up change logs")
+
+		opts.Features.Enable(feature.EnableAlphaChangeLogs)
+		opts.ChangeLogOptions = changeLogOptions
+		log.Info("Alpha feature enabled", "flag", feature.EnableAlphaChangeLogs, "socket", parsed.ChangeLogsSocketPath)
 	}
 
 	kingpin.FatalIfError(nexuscontroller.Setup(mgr, opts), "Cannot setup Nexus controllers")
@@ -164,4 +176,29 @@ func controllerOptions(log logging.Logger, parsed flags) helpers.Options {
 			},
 		},
 	}
+}
+
+// newChangeLogOptions returns the options that send change logs to the
+// change logs service listening on the socket at socketPath. The connection
+// is only established when the first change log is sent, so a path that the
+// unix resolver cannot handle is rejected here: it would otherwise only fail
+// then, making every create, update and delete wait out the send timeout.
+func newChangeLogOptions(socketPath string) (*controller.ChangeLogOptions, error) {
+	// In unix://<path>, a relative path is parsed as the URL authority, which
+	// the gRPC unix resolver rejects.
+	if !filepath.IsAbs(socketPath) {
+		return nil, errors.Errorf("change logs socket path must be absolute, got %q", socketPath)
+	}
+
+	conn, err := grpc.NewClient("unix://"+socketPath, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, errors.Wrapf(err, "cannot create change logs client connection at %s", socketPath)
+	}
+
+	return &controller.ChangeLogOptions{
+		ChangeLogger: managed.NewGRPCChangeLogger(
+			changelogsv1alpha1.NewChangeLogServiceClient(conn),
+			managed.WithProviderVersion("provider-sonatype-nexus:"+version.Version),
+		),
+	}, nil
 }
