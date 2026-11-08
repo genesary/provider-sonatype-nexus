@@ -46,6 +46,10 @@ func TestRoleIdentifiedBySpec(t *testing.T) {
 		roleID    = "e2e-identity-role"
 	)
 
+	// Remove a decoy left behind by an aborted run, which would make the
+	// creation below fail. A 404 is the expected outcome and is ignored.
+	_, _ = f.Nexus.SecurityManagementRolesAPI.DeleteSecurityRoles(ctx, decoyID).Execute()
+
 	_, _, err := f.Nexus.SecurityManagementRolesAPI.CreateSecurityRoles(ctx).
 		RoleXORequest(*v395.NewRoleXORequest(decoyID, decoyName)).Execute()
 	if err != nil {

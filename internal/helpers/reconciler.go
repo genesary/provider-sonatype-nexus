@@ -19,7 +19,7 @@ import (
 
 // maxSharedReconcilerOptions is the most options ReconcilerOptions shares
 // between controllers, to size the slice it returns.
-const maxSharedReconcilerOptions = 8
+const maxSharedReconcilerOptions = 9
 
 // Options are the crossplane-runtime controller options, extended with the
 // settings of this provider.
@@ -75,6 +75,12 @@ func minPollInterval(opts Options) time.Duration {
 
 // ReconcilerOptions returns the managed reconciler options shared by every
 // controller, followed by the options specific to the calling controller.
+//
+// External names are declared deterministic by default: every kind is named
+// either by its spec or, for singletons, by nothing at all, so a create
+// interrupted before its outcome was recorded can be observed again instead of
+// blocking. Kinds named by an identifier Nexus assigns on creation opt out
+// through WithServerAssignedExternalName.
 func ReconcilerOptions(mgr ctrl.Manager, name string, opts Options, specific ...managed.ReconcilerOption) []managed.ReconcilerOption {
 	options := make([]managed.ReconcilerOption, 0, maxSharedReconcilerOptions+len(specific))
 	options = append(options,
@@ -82,6 +88,7 @@ func ReconcilerOptions(mgr ctrl.Manager, name string, opts Options, specific ...
 		managed.WithPollInterval(opts.PollInterval),
 		managed.WithMinPollInterval(minPollInterval(opts)),
 		managed.WithRecorder(newEventRecorder(mgr, name, opts)),
+		managed.WithDeterministicExternalName(true),
 	)
 
 	if opts.Features.Enabled(feature.EnableBetaManagementPolicies) {

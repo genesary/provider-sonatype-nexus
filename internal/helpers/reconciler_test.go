@@ -32,7 +32,7 @@ import (
 )
 
 // sharedOptions is the number of options every controller gets.
-const sharedOptions = 4
+const sharedOptions = 5
 
 // recorderManager is a manager that only provides event recorders.
 type recorderManager struct {
@@ -304,6 +304,64 @@ func reconcileRole(t *testing.T, opts Options, role *iamv1alpha1.Role) time.Dura
 	return reconcileRoleWith(t, opts, role, func(client.Client) []managed.ReconcilerOption {
 		return []managed.ReconcilerOption{managed.WithExternalConnector(upToDateConnector)}
 	})
+}
+
+// TestReconcilerOptionsRecoverInterruptedCreate checks that a Role whose create
+// was interrupted before its outcome was recorded is observed again by
+// default, including when its external name comes from the spec, and blocked
+// when its external name is assigned by Nexus.
+func TestReconcilerOptionsRecoverInterruptedCreate(t *testing.T) {
+	t.Parallel()
+
+	const pollInterval = time.Minute
+
+	tests := map[string]struct {
+		externalName func(client.Client) managed.ReconcilerOption
+		want         time.Duration
+	}{
+		"DefaultObservesAgain": {
+			want: pollInterval,
+		},
+		"SpecExternalNameObservesAgain": {
+			externalName: func(kube client.Client) managed.ReconcilerOption {
+				return WithSpecExternalName(kube, func(cr *iamv1alpha1.Role) string {
+					return cr.Spec.ForProvider.ID
+				})
+			},
+			want: pollInterval,
+		},
+		"ServerAssignedExternalNameBlocks": {
+			externalName: func(client.Client) managed.ReconcilerOption {
+				return WithServerAssignedExternalName()
+			},
+			want: 0,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := testOptions()
+			opts.PollInterval = pollInterval
+
+			role := testRole("")
+			role.Spec.ForProvider.ID = "nexus-role"
+			meta.SetExternalCreatePending(role, time.Now())
+
+			got := reconcileRoleWith(t, opts, role, func(kube client.Client) []managed.ReconcilerOption {
+				specific := []managed.ReconcilerOption{managed.WithExternalConnector(upToDateConnector)}
+				if test.externalName != nil {
+					specific = append(specific, test.externalName(kube))
+				}
+
+				return specific
+			})
+			if got != test.want {
+				t.Errorf("Reconcile() RequeueAfter = %v, want %v", got, test.want)
+			}
+		})
+	}
 }
 
 // testRole returns a Role whose poll interval annotation is annotation, or
