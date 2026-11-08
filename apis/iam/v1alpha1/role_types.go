@@ -46,8 +46,8 @@ type RoleParameters struct {
 	// +kubebuilder:validation:Optional
 	RoleRefs []xpv2.Reference `json:"roleRefs,omitempty"`
 
-	// RoleSelector selects Role managed resources in the Role's namespace to
-	// resolve roles.
+	// RoleSelector selects Role managed resources in the Role's namespace,
+	// other than the Role itself, to resolve roles.
 	// +kubebuilder:validation:Optional
 	RoleSelector *xpv2.Selector `json:"roleSelector,omitempty"`
 }

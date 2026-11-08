@@ -198,8 +198,8 @@ spec:
                     type: array
                   roleSelector:
                     description: |-
-                      RoleSelector selects Role managed resources in the Role's namespace to
-                      resolve roles.
+                      RoleSelector selects Role managed resources in the Role's namespace,
+                      other than the Role itself, to resolve roles.
                     properties:
                       matchControllerRef:
                         description: |-

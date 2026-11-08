@@ -16,13 +16,28 @@ import (
 	contentv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/content/v1alpha1"
 )
 
-// named sets the metadata of obj, its external name and its labels, and
-// returns it.
-func named[T client.Object](obj T, namespace, name, externalName string, labels map[string]string) T {
+// managed is a managed resource the tests reference.
+type managed interface {
+	client.Object
+	SetConditions(conditions ...xpv2.Condition)
+}
+
+// named sets the metadata of obj, its external name and its labels, marks it
+// Ready, and returns it.
+func named[T managed](obj T, namespace, name, externalName string, labels map[string]string) T {
 	obj.SetNamespace(namespace)
 	obj.SetName(name)
 	obj.SetLabels(labels)
 	meta.SetExternalName(obj, externalName)
+	obj.SetConditions(xpv2.Available())
+
+	return obj
+}
+
+// creating marks obj as not Ready yet, as it is until its controller observes
+// it in Nexus, and returns it.
+func creating[T managed](obj T) T {
+	obj.SetConditions(xpv2.Creating())
 
 	return obj
 }
@@ -58,6 +73,11 @@ func TestRoleResolveReferences(t *testing.T) {
 		named(&Privilege{}, "other", "admin", "nx-other-admin", teamLabels),
 		named(&Role{}, "team", "base", "team-base", nil),
 		named(&Role{}, "other", "base", "other-base", nil),
+		// The Role under test is not Ready while it resolves its roles, so it
+		// must not wait on itself.
+		creating(named(&Role{}, "team", "role", "team-role", teamLabels)),
+		named(&Role{}, "team", "admins", "team-admins", teamLabels),
+		creating(named(&Role{}, "team", "pending", "team-pending", nil)),
 	)
 
 	tests := map[string]struct {
@@ -80,6 +100,12 @@ func TestRoleResolveReferences(t *testing.T) {
 			},
 			wantPrivileges: []string{"nx-team-read", "nx-team-write"},
 		},
+		"SelectorLeavesOutTheRoleItself": {
+			params: RoleParameters{
+				RoleSelector: &xpv2.Selector{MatchLabels: teamLabels},
+			},
+			wantRoles: []string{"team-admins"},
+		},
 		"ValuesWithoutReferencesAreKept": {
 			params: RoleParameters{
 				Privileges: []string{"nx-repository-view-*-*-browse"},
@@ -91,6 +117,12 @@ func TestRoleResolveReferences(t *testing.T) {
 		"ReferenceToAnotherNamespaceFails": {
 			params: RoleParameters{
 				PrivilegeRefs: []xpv2.Reference{{Name: "admin"}},
+			},
+			wantErr: true,
+		},
+		"ReferenceToARoleNotReadyFails": {
+			params: RoleParameters{
+				RoleRefs: []xpv2.Reference{{Name: "pending"}},
 			},
 			wantErr: true,
 		},

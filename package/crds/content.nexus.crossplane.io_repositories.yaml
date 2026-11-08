@@ -314,7 +314,8 @@ spec:
                       memberNameSelector:
                         description: |-
                           MemberNameSelector selects Repository managed resources in the group
-                          Repository's namespace to resolve memberNames, sorted by name.
+                          Repository's namespace, other than the group itself, to resolve
+                          memberNames, sorted by their Nexus names.
                         properties:
                           matchControllerRef:
                             description: |-

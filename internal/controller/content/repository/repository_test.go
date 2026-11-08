@@ -99,6 +99,14 @@ func newTestRepoNamed(objectName, repoName, format, repoType string) *repository
 	}
 }
 
+// withStorage sets the storage of repo to the blob store named blobStoreName,
+// and returns it.
+func withStorage(repo *repositoryv1alpha1.Repository, blobStoreName string) *repositoryv1alpha1.Repository {
+	repo.Spec.ForProvider.Storage = &repositoryv1alpha1.RepositoryStorage{BlobStoreName: blobStoreName}
+
+	return repo
+}
+
 // TestRepositoryObserve tests the Observe method for repositories.
 func TestRepositoryObserve(t *testing.T) {
 	t.Parallel()
@@ -262,6 +270,19 @@ func TestRepositoryCreate(t *testing.T) {
 			handler: nil,
 			wantErr: true,
 		},
+		{
+			// An Optional blobStoreNameRef that resolved to nothing leaves
+			// the name empty; Nexus must not be called with it.
+			name:    "EmptyBlobStoreName",
+			cr:      withStorage(newTestRepo("maven-releases", "maven2", repoTypeHosted), ""),
+			handler: &mockHandler{},
+			wantErr: true,
+		},
+		{
+			name:    "BlobStoreName",
+			cr:      withStorage(newTestRepo("maven-releases", "maven2", repoTypeHosted), "team-store"),
+			handler: &mockHandler{},
+		},
 	}
 
 	for _, tt := range tests {
@@ -307,6 +328,19 @@ func TestRepositoryUpdate(t *testing.T) {
 			cr:      newTestRepo("unsupported-repo", "unsupported", repoTypeHosted),
 			handler: nil,
 			wantErr: true,
+		},
+		{
+			// An Optional blobStoreNameRef that resolved to nothing leaves
+			// the name empty; Nexus must not be called with it.
+			name:    "EmptyBlobStoreName",
+			cr:      withStorage(newTestRepo("maven-releases", "maven2", repoTypeHosted), ""),
+			handler: &mockHandler{},
+			wantErr: true,
+		},
+		{
+			name:    "BlobStoreName",
+			cr:      withStorage(newTestRepo("maven-releases", "maven2", repoTypeHosted), "team-store"),
+			handler: &mockHandler{},
 		},
 	}
 

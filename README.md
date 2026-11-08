@@ -331,9 +331,21 @@ resource metrics for every kind:
 
 Fields that name another Nexus object can instead reference the managed
 resource that manages it, so that Crossplane fills them in once that resource
-exists. A reference names the managed resource (`metadata.name`), and resolves
-to its Nexus name. A selector picks managed resources by label. Both only
-match managed resources in the referencing resource's own namespace.
+is `Ready`, which means the provider has observed it in Nexus. A reference
+names the managed resource (`metadata.name`), and resolves to its Nexus name.
+A selector picks managed resources by label. Both only match managed resources
+in the referencing resource's own namespace.
+
+Until every resource it references is `Ready`, the referencing resource is not
+created or updated, and its `Synced` condition explains which reference is
+waiting. A selector waits on every resource it matches, except the referencing
+resource itself. A reference or selector whose `policy.resolution` is
+`Optional` skips the resources that are not `Ready` instead; since resolved
+values are kept, add `policy.resolve: Always` for it to pick them up once they
+are `Ready`. Note that a
+`Repository` whose optional `storage.blobStoreNameRef` or
+`storage.blobStoreNameSelector` resolves to nothing fails to reconcile, because
+Nexus needs a blob store.
 
 | Kind | Field | Reference | Selector | Referenced kind |
 |------|-------|-----------|----------|-----------------|

@@ -326,7 +326,8 @@ type GroupConfig struct {
 	MemberNameRefs []xpv2.Reference `json:"memberNameRefs,omitempty"`
 
 	// MemberNameSelector selects Repository managed resources in the group
-	// Repository's namespace to resolve memberNames, sorted by name.
+	// Repository's namespace, other than the group itself, to resolve
+	// memberNames, sorted by their Nexus names.
 	// +kubebuilder:validation:Optional
 	MemberNameSelector *xpv2.Selector `json:"memberNameSelector,omitempty"`
 

@@ -16,11 +16,27 @@ import (
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 )
 
-// named sets the metadata of obj and its external name, and returns it.
-func named[T client.Object](obj T, namespace, name, externalName string) T {
+// managed is a managed resource the tests reference.
+type managed interface {
+	client.Object
+	SetConditions(conditions ...xpv2.Condition)
+}
+
+// named sets the metadata of obj and its external name, marks it Ready, and
+// returns it.
+func named[T managed](obj T, namespace, name, externalName string) T {
 	obj.SetNamespace(namespace)
 	obj.SetName(name)
 	meta.SetExternalName(obj, externalName)
+	obj.SetConditions(xpv2.Available())
+
+	return obj
+}
+
+// creating marks obj as not Ready yet, as it is until its controller observes
+// it in Nexus, and returns it.
+func creating[T managed](obj T) T {
+	obj.SetConditions(xpv2.Creating())
 
 	return obj
 }
@@ -122,5 +138,144 @@ func TestRepositoryResolveReferencesWithoutReferences(t *testing.T) {
 		!slices.Equal(repository.Spec.ForProvider.Cleanup.PolicyNames, want.Cleanup.PolicyNames) ||
 		repository.Spec.ForProvider.RoutingRule != nil {
 		t.Errorf("ResolveReferences() changed the parameters to %+v, want %+v", repository.Spec.ForProvider, *want)
+	}
+}
+
+// TestRepositoryResolveReferencesLeavesOutTheGroup checks that a member
+// selector matching the group Repository itself does not make it a member of
+// itself.
+func TestRepositoryResolveReferencesLeavesOutTheGroup(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+
+	err := SchemeBuilder.AddToScheme(scheme)
+	if err != nil {
+		t.Fatalf("AddToScheme() error = %v", err)
+	}
+
+	labels := map[string]string{"team": "platform"}
+
+	releases := named(&Repository{}, "team", "releases", "maven-releases")
+	releases.SetLabels(labels)
+
+	// The group is not Ready while it resolves its members, so it must not
+	// wait on itself.
+	group := creating(named(&Repository{}, "team", "group", "maven-public"))
+	group.SetLabels(labels)
+	group.Spec.ForProvider.Group = &GroupConfig{MemberNameSelector: &xpv2.Selector{MatchLabels: labels}}
+
+	reader := clientfake.NewClientBuilder().WithScheme(scheme).WithObjects(releases, group.DeepCopy()).Build()
+
+	err = group.ResolveReferences(context.Background(), reader)
+	if err != nil {
+		t.Fatalf("ResolveReferences() error = %v", err)
+	}
+
+	if !slices.Equal(group.Spec.ForProvider.Group.MemberNames, []string{"maven-releases"}) {
+		t.Errorf("group.memberNames = %v, want [maven-releases]", group.Spec.ForProvider.Group.MemberNames)
+	}
+}
+
+// TestRepositoryResolveReferencesWaitsForReady checks that references only
+// resolve to managed resources that are Ready, so that a Repository is not
+// created against a blob store or member that Nexus does not have yet, and that
+// an Optional policy skips the resources that are not Ready.
+func TestRepositoryResolveReferencesWaitsForReady(t *testing.T) {
+	t.Parallel()
+
+	scheme := runtime.NewScheme()
+
+	for _, add := range []func(*runtime.Scheme) error{SchemeBuilder.AddToScheme, instancev1alpha1.SchemeBuilder.AddToScheme} {
+		err := add(scheme)
+		if err != nil {
+			t.Fatalf("AddToScheme() error = %v", err)
+		}
+	}
+
+	labels := map[string]string{"team": "platform"}
+
+	releases := named(&Repository{}, "team", "releases", "maven-releases")
+	releases.SetLabels(labels)
+
+	central := creating(named(&Repository{}, "team", "central", "maven-central"))
+	central.SetLabels(labels)
+
+	reader := clientfake.NewClientBuilder().WithScheme(scheme).WithObjects(
+		creating(named(&instancev1alpha1.BlobStore{}, "team", "store", "team-store")),
+		releases,
+		central,
+	).Build()
+
+	optional := &xpv2.Policy{Resolution: ptr.To(xpv2.ResolutionPolicyOptional)}
+
+	cases := map[string]struct {
+		params      RepositoryParameters
+		wantErr     bool
+		wantStore   string
+		wantMembers []string
+	}{
+		"ReferenceToABlobStoreNotReady": {
+			params:  RepositoryParameters{Storage: &RepositoryStorage{BlobStoreNameRef: &xpv2.Reference{Name: "store"}}},
+			wantErr: true,
+		},
+		"OptionalReferenceToABlobStoreNotReady": {
+			params: RepositoryParameters{Storage: &RepositoryStorage{
+				BlobStoreNameRef: &xpv2.Reference{Name: "store", Policy: optional},
+			}},
+		},
+		"ReferenceToAMemberNotReady": {
+			params: RepositoryParameters{Group: &GroupConfig{MemberNameRefs: []xpv2.Reference{
+				{Name: "releases"},
+				{Name: "central"},
+			}}},
+			wantErr: true,
+		},
+		"OptionalReferenceToAMemberNotReady": {
+			params: RepositoryParameters{Group: &GroupConfig{MemberNameRefs: []xpv2.Reference{
+				{Name: "releases"},
+				{Name: "central", Policy: optional},
+			}}},
+			wantMembers: []string{"maven-releases"},
+		},
+		"SelectorMatchingAMemberNotReady": {
+			params:  RepositoryParameters{Group: &GroupConfig{MemberNameSelector: &xpv2.Selector{MatchLabels: labels}}},
+			wantErr: true,
+		},
+		"OptionalSelectorMatchingAMemberNotReady": {
+			params: RepositoryParameters{Group: &GroupConfig{MemberNameSelector: &xpv2.Selector{
+				MatchLabels: labels,
+				Policy:      optional,
+			}}},
+			wantMembers: []string{"maven-releases"},
+		},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			repository := &Repository{ObjectMeta: metav1.ObjectMeta{Name: "group", Namespace: "team"}}
+			repository.Spec.ForProvider = tc.params
+
+			err := repository.ResolveReferences(context.Background(), reader)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("ResolveReferences() error = %v, want error %t", err, tc.wantErr)
+			}
+
+			if tc.wantErr {
+				return
+			}
+
+			params := repository.Spec.ForProvider
+
+			if params.Storage != nil && params.Storage.BlobStoreName != tc.wantStore {
+				t.Errorf("storage.blobStoreName = %q, want %q", params.Storage.BlobStoreName, tc.wantStore)
+			}
+
+			if params.Group != nil && !slices.Equal(params.Group.MemberNames, tc.wantMembers) {
+				t.Errorf("group.memberNames = %v, want %v", params.Group.MemberNames, tc.wantMembers)
+			}
+		})
 	}
 }
