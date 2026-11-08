@@ -59,7 +59,14 @@ func TestClusterProviderConfigInUseBlocksDeletion(t *testing.T) {
 		Spec:       shared.Spec,
 	}
 	f.Apply(t, cpc)
-	t.Cleanup(func() { f.Delete(t, cpc) })
+	t.Cleanup(func() {
+		f.Delete(t, cpc)
+
+		waitErr := f.WaitForDeletion(context.Background(), cpc, time.Minute)
+		if waitErr != nil {
+			t.Logf("cleanup: waiting for deletion of ClusterProviderConfig %q: %v", cpc.GetName(), waitErr)
+		}
+	})
 
 	role := &iamv1alpha1.Role{
 		ObjectMeta: metav1.ObjectMeta{Name: "e2e-cpc-in-use", Namespace: "default"},

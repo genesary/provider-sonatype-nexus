@@ -22,6 +22,9 @@ spec:
     - jsonPath: .metadata.creationTimestamp
       name: AGE
       type: date
+    - jsonPath: .providerConfigRef.kind
+      name: CONFIG-KIND
+      type: string
     - jsonPath: .providerConfigRef.name
       name: CONFIG-NAME
       type: string
