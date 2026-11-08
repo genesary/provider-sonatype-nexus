@@ -154,7 +154,21 @@ for example `args: ["--debug", "--poll=5m"]`.
 | `--poll` (`POLL_INTERVAL`) | `1m` | How often each managed resource is checked for drift. |
 | `--sync` (`SYNC_INTERVAL`) | `1h` | How often every resource is re-listed from the API server and checked for drift. |
 | `--max-reconcile-rate` (`MAX_RECONCILE_RATE`) | `10` | Maximum reconciles per second, across all controllers. It also sets the number of concurrent reconciles per controller and bounds the Kubernetes API client rate. |
+| `--poll-state-metric` (`POLL_STATE_METRIC_INTERVAL`) | `5s` | How often the `crossplane_managed_resource_*` state metrics are recorded. |
 | `--enable-management-policies` (`ENABLE_MANAGEMENT_POLICIES`) | `true` | Honor `spec.managementPolicies`, for example to observe a Nexus resource without managing it. Disable it with `--no-enable-management-policies` or `ENABLE_MANAGEMENT_POLICIES=false`: `--enable-management-policies=false` is rejected. |
+
+### Metrics
+
+The provider serves Prometheus metrics on port `8080` at `/metrics`. Besides
+the controller-runtime metrics, it records the standard Crossplane managed
+resource metrics for every kind:
+
+- `crossplane_managed_resource_exists`, `_ready` and `_synced`: how many
+  managed resources of each kind exist, are ready and are synced;
+- `crossplane_managed_resource_first_time_to_readiness_seconds`,
+  `_first_time_to_reconcile_seconds`, `_deletion_seconds` and
+  `_drift_seconds`: how long they take to become ready, to be reconciled the
+  first time, to be deleted, and how long they stay drifted.
 
 ## Usage Examples
 
