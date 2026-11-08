@@ -2,7 +2,6 @@
 package main
 
 import (
-	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
+	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -42,13 +42,19 @@ func main() {
 		app = kingpin.New(filepath.Base(os.Args[0]), "Sonatype Nexus support for Crossplane.").
 			Version(version.Version)
 		debug            = app.Flag("debug", "Run with debug logging.").Short('d').Envar("DEBUG").Bool()
-		leaderElection   = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Default("false").Envar("LEADER_ELECTION").Bool()
+		leaderElection   = app.Flag("leader-election", "Use leader election for the controller manager.").Short('l').Envar("LEADER_ELECTION").Bool()
 		syncInterval     = app.Flag("sync", "How often all resources will be double-checked for drift from the desired state.").Short('s').Default("1h").Envar("SYNC_INTERVAL").Duration()
 		pollInterval     = app.Flag("poll", "How often individual resources will be checked for drift from the desired state.").Default("1m").Envar("POLL_INTERVAL").Duration()
 		maxReconcileRate = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may be checked for drift from the desired state.").Default("10").Envar("MAX_RECONCILE_RATE").Int()
 	)
 
 	kingpin.MustParse(app.Parse(os.Args[1:]))
+
+	// A rate below 1 gives the global rate limiter a zero or negative burst,
+	// so no reconcile would ever be admitted.
+	if *maxReconcileRate < 1 {
+		app.Fatalf("--max-reconcile-rate must be at least 1, got %d", *maxReconcileRate)
+	}
 
 	zapLogger := zap.New(zap.UseDevMode(*debug))
 	log := logging.NewLogrLogger(zapLogger.WithName("provider-sonatype-nexus"))
@@ -60,7 +66,7 @@ func main() {
 	} else {
 		// A no-op logger keeps controller-runtime from warning that none was
 		// set.
-		ctrl.SetLogger(zap.New(zap.WriteTo(io.Discard)))
+		ctrl.SetLogger(logr.Discard())
 	}
 
 	cfg, err := ctrl.GetConfig()
@@ -81,6 +87,10 @@ func main() {
 		LeaderElectionResourceLock: resourcelock.LeasesResourceLock,
 		LeaseDuration:              new(leaseDuration),
 		RenewDeadline:              new(renewDeadline),
+		// Release the lease on shutdown so a replacement replica takes over
+		// at once instead of waiting out the 60s lease. main exits as soon
+		// as the manager stops, so nothing runs after the release.
+		LeaderElectionReleaseOnCancel: true,
 	})
 	kingpin.FatalIfError(err, "Cannot create controller manager")
 
