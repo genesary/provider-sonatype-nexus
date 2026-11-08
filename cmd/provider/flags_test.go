@@ -19,6 +19,17 @@ func defaultFlags() flags {
 	}
 }
 
+// providerEnvars are the environment variables the provider flags read.
+var providerEnvars = []string{
+	"DEBUG",
+	"LEADER_ELECTION",
+	"SYNC_INTERVAL",
+	"POLL_INTERVAL",
+	"POLL_STATE_METRIC_INTERVAL",
+	"MAX_RECONCILE_RATE",
+	"ENABLE_MANAGEMENT_POLICIES",
+}
+
 // TestFlags checks the defaults of the provider flags, and that flags take
 // precedence over their environment variables.
 func TestFlags(t *testing.T) {
@@ -32,27 +43,30 @@ func TestFlags(t *testing.T) {
 			want: func(*flags) {},
 		},
 		"Flags": {
-			args: []string{"--debug", "--leader-election", "--sync=2h", "--poll=5m", "--max-reconcile-rate=20", "--no-enable-management-policies"},
+			args: []string{"--debug", "--leader-election", "--sync=2h", "--poll=5m", "--poll-state-metric=30s", "--max-reconcile-rate=20", "--no-enable-management-policies"},
 			want: func(f *flags) {
 				f.Debug = true
 				f.LeaderElection = true
 				f.SyncInterval = 2 * time.Hour
 				f.PollInterval = 5 * time.Minute
+				f.PollStateMetricInterval = 30 * time.Second
 				f.MaxReconcileRate = 20
 				f.EnableManagementPolicies = false
 			},
 		},
 		"EnvironmentVariables": {
 			env: map[string]string{
-				"DEBUG":              "1",
-				"LEADER_ELECTION":    "true",
-				"POLL_INTERVAL":      "30s",
-				"MAX_RECONCILE_RATE": "5",
+				"DEBUG":                      "1",
+				"LEADER_ELECTION":            "true",
+				"POLL_INTERVAL":              "30s",
+				"POLL_STATE_METRIC_INTERVAL": "10s",
+				"MAX_RECONCILE_RATE":         "5",
 			},
 			want: func(f *flags) {
 				f.Debug = true
 				f.LeaderElection = true
 				f.PollInterval = 30 * time.Second
+				f.PollStateMetricInterval = 10 * time.Second
 				f.MaxReconcileRate = 5
 			},
 		},
@@ -73,6 +87,13 @@ func TestFlags(t *testing.T) {
 
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
+			// Blank every provider variable, so one set in the environment
+			// running the tests does not change the expected settings.
+			// kingpin ignores an empty variable.
+			for _, key := range providerEnvars {
+				t.Setenv(key, "")
+			}
+
 			for key, value := range test.env {
 				t.Setenv(key, value)
 			}

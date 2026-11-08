@@ -52,6 +52,12 @@ func main() {
 		kingpin.Fatalf("--max-reconcile-rate must be at least 1, got %d", parsed.MaxReconcileRate)
 	}
 
+	// The state metrics recorders tick at this interval, and a ticker panics
+	// on a zero or negative one once the manager starts them.
+	if parsed.PollStateMetricInterval <= 0 {
+		kingpin.Fatalf("--poll-state-metric must be positive, got %s", parsed.PollStateMetricInterval)
+	}
+
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
 
@@ -92,7 +98,7 @@ func newLogger(debug bool) logging.Logger {
 func newManager(cfg *rest.Config, parsed flags) (ctrl.Manager, error) {
 	scheme, err := newScheme()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "cannot build the manager scheme")
 	}
 
 	mgr, err := ctrl.NewManager(ratelimiter.LimitRESTConfig(cfg, parsed.MaxReconcileRate), ctrl.Options{
