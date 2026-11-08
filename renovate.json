@@ -43,7 +43,7 @@
   ],
   "kubernetes": {
     "managerFilePatterns": [
-      "/^e2e/manifests/[^/]+\\.ya?ml$/"
+      "/^cluster/local/[^/]+\\.ya?ml$/"
     ]
   },
   "customManagers": [
@@ -79,12 +79,12 @@
       "pinDigests": false
     },
     {
-      "description": "Nexus in e2e/manifests is only an e2e test fixture; track its tag but don't add per-digest churn.",
+      "description": "Nexus in cluster/local is only an e2e test fixture; track its tag but don't add per-digest churn.",
       "matchManagers": [
         "kubernetes"
       ],
       "matchFileNames": [
-        "e2e/manifests/**"
+        "cluster/local/**"
       ],
       "pinDigests": false
     }

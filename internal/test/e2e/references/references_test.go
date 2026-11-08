@@ -131,8 +131,12 @@ func TestReferenceChain(t *testing.T) {
 		f.Apply(t, resource)
 	}
 
+	// Each resource fails to resolve its reference until the one it
+	// references is Ready, and so backs off further on each attempt: nudge
+	// it rather than wait out a backoff that reaches a minute by the end of
+	// the chain.
 	for _, resource := range resources {
-		err := f.WaitForReady(ctx, resource, 3*time.Minute)
+		err := f.WaitForReadyNudged(ctx, resource, 3*time.Minute)
 		if err != nil {
 			t.Fatalf("waiting for %s to be Ready: %v\n  conditions: %s", resource.GetName(), err, e2e.SummariseConditions(resource))
 		}

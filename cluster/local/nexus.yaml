@@ -36,14 +36,17 @@ spec:
             limits:
               memory: "2Gi"
               cpu: "1"
+          # Nexus answers about 45s after it starts. Probe it early and often,
+          # so that the e2e waiting on this probe starts as soon as it does,
+          # for as long as before (6 minutes) on a slow runner.
           readinessProbe:
             httpGet:
               path: /service/rest/v1/status
               port: 8081
-            initialDelaySeconds: 60
-            periodSeconds: 10
+            initialDelaySeconds: 15
+            periodSeconds: 2
             timeoutSeconds: 5
-            failureThreshold: 30
+            failureThreshold: 180
           livenessProbe:
             httpGet:
               path: /service/rest/v1/status

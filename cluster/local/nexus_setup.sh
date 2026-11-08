@@ -2,7 +2,7 @@
 # Idempotent setup for an in-cluster Nexus instance used by e2e tests.
 #
 # Steps:
-#   1. apply Deployment + Service from e2e/manifests/nexus.yaml
+#   1. apply Deployment + Service from cluster/local/nexus.yaml
 #   2. wait for the Deployment to become Available
 #   3. poll localhost:8081 (mapped via kind NodePort) until Nexus reports ready
 #   4. write username and password each to their own Kubernetes Secret, in
@@ -39,7 +39,7 @@ projectdir="$( cd "$( dirname "${BASH_SOURCE[0]}")"/../.. && pwd )"
 log() { printf '\n>>> %s\n' "$*"; }
 
 log "Applying Nexus manifests"
-"${KUBECTL}" apply -f "${projectdir}/e2e/manifests/nexus.yaml"
+"${KUBECTL}" apply -f "${projectdir}/cluster/local/nexus.yaml"
 
 log "Waiting for deployment/${NEXUS_DEPLOYMENT} to become Available (timeout 10m)"
 "${KUBECTL}" wait --for=condition=Available \

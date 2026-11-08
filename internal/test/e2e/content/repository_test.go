@@ -340,10 +340,11 @@ func TestPypiProxyRepository(t *testing.T) {
 }
 
 // TestMavenGroupRepository creates the necessary member repos first, then
-// creates the group repo. It does NOT run in parallel since it creates
-// multiple interrelated resources that would conflict with other repo tests
-// if they used the same names.
+// creates the group repo. Its repository names are its own, so it runs in
+// parallel with the other repository tests.
 func TestMavenGroupRepository(t *testing.T) {
+	t.Parallel()
+
 	f := e2e.New(t)
 
 	const (
@@ -615,6 +616,8 @@ func TestRepositoryNameDiffersFromObjectName(t *testing.T) {
 // actually holds, for each of the three repository types. The observation is
 // built format-agnostically, so covering the three types covers every format.
 func TestRepositoryObservedState(t *testing.T) {
+	t.Parallel()
+
 	f := e2e.New(t)
 
 	const (

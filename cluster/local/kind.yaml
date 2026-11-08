@@ -1,0 +1,20 @@
+# kind cluster used by cluster/local/integration_tests.sh.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+kubeadmConfigPatches:
+  # The kubelet pulls one image at a time by default. The Crossplane pod, its
+  # dev sidecar and Nexus (an image of several hundred MB) all start within
+  # the first minutes of the run, so pulling their images one after the other
+  # delays each start by the downloads queued before it.
+  - |
+    kind: KubeletConfiguration
+    serializeImagePulls: false
+nodes:
+  - role: control-plane
+    # Expose the Nexus NodePort (see nexus.yaml) on the host, so that
+    # nexus_setup.sh and the e2e suite reach Nexus at localhost:8081 without a
+    # kubectl port-forward.
+    extraPortMappings:
+      - containerPort: 30081
+        hostPort: 8081
+        protocol: TCP

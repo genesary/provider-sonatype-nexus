@@ -26,12 +26,17 @@ import (
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // pollInterval is how often the wait helpers poll the API server.
 const pollInterval = 2 * time.Second
+
+// nudgeAnnotation is the annotation WaitForReadyNudged sets to make the
+// controller of a managed resource reconcile it.
+const nudgeAnnotation = "e2e.nexus.crossplane.io/nudged-at"
 
 // Conditioned is the slim contract every Crossplane managed resource
 // already satisfies — a Kubernetes object whose status exposes the
@@ -44,15 +49,56 @@ type Conditioned interface {
 // WaitForReady polls until obj reports both Synced=True and Ready=True.
 // The supplied object is updated in-place with the latest observed state.
 func (f *Framework) WaitForReady(ctx context.Context, obj Conditioned, timeout time.Duration) error {
+	return f.waitForReady(ctx, obj, timeout, false)
+}
+
+// WaitForReadyNudged is WaitForReady for a managed resource whose first
+// reconciles are expected to fail, such as one referencing resources that are
+// not Ready yet. Each failed reconcile requeues the resource with an
+// exponential backoff (1s, doubling up to 60s) that only resets once a
+// reconcile succeeds, and the reconcile right after the external resource is
+// created is still subject to it: the resource can become Ready up to a
+// minute after it could have. While obj is not Ready, WaitForReadyNudged sets
+// an annotation on it every pollInterval, which its controller reconciles
+// straight away whatever the backoff.
+func (f *Framework) WaitForReadyNudged(ctx context.Context, obj Conditioned, timeout time.Duration) error {
+	return f.waitForReady(ctx, obj, timeout, true)
+}
+
+// waitForReady polls until obj is Ready, nudging it on each poll it is not
+// when nudge is set.
+func (f *Framework) waitForReady(ctx context.Context, obj Conditioned, timeout time.Duration, nudge bool) error {
 	key := client.ObjectKeyFromObject(obj)
+
 	return wait.PollUntilContextTimeout(ctx, pollInterval, timeout, true, func(ctx context.Context) (bool, error) {
-		if err := f.Kube.Get(ctx, key, obj); err != nil {
+		err := f.Kube.Get(ctx, key, obj)
+		if err != nil {
 			return false, err
 		}
-		synced := obj.GetCondition(xpv2.TypeSynced)
-		ready := obj.GetCondition(xpv2.TypeReady)
-		return synced.Status == corev1.ConditionTrue && ready.Status == corev1.ConditionTrue, nil
+
+		ready := isReady(obj)
+		if ready || !nudge {
+			return ready, nil
+		}
+
+		// A merge patch carries no resourceVersion, so it cannot fail on a
+		// conflict with the controller's own updates.
+		patch := fmt.Sprintf(`{"metadata":{"annotations":{%q:%q}}}`, nudgeAnnotation, time.Now().Format(time.RFC3339Nano))
+		err = f.Kube.Patch(ctx, obj, client.RawPatch(types.MergePatchType, []byte(patch)))
+		if err != nil {
+			return false, fmt.Errorf("nudging %s/%s: %w", obj.GetNamespace(), obj.GetName(), err)
+		}
+
+		return false, nil
 	})
+}
+
+// isReady reports whether obj has both Synced=True and Ready=True.
+func isReady(obj Conditioned) bool {
+	synced := obj.GetCondition(xpv2.TypeSynced)
+	ready := obj.GetCondition(xpv2.TypeReady)
+
+	return synced.Status == corev1.ConditionTrue && ready.Status == corev1.ConditionTrue
 }
 
 // WaitForNexus polls Nexus until reached reports that it observes the state
