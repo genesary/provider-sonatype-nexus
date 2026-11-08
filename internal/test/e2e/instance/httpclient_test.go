@@ -24,7 +24,12 @@ func TestHTTPClientLifecycle(t *testing.T) {
 
 	// The HTTP system settings endpoint is available only in Nexus
 	// Repository Pro. Skip gracefully in Community Edition installations.
-	if !f.HTTPSettingsAvailable() {
+	available, err := f.HTTPSettingsAvailable()
+	if err != nil {
+		t.Fatalf("cannot probe the HTTP system settings REST API: %v", err)
+	}
+
+	if !available {
 		t.Skip("HTTP system settings REST API not available (requires Nexus Repository Pro)")
 	}
 

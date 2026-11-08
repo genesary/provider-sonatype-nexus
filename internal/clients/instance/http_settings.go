@@ -69,9 +69,11 @@ func (c *httpSettingsClient) Reset(ctx context.Context) error {
 // unset are copied from current, the settings Nexus holds.
 func GenerateHTTPSettingsUpdate(params *instancev1alpha1.HTTPClientParameters, current *v395.HttpSettingsXo, passwords HTTPProxyPasswords) v395.HttpSettingsXo {
 	settings := v395.HttpSettingsXo{
-		HttpProxy:     *v395.NewNullableProxySettingsXo(generateProxySettings(params.HTTPProxy, passwords.HTTP)),
-		HttpsProxy:    *v395.NewNullableProxySettingsXo(generateProxySettings(params.HTTPSProxy, passwords.HTTPS)),
-		NonProxyHosts: params.NonProxyHosts,
+		HttpProxy:  *v395.NewNullableProxySettingsXo(generateProxySettings(params.HTTPProxy, passwords.HTTP)),
+		HttpsProxy: *v395.NewNullableProxySettingsXo(generateProxySettings(params.HTTPSProxy, passwords.HTTPS)),
+		// Never nil: a nil slice is omitted from the request, which would not
+		// clear the non-proxy hosts the spec no longer lists.
+		NonProxyHosts: append([]string{}, params.NonProxyHosts...),
 	}
 
 	if current != nil {

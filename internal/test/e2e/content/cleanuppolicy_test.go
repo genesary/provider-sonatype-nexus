@@ -36,7 +36,12 @@ func TestCleanupPolicyCRUD(t *testing.T) {
 
 	// The cleanup-policies REST endpoint is available only in Nexus Repository Pro.
 	// Skip gracefully in OSS/Community Edition installations.
-	if !f.CleanupPoliciesAvailable() {
+	available, err := f.CleanupPoliciesAvailable()
+	if err != nil {
+		t.Fatalf("cannot probe the cleanup-policies REST API: %v", err)
+	}
+
+	if !available {
 		t.Skip("cleanup-policies REST API not available (requires Nexus Repository Pro)")
 	}
 

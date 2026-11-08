@@ -10,6 +10,7 @@ import (
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -168,8 +169,10 @@ func (e *external) Update(ctx context.Context, httpClient *instancev1alpha1.HTTP
 // Delete resets the HTTP client settings to the Nexus defaults; they cannot
 // be removed. The reconciler saves the status after a successful Delete, so
 // the next Observe sees the recorded reset and reports the settings absent.
+// A 404 means the instance has no HTTP settings API (Community Edition), so
+// there is nothing to reset and the deletion must not be blocked.
 func (e *external) Delete(ctx context.Context, httpClient *instancev1alpha1.HTTPClient) (managed.ExternalDelete, error) {
-	err := e.client.Reset(ctx)
+	err := nexus.IgnoreNotFound(e.client.Reset(ctx))
 	if err != nil {
 		return managed.ExternalDelete{}, errors.Wrap(err, errResetHTTP)
 	}
@@ -202,10 +205,15 @@ func (e *external) applySettings(ctx context.Context, httpClient *instancev1alph
 	}
 
 	// The update replaces every setting, so the ones the spec leaves unset
-	// are carried over from Nexus.
-	current, err := e.client.Get(ctx)
-	if err != nil {
-		return "", errors.Wrap(err, errGetHTTP)
+	// are carried over from Nexus. Nexus is only read when one is unset.
+	var current *v395.HttpSettingsXo
+
+	params := httpClient.Spec.ForProvider
+	if params.UserAgentSuffix == nil || params.TimeoutSeconds == nil || params.Retries == nil {
+		current, err = e.client.Get(ctx)
+		if err != nil {
+			return "", errors.Wrap(err, errGetHTTP)
+		}
 	}
 
 	settings := instanceclient.GenerateHTTPSettingsUpdate(&httpClient.Spec.ForProvider, current, passwords)
@@ -236,22 +244,25 @@ func resolvePasswords(ctx context.Context, kube client.Reader, httpClient *insta
 
 	params := httpClient.Spec.ForProvider
 
-	if ref := passwordSecretRef(params.HTTPProxy); ref != nil {
-		password, err := nexus.GetSecretValue(ctx, kube, httpClient.GetNamespace(), ref)
-		if err != nil {
-			return passwords, errors.Wrap(err, errGetHTTPPassword)
+	for _, proxy := range []struct {
+		spec   *instancev1alpha1.HTTPClientProxy
+		dest   *string
+		errMsg string
+	}{
+		{spec: params.HTTPProxy, dest: &passwords.HTTP, errMsg: errGetHTTPPassword},
+		{spec: params.HTTPSProxy, dest: &passwords.HTTPS, errMsg: errGetHTTPSPassword},
+	} {
+		ref := passwordSecretRef(proxy.spec)
+		if ref == nil {
+			continue
 		}
 
-		passwords.HTTP = password
-	}
-
-	if ref := passwordSecretRef(params.HTTPSProxy); ref != nil {
 		password, err := nexus.GetSecretValue(ctx, kube, httpClient.GetNamespace(), ref)
 		if err != nil {
-			return passwords, errors.Wrap(err, errGetHTTPSPassword)
+			return passwords, errors.Wrap(err, proxy.errMsg)
 		}
 
-		passwords.HTTPS = password
+		*proxy.dest = password
 	}
 
 	return passwords, nil

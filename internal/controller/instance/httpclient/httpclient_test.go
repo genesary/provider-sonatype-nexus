@@ -19,6 +19,7 @@ import (
 
 	instancev1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/instance/v1alpha1"
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 	instancemocks "github.com/genesary/provider-sonatype-nexus/test/mocks/instance"
 )
 
@@ -328,6 +329,24 @@ func TestDelete(t *testing.T) {
 
 		if cr.Status.AtProvider.ResetToDefaults {
 			t.Error("Delete() recorded a reset that failed")
+		}
+	})
+
+	t.Run("NotFound", func(t *testing.T) {
+		t.Parallel()
+
+		mc := instancemocks.NewMockHTTPSettingsClient()
+		mc.ResetFn = func() error { return nexus.ErrNotFound }
+
+		cr := newTestHTTPClient()
+
+		_, err := (&external{client: mc}).Delete(context.Background(), cr)
+		if err != nil {
+			t.Fatalf("Delete() unexpected error: %v", err)
+		}
+
+		if !cr.Status.AtProvider.ResetToDefaults {
+			t.Error("Delete() did not record the reset in status")
 		}
 	})
 }
