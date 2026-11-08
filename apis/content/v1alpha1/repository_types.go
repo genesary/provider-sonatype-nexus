@@ -12,16 +12,19 @@ import (
 type RepositoryParameters struct {
 	// Name of the repository.
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Name is immutable."
 	Name string `json:"name"`
 
 	// Format of the repository (maven2, npm, docker, raw, etc.).
 	// +kubebuilder:validation:Enum=maven2;npm;docker;raw;nuget;pypi;rubygems;yum;apt;helm;go;r;conan;conda;cocoapods;gitlfs;p2;cargo;huggingface
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Format is immutable."
 	Format string `json:"format"`
 
 	// Type of the repository (hosted, proxy, group).
 	// +kubebuilder:validation:Enum=hosted;proxy;group
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Type is immutable."
 	Type string `json:"type"`
 
 	// Online determines if the repository is online.

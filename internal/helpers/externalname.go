@@ -35,8 +35,16 @@ func WithSpecExternalName[T resource.Managed](kube client.Client, name func(T) s
 // for kinds whose external name is an identifier Nexus assigns on creation.
 // The external name then stays empty until Create records that identifier,
 // instead of holding metadata.name, which names no Nexus object.
+//
+// It also declares the external name non-deterministic, overriding the default
+// set by ReconcilerOptions: a create interrupted before its identifier was
+// recorded cannot be found again, and retrying it could create a duplicate, so
+// the reconciler must stop and ask for intervention instead.
 func WithServerAssignedExternalName() managed.ReconcilerOption {
-	return managed.WithInitializers()
+	return func(reconciler *managed.Reconciler) {
+		managed.WithInitializers()(reconciler)
+		managed.WithDeterministicExternalName(false)(reconciler)
+	}
 }
 
 // SpecExternalName returns an initializer that sets the external name of a

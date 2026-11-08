@@ -12,11 +12,13 @@ import (
 type BlobStoreParameters struct {
 	// Name of the blob store.
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Name is immutable."
 	Name string `json:"name"`
 
 	// Type of the blob store (File or S3).
 	// +kubebuilder:validation:Enum=File;S3
 	// +kubebuilder:default=File
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Type is immutable."
 	Type string `json:"type"`
 
 	// Path for File type blob store.

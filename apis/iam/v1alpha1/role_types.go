@@ -12,6 +12,7 @@ import (
 type RoleParameters struct {
 	// ID is the unique identifier for the role.
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="ID is immutable."
 	ID string `json:"id"`
 
 	// Name of the role.

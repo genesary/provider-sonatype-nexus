@@ -104,6 +104,9 @@ spec:
                   userId:
                     description: UserID is the unique identifier for the user.
                     type: string
+                    x-kubernetes-validations:
+                    - message: UserID is immutable.
+                      rule: self == oldSelf
                 required:
                 - emailAddress
                 - firstName

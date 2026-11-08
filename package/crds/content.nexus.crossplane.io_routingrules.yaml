@@ -80,6 +80,9 @@ spec:
                   name:
                     description: Name of the routing rule.
                     type: string
+                    x-kubernetes-validations:
+                    - message: Name is immutable.
+                      rule: self == oldSelf
                 required:
                 - matchers
                 - mode
