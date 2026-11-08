@@ -38,7 +38,7 @@ func newApp(name string, parsed *flags) *kingpin.Application {
 		DurationVar(&parsed.SyncInterval)
 	app.Flag("poll", "How often individual resources will be checked for drift from the desired state.").Default("1m").Envar("POLL_INTERVAL").
 		DurationVar(&parsed.PollInterval)
-	app.Flag("min-poll-interval", "Shortest poll interval a resource may request with the crossplane.io/poll-interval annotation. Shorter requests are raised to this value. Must not be negative, 0 removes the limit.").Default("30s").Envar("MIN_POLL_INTERVAL").
+	app.Flag("min-poll-interval", "Shortest poll interval a resource may request with the crossplane.io/poll-interval annotation. Shorter requests are raised to this value, or to --poll when that is shorter. Must not be negative, 0 removes the limit.").Default("30s").Envar("MIN_POLL_INTERVAL").
 		DurationVar(&parsed.MinPollInterval)
 	app.Flag("poll-state-metric", "How often the state metrics of the managed resources are recorded.").Default("5s").Envar("POLL_STATE_METRIC_INTERVAL").
 		DurationVar(&parsed.PollStateMetricInterval)

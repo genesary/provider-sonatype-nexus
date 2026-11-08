@@ -1,56 +1,73 @@
 package {{ .Env.GROUP | strings.ToLower }}
 
 import (
-	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
+	"context"
 
-	"{{ .Env.PROJECT_REPO }}/apis/{{ .Env.GROUP | strings.ToLower }}/{{ .Env.APIVERSION | strings.ToLower }}"
-	"{{ .Env.PROJECT_REPO }}/internal/clients/common"
+	"github.com/pkg/errors"
+	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
+
+	{{ .Env.GROUP | strings.ToLower }}{{ .Env.APIVERSION | strings.ToLower }} "{{ .Env.PROJECT_REPO }}/apis/{{ .Env.GROUP | strings.ToLower }}/{{ .Env.APIVERSION | strings.ToLower }}"
+	"{{ .Env.PROJECT_REPO }}/internal/clients/nexus"
 )
 
-// {{ .Env.KIND }}sClient is the interface for interacting with SonarQube {{ .Env.KIND }} API
-// It handles all the operations related to {{ .Env.KIND }}s in SonarQube, such as creating, updating, deleting, and retrieving {{ .Env.KIND }}s.
-type {{ .Env.KIND }}sClient interface {
-	// Define methods for interacting with SonarQube {{ .Env.KIND }} API here
+// errNotImplemented is returned by the {{ .Env.KIND }}Client methods until they
+// call the Nexus API.
+var errNotImplemented = errors.New("{{ .Env.KIND }} client is not implemented")
+
+// {{ .Env.KIND }}Client defines the interface for {{ .Env.KIND }} operations.
+//
+// TODO: Exchange the Nexus API model of the {{ .Env.KIND }} (a v395.*XO type)
+// rather than the CRD types, with Generate{{ .Env.KIND }} and
+// Generate{{ .Env.KIND }}Observation converting between them, as
+// internal/clients/content/routing_rule.go does.
+type {{ .Env.KIND }}Client interface {
+	Get(ctx context.Context, name string) (*{{ .Env.GROUP | strings.ToLower }}{{ .Env.APIVERSION | strings.ToLower }}.{{ .Env.KIND }}Observation, error)
+	Create(ctx context.Context, params *{{ .Env.GROUP | strings.ToLower }}{{ .Env.APIVERSION | strings.ToLower }}.{{ .Env.KIND }}Parameters) error
+	Update(ctx context.Context, name string, params *{{ .Env.GROUP | strings.ToLower }}{{ .Env.APIVERSION | strings.ToLower }}.{{ .Env.KIND }}Parameters) error
+	Delete(ctx context.Context, name string) error
 }
 
-// New{{ .Env.KIND }}sClient creates a new {{ .Env.KIND }}sClient with the provided SonarQube client configuration.
-func New{{ .Env.KIND }}sClient(clientConfig common.Config) {{ .Env.KIND }}sClient {
-	newClient := common.NewClient(clientConfig)
-
-	return newClient.{{ .Env.KIND }}s
+// {{ .Env.KIND | strings.ToLower }}Client implements {{ .Env.KIND }}Client over the Nexus API.
+type {{ .Env.KIND | strings.ToLower }}Client struct {
+	// TODO: Keep only the API service the {{ .Env.KIND }} needs, such as
+	// nc.RoutingRulesAPI for routing rules.
+	api *v395.APIClient
 }
 
-// LateInitialize{{ .Env.KIND }} fills the empty fields in the {{ .Env.KIND }} spec with the values from the SonarQube API response.
-// The API response should be the result of a "Get" operation for the {{ .Env.KIND }} resource.
-func LateInitialize{{ .Env.KIND }}(spec *{{ .Env.APIVERSION | strings.ToLower }}.{{ .Env.KIND }}Parameters, observation *{{ .Env.APIVERSION | strings.ToLower }}.{{ .Env.KIND }}Observation) {
-	if spec == nil || observation == nil {
-		return
+// New{{ .Env.KIND }}Client creates a {{ .Env.KIND }}Client from credentials.
+func New{{ .Env.KIND }}Client(creds nexus.Credentials) ({{ .Env.KIND }}Client, error) {
+	nc, err := nexus.NewClient(creds)
+	if err != nil {
+		return nil, err
 	}
-	// Use the SonarQube API response to fill in any missing fields in the {{ .Env.KIND }} spec.
-	// This typically involves checking if each field in the spec is nil or has a zero value, and if so, assigning it the corresponding value from the API response.
+
+	return &{{ .Env.KIND | strings.ToLower }}Client{api: nc}, nil
 }
 
-// Is{{ .Env.KIND }}LateInitialized checks if two {{ .Env.KIND }} specs are equal after late initialization. It returns true if the specs are equal, and false if they are not.
-func Is{{ .Env.KIND }}LateInitialized(former, current *{{ .Env.APIVERSION | strings.ToLower }}.{{ .Env.KIND }}Parameters) bool {
-	if former == nil || current == nil {
-		return false
-	}
-
-	// Compare the two {{ .Env.KIND }} specs after late initialization. This typically involves using a comparison function that ignores fields that are not relevant for determining if the specs are up to date.
-	return !cmp.Equal(former, current, cmpopts.IgnoreFields({{ .Env.APIVERSION | strings.ToLower }}.{{ .Env.KIND }}Parameters{}))
+// Get returns the {{ .Env.KIND }} with the given name. Wrap API errors with
+// nexus.APIError, so that the controller can recognise a missing {{ .Env.KIND }}
+// with nexus.IsNotFound.
+func (c *{{ .Env.KIND | strings.ToLower }}Client) Get(_ context.Context, _ string) (*{{ .Env.GROUP | strings.ToLower }}{{ .Env.APIVERSION | strings.ToLower }}.{{ .Env.KIND }}Observation, error) {
+	return nil, errNotImplemented
 }
 
-// Is{{ .Env.KIND }}UpToDate checks if the {{ .Env.KIND }} spec is up to date with the SonarQube API response.
-// It returns true if the spec is up to date, and false if it is not.
-func Is{{ .Env.KIND }}UpToDate(spec *{{ .Env.APIVERSION | strings.ToLower }}.{{ .Env.KIND }}Parameters, observation *{{ .Env.APIVERSION | strings.ToLower }}.{{ .Env.KIND }}Observation) bool {
-	if spec == nil {
-		return true
-	}
+// Create creates a {{ .Env.KIND }}.
+func (c *{{ .Env.KIND | strings.ToLower }}Client) Create(_ context.Context, _ *{{ .Env.GROUP | strings.ToLower }}{{ .Env.APIVERSION | strings.ToLower }}.{{ .Env.KIND }}Parameters) error {
+	return errNotImplemented
+}
 
-	if observation == nil {
-		return false
-	}
+// Update updates the {{ .Env.KIND }} with the given name.
+func (c *{{ .Env.KIND | strings.ToLower }}Client) Update(_ context.Context, _ string, _ *{{ .Env.GROUP | strings.ToLower }}{{ .Env.APIVERSION | strings.ToLower }}.{{ .Env.KIND }}Parameters) error {
+	return errNotImplemented
+}
 
-	return true
+// Delete deletes the {{ .Env.KIND }} with the given name.
+func (c *{{ .Env.KIND | strings.ToLower }}Client) Delete(_ context.Context, _ string) error {
+	return errNotImplemented
+}
+
+// Is{{ .Env.KIND }}UpToDate reports whether the CR spec matches the observed {{ .Env.KIND }}.
+func Is{{ .Env.KIND }}UpToDate(params *{{ .Env.GROUP | strings.ToLower }}{{ .Env.APIVERSION | strings.ToLower }}.{{ .Env.KIND }}Parameters, observed *{{ .Env.GROUP | strings.ToLower }}{{ .Env.APIVERSION | strings.ToLower }}.{{ .Env.KIND }}Observation) bool {
+	// TODO: Compare every field of the spec with its observed value.
+	return params.ConfigurableField == observed.ConfigurableField
 }

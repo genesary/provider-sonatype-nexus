@@ -164,7 +164,7 @@ provider.prepare:
 
 # This target adds a new api type and its controller.
 # You would still need to register new api in "apis/<provider>.go" and
-# controller in "internal/controller/<provider>.go".
+# controller in the managedControllers list of "internal/controller/register.go".
 # Arguments:
 #   provider: Camel case name of your provider, e.g. GitHub, PlanetScale
 #   group: API group for the type you want to add.

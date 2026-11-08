@@ -28,18 +28,22 @@ type Options struct {
 	// through the crossplane.io/poll-interval annotation. Shorter requests are
 	// raised to it, which keeps the annotation from letting one resource use
 	// the reconcile budget shared by all tenants, or flood Nexus with
-	// requests. Zero removes the limit.
+	// requests. Zero removes the limit. It never exceeds PollInterval, see
+	// minPollInterval.
 	MinPollInterval time.Duration
 }
 
-// ValidateMinPollInterval returns an error if minimum is negative. A negative
-// minimum would silently remove the limit, which only 0 is meant to do.
-func ValidateMinPollInterval(minimum time.Duration) error {
-	if minimum < 0 {
-		return errors.Errorf("minimum poll interval must not be negative, got %s", minimum)
+// minPollInterval returns the floor applied to the poll interval annotation.
+// It is capped at the poll interval, so that an annotation can always ask for
+// the polling every resource without one already gets: with --poll=10s and the
+// default 30s minimum, an annotation of 20s would otherwise be raised to 30s,
+// polling slower than unannotated resources.
+func minPollInterval(opts Options) time.Duration {
+	if opts.PollInterval > 0 && opts.PollInterval < opts.MinPollInterval {
+		return opts.PollInterval
 	}
 
-	return nil
+	return opts.MinPollInterval
 }
 
 // ReconcilerOptions returns the managed reconciler options shared by every
@@ -49,7 +53,7 @@ func ReconcilerOptions(mgr ctrl.Manager, name string, opts Options, specific ...
 	options = append(options,
 		managed.WithLogger(controllerLogger(opts, name)),
 		managed.WithPollInterval(opts.PollInterval),
-		managed.WithMinPollInterval(opts.MinPollInterval),
+		managed.WithMinPollInterval(minPollInterval(opts)),
 		managed.WithRecorder(newEventRecorder(mgr, name, opts)),
 	)
 

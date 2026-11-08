@@ -306,9 +306,10 @@ func TestReconcilerOptionsPollInterval(t *testing.T) {
 	)
 
 	tests := map[string]struct {
-		annotation string
-		noMinimum  bool
-		want       time.Duration
+		annotation   string
+		noMinimum    bool
+		pollInterval time.Duration
+		want         time.Duration
 	}{
 		"NoAnnotationUsesThePollInterval": {
 			want: pollInterval,
@@ -338,6 +339,16 @@ func TestReconcilerOptionsPollInterval(t *testing.T) {
 			noMinimum:  true,
 			want:       time.Millisecond,
 		},
+		"MinimumIsCappedAtAShorterPollInterval": {
+			annotation:   "1ms",
+			pollInterval: 10 * time.Second,
+			want:         10 * time.Second,
+		},
+		"AnnotationBetweenAShorterPollIntervalAndTheMinimumIsHonored": {
+			annotation:   "20s",
+			pollInterval: 10 * time.Second,
+			want:         20 * time.Second,
+		},
 	}
 
 	for name, test := range tests {
@@ -352,34 +363,13 @@ func TestReconcilerOptionsPollInterval(t *testing.T) {
 				opts.MinPollInterval = 0
 			}
 
+			if test.pollInterval != 0 {
+				opts.PollInterval = test.pollInterval
+			}
+
 			got := reconcileRole(t, opts, testRole(test.annotation))
 			if got != test.want {
 				t.Errorf("Reconcile() RequeueAfter = %v, want %v", got, test.want)
-			}
-		})
-	}
-}
-
-// TestValidateMinPollInterval checks that only a negative minimum is rejected.
-func TestValidateMinPollInterval(t *testing.T) {
-	t.Parallel()
-
-	tests := map[string]struct {
-		minimum time.Duration
-		wantErr bool
-	}{
-		"Positive": {minimum: time.Second},
-		"Zero":     {},
-		"Negative": {minimum: -time.Second, wantErr: true},
-	}
-
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-
-			err := ValidateMinPollInterval(test.minimum)
-			if (err != nil) != test.wantErr {
-				t.Errorf("ValidateMinPollInterval(%v) error = %v, want error %t", test.minimum, err, test.wantErr)
 			}
 		})
 	}

@@ -30,11 +30,19 @@ export PROJECT_REPO
 kind_lower=$(echo "${KIND}" | tr "[:upper:]" "[:lower:]")
 group_lower=$(echo "${GROUP}" | tr "[:upper:]" "[:lower:]")
 
+# render_if_absent renders template $1 to $2, unless $2 already exists: the
+# group and version files are shared by every kind of an existing group.
+render_if_absent() {
+  if [ ! -f "$2" ]; then
+    ${GOMPLATE} < "$1" > "$2"
+  fi
+}
+
 mkdir -p "apis/${group_lower}/${APIVERSION}"
-${GOMPLATE} < "hack/helpers/apis/GROUP_LOWER/GROUP_LOWER.go.tmpl" > "apis/${group_lower}/${group_lower}.go"
+render_if_absent "hack/helpers/apis/GROUP_LOWER/GROUP_LOWER.go.tmpl" "apis/${group_lower}/${group_lower}.go"
 ${GOMPLATE} < "hack/helpers/apis/GROUP_LOWER/APIVERSION/KIND_LOWER_types.go.tmpl" > "apis/${group_lower}/${APIVERSION}/${kind_lower}_types.go"
-${GOMPLATE} < "hack/helpers/apis/GROUP_LOWER/APIVERSION/doc.go.tmpl" > "apis/${group_lower}/${APIVERSION}/doc.go"
-${GOMPLATE} < "hack/helpers/apis/GROUP_LOWER/APIVERSION/groupversion_info.go.tmpl" > "apis/${group_lower}/${APIVERSION}/groupversion_info.go"
+render_if_absent "hack/helpers/apis/GROUP_LOWER/APIVERSION/doc.go.tmpl" "apis/${group_lower}/${APIVERSION}/doc.go"
+render_if_absent "hack/helpers/apis/GROUP_LOWER/APIVERSION/groupversion_info.go.tmpl" "apis/${group_lower}/${APIVERSION}/groupversion_info.go"
 
 mkdir -p "internal/controller/${group_lower}/${kind_lower}"
 ${GOMPLATE} < "hack/helpers/controller/KIND_LOWER/KIND_LOWER.go.tmpl" > "internal/controller/${group_lower}/${kind_lower}/${kind_lower}.go"
@@ -54,4 +62,11 @@ else
   echo "Warning: internal/clients/${group_lower}/${kind_lower}_test.go already exists. Skipping file generation to avoid overwriting any custom code added by the user. Some recommended code may be missing from the file."
 fi
 
-echo "Run 'make generate' to update the generated code with the new type."
+# The import order of the templates depends on the group name.
+gofmt -w \
+  "apis/${group_lower}/${APIVERSION}/${kind_lower}_types.go" \
+  "internal/controller/${group_lower}/${kind_lower}" \
+  "internal/clients/${group_lower}/${kind_lower}.go" \
+  "internal/clients/${group_lower}/${kind_lower}_test.go"
+
+echo "Register the controller in the managedControllers list of internal/controller/register.go, then run 'make generate' to update the generated code with the new type."
