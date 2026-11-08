@@ -154,7 +154,7 @@ for example `args: ["--debug", "--poll=5m"]`.
 | `--poll` (`POLL_INTERVAL`) | `1m` | How often each managed resource is checked for drift. |
 | `--sync` (`SYNC_INTERVAL`) | `1h` | How often every resource is re-listed from the API server and checked for drift. |
 | `--max-reconcile-rate` (`MAX_RECONCILE_RATE`) | `10` | Maximum reconciles per second, across all controllers. It also sets the number of concurrent reconciles per controller and bounds the Kubernetes API client rate. |
-| `--enable-management-policies` (`ENABLE_MANAGEMENT_POLICIES`) | `true` | Honor `spec.managementPolicies`, for example to observe a Nexus resource without managing it. |
+| `--enable-management-policies` (`ENABLE_MANAGEMENT_POLICIES`) | `true` | Honor `spec.managementPolicies`, for example to observe a Nexus resource without managing it. Disable it with `--no-enable-management-policies` or `ENABLE_MANAGEMENT_POLICIES=false`: `--enable-management-policies=false` is rejected. |
 
 ## Usage Examples
 

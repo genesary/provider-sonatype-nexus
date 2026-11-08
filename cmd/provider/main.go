@@ -48,7 +48,7 @@ func main() {
 		pollInterval     = app.Flag("poll", "How often individual resources will be checked for drift from the desired state.").Default("1m").Envar("POLL_INTERVAL").Duration()
 		maxReconcileRate = app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may be checked for drift from the desired state.").Default("10").Envar("MAX_RECONCILE_RATE").Int()
 
-		enableManagementPolicies = app.Flag("enable-management-policies", "Enable support for Management Policies.").Default("true").Envar("ENABLE_MANAGEMENT_POLICIES").Bool()
+		enableManagementPolicies = app.Flag("enable-management-policies", "Enable support for Management Policies. Disable with --no-enable-management-policies.").Default("true").Envar("ENABLE_MANAGEMENT_POLICIES").Bool()
 	)
 
 	kingpin.MustParse(app.Parse(os.Args[1:]))

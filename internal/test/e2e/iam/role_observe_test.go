@@ -45,6 +45,10 @@ func TestRoleObserveOnly(t *testing.T) {
 		roleName = "E2E Observe Only Role"
 	)
 
+	// Remove a role left behind by an aborted run, which would make the
+	// creation below fail. A 404 is the expected outcome and is ignored.
+	_, _ = f.Nexus.SecurityManagementRolesAPI.DeleteSecurityRoles(ctx, roleID).Execute()
+
 	_, _, err := f.Nexus.SecurityManagementRolesAPI.CreateSecurityRoles(ctx).
 		RoleXORequest(*v395.NewRoleXORequest(roleID, roleName)).Execute()
 	if err != nil {
