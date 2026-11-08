@@ -119,6 +119,13 @@ func (f *Framework) HTTPSettingsAvailable() (bool, error) {
 	return available(f.Nexus.ManageSonatypeHTTPSystemSettingsAPI.ListHttp(context.Background()).Execute())
 }
 
+// ProEdition reports whether the Nexus instance is Nexus Repository Pro. It
+// probes the HTTP system settings REST API, which only Pro serves; see
+// available.
+func (f *Framework) ProEdition() (bool, error) {
+	return f.HTTPSettingsAvailable()
+}
+
 // FetchHTTPSettings returns the Nexus HTTP system settings.
 func (f *Framework) FetchHTTPSettings() (*v395.HttpSettingsXo, error) {
 	settings, resp, err := f.Nexus.ManageSonatypeHTTPSystemSettingsAPI.ListHttp(context.Background()).Execute()
@@ -145,6 +152,11 @@ func (f *Framework) FetchContentSelector(name string) (*v395.ContentSelectorApiR
 // FetchBlobStoreFile returns the file-type blobstore with the given name, or (nil, nil) if absent.
 func (f *Framework) FetchBlobStoreFile(name string) (*v395.FileBlobStoreApiModel, error) {
 	return absentAsNil(f.Nexus.BlobStoreAPI.GetBlobstoresFile(context.Background(), name).Execute())
+}
+
+// FetchBlobStoreAzure returns the Azure blobstore with the given name, or (nil, nil) if absent.
+func (f *Framework) FetchBlobStoreAzure(name string) (*v395.AzureBlobStoreApiModel, error) {
+	return absentAsNil(f.Nexus.BlobStoreAPI.GetBlobstoresAzure(context.Background(), name).Execute())
 }
 
 // FetchMavenHostedRepo returns the Maven hosted repository with the given name.

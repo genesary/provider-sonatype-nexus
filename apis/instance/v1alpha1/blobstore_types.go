@@ -9,14 +9,17 @@ import (
 )
 
 // BlobStoreParameters defines the desired state of a BlobStore.
+// +kubebuilder:validation:XValidation:rule="self.type != 'Azure' || has(self.azureConfig)",message="azureConfig is required when type is Azure."
+// +kubebuilder:validation:XValidation:rule="self.type == 'Azure' || !has(self.azureConfig)",message="azureConfig is only allowed when type is Azure."
 type BlobStoreParameters struct {
 	// Name of the blob store.
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Name is immutable."
 	Name string `json:"name"`
 
-	// Type of the blob store (File or S3).
-	// +kubebuilder:validation:Enum=File;S3
+	// Type of the blob store (File, S3 or Azure). Azure blob stores require
+	// Nexus Repository Pro.
+	// +kubebuilder:validation:Enum=File;S3;Azure
 	// +kubebuilder:default=File
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Type is immutable."
 	Type string `json:"type"`
@@ -32,6 +35,48 @@ type BlobStoreParameters struct {
 	// S3Config defines S3 configuration for S3 type blob store.
 	// +kubebuilder:validation:Optional
 	S3Config *S3Config `json:"s3Config,omitempty"`
+
+	// AzureConfig defines the Azure Blob Storage configuration of an Azure
+	// type blob store. Required when the type is Azure.
+	// +kubebuilder:validation:Optional
+	AzureConfig *AzureConfig `json:"azureConfig,omitempty"`
+}
+
+// AzureConfig defines the Azure Blob Storage configuration of an Azure blob
+// store.
+// +kubebuilder:validation:XValidation:rule="self.authenticationMethod != 'ACCOUNTKEY' || has(self.accountKeySecretRef)",message="accountKeySecretRef is required when authenticationMethod is ACCOUNTKEY."
+// +kubebuilder:validation:XValidation:rule="self.authenticationMethod == 'ACCOUNTKEY' || !has(self.accountKeySecretRef)",message="accountKeySecretRef is only allowed when authenticationMethod is ACCOUNTKEY."
+type AzureConfig struct {
+	// AccountName is the Azure storage account name.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinLength=1
+	AccountName string `json:"accountName"`
+
+	// ContainerName is the name of an existing container of the storage
+	// account, which holds the blobs.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Pattern=`^[a-z0-9][a-z0-9-]{2,62}$`
+	ContainerName string `json:"containerName"`
+
+	// AuthenticationMethod selects how Nexus authenticates to Azure:
+	// ACCOUNTKEY with the account key in accountKeySecretRef,
+	// MANAGEDIDENTITY with the managed identity of the Nexus host, or
+	// ENVIRONMENTVARIABLE with the credentials in the Nexus environment.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=ACCOUNTKEY;MANAGEDIDENTITY;ENVIRONMENTVARIABLE
+	AuthenticationMethod string `json:"authenticationMethod"`
+
+	// AccountKeySecretRef references the Kubernetes Secret key holding the
+	// storage account key. The secret must be in the same namespace as the
+	// BlobStore. Required when the authentication method is ACCOUNTKEY.
+	// +kubebuilder:validation:Optional
+	AccountKeySecretRef *xpv2.LocalSecretKeySelector `json:"accountKeySecretRef,omitempty"`
+
+	// PreSignedURLEnabled enables direct downloads from Azure through SAS
+	// URLs. If unset, Nexus applies its default and the setting is not
+	// checked for drift.
+	// +kubebuilder:validation:Optional
+	PreSignedURLEnabled *bool `json:"preSignedUrlEnabled,omitempty"`
 }
 
 // SoftQuota defines a soft quota configuration for blob stores.
@@ -135,6 +180,25 @@ type BlobStoreObservation struct {
 	// Deprecated: Nexus no longer reports a bucket expiration, so this field
 	// is never set.
 	BucketExpirationDays *int32 `json:"bucketExpirationDays,omitempty"`
+
+	// AccountName is the observed storage account of an Azure blob store.
+	AccountName *string `json:"accountName,omitempty"`
+
+	// ContainerName is the observed container of an Azure blob store.
+	ContainerName *string `json:"containerName,omitempty"`
+
+	// AuthenticationMethod is the observed authentication method of an Azure
+	// blob store.
+	AuthenticationMethod *string `json:"authenticationMethod,omitempty"`
+
+	// PreSignedURLEnabled is whether the observed Azure blob store serves
+	// downloads through SAS URLs.
+	PreSignedURLEnabled *bool `json:"preSignedUrlEnabled,omitempty"`
+
+	// CredentialsFingerprint identifies the Azure account key last applied
+	// to Nexus, which Nexus never reports back. It changes when the
+	// referenced Secret changes or is repointed, which triggers an update.
+	CredentialsFingerprint string `json:"credentialsFingerprint,omitempty"`
 }
 
 // BlobStoreSpec defines the desired state of BlobStore.

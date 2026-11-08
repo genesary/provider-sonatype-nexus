@@ -23,7 +23,7 @@ This provider enables you to manage Nexus Repository Manager resources using Kub
 | `LDAP` | `iam.nexus.crossplane.io` | LDAP server configuration |
 | `SAML` | `iam.nexus.crossplane.io` | SAML identity provider configuration |
 | `UserTokenConfiguration` | `iam.nexus.crossplane.io` | User token settings |
-| `BlobStore` | `instance.nexus.crossplane.io` | File or S3-based blob storage |
+| `BlobStore` | `instance.nexus.crossplane.io` | File, S3 or Azure (Pro) blob storage |
 | `Capability` | `instance.nexus.crossplane.io` | Nexus capabilities |
 | `EmailConfiguration` | `instance.nexus.crossplane.io` | Email (SMTP) server settings used for notifications |
 | `HTTPClient` | `instance.nexus.crossplane.io` | Outbound HTTP client settings: User-Agent, timeout, retries and HTTP/HTTPS proxies (Pro) |

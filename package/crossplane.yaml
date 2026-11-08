@@ -19,7 +19,7 @@ metadata:
         RoutingRule
       - IAM: User, Role, Privilege, AnonymousAccess, LDAP, SAML,
         UserTokenConfiguration
-      - Instance: BlobStore (File and S3), Capability, EmailConfiguration,
+      - Instance: BlobStore (File, S3 and Azure), Capability, EmailConfiguration,
         HTTPClient, IQServerConfiguration, License, Script, SecurityRealm,
         SecuritySSLTruststore, SSRFProtection, Task
 
