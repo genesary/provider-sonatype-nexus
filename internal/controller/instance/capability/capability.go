@@ -152,9 +152,9 @@ func (e *external) Create(ctx context.Context, managedRes resource.Managed) (man
 		return managed.ExternalCreation{}, errors.Wrap(err, errListCapabilities)
 	}
 
-	for _, cap := range existing {
-		if cap.GetType() == capabilityCR.Spec.ForProvider.TypeId {
-			meta.SetExternalName(capabilityCR, cap.GetId())
+	for _, existingCapability := range existing {
+		if existingCapability.GetType() == capabilityCR.Spec.ForProvider.TypeId {
+			meta.SetExternalName(capabilityCR, existingCapability.GetId())
 
 			return managed.ExternalCreation{}, nil
 		}

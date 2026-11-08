@@ -33,9 +33,10 @@ if [ ! -f "${OUTPUT_DIR}/xpkg/${PLATFORM}/${PACKAGE_NAME}-${VERSION}.xpkg" ]; th
     echo_error "xpkg not built — run 'make build' first"
 fi
 
-echo_step "creating kind cluster '${KIND_CLUSTER_NAME}' with Nexus NodePort mapping"
+echo_step "creating kind cluster '${KIND_CLUSTER_NAME}' on kindest/node:${KIND_NODE_IMAGE_TAG:?run through make test-integration}"
 "${KIND}" get kubeconfig --name "${KIND_CLUSTER_NAME}" >/dev/null 2>&1 || \
-    "${KIND}" create cluster --name="${KIND_CLUSTER_NAME}" --config="${projectdir}/e2e/kind-config.yaml"
+    "${KIND}" create cluster --name="${KIND_CLUSTER_NAME}" --config="${projectdir}/e2e/kind-config.yaml" \
+        --image="kindest/node:${KIND_NODE_IMAGE_TAG}"
 "${KUBECTL}" config use-context "kind-${KIND_CLUSTER_NAME}"
 
 echo_step "installing Crossplane ${CROSSPLANE_VERSION}"
