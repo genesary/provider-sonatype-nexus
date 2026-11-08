@@ -98,6 +98,21 @@ func (f *Framework) SetSSRFProtection(config v395.SsrfProtectionConfigurationXO)
 	return nexusclient.APIError(resp, err)
 }
 
+// HTTPSettingsAvailable returns true if the Nexus instance exposes the HTTP
+// system settings REST API (Nexus Repository Pro feature).
+func (f *Framework) HTTPSettingsAvailable() bool {
+	_, _, err := f.Nexus.ManageSonatypeHTTPSystemSettingsAPI.ListHttp(context.Background()).Execute()
+
+	return err == nil
+}
+
+// FetchHTTPSettings returns the Nexus HTTP system settings.
+func (f *Framework) FetchHTTPSettings() (*v395.HttpSettingsXo, error) {
+	settings, resp, err := f.Nexus.ManageSonatypeHTTPSystemSettingsAPI.ListHttp(context.Background()).Execute()
+
+	return settings, nexusclient.APIError(resp, err)
+}
+
 // CleanupPoliciesAvailable returns true if the Nexus instance exposes the
 // cleanup-policies REST API (Nexus Repository Pro feature).
 func (f *Framework) CleanupPoliciesAvailable() bool {
