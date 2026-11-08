@@ -25,6 +25,7 @@ This provider enables you to manage Nexus Repository Manager resources using Kub
 | `UserTokenConfiguration` | `iam.nexus.crossplane.io` | User token settings |
 | `BlobStore` | `instance.nexus.crossplane.io` | File or S3-based blob storage |
 | `Capability` | `instance.nexus.crossplane.io` | Nexus capabilities |
+| `HTTPClient` | `instance.nexus.crossplane.io` | Outbound HTTP client settings: User-Agent, timeout, retries and HTTP/HTTPS proxies (Pro) |
 | `IQServerConfiguration` | `instance.nexus.crossplane.io` | Sonatype IQ Server integration |
 | `License` | `instance.nexus.crossplane.io` | Nexus Pro license |
 | `SecurityRealm` | `instance.nexus.crossplane.io` | Active security realms and their order |

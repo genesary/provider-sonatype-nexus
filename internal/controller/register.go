@@ -23,6 +23,7 @@ import (
 	iamutc "github.com/genesary/provider-sonatype-nexus/internal/controller/iam/usertokenconfiguration"
 	instanceblobstore "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/blobstore"
 	instancecapability "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/capability"
+	instancehttpclient "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/httpclient"
 	instanceiqserver "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/iqserverconfiguration"
 	instancelicense "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/license"
 	instancesecurityrealm "github.com/genesary/provider-sonatype-nexus/internal/controller/instance/securityrealm"
@@ -53,6 +54,7 @@ var managedControllers = []managedController{
 	{iamutc.Setup, iamv1alpha1.UserTokenConfigurationGroupVersionKind},
 	{instanceblobstore.Setup, instancev1alpha1.BlobStoreGroupVersionKind},
 	{instancecapability.Setup, instancev1alpha1.CapabilityGroupVersionKind},
+	{instancehttpclient.Setup, instancev1alpha1.HTTPClientGroupVersionKind},
 	{instanceiqserver.Setup, instancev1alpha1.IQServerConfigurationGroupVersionKind},
 	{instancelicense.Setup, instancev1alpha1.LicenseGroupVersionKind},
 	{instancesecurityrealm.Setup, instancev1alpha1.SecurityRealmGroupVersionKind},

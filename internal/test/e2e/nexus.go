@@ -47,6 +47,21 @@ func ignoreAbsent[T any](value *T, err error) (*T, error) {
 	return value, nil
 }
 
+// available turns the outcome of a generated client read probing an edition
+// specific endpoint into whether the endpoint exists: true on success, false
+// when Nexus answered 404 (the endpoint is missing from this edition), and an
+// error otherwise. Any other failure, such as a 401, a network error or a
+// response that does not decode, is returned so that the caller fails rather
+// than skipping a test that would have caught it.
+func available[T any](_ T, resp *http.Response, err error) (bool, error) {
+	err = nexusclient.APIError(resp, err)
+	if nexusclient.IsNotFound(err) {
+		return false, nil
+	}
+
+	return err == nil, err
+}
+
 // FetchUser returns the Nexus user with the given ID, or (nil, nil) if absent.
 func (f *Framework) FetchUser(userID string) (*v395.ApiUser, error) {
 	return ignoreAbsent(f.users.Get(context.Background(), userID))
@@ -98,12 +113,23 @@ func (f *Framework) SetSSRFProtection(config v395.SsrfProtectionConfigurationXO)
 	return nexusclient.APIError(resp, err)
 }
 
-// CleanupPoliciesAvailable returns true if the Nexus instance exposes the
-// cleanup-policies REST API (Nexus Repository Pro feature).
-func (f *Framework) CleanupPoliciesAvailable() bool {
-	_, _, err := f.Nexus.CleanupPoliciesAPI.ListCleanupPolicies(context.Background()).Execute()
+// HTTPSettingsAvailable reports whether the Nexus instance exposes the HTTP
+// system settings REST API (Nexus Repository Pro feature). See available.
+func (f *Framework) HTTPSettingsAvailable() (bool, error) {
+	return available(f.Nexus.ManageSonatypeHTTPSystemSettingsAPI.ListHttp(context.Background()).Execute())
+}
 
-	return err == nil
+// FetchHTTPSettings returns the Nexus HTTP system settings.
+func (f *Framework) FetchHTTPSettings() (*v395.HttpSettingsXo, error) {
+	settings, resp, err := f.Nexus.ManageSonatypeHTTPSystemSettingsAPI.ListHttp(context.Background()).Execute()
+
+	return settings, nexusclient.APIError(resp, err)
+}
+
+// CleanupPoliciesAvailable reports whether the Nexus instance exposes the
+// cleanup-policies REST API (Nexus Repository Pro feature). See available.
+func (f *Framework) CleanupPoliciesAvailable() (bool, error) {
+	return available(f.Nexus.CleanupPoliciesAPI.ListCleanupPolicies(context.Background()).Execute())
 }
 
 // FetchCleanupPolicy returns the cleanup policy with the given name, or (nil, nil) if absent.

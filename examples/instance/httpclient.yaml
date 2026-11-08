@@ -1,0 +1,30 @@
+---
+# Requires Nexus Repository Pro: the HTTP system settings API is not part of
+# the Community Edition.
+apiVersion: instance.nexus.crossplane.io/v1alpha1
+kind: HTTPClient
+metadata:
+  name: default
+  namespace: default
+spec:
+  forProvider:
+    userAgentSuffix: nexus-my-org/1.0
+    timeoutSeconds: 60
+    retries: 3
+    httpProxy:
+      host: proxy.internal
+      port: 3128
+    httpsProxy:
+      host: proxy.internal
+      port: 3129
+      authentication:
+        username: proxy-user
+        passwordSecretRef:
+          name: proxy-credentials
+          key: password
+    nonProxyHosts:
+      - localhost
+      - "*.internal.example.com"
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default
