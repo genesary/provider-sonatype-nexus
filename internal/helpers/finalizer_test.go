@@ -94,6 +94,7 @@ func TestRestoreStatusIgnoresMismatchedObjects(t *testing.T) {
 
 	restoreStatus(role, &iamv1alpha1.User{})
 	restoreStatus(role, nil)
+	restoreStatus(role, (*iamv1alpha1.Role)(nil))
 
 	if role.Status.AtProvider.ID != "kept" {
 		t.Errorf("status.atProvider.id = %q, want it untouched", role.Status.AtProvider.ID)

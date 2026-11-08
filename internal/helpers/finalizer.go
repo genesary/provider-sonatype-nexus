@@ -4,9 +4,9 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
-	"github.com/pkg/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -26,22 +26,35 @@ const statusField = "Status"
 // the singleton settings kinds, whose Nexus object always exists.
 type statusPreservingFinalizer struct {
 	resource.Finalizer
+
+	// finalizer is the name of the finalizer the embedded Finalizer adds.
+	finalizer string
 }
 
 // NewStatusPreservingFinalizer returns the finalizer of the managed
 // reconciler, on client, which keeps the status recorded before it is added.
 func NewStatusPreservingFinalizer(kube client.Client) resource.Finalizer {
-	return statusPreservingFinalizer{Finalizer: resource.NewAPIFinalizer(kube, managed.FinalizerName)}
+	return statusPreservingFinalizer{
+		Finalizer: resource.NewAPIFinalizer(kube, managed.FinalizerName),
+		finalizer: managed.FinalizerName,
+	}
 }
 
 // AddFinalizer adds the finalizer to obj, then restores the status obj had
-// before the update replaced it with the API server's copy.
+// before the update replaced it with the API server's copy. It does nothing
+// when obj already has the finalizer, as on every reconcile but the first.
 func (f statusPreservingFinalizer) AddFinalizer(ctx context.Context, obj resource.Object) error {
+	if meta.FinalizerExists(obj, f.finalizer) {
+		return nil
+	}
+
 	before := obj.DeepCopyObject()
 
+	// The embedded finalizer already wraps its error, and the managed
+	// reconciler checks it for conflicts.
 	err := f.Finalizer.AddFinalizer(ctx, obj)
 	if err != nil {
-		return errors.Wrap(err, "cannot add the finalizer")
+		return err
 	}
 
 	restoreStatus(obj, before)
@@ -55,7 +68,8 @@ func restoreStatus(obj resource.Object, before any) {
 	target := reflect.ValueOf(obj)
 	source := reflect.ValueOf(before)
 
-	if !source.IsValid() || target.Kind() != reflect.Pointer || source.Type() != target.Type() || target.Elem().Kind() != reflect.Struct {
+	if !source.IsValid() || target.Kind() != reflect.Pointer || source.Type() != target.Type() ||
+		target.IsNil() || source.IsNil() || target.Elem().Kind() != reflect.Struct {
 		return
 	}
 
