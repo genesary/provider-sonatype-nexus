@@ -24,7 +24,8 @@ var ErrNotFound = errors.New("not found")
 //
 // Every request it sends authenticates with creds, goes through the shared
 // transport for creds.Insecure, is bounded by RequestTimeout, and fails once
-// its response body exceeds MaxResponseBytes.
+// its response body exceeds MaxResponseBytes. Idempotent requests that fail
+// for a likely brief reason are resent, within the same RequestTimeout.
 func NewClient(creds Credentials) (*v395.APIClient, error) {
 	if creds.URL == "" {
 		return nil, errors.New("nexus URL is empty")
@@ -40,7 +41,7 @@ func NewClient(creds Credentials) (*v395.APIClient, error) {
 	cfg.Servers = v395.ServerConfigurations{{URL: strings.TrimSuffix(creds.URL, "/") + apiBasePath}}
 	cfg.HTTPClient = &http.Client{
 		Transport: &apiTransport{
-			base:     Transport(creds.Insecure),
+			base:     newRetryTransport(Transport(creds.Insecure)),
 			scheme:   nexusURL.Scheme,
 			host:     nexusURL.Host,
 			username: creds.Username,
