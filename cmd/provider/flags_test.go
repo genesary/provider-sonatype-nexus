@@ -29,6 +29,8 @@ var providerEnvars = []string{
 	"POLL_STATE_METRIC_INTERVAL",
 	"MAX_RECONCILE_RATE",
 	"ENABLE_MANAGEMENT_POLICIES",
+	"ENABLE_CHANGE_LOGS",
+	"CHANGELOGS_SOCKET_PATH",
 }
 
 // TestFlags checks the defaults of the provider flags, and that flags take
@@ -64,6 +66,8 @@ func TestFlags(t *testing.T) {
 				"POLL_INTERVAL":              "30s",
 				"POLL_STATE_METRIC_INTERVAL": "10s",
 				"MAX_RECONCILE_RATE":         "5",
+				"ENABLE_CHANGE_LOGS":         "true",
+				"CHANGELOGS_SOCKET_PATH":     "/tmp/changelogs.sock",
 			},
 			want: func(f *flags) {
 				f.Debug = true
@@ -71,6 +75,8 @@ func TestFlags(t *testing.T) {
 				f.PollInterval = 30 * time.Second
 				f.PollStateMetricInterval = 10 * time.Second
 				f.MaxReconcileRate = 5
+				f.EnableChangeLogs = true
+				f.ChangeLogsSocketPath = "/tmp/changelogs.sock"
 			},
 		},
 		"FlagsOverrideEnvironmentVariables": {

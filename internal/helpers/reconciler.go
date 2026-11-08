@@ -37,7 +37,9 @@ func ReconcilerOptions(mgr ctrl.Manager, name string, opts Options, specific ...
 		options = append(options, managed.WithManagementPolicies())
 	}
 
-	if opts.Features.Enabled(feature.EnableAlphaChangeLogs) && opts.ChangeLogOptions != nil {
+	// A nil change logger would replace the reconciler's no-op one, and the
+	// reconciler would panic on its first create, update or delete.
+	if opts.Features.Enabled(feature.EnableAlphaChangeLogs) && opts.ChangeLogOptions != nil && opts.ChangeLogOptions.ChangeLogger != nil {
 		options = append(options, managed.WithChangeLogger(opts.ChangeLogOptions.ChangeLogger))
 	}
 

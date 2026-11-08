@@ -47,3 +47,16 @@ func TestNewChangeLogOptions(t *testing.T) {
 		t.Fatal("newChangeLogOptions() returned no change logger")
 	}
 }
+
+// TestNewChangeLogOptionsRelativePath checks that a socket path the gRPC unix
+// resolver cannot handle is rejected at startup.
+func TestNewChangeLogOptionsRelativePath(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{"", "changelogs.sock", "run/changelogs.sock"} {
+		_, err := newChangeLogOptions(path)
+		if err == nil {
+			t.Errorf("newChangeLogOptions(%q) error = nil, want an error", path)
+		}
+	}
+}

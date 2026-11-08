@@ -180,8 +180,16 @@ func controllerOptions(log logging.Logger, parsed flags) helpers.Options {
 
 // newChangeLogOptions returns the options that send change logs to the
 // change logs service listening on the socket at socketPath. The connection
-// is only established when the first change log is sent.
+// is only established when the first change log is sent, so a path that the
+// unix resolver cannot handle is rejected here: it would otherwise only fail
+// then, making every create, update and delete wait out the send timeout.
 func newChangeLogOptions(socketPath string) (*controller.ChangeLogOptions, error) {
+	// In unix://<path>, a relative path is parsed as the URL authority, which
+	// the gRPC unix resolver rejects.
+	if !filepath.IsAbs(socketPath) {
+		return nil, errors.Errorf("change logs socket path must be absolute, got %q", socketPath)
+	}
+
 	conn, err := grpc.NewClient("unix://"+socketPath, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot create change logs client connection at %s", socketPath)
