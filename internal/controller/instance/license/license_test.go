@@ -100,15 +100,55 @@ func newLicenseSecret(name, namespace, key string, data []byte) *corev1.Secret {
 // testLicenseData is license content used across controller tests.
 var testLicenseData = []byte("fake-nexus-license-binary")
 
-// TestObserve_DeletionTimestamp tests Observe when CR has deletion timestamp.
+// TestObserve_DeletionTimestamp verifies that Observe reports an installed
+// license as existing while the License is being deleted, so the reconciler
+// calls Delete. It must not read the license source, which may be gone.
 func TestObserve_DeletionTimestamp(t *testing.T) {
 	t.Parallel()
 
 	now := metav1.Now()
-	cr := newTestLicense("test-license", "sec", "default", "k")
+	cr := newTestLicense("test-license", "missing-secret", "default", "k")
 	cr.DeletionTimestamp = &now
 
-	e := &external{client: licensefake.NewMockLicenseClient()}
+	mc := licensefake.NewMockLicenseClient()
+	mc.GetLicenseFn = func(_ context.Context) (*instanceclient.LicenseInfo, error) {
+		return &instanceclient.LicenseInfo{Fingerprint: "fp-abc"}, nil
+	}
+
+	e := &external{
+		client: mc,
+		kube:   crfake.NewClientBuilder().WithScheme(newTestScheme(t)).Build(),
+	}
+
+	obs, err := e.Observe(context.Background(), cr)
+	if err != nil {
+		t.Fatalf("Observe() deletion timestamp returned unexpected error: %v", err)
+	}
+
+	if !obs.ResourceExists {
+		t.Error("Observe() ResourceExists = false, want true so Delete removes the installed license")
+	}
+
+	if !obs.ResourceUpToDate {
+		t.Error("Observe() ResourceUpToDate = false, want true while deleting")
+	}
+}
+
+// TestObserve_DeletionTimestampNoLicense verifies that Observe reports the
+// license gone while deleting when Nexus has none, so the finalizer is removed.
+func TestObserve_DeletionTimestampNoLicense(t *testing.T) {
+	t.Parallel()
+
+	now := metav1.Now()
+	cr := newTestLicense("test-license", "missing-secret", "default", "k")
+	cr.DeletionTimestamp = &now
+
+	mc := licensefake.NewMockLicenseClient()
+	mc.GetLicenseFn = func(_ context.Context) (*instanceclient.LicenseInfo, error) {
+		return nil, instanceclient.ErrNoLicense
+	}
+
+	e := &external{client: mc}
 
 	obs, err := e.Observe(context.Background(), cr)
 	if err != nil {
@@ -116,7 +156,29 @@ func TestObserve_DeletionTimestamp(t *testing.T) {
 	}
 
 	if obs.ResourceExists {
-		t.Error("Observe() ResourceExists = true, want false for deleting CR")
+		t.Error("Observe() ResourceExists = true, want false when no license is installed")
+	}
+}
+
+// TestObserve_DeletionTimestampGetLicenseError verifies that Observe
+// propagates Nexus errors while deleting rather than dropping the finalizer.
+func TestObserve_DeletionTimestampGetLicenseError(t *testing.T) {
+	t.Parallel()
+
+	now := metav1.Now()
+	cr := newTestLicense("test-license", "missing-secret", "default", "k")
+	cr.DeletionTimestamp = &now
+
+	mc := licensefake.NewMockLicenseClient()
+	mc.GetLicenseFn = func(_ context.Context) (*instanceclient.LicenseInfo, error) {
+		return nil, errors.New("nexus unreachable")
+	}
+
+	e := &external{client: mc}
+
+	_, err := e.Observe(context.Background(), cr)
+	if err == nil {
+		t.Fatal("Observe() expected error on Nexus API failure while deleting, got nil")
 	}
 }
 
@@ -180,6 +242,10 @@ func TestObserve_NoLicense(t *testing.T) {
 
 	if obs.ResourceExists {
 		t.Error("Observe() ResourceExists = true, want false when no license installed")
+	}
+
+	if cond := cr.GetCondition(xpv2.TypeReady); cond.Reason == nexusv1alpha1.Available().Reason {
+		t.Errorf("Observe() set Ready condition %q, want none when no license installed", cond.Reason)
 	}
 }
 

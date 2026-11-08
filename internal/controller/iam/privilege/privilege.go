@@ -45,6 +45,9 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
+		helpers.WithSpecExternalName(mgr.GetClient(), func(cr *iamv1alpha1.Privilege) string {
+			return cr.Spec.ForProvider.Name
+		}),
 	)
 
 	reconciler := managed.NewReconciler(mgr, resource.ManagedKind(iamv1alpha1.PrivilegeGroupVersionKind), reconcilerOpts...)
@@ -68,7 +71,7 @@ type connector struct {
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
+// Connect produces a TypedExternalClient for the given managed resource.
 func (c *connector) Connect(ctx context.Context, privRes *iamv1alpha1.Privilege) (managed.TypedExternalClient[*iamv1alpha1.Privilege], error) {
 	err := c.usage.Track(ctx, privRes)
 	if err != nil {

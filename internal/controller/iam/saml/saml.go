@@ -65,7 +65,7 @@ type connector struct {
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
+// Connect produces a TypedExternalClient for the given managed resource.
 func (c *connector) Connect(ctx context.Context, samlCR *iamv1alpha1.SAML) (managed.TypedExternalClient[*iamv1alpha1.SAML], error) {
 	err := c.usage.Track(ctx, samlCR)
 	if err != nil {

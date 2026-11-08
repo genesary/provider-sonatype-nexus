@@ -12,7 +12,7 @@ var _ iamclient.SSLTruststoreClient = &MockSSLTruststoreClient{}
 
 // MockSSLTruststoreClient is a mock of iamclient.SSLTruststoreClient.
 type MockSSLTruststoreClient struct {
-	AddCertificateFn    func(pem string) error
+	AddCertificateFn    func(pem string) (*v395.ApiCertificate, error)
 	RemoveCertificateFn func(id string) error
 	ListCertificatesFn  func() ([]v395.ApiCertificate, error)
 
@@ -27,14 +27,14 @@ func NewMockSSLTruststoreClient() *MockSSLTruststoreClient {
 }
 
 // AddCertificate mock implementation.
-func (m *MockSSLTruststoreClient) AddCertificate(_ context.Context, pem string) error {
+func (m *MockSSLTruststoreClient) AddCertificate(_ context.Context, pem string) (*v395.ApiCertificate, error) {
 	m.AddCertificateCalls = append(m.AddCertificateCalls, pem)
 
 	if m.AddCertificateFn != nil {
 		return m.AddCertificateFn(pem)
 	}
 
-	return errMockNotConfigured
+	return nil, errMockNotConfigured
 }
 
 // RemoveCertificate mock implementation.

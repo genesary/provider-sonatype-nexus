@@ -4,6 +4,7 @@ import (
 	"context"
 	"maps"
 	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
@@ -14,6 +15,23 @@ import (
 
 // Capability is the Nexus representation of a capability.
 type Capability = v395.CapabilityDTO
+
+// ErrCapabilityExists is wrapped by the error Create returns when Nexus
+// refuses a capability because it allows only one of its type, or only one
+// per identity properties (see CapabilityIdentityProperties).
+var ErrCapabilityExists = errors.New("capability of this type already exists")
+
+// onlyOneCapabilityMessage starts the validation message Nexus answers with
+// when it refuses another capability of a type that allows only one.
+const onlyOneCapabilityMessage = "only one capability of type"
+
+// CapabilityIdentityProperties lists, for the capability types Nexus allows
+// several instances of, the properties that identify an instance: Nexus
+// refuses a second capability of the type with the same values. Every type
+// absent from it allows a single instance.
+var CapabilityIdentityProperties = map[string][]string{
+	"webhook.repository": {"repository", "url"},
+}
 
 // CapabilityClient provides methods for managing Nexus capabilities.
 type CapabilityClient interface {
@@ -42,13 +60,52 @@ func NewCapabilityClient(creds nexus.Credentials) (CapabilityClient, error) {
 }
 
 // Create creates a capability and returns it with its server-assigned ID.
+// When Nexus refuses it because a capability of the type already exists and
+// the type allows only one, the error wraps ErrCapabilityExists.
 func (c *capabilityClient) Create(ctx context.Context, create Capability) (*Capability, error) {
 	created, resp, err := c.api.CreateCapabilities(ctx).CapabilityDTO(create).Execute()
 	if err != nil {
-		return nil, nexus.APIError(resp, err)
+		apiErr := nexus.APIError(resp, err)
+		if isOnlyOneCapability(err) {
+			return nil, errors.Wrap(ErrCapabilityExists, apiErr.Error())
+		}
+
+		return nil, apiErr
 	}
 
 	return created, nil
+}
+
+// isOnlyOneCapability reports whether err is Nexus refusing another capability
+// of a type that allows only one. Nexus answers that with a 500 whose body
+// carries the validation message, so the message is the only signal.
+func isOnlyOneCapability(err error) bool {
+	var apiErr *v395.GenericOpenAPIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+
+	return strings.Contains(strings.ToLower(string(apiErr.Body())), onlyOneCapabilityMessage)
+}
+
+// IsSameCapabilityInstance reports whether observed is the instance of its
+// type that a capability with params would collide with: any capability of a
+// single-instance type, or, for the types in CapabilityIdentityProperties,
+// one with the same identity property values.
+func IsSameCapabilityInstance(params *instancev1alpha1.CapabilityParameters, observed *Capability) bool {
+	if observed.GetType() != params.TypeId {
+		return false
+	}
+
+	observedProps := observed.GetProperties()
+
+	for _, key := range CapabilityIdentityProperties[params.TypeId] {
+		if params.Properties[key] != observedProps[key] {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Delete deletes the capability with the given ID.

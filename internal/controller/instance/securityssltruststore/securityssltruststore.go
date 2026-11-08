@@ -4,7 +4,6 @@ package securityssltruststore
 import (
 	"context"
 	stderrors "errors"
-	"strings"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
@@ -35,12 +34,13 @@ const (
 	errAddCert = "cannot add certificate to Nexus truststore"
 	// errRemoveCert is returned when removing a certificate from Nexus fails.
 	errRemoveCert = "cannot remove certificate from Nexus truststore"
-	// errFindCert is returned when a certificate cannot be found after adding.
-	errFindCert = "cannot find certificate after adding to truststore"
+	// errFindCert is returned when the certificate the truststore reports
+	// holding cannot be found.
+	errFindCert = "cannot find existing certificate in truststore"
 )
 
-// errCertNotFound is a sentinel error returned by findCertificateByID when
-// the requested certificate ID is not present in the truststore list.
+// errCertNotFound is a sentinel error returned by findCertificateByID and
+// findCertificateByContent when the truststore does not hold the certificate.
 var errCertNotFound = errors.New("certificate not found in truststore")
 
 // Setup adds a controller that reconciles SecuritySSLTruststore resources.
@@ -52,6 +52,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
+		helpers.WithServerAssignedExternalName(),
 	)
 
 	reconciler := managed.NewReconciler(mgr, resource.ManagedKind(instancev1alpha1.SecuritySSLTruststoreGroupVersionKind), reconcilerOpts...)
@@ -75,7 +76,7 @@ type connector struct {
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
+// Connect produces a TypedExternalClient for the given managed resource.
 func (c *connector) Connect(ctx context.Context, truststoreCR *instancev1alpha1.SecuritySSLTruststore) (managed.TypedExternalClient[*instancev1alpha1.SecuritySSLTruststore], error) {
 	err := c.usage.Track(ctx, truststoreCR)
 	if err != nil {
@@ -126,28 +127,23 @@ func (e *external) Observe(ctx context.Context, truststoreCR *instancev1alpha1.S
 	}, nil
 }
 
-// Create creates the desired certificate in the Nexus truststore.
+// Create adds the desired certificate to the Nexus truststore. When the
+// truststore already holds it, Create adopts it.
 func (e *external) Create(ctx context.Context, truststoreCR *instancev1alpha1.SecuritySSLTruststore) (managed.ExternalCreation, error) {
-	err := e.client.AddCertificate(ctx, truststoreCR.Spec.ForProvider.Pem)
+	certID, err := e.addCertificate(ctx, truststoreCR.Spec.ForProvider.Pem)
 	if err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, errAddCert)
+		return managed.ExternalCreation{}, err
 	}
 
-	added, err := e.findCertificateByPem(ctx, truststoreCR.Spec.ForProvider.Pem)
-	if err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, errFindCert)
-	}
-
-	if added == nil {
-		return managed.ExternalCreation{}, errors.New(errFindCert)
-	}
-
-	meta.SetExternalName(truststoreCR, added.GetId())
+	meta.SetExternalName(truststoreCR, certID)
 
 	return managed.ExternalCreation{}, nil
 }
 
-// Update reconciles the certificate to the desired state.
+// Update replaces the certificate with the desired one. Nexus cannot update a
+// truststore certificate in place, and its ID is the certificate fingerprint,
+// so a different certificate always has a different ID: the old one is
+// removed and the new one added.
 func (e *external) Update(ctx context.Context, truststoreCR *instancev1alpha1.SecuritySSLTruststore) (managed.ExternalUpdate, error) {
 	oldID := meta.GetExternalName(truststoreCR)
 	if oldID != "" {
@@ -157,21 +153,12 @@ func (e *external) Update(ctx context.Context, truststoreCR *instancev1alpha1.Se
 		}
 	}
 
-	err := e.client.AddCertificate(ctx, truststoreCR.Spec.ForProvider.Pem)
+	certID, err := e.addCertificate(ctx, truststoreCR.Spec.ForProvider.Pem)
 	if err != nil {
-		return managed.ExternalUpdate{}, errors.Wrap(err, errAddCert)
+		return managed.ExternalUpdate{}, err
 	}
 
-	added, err := e.findCertificateByPem(ctx, truststoreCR.Spec.ForProvider.Pem)
-	if err != nil {
-		return managed.ExternalUpdate{}, errors.Wrap(err, errFindCert)
-	}
-
-	if added == nil {
-		return managed.ExternalUpdate{}, errors.New(errFindCert)
-	}
-
-	meta.SetExternalName(truststoreCR, added.GetId())
+	meta.SetExternalName(truststoreCR, certID)
 
 	return managed.ExternalUpdate{}, nil
 }
@@ -217,21 +204,43 @@ func (e *external) findCertificateByID(ctx context.Context, certID string) (*v39
 	return nil, errCertNotFound
 }
 
-// findCertificateByPem finds a certificate in the truststore by its PEM
-// content.
-func (e *external) findCertificateByPem(ctx context.Context, pem string) (*v395.ApiCertificate, error) {
+// addCertificate adds the PEM encoded certificate to the truststore and
+// returns its ID. When the truststore already holds the certificate, it
+// returns the ID of the one there, so a certificate added out of band, or by
+// an earlier attempt whose result was lost, is adopted instead of failing
+// every retry with a conflict.
+func (e *external) addCertificate(ctx context.Context, pem string) (string, error) {
+	added, err := e.client.AddCertificate(ctx, pem)
+	if err == nil && added.GetId() != "" {
+		return added.GetId(), nil
+	}
+
+	if err != nil && !stderrors.Is(err, instanceclient.ErrCertificateExists) {
+		return "", errors.Wrap(err, errAddCert)
+	}
+
+	existing, err := e.findCertificateByContent(ctx, pem)
+	if err != nil {
+		return "", errors.Wrap(err, errFindCert)
+	}
+
+	return existing.GetId(), nil
+}
+
+// findCertificateByContent finds the truststore certificate that the PEM text
+// encodes, whatever its line endings or wrapping. Returns errCertNotFound when
+// the truststore does not hold it.
+func (e *external) findCertificateByContent(ctx context.Context, pem string) (*v395.ApiCertificate, error) {
 	certs, err := e.client.ListCertificates(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	normalizedPem := strings.TrimSpace(pem)
-
 	for idx := range certs {
-		if strings.TrimSpace(certs[idx].GetPem()) == normalizedPem {
+		if instanceclient.SameCertificate(certs[idx].GetPem(), pem) {
 			return &certs[idx], nil
 		}
 	}
 
-	return nil, errors.New(errFindCert)
+	return nil, errCertNotFound
 }

@@ -54,6 +54,9 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
+		helpers.WithSpecExternalName(mgr.GetClient(), func(cr *instancev1alpha1.BlobStore) string {
+			return cr.Spec.ForProvider.Name
+		}),
 	)
 
 	rec := managed.NewReconciler(mgr, resource.ManagedKind(instancev1alpha1.BlobStoreGroupVersionKind), reconcilerOpts...)
@@ -77,7 +80,7 @@ type connector struct {
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect creates an ExternalClient for the BlobStore controller.
+// Connect creates a TypedExternalClient for the BlobStore controller.
 func (c *connector) Connect(ctx context.Context, blobStore *instancev1alpha1.BlobStore) (managed.TypedExternalClient[*instancev1alpha1.BlobStore], error) {
 	err := c.usage.Track(ctx, blobStore)
 	if err != nil {

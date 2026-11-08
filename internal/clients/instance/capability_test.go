@@ -1,9 +1,14 @@
 package instance_test
 
 import (
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	instanceclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
+	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -231,5 +236,123 @@ func TestGenerateCapabilityObservation_Nil(t *testing.T) {
 
 	if obs.ID != "" {
 		t.Errorf("ID = %q, want empty for nil input", obs.ID)
+	}
+}
+
+// TestCapabilityCreate_OnlyOne checks that Create reports Nexus refusing a
+// second capability of a single-instance type as ErrCapabilityExists, and
+// other failures as plain errors. The bodies are what Nexus 3.96 answers.
+func TestCapabilityCreate_OnlyOne(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		status     int
+		body       string
+		wantExists bool
+	}{
+		{
+			name:       "OnlyOne",
+			status:     http.StatusInternalServerError,
+			body:       `"jakarta.validation.ValidationException: Only one capability of type 'Audit' can be created"`,
+			wantExists: true,
+		},
+		{
+			name:       "OtherServerError",
+			status:     http.StatusInternalServerError,
+			body:       `"java.lang.NullPointerException"`,
+			wantExists: false,
+		},
+		{
+			name:       "ValidationError",
+			status:     http.StatusBadRequest,
+			body:       `[{"id":"DefaultRoleCapabilityConfiguration.role","message":"Missing role"}]`,
+			wantExists: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.status)
+				_, _ = w.Write([]byte(tt.body))
+			}))
+			t.Cleanup(server.Close)
+
+			client, err := instanceclient.NewCapabilityClient(nexus.Credentials{URL: server.URL, Username: "admin", Password: "password"})
+			if err != nil {
+				t.Fatalf("NewCapabilityClient() error = %v", err)
+			}
+
+			_, err = client.Create(context.Background(), instanceclient.GenerateCapabilityCreate(&newCR("audit", true, "", nil).Spec.ForProvider))
+			if err == nil {
+				t.Fatal("Create() error = nil, want an error")
+			}
+
+			if got := errors.Is(err, instanceclient.ErrCapabilityExists); got != tt.wantExists {
+				t.Errorf("errors.Is(err, ErrCapabilityExists) = %v, want %v (err: %v)", got, tt.wantExists, err)
+			}
+		})
+	}
+}
+
+// TestIsSameCapabilityInstance checks which existing capability a new one
+// would collide with.
+func TestIsSameCapabilityInstance(t *testing.T) {
+	t.Parallel()
+
+	webhook := func(repository, url string) map[string]string {
+		return map[string]string{"repository": repository, "url": url, "names": "component"}
+	}
+
+	tests := []struct {
+		name     string
+		params   *instancev1alpha1.CapabilityParameters
+		observed instanceclient.Capability
+		want     bool
+	}{
+		{
+			name:     "SingletonSameType",
+			params:   &newCR("audit", true, "", nil).Spec.ForProvider,
+			observed: instanceclient.Capability{Type: new("audit"), Properties: &map[string]string{"enabled": "x"}},
+			want:     true,
+		},
+		{
+			name:     "OtherType",
+			params:   &newCR("audit", true, "", nil).Spec.ForProvider,
+			observed: instanceclient.Capability{Type: new("baseurl")},
+			want:     false,
+		},
+		{
+			name:     "MultiInstanceSameIdentity",
+			params:   &newCR("webhook.repository", true, "", webhook("maven", "https://a")).Spec.ForProvider,
+			observed: instanceclient.Capability{Type: new("webhook.repository"), Properties: new(webhook("maven", "https://a"))},
+			want:     true,
+		},
+		{
+			name:     "MultiInstanceOtherRepository",
+			params:   &newCR("webhook.repository", true, "", webhook("maven", "https://a")).Spec.ForProvider,
+			observed: instanceclient.Capability{Type: new("webhook.repository"), Properties: new(webhook("npm", "https://a"))},
+			want:     false,
+		},
+		{
+			name:     "MultiInstanceOtherURL",
+			params:   &newCR("webhook.repository", true, "", webhook("maven", "https://a")).Spec.ForProvider,
+			observed: instanceclient.Capability{Type: new("webhook.repository"), Properties: new(webhook("maven", "https://b"))},
+			want:     false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := instanceclient.IsSameCapabilityInstance(tt.params, &tt.observed); got != tt.want {
+				t.Errorf("IsSameCapabilityInstance() = %v, want %v", got, tt.want)
+			}
+		})
 	}
 }

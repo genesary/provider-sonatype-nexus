@@ -47,6 +47,7 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
+		helpers.WithServerAssignedExternalName(),
 	)
 
 	reconciler := managed.NewReconciler(mgr, resource.ManagedKind(instancev1alpha1.CapabilityGroupVersionKind), reconcilerOpts...)
@@ -70,7 +71,7 @@ type connector struct {
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
+// Connect produces a TypedExternalClient for the given managed resource.
 func (c *connector) Connect(ctx context.Context, capabilityCR *instancev1alpha1.Capability) (managed.TypedExternalClient[*instancev1alpha1.Capability], error) {
 	err := c.usage.Track(ctx, capabilityCR)
 	if err != nil {
@@ -124,31 +125,38 @@ func (e *external) Observe(ctx context.Context, capabilityCR *instancev1alpha1.C
 	}, nil
 }
 
-// Create creates the external resource, adopting an existing one if a
-// capability with the same TypeId already exists
-// (e.g. singleton types like Audit).
+// Create creates the external resource. When Nexus refuses it because the
+// type allows only one instance and that instance exists - as it always does
+// for types like Audit, which Nexus creates itself - Create adopts it.
+// Capabilities of types that allow several instances are never adopted.
 func (e *external) Create(ctx context.Context, capabilityCR *instancev1alpha1.Capability) (managed.ExternalCreation, error) {
-	existing, err := e.client.List(ctx)
-	if err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, errListCapabilities)
+	params := &capabilityCR.Spec.ForProvider
+
+	created, err := e.client.Create(ctx, instanceclient.GenerateCapabilityCreate(params))
+	if err == nil {
+		meta.SetExternalName(capabilityCR, created.GetId())
+
+		return managed.ExternalCreation{}, nil
 	}
 
-	for _, existingCapability := range existing {
-		if existingCapability.GetType() == capabilityCR.Spec.ForProvider.TypeId {
-			meta.SetExternalName(capabilityCR, existingCapability.GetId())
+	if !errors.Is(err, instanceclient.ErrCapabilityExists) {
+		return managed.ExternalCreation{}, errors.Wrap(err, errCreateCap)
+	}
+
+	existing, listErr := e.client.List(ctx)
+	if listErr != nil {
+		return managed.ExternalCreation{}, errors.Wrap(listErr, errListCapabilities)
+	}
+
+	for idx := range existing {
+		if instanceclient.IsSameCapabilityInstance(params, &existing[idx]) {
+			meta.SetExternalName(capabilityCR, existing[idx].GetId())
 
 			return managed.ExternalCreation{}, nil
 		}
 	}
 
-	created, err := e.client.Create(ctx, instanceclient.GenerateCapabilityCreate(&capabilityCR.Spec.ForProvider))
-	if err != nil {
-		return managed.ExternalCreation{}, errors.Wrap(err, errCreateCap)
-	}
-
-	meta.SetExternalName(capabilityCR, created.GetId())
-
-	return managed.ExternalCreation{}, nil
+	return managed.ExternalCreation{}, errors.Wrap(err, errCreateCap)
 }
 
 // Update updates the external resource to match the desired state.

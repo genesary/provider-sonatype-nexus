@@ -251,9 +251,6 @@ func TestCreate(t *testing.T) {
 			name: "Success",
 			cr:   newTestCapability("cap", "DockerBearerTokenRealm"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
-				mc.ListFn = func() ([]instanceclient.Capability, error) {
-					return []instanceclient.Capability{}, nil
-				}
 				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
 					return &instanceclient.Capability{Id: new("server-id-123"), Type: new("DockerBearerTokenRealm")}, nil
 				}
@@ -262,11 +259,33 @@ func TestCreate(t *testing.T) {
 			wantExtName: "server-id-123",
 		},
 		{
-			name: "AdoptExisting",
-			cr:   newTestCapability("cap", "audit"),
+			// A type that allows several instances is created even when one of
+			// the type exists, rather than adopting that one.
+			name: "MultiInstanceTypeNotAdopted",
+			cr:   newTestCapability("cap", "webhook.repository"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
 				mc.ListFn = func() ([]instanceclient.Capability, error) {
 					return []instanceclient.Capability{
+						{Id: new("someone-elses-webhook"), Type: new("webhook.repository")},
+					}, nil
+				}
+				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
+					return &instanceclient.Capability{Id: new("new-webhook"), Type: new("webhook.repository")}, nil
+				}
+			},
+			wantErr:     false,
+			wantExtName: "new-webhook",
+		},
+		{
+			name: "AdoptExistingSingleton",
+			cr:   newTestCapability("cap", "audit"),
+			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
+				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
+					return nil, instanceclient.ErrCapabilityExists
+				}
+				mc.ListFn = func() ([]instanceclient.Capability, error) {
+					return []instanceclient.Capability{
+						{Id: new("other-id"), Type: new("baseurl")},
 						{Id: new("existing-id-456"), Type: new("audit")},
 					}, nil
 				}
@@ -275,9 +294,47 @@ func TestCreate(t *testing.T) {
 			wantExtName: "existing-id-456",
 		},
 		{
-			name: "ListError",
-			cr:   newTestCapability("cap", "DockerBearerTokenRealm"),
+			name: "AdoptMultiInstanceMatchingIdentity",
+			cr: func() *instancev1alpha1.Capability {
+				cr := newTestCapability("cap", "webhook.repository")
+				cr.Spec.ForProvider.Properties = map[string]string{"repository": "maven-releases", "url": "https://hook.example", "names": "component"}
+
+				return cr
+			}(),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
+				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
+					return nil, instanceclient.ErrCapabilityExists
+				}
+				mc.ListFn = func() ([]instanceclient.Capability, error) {
+					return []instanceclient.Capability{
+						{Id: new("other-repo"), Type: new("webhook.repository"), Properties: &map[string]string{"repository": "npm", "url": "https://hook.example"}},
+						{Id: new("same-repo"), Type: new("webhook.repository"), Properties: &map[string]string{"repository": "maven-releases", "url": "https://hook.example", "names": "asset"}},
+					}, nil
+				}
+			},
+			wantErr:     false,
+			wantExtName: "same-repo",
+		},
+		{
+			name: "ExistsButNoMatchingInstance",
+			cr:   newTestCapability("cap", "audit"),
+			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
+				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
+					return nil, instanceclient.ErrCapabilityExists
+				}
+				mc.ListFn = func() ([]instanceclient.Capability, error) {
+					return []instanceclient.Capability{{Id: new("other-id"), Type: new("baseurl")}}, nil
+				}
+			},
+			wantErr: true,
+		},
+		{
+			name: "ListError",
+			cr:   newTestCapability("cap", "audit"),
+			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
+				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
+					return nil, instanceclient.ErrCapabilityExists
+				}
 				mc.ListFn = func() ([]instanceclient.Capability, error) {
 					return nil, errors.New("nexus unavailable")
 				}
@@ -289,7 +346,7 @@ func TestCreate(t *testing.T) {
 			cr:   newTestCapability("cap", "DockerBearerTokenRealm"),
 			mockSetup: func(mc *capabilitymocks.MockCapabilityClient) {
 				mc.ListFn = func() ([]instanceclient.Capability, error) {
-					return []instanceclient.Capability{}, nil
+					return []instanceclient.Capability{{Id: new("existing"), Type: new("DockerBearerTokenRealm")}}, nil
 				}
 				mc.CreateFn = func(_ instanceclient.Capability) (*instanceclient.Capability, error) {
 					return nil, errors.New("nexus unavailable")

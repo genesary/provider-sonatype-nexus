@@ -27,6 +27,8 @@ const (
 	errNewClient = "cannot create new Nexus client"
 	// errGetRealms is returned when retrieving active realms fails.
 	errGetRealms = "cannot get active realms from Nexus"
+	// errGetAvailableRealms is returned when retrieving available realms fails.
+	errGetAvailableRealms = "cannot get available realms from Nexus"
 	// errActivateRealms is returned when activating realms fails.
 	errActivateRealms = "cannot activate realms in Nexus"
 )
@@ -63,7 +65,7 @@ type connector struct {
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
+// Connect produces a TypedExternalClient for the given managed resource.
 func (c *connector) Connect(ctx context.Context, securityRealm *instancev1alpha1.SecurityRealm) (managed.TypedExternalClient[*instancev1alpha1.SecurityRealm], error) {
 	err := c.usage.Track(ctx, securityRealm)
 	if err != nil {
@@ -101,7 +103,11 @@ func (e *external) Observe(ctx context.Context, securityRealm *instancev1alpha1.
 		return managed.ExternalObservation{}, errors.Wrap(err, errGetRealms)
 	}
 
-	availableRealms, _ := e.client.ListAvailable(ctx)
+	availableRealms, err := e.client.ListAvailable(ctx)
+	if err != nil {
+		return managed.ExternalObservation{}, errors.Wrap(err, errGetAvailableRealms)
+	}
+
 	securityRealm.Status.AtProvider = instanceclient.GenerateSecurityRealmObservation(availableRealms, activeRealms)
 	securityRealm.SetConditions(nexusv1alpha1.Available())
 

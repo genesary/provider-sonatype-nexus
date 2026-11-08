@@ -45,6 +45,9 @@ func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
+		helpers.WithSpecExternalName(mgr.GetClient(), func(cr *contentv1alpha1.RoutingRule) string {
+			return cr.Spec.ForProvider.Name
+		}),
 	)
 
 	reconciler := managed.NewReconciler(mgr, resource.ManagedKind(contentv1alpha1.RoutingRuleGroupVersionKind), reconcilerOpts...)
@@ -68,7 +71,7 @@ type connector struct {
 	usage *resource.ProviderConfigUsageTracker
 }
 
-// Connect produces an ExternalClient for the given managed resource.
+// Connect produces a TypedExternalClient for the given managed resource.
 func (c *connector) Connect(ctx context.Context, routingRule *contentv1alpha1.RoutingRule) (managed.TypedExternalClient[*contentv1alpha1.RoutingRule], error) {
 	err := c.usage.Track(ctx, routingRule)
 	if err != nil {

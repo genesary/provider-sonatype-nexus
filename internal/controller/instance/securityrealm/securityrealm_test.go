@@ -119,7 +119,7 @@ func TestObserve(t *testing.T) {
 			wantErr:      false,
 		},
 		{
-			name: "ListAvailableRealmsError_StillObserves",
+			name: "ListAvailableRealmsError",
 			cr:   newTestSecurityRealm("singleton", []string{"NexusAuthenticatingRealm"}),
 			mockSetup: func(mc *iammocks.MockSecurityRealmClient) {
 				mc.ListActiveFn = func() ([]string, error) {
@@ -129,9 +129,7 @@ func TestObserve(t *testing.T) {
 					return nil, errors.New("unavailable")
 				}
 			},
-			wantExists:   true,
-			wantUpToDate: true,
-			wantErr:      false,
+			wantErr: true,
 		},
 	}
 
