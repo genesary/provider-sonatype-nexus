@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package helpers provides utility functions for formatting and comparison.
+// Package helpers provides utility functions shared by the controllers:
+// formatting and comparison helpers, and the managed reconciler options.
 package helpers
 
 import (

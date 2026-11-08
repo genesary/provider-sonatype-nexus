@@ -4,8 +4,6 @@ package iqserverconfiguration
 import (
 	"context"
 
-	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
-	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
@@ -18,6 +16,7 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	instanceclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 const (
@@ -46,18 +45,17 @@ const (
 )
 
 // Setup adds a controller that reconciles IQServerConfiguration resources.
-func Setup(mgr ctrl.Manager, opts controller.Options) error {
+func Setup(mgr ctrl.Manager, opts helpers.Options) error {
 	name := managed.ControllerName(instancev1alpha1.IQServerConfigurationGroupKind)
 
-	reconciler := managed.NewReconciler(mgr,
-		resource.ManagedKind(instancev1alpha1.IQServerConfigurationGroupVersionKind),
+	reconcilerOpts := helpers.ReconcilerOptions(mgr, name, opts,
 		managed.WithExternalConnector(&connector{
 			kube:  mgr.GetClient(),
 			usage: resource.NewProviderConfigUsageTracker(mgr.GetClient(), &nexusv1alpha1.ProviderConfigUsage{}),
 		}),
-		managed.WithLogger(opts.Logger.WithValues("controller", name)),
-		managed.WithPollInterval(opts.PollInterval),
-		managed.WithRecorder(event.NewAPIRecorder(mgr.GetEventRecorderFor(name))))
+	)
+
+	reconciler := managed.NewReconciler(mgr, resource.ManagedKind(instancev1alpha1.IQServerConfigurationGroupVersionKind), reconcilerOpts...)
 
 	return ctrl.NewControllerManagedBy(mgr).
 		Named(name).

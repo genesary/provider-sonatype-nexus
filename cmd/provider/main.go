@@ -22,6 +22,7 @@ import (
 
 	"github.com/genesary/provider-sonatype-nexus/apis"
 	nexuscontroller "github.com/genesary/provider-sonatype-nexus/internal/controller"
+	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 	"github.com/genesary/provider-sonatype-nexus/internal/version"
 )
 
@@ -102,7 +103,7 @@ func main() {
 		Features:                &feature.Flags{},
 	}
 
-	kingpin.FatalIfError(nexuscontroller.Setup(mgr, opts), "Cannot setup Nexus controllers")
+	kingpin.FatalIfError(nexuscontroller.Setup(mgr, helpers.Options{Options: opts}), "Cannot setup Nexus controllers")
 
 	log.Info("Starting controller manager", "version", version.Version)
 	kingpin.FatalIfError(mgr.Start(ctrl.SetupSignalHandler()), "Cannot start controller manager")
