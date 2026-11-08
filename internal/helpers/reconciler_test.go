@@ -5,11 +5,13 @@ import (
 	"errors"
 	"math"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	changelogsv1alpha1 "github.com/crossplane/crossplane-runtime/v2/apis/changelogs/proto/v1alpha1"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/controller"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/event"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/feature"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
@@ -32,7 +34,7 @@ import (
 )
 
 // sharedOptions is the number of options every controller gets.
-const sharedOptions = 5
+const sharedOptions = 6
 
 // recorderManager is a manager that only provides event recorders.
 type recorderManager struct {
@@ -52,13 +54,17 @@ func (nopChangeLogger) Log(context.Context, resource.Managed, changelogsv1alpha1
 	return nil
 }
 
-// testOptions returns the options of a provider with no feature enabled.
+// testOptions returns the options of a provider with no feature enabled and
+// the default creation grace period, as the provider runs with by default.
 func testOptions() Options {
-	return Options{Options: controller.Options{
-		Logger:           logging.NewNopLogger(),
-		Features:         &feature.Flags{},
-		ChangeLogOptions: &controller.ChangeLogOptions{ChangeLogger: nopChangeLogger{}},
-	}}
+	return Options{
+		Options: controller.Options{
+			Logger:           logging.NewNopLogger(),
+			Features:         &feature.Flags{},
+			ChangeLogOptions: &controller.ChangeLogOptions{ChangeLogger: nopChangeLogger{}},
+		},
+		CreationGracePeriod: DefaultCreationGracePeriod,
+	}
 }
 
 // TestReconcilerOptions checks which options are enabled by each setting, and
@@ -624,6 +630,87 @@ func TestReconcilerOptionsApplyPollJitter(t *testing.T) {
 
 			if got == test.exact {
 				t.Errorf("Reconcile() RequeueAfter = %v, want it spread", got)
+			}
+		})
+	}
+}
+
+// pendingEventReason is the reason of the event crossplane-runtime records
+// while it waits out the creation grace period. Its constant is unexported.
+const pendingEventReason = "PendingExternalResource"
+
+// recordedReason drains the events of a fake recorder and returns whether one
+// had the given reason.
+func recordedReason(recorder *record.FakeRecorder, reason string) bool {
+	for {
+		select {
+		case recorded := <-recorder.Events:
+			if strings.Contains(recorded, " "+reason+" ") {
+				return true
+			}
+		default:
+			return false
+		}
+	}
+}
+
+// TestReconcilerOptionsCreationGracePeriod checks, through a real reconcile
+// of a resource that was just created and is not reported by Nexus, that the
+// grace period makes the reconciler stop and wait for it to end, and that
+// zero disables it.
+func TestReconcilerOptionsCreationGracePeriod(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		period      time.Duration
+		wantCreate  bool
+		wantPending bool
+	}{
+		"WaitsDuringThePeriod": {period: time.Hour, wantPending: true},
+		"ZeroDisablesIt":       {wantCreate: true},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			role := testRole("")
+			meta.SetExternalCreateSucceeded(role, time.Now())
+
+			created := false
+			connector := managed.ExternalConnectorFn(func(context.Context, resource.Managed) (managed.ExternalClient, error) {
+				return &managed.ExternalClientFns{
+					ObserveFn: func(context.Context, resource.Managed) (managed.ExternalObservation, error) {
+						return managed.ExternalObservation{ResourceExists: false}, nil
+					},
+					CreateFn: func(context.Context, resource.Managed) (managed.ExternalCreation, error) {
+						created = true
+
+						return managed.ExternalCreation{}, nil
+					},
+					DisconnectFn: func(context.Context) error { return nil },
+				}, nil
+			})
+
+			opts := testOptions()
+			opts.CreationGracePeriod = test.period
+
+			// Replaces the shared recorder, as specific options come last.
+			recorder := record.NewFakeRecorder(10)
+
+			reconcileRoleWith(t, opts, role, func(client.Client) []managed.ReconcilerOption {
+				return []managed.ReconcilerOption{
+					managed.WithExternalConnector(connector),
+					managed.WithRecorder(event.NewAPIRecorder(recorder)),
+				}
+			})
+
+			if created != test.wantCreate {
+				t.Errorf("Create() called = %t, want %t", created, test.wantCreate)
+			}
+
+			if pending := recordedReason(recorder, pendingEventReason); pending != test.wantPending {
+				t.Errorf("%s event recorded = %t, want %t", pendingEventReason, pending, test.wantPending)
 			}
 		})
 	}

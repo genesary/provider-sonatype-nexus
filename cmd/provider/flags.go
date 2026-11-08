@@ -20,6 +20,7 @@ type flags struct {
 	PollInterval             time.Duration
 	MinPollInterval          time.Duration
 	PollJitterPercentage     int
+	CreationGracePeriod      time.Duration
 	PollStateMetricInterval  time.Duration
 	MaxReconcileRate         int
 	EnableManagementPolicies bool
@@ -45,6 +46,8 @@ func newApp(name string, parsed *flags) *kingpin.Application {
 		DurationVar(&parsed.MinPollInterval)
 	app.Flag("poll-jitter-percentage", "Spread each poll by up to this percentage of its interval, in both directions but never below the shortest allowed poll interval (see --min-poll-interval). 0 disables it, and it cannot exceed "+strconv.Itoa(helpers.MaxPollJitterPercentage)+".").Default("10").Envar("POLL_JITTER_PERCENTAGE").
 		IntVar(&parsed.PollJitterPercentage)
+	app.Flag("creation-grace-period", "How long after creating a resource a report that it does not exist is not trusted, for external APIs that are eventually consistent. Deleting a resource within this period also waits for it to end. Must not be negative, 0 disables it.").Default(helpers.DefaultCreationGracePeriod.String()).Envar("CREATION_GRACE_PERIOD").
+		DurationVar(&parsed.CreationGracePeriod)
 	app.Flag("poll-state-metric", "How often the state metrics of the managed resources are recorded.").Default("5s").Envar("POLL_STATE_METRIC_INTERVAL").
 		DurationVar(&parsed.PollStateMetricInterval)
 	app.Flag("max-reconcile-rate", "The global maximum rate per second at which resources may be checked for drift from the desired state.").Default("10").Envar("MAX_RECONCILE_RATE").

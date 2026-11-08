@@ -19,7 +19,7 @@ import (
 
 // maxSharedReconcilerOptions is the most options ReconcilerOptions shares
 // between controllers, to size the slice it returns.
-const maxSharedReconcilerOptions = 9
+const maxSharedReconcilerOptions = 10
 
 // Options are the crossplane-runtime controller options, extended with the
 // settings of this provider.
@@ -40,7 +40,20 @@ type Options struct {
 	// MinPollInterval is only spread as far down as that minimum. Zero
 	// disables it.
 	PollJitterPercentage int
+
+	// CreationGracePeriod is how long after a successful create an Observe
+	// reporting that the resource does not exist is not trusted, for
+	// eventually consistent external APIs. crossplane-runtime also applies it
+	// while deleting, so a resource deleted within this period keeps its
+	// finalizer until the period ends. Zero disables it.
+	CreationGracePeriod time.Duration
 }
+
+// DefaultCreationGracePeriod is the default Options.CreationGracePeriod. It was
+// chosen to match crossplane-runtime's own default, which is unexported. The
+// provider always passes this value explicitly, so a crossplane-runtime
+// upgrade that changes its default does not change the provider's.
+const DefaultCreationGracePeriod = 30 * time.Second
 
 // MaxPollJitterPercentage is the highest accepted Options.PollJitterPercentage.
 // It keeps the poll interval well above zero, as a zero requeue delay would
@@ -87,6 +100,7 @@ func ReconcilerOptions(mgr ctrl.Manager, name string, opts Options, specific ...
 		managed.WithLogger(controllerLogger(opts, name)),
 		managed.WithPollInterval(opts.PollInterval),
 		managed.WithMinPollInterval(minPollInterval(opts)),
+		managed.WithCreationGracePeriod(opts.CreationGracePeriod),
 		managed.WithRecorder(newEventRecorder(mgr, name, opts)),
 		managed.WithDeterministicExternalName(true),
 	)
