@@ -103,6 +103,7 @@ func ReconcilerOptions(mgr ctrl.Manager, name string, opts Options, specific ...
 		managed.WithCreationGracePeriod(opts.CreationGracePeriod),
 		managed.WithRecorder(newEventRecorder(mgr, name, opts)),
 		managed.WithDeterministicExternalName(true),
+		managed.WithFinalizer(NewStatusPreservingFinalizer(mgr.GetClient())),
 	)
 
 	if opts.Features.Enabled(feature.EnableBetaManagementPolicies) {
