@@ -3,8 +3,8 @@ package script
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
@@ -109,7 +109,15 @@ func (e *external) Observe(ctx context.Context, script *instancev1alpha1.Script)
 	}
 
 	script.Status.AtProvider = instanceclient.GenerateScriptObservation(observed)
-	script.SetConditions(nexusv1alpha1.Available())
+
+	// A script of another language than the spec's cannot be fixed by
+	// reconciling, as Nexus keeps the type a script was created with, so it
+	// is not reported as ready.
+	if instanceclient.IsScriptTypeUpToDate(&script.Spec.ForProvider, observed.Type) {
+		script.SetConditions(nexusv1alpha1.Available())
+	} else {
+		script.SetConditions(nexusv1alpha1.Unavailable().WithMessage(scriptTypeMismatch(script, observed.Type)))
+	}
 
 	return managed.ExternalObservation{
 		ResourceExists:   true,
@@ -119,35 +127,34 @@ func (e *external) Observe(ctx context.Context, script *instancev1alpha1.Script)
 
 // Create stores the script in Nexus, under its external name.
 func (e *external) Create(ctx context.Context, script *instancev1alpha1.Script) (managed.ExternalCreation, error) {
-	name := scriptName(script)
-
-	err := e.client.Create(ctx, desiredScript(script, name))
+	err := e.client.Create(ctx, desiredScript(script, scriptName(script)))
 	if err != nil {
 		return managed.ExternalCreation{}, errors.Wrap(err, errCreateScript)
 	}
 
-	meta.SetExternalName(script, name)
-
 	return managed.ExternalCreation{}, nil
 }
 
-// Update replaces the script in Nexus with the spec. Nexus ignores the type
-// of an update, so a script whose observed type differs from the spec, such
-// as an adopted one, is reported instead of updated over and over.
+// Update replaces the script source in Nexus with the spec's. Nexus ignores
+// the type of an update, so a script whose observed type differs from the
+// spec, such as an adopted one, still gets its source updated but is then
+// reported, as reconciling cannot change its type.
 func (e *external) Update(ctx context.Context, script *instancev1alpha1.Script) (managed.ExternalUpdate, error) {
 	name := scriptName(script)
+	observed := script.Status.AtProvider
 
-	observedType := script.Status.AtProvider.Type
-	desiredType := instanceclient.ScriptType(&script.Spec.ForProvider)
-
-	if observedType != "" && observedType != desiredType {
-		return managed.ExternalUpdate{}, errors.Wrapf(instanceclient.ErrScriptTypeChanged,
-			"%s: script %q is of type %q, not %q", errUpdateScript, name, observedType, desiredType)
+	// The source is only written when it differs from the observed one, so
+	// that a script stuck on a type mismatch is not rewritten on every poll.
+	if observed.ContentSHA256 != instanceclient.ScriptContentSHA256(script.Spec.ForProvider.Content) {
+		err := e.client.Update(ctx, name, desiredScript(script, name))
+		if err != nil {
+			return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateScript)
+		}
 	}
 
-	err := e.client.Update(ctx, name, desiredScript(script, name))
-	if err != nil {
-		return managed.ExternalUpdate{}, errors.Wrap(err, errUpdateScript)
+	if observed.Type != "" && !instanceclient.IsScriptTypeUpToDate(&script.Spec.ForProvider, observed.Type) {
+		return managed.ExternalUpdate{}, errors.Wrapf(instanceclient.ErrScriptTypeChanged,
+			"%s: %s", errUpdateScript, scriptTypeMismatch(script, observed.Type))
 	}
 
 	return managed.ExternalUpdate{}, nil
@@ -182,10 +189,12 @@ func desiredScript(script *instancev1alpha1.Script, name string) v395.ScriptXO {
 // scriptName returns the name of the script in Nexus: the external name, or
 // the spec name before one is set.
 func scriptName(script *instancev1alpha1.Script) string {
-	name := meta.GetExternalName(script)
-	if name == "" {
-		return script.Spec.ForProvider.Name
-	}
+	return helpers.ExternalNameOr(script, script.Spec.ForProvider.Name)
+}
 
-	return name
+// scriptTypeMismatch describes a script stored with another type than the
+// spec asks for.
+func scriptTypeMismatch(script *instancev1alpha1.Script, observedType string) string {
+	return fmt.Sprintf("script %q is of type %q, not %q", scriptName(script), observedType,
+		instanceclient.ScriptType(&script.Spec.ForProvider))
 }

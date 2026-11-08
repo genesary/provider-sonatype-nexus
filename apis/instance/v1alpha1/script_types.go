@@ -22,7 +22,7 @@ type ScriptParameters struct {
 	// keeps the type a script was created with, so it cannot change.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=groovy
-	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:Enum=groovy
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="Type is immutable."
 	Type string `json:"type,omitempty"`
 
@@ -34,9 +34,6 @@ type ScriptParameters struct {
 
 // ScriptObservation is the observed state of a Script.
 type ScriptObservation struct {
-	// Name is the observed script name.
-	Name string `json:"name,omitempty"`
-
 	// Type is the observed script language.
 	Type string `json:"type,omitempty"`
 

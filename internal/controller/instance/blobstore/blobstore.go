@@ -133,10 +133,7 @@ func observeTypedBlobStore[T any](
 	generate func(string, *T) instancev1alpha1.BlobStoreObservation,
 	checker func(*instancev1alpha1.BlobStore) bool,
 ) (managed.ExternalObservation, error) {
-	name := meta.GetExternalName(blobStore)
-	if name == "" {
-		name = blobStore.Spec.ForProvider.Name
-	}
+	name := helpers.ExternalNameOr(blobStore, blobStore.Spec.ForProvider.Name)
 
 	result, err := getter(ctx, name)
 	if err != nil {
@@ -199,10 +196,7 @@ func (e *external) Create(ctx context.Context, blobStore *instancev1alpha1.BlobS
 
 // Update modifies an existing BlobStore resource.
 func (e *external) Update(ctx context.Context, blobStore *instancev1alpha1.BlobStore) (managed.ExternalUpdate, error) {
-	name := meta.GetExternalName(blobStore)
-	if name == "" {
-		name = blobStore.Spec.ForProvider.Name
-	}
+	name := helpers.ExternalNameOr(blobStore, blobStore.Spec.ForProvider.Name)
 
 	switch blobStore.Spec.ForProvider.Type {
 	case blobStoreTypeFile:
@@ -234,10 +228,7 @@ func (e *external) Update(ctx context.Context, blobStore *instancev1alpha1.BlobS
 
 // Delete removes an existing BlobStore resource.
 func (e *external) Delete(ctx context.Context, blobStore *instancev1alpha1.BlobStore) (managed.ExternalDelete, error) {
-	name := meta.GetExternalName(blobStore)
-	if name == "" {
-		name = blobStore.Spec.ForProvider.Name
-	}
+	name := helpers.ExternalNameOr(blobStore, blobStore.Spec.ForProvider.Name)
 
 	err := e.genericClient.Delete(ctx, name)
 	if err != nil {
@@ -271,10 +262,7 @@ func (e *external) observeS3BlobStore(ctx context.Context, blobStore *instancev1
 // typed endpoint the observation is otherwise built from. Errors are silently
 // ignored — these fields are best-effort and should not block reconciliation.
 func (e *external) populateBlobStoreStats(ctx context.Context, blobStore *instancev1alpha1.BlobStore) {
-	name := meta.GetExternalName(blobStore)
-	if name == "" {
-		name = blobStore.Spec.ForProvider.Name
-	}
+	name := helpers.ExternalNameOr(blobStore, blobStore.Spec.ForProvider.Name)
 
 	generics, err := e.genericClient.List(ctx)
 	if err != nil {

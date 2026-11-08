@@ -10,6 +10,7 @@ import (
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	pkgerrors "github.com/pkg/errors"
 	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -82,6 +83,7 @@ func TestObserve(t *testing.T) {
 		wantGetName  string
 		wantExists   bool
 		wantUpToDate bool
+		wantReady    bool
 		wantErr      bool
 	}{
 		{
@@ -101,18 +103,30 @@ func TestObserve(t *testing.T) {
 			wantGetName:  testScriptName,
 			wantExists:   true,
 			wantUpToDate: true,
+			wantReady:    true,
 		},
 		{
 			name:        "ContentDrift",
 			observed:    &v395.ScriptXO{Name: testScriptName, Type: "groovy", Content: "return 'changed'"},
 			wantGetName: testScriptName,
 			wantExists:  true,
+			wantReady:   true,
 		},
 		{
+			// Reconciling cannot change the type, so the script is not ready.
 			name:        "TypeDrift",
 			observed:    &v395.ScriptXO{Name: testScriptName, Type: "javascript", Content: testContent},
 			wantGetName: testScriptName,
 			wantExists:  true,
+		},
+		{
+			// The Groovy engine answers to both spellings.
+			name:         "TypeCaseIgnored",
+			observed:     &v395.ScriptXO{Name: testScriptName, Type: "Groovy", Content: testContent},
+			wantGetName:  testScriptName,
+			wantExists:   true,
+			wantUpToDate: true,
+			wantReady:    true,
 		},
 		{
 			// An explicit external name wins over the spec name.
@@ -122,6 +136,7 @@ func TestObserve(t *testing.T) {
 			wantGetName:  "imported",
 			wantExists:   true,
 			wantUpToDate: true,
+			wantReady:    true,
 		},
 	}
 
@@ -161,12 +176,28 @@ func TestObserve(t *testing.T) {
 			}
 
 			if tt.observed != nil {
-				want := instanceclient.GenerateScriptObservation(tt.observed)
-				if cr.Status.AtProvider != want {
-					t.Errorf("Observe() AtProvider = %+v, want %+v", cr.Status.AtProvider, want)
-				}
+				checkObservedStatus(t, cr, tt.observed, tt.wantReady)
 			}
 		})
+	}
+}
+
+// checkObservedStatus checks the status Observe records for a found script.
+func checkObservedStatus(t *testing.T, cr *instancev1alpha1.Script, observed *v395.ScriptXO, wantReady bool) {
+	t.Helper()
+
+	want := instanceclient.GenerateScriptObservation(observed)
+	if cr.Status.AtProvider != want {
+		t.Errorf("Observe() AtProvider = %+v, want %+v", cr.Status.AtProvider, want)
+	}
+
+	wantStatus := corev1.ConditionFalse
+	if wantReady {
+		wantStatus = corev1.ConditionTrue
+	}
+
+	if got := cr.GetCondition(xpv2.TypeReady).Status; got != wantStatus {
+		t.Errorf("Observe() Ready = %v, want %v", got, wantStatus)
 	}
 }
 
@@ -196,10 +227,6 @@ func TestCreate(t *testing.T) {
 		if got.Name != testScriptName || got.Type != instanceclient.DefaultScriptType || got.Content != testContent {
 			t.Errorf("Create() sent %+v", got)
 		}
-
-		if meta.GetExternalName(cr) != testScriptName {
-			t.Errorf("Create() external name = %q, want %q", meta.GetExternalName(cr), testScriptName)
-		}
 	})
 
 	t.Run("ScriptingDisabled", func(t *testing.T) {
@@ -225,6 +252,7 @@ func TestUpdate(t *testing.T) {
 		name         string
 		externalName string
 		observedType string
+		observedSHA  string
 		updateErr    error
 		wantName     string
 		wantCalls    int
@@ -260,9 +288,20 @@ func TestUpdate(t *testing.T) {
 			wantErr:      true,
 		},
 		{
-			// Nexus ignores the type of an update, so it is never sent.
-			name:         "TypeChangeRefused",
+			// Nexus ignores the type of an update: the source is still
+			// written, then the type mismatch is reported.
+			name:         "TypeMismatchStillUpdatesContent",
 			observedType: "javascript",
+			wantName:     testScriptName,
+			wantCalls:    1,
+			wantErrIs:    instanceclient.ErrScriptTypeChanged,
+			wantErr:      true,
+		},
+		{
+			// Once the source matches, only the mismatch is reported.
+			name:         "TypeMismatchContentInSync",
+			observedType: "javascript",
+			observedSHA:  instanceclient.ScriptContentSHA256(testContent),
 			wantCalls:    0,
 			wantErrIs:    instanceclient.ErrScriptTypeChanged,
 			wantErr:      true,
@@ -275,6 +314,7 @@ func TestUpdate(t *testing.T) {
 
 			cr := newTestScript()
 			cr.Status.AtProvider.Type = tt.observedType
+			cr.Status.AtProvider.ContentSHA256 = tt.observedSHA
 
 			if tt.externalName != "" {
 				meta.SetExternalName(cr, tt.externalName)

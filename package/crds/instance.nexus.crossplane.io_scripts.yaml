@@ -85,7 +85,8 @@ spec:
                     description: |-
                       Type is the script language. Nexus only runs groovy scripts. Nexus
                       keeps the type a script was created with, so it cannot change.
-                    minLength: 1
+                    enum:
+                    - groovy
                     type: string
                     x-kubernetes-validations:
                     - message: Type is immutable.
@@ -162,9 +163,6 @@ spec:
                     description: |-
                       ContentSHA256 is the hex encoded SHA-256 digest of the observed script
                       source. The source itself is not copied into the status.
-                    type: string
-                  name:
-                    description: Name is the observed script name.
                     type: string
                   type:
                     description: Type is the observed script language.

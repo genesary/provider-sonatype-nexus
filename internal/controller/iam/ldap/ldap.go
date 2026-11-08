@@ -105,10 +105,7 @@ type external struct {
 
 // Observe checks whether the external resource exists and is up-to-date.
 func (e *external) Observe(ctx context.Context, ldapCR *iamv1alpha1.LDAP) (managed.ExternalObservation, error) {
-	ldapName := meta.GetExternalName(ldapCR)
-	if ldapName == "" {
-		ldapName = ldapCR.Spec.ForProvider.Name
-	}
+	ldapName := helpers.ExternalNameOr(ldapCR, ldapCR.Spec.ForProvider.Name)
 
 	observed, err := e.client.Get(ctx, ldapName)
 	if err != nil {
@@ -180,10 +177,7 @@ func (e *external) Create(ctx context.Context, ldapCR *iamv1alpha1.LDAP) (manage
 
 // Update reconciles the LDAP server to the desired state.
 func (e *external) Update(ctx context.Context, ldapCR *iamv1alpha1.LDAP) (managed.ExternalUpdate, error) {
-	ldapName := meta.GetExternalName(ldapCR)
-	if ldapName == "" {
-		ldapName = ldapCR.Spec.ForProvider.Name
-	}
+	ldapName := helpers.ExternalNameOr(ldapCR, ldapCR.Spec.ForProvider.Name)
 
 	secrets := nexus.MemoizeSecrets(e.kube)
 
@@ -211,10 +205,7 @@ func (e *external) Update(ctx context.Context, ldapCR *iamv1alpha1.LDAP) (manage
 
 // Delete removes the LDAP server from Nexus.
 func (e *external) Delete(ctx context.Context, ldapCR *iamv1alpha1.LDAP) (managed.ExternalDelete, error) {
-	ldapName := meta.GetExternalName(ldapCR)
-	if ldapName == "" {
-		ldapName = ldapCR.Spec.ForProvider.Name
-	}
+	ldapName := helpers.ExternalNameOr(ldapCR, ldapCR.Spec.ForProvider.Name)
 
 	err := e.client.Delete(ctx, ldapName)
 	if err != nil {

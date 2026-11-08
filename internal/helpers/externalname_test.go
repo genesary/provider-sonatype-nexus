@@ -116,3 +116,17 @@ func TestSpecExternalName_WrongKind(t *testing.T) {
 		t.Fatal("Initialize() error = nil, want an unexpected kind error")
 	}
 }
+
+// TestExternalNameOr checks that an external name wins over the fallback.
+func TestExternalNameOr(t *testing.T) {
+	t.Parallel()
+
+	if got := ExternalNameOr(newCleanupPolicy("spec-name", nil), "spec-name"); got != "spec-name" {
+		t.Errorf("ExternalNameOr() without external name = %q, want %q", got, "spec-name")
+	}
+
+	cr := newCleanupPolicy("spec-name", map[string]string{meta.AnnotationKeyExternalName: "imported"})
+	if got := ExternalNameOr(cr, "spec-name"); got != "imported" {
+		t.Errorf("ExternalNameOr() with external name = %q, want %q", got, "imported")
+	}
+}

@@ -98,10 +98,7 @@ type external struct {
 
 // Observe checks whether the external resource exists and is up-to-date.
 func (e *external) Observe(ctx context.Context, privRes *iamv1alpha1.Privilege) (managed.ExternalObservation, error) {
-	privName := meta.GetExternalName(privRes)
-	if privName == "" {
-		privName = privRes.Spec.ForProvider.Name
-	}
+	privName := helpers.ExternalNameOr(privRes, privRes.Spec.ForProvider.Name)
 
 	observed, err := e.client.Get(ctx, privName)
 	if err != nil {
@@ -140,10 +137,7 @@ func (e *external) Create(ctx context.Context, privRes *iamv1alpha1.Privilege) (
 
 // Update reconciles the Privilege to the desired state.
 func (e *external) Update(ctx context.Context, privRes *iamv1alpha1.Privilege) (managed.ExternalUpdate, error) {
-	privName := meta.GetExternalName(privRes)
-	if privName == "" {
-		privName = privRes.Spec.ForProvider.Name
-	}
+	privName := helpers.ExternalNameOr(privRes, privRes.Spec.ForProvider.Name)
 
 	err := e.client.Update(ctx, privName, privRes)
 	if err != nil {
@@ -155,10 +149,7 @@ func (e *external) Update(ctx context.Context, privRes *iamv1alpha1.Privilege) (
 
 // Delete removes the Privilege from Nexus.
 func (e *external) Delete(ctx context.Context, privRes *iamv1alpha1.Privilege) (managed.ExternalDelete, error) {
-	privName := meta.GetExternalName(privRes)
-	if privName == "" {
-		privName = privRes.Spec.ForProvider.Name
-	}
+	privName := helpers.ExternalNameOr(privRes, privRes.Spec.ForProvider.Name)
 
 	err := e.client.Delete(ctx, privName)
 	if err != nil {

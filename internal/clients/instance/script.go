@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
+	"strings"
 
 	"github.com/pkg/errors"
 	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
@@ -24,7 +25,8 @@ var ErrScriptingDisabled = errors.New("the Nexus scripting API is disabled: set 
 // ErrScriptTypeChanged is wrapped by the error returned when a script must
 // change type: Nexus ignores the type of a script update and keeps the one
 // the script was created with.
-var ErrScriptTypeChanged = errors.New("nexus cannot change the type of a stored script; delete the script in Nexus so that it is recreated")
+var ErrScriptTypeChanged = errors.New("nexus cannot change the type of a stored script; either recreate the resource " +
+	"with the stored type, or delete the script in Nexus so that it is recreated with the spec type")
 
 // ScriptClient provides methods for managing Nexus scripts.
 type ScriptClient interface {
@@ -68,10 +70,6 @@ func (c *scriptClient) Get(ctx context.Context, name string) (*v395.ScriptXO, er
 		return nil, nexus.APIError(resp, err)
 	}
 
-	if script == nil {
-		return nil, errors.Wrapf(nexus.ErrNotFound, "script %q", name)
-	}
-
 	return script, nil
 }
 
@@ -112,20 +110,22 @@ func ScriptType(params *instancev1alpha1.ScriptParameters) string {
 	return params.Type
 }
 
+// IsScriptTypeUpToDate returns true when the observed script language is the
+// one the spec asks for. The Groovy engine answers to both "groovy" and
+// "Groovy", so a script adopted with either spelling matches.
+func IsScriptTypeUpToDate(params *instancev1alpha1.ScriptParameters, observedType string) bool {
+	return strings.EqualFold(observedType, ScriptType(params))
+}
+
 // IsScriptUpToDate returns true when the Nexus script matches the CR spec.
 func IsScriptUpToDate(params *instancev1alpha1.ScriptParameters, observed *v395.ScriptXO) bool {
-	return observed.Type == ScriptType(params) && observed.Content == params.Content
+	return IsScriptTypeUpToDate(params, observed.Type) && observed.Content == params.Content
 }
 
 // GenerateScriptObservation converts a Nexus script to an observation. The
 // source is recorded as its digest only.
 func GenerateScriptObservation(observed *v395.ScriptXO) instancev1alpha1.ScriptObservation {
-	if observed == nil {
-		return instancev1alpha1.ScriptObservation{}
-	}
-
 	return instancev1alpha1.ScriptObservation{
-		Name:          observed.Name,
 		Type:          observed.Type,
 		ContentSHA256: ScriptContentSHA256(observed.Content),
 	}

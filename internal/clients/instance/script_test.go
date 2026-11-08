@@ -229,6 +229,13 @@ func TestIsScriptUpToDate(t *testing.T) {
 			observed: v395.ScriptXO{Name: "x", Type: "javascript", Content: "return 1"},
 			want:     false,
 		},
+		{
+			// The Groovy engine answers to both spellings.
+			name:     "TypeCaseIgnored",
+			params:   instancev1alpha1.ScriptParameters{Name: "x", Type: "groovy", Content: "return 1"},
+			observed: v395.ScriptXO{Name: "x", Type: "Groovy", Content: "return 1"},
+			want:     true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -247,15 +254,11 @@ func TestIsScriptUpToDate(t *testing.T) {
 func TestGenerateScriptObservation(t *testing.T) {
 	t.Parallel()
 
-	if got := GenerateScriptObservation(nil); got != (instancev1alpha1.ScriptObservation{}) {
-		t.Errorf("GenerateScriptObservation(nil) = %+v, want empty", got)
-	}
-
 	got := GenerateScriptObservation(&v395.ScriptXO{Name: "x", Type: "groovy", Content: "abc"})
 
 	// SHA-256 of "abc".
 	const wantDigest = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-	if got.Name != "x" || got.Type != "groovy" || got.ContentSHA256 != wantDigest {
+	if got.Type != "groovy" || got.ContentSHA256 != wantDigest {
 		t.Errorf("GenerateScriptObservation() = %+v", got)
 	}
 }

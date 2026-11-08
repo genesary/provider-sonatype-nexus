@@ -42,7 +42,7 @@ Repositories are supported for Maven2, npm, Docker and 23 other formats. See [Su
 
 ### Scripts
 
-A `Script` stores a script, usually Groovy, through the Nexus scripting API. The provider never runs it. A stored script is arbitrary code that any user allowed to run scripts can execute with the full rights of the Nexus server, so treat permission to create `Script` resources like administrator access to Nexus.
+A `Script` stores a Groovy script through the Nexus scripting API. The provider never runs it. A stored script is arbitrary code that any user allowed to run scripts can execute with the full rights of the Nexus server, so treat permission to create `Script` resources like administrator access to Nexus.
 
 Nexus disables script creation by default. To use `Script`, set `nexus.scripts.allowCreation=true` in `<nexus-data>/etc/nexus.properties` (or pass `-Dnexus.scripts.allowCreation=true` to the JVM) and restart Nexus. Until then, a `Script` reports `Synced=False` with an error saying how to enable it.
 
