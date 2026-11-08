@@ -72,6 +72,8 @@ func main() {
 		kingpin.Fatalf("--min-poll-interval must not be negative, got %s", parsed.MinPollInterval)
 	}
 
+	kingpin.FatalIfError(helpers.ValidatePollJitterPercentage(parsed.PollJitterPercentage), "Invalid --poll-jitter-percentage")
+
 	cfg, err := ctrl.GetConfig()
 	kingpin.FatalIfError(err, "Cannot get API server rest config")
 
@@ -202,7 +204,8 @@ func controllerOptions(log logging.Logger, parsed flags) helpers.Options {
 				MRStateMetrics:          stateMetrics,
 			},
 		},
-		MinPollInterval: parsed.MinPollInterval,
+		MinPollInterval:      parsed.MinPollInterval,
+		PollJitterPercentage: parsed.PollJitterPercentage,
 	}
 }
 

@@ -3,6 +3,7 @@ package helpers
 import (
 	"context"
 	"errors"
+	"math"
 	"slices"
 	"testing"
 	"time"
@@ -71,6 +72,7 @@ func TestReconcilerOptions(t *testing.T) {
 		metrics  *controller.MetricOptions
 		// noChangeLogger leaves the change log options without a logger.
 		noChangeLogger bool
+		jitter         int
 		specific       int
 		want           int
 	}{
@@ -98,6 +100,10 @@ func TestReconcilerOptions(t *testing.T) {
 			metrics: &controller.MetricOptions{},
 			want:    sharedOptions,
 		},
+		"PollJitter": {
+			jitter: MaxPollJitterPercentage,
+			want:   sharedOptions + 1,
+		},
 		"SpecificOptions": {
 			specific: 2,
 			want:     sharedOptions + 2,
@@ -105,8 +111,9 @@ func TestReconcilerOptions(t *testing.T) {
 		"AllOptions": {
 			features: []feature.Flag{feature.EnableBetaManagementPolicies, feature.EnableAlphaChangeLogs},
 			metrics:  &controller.MetricOptions{MRMetrics: managed.NewMRMetricRecorder()},
+			jitter:   10,
 			specific: 2,
-			want:     sharedOptions + 5,
+			want:     sharedOptions + 6,
 		},
 	}
 
@@ -126,6 +133,7 @@ func TestReconcilerOptions(t *testing.T) {
 
 			opts := testOptions()
 			opts.MetricOptions = test.metrics
+			opts.PollJitterPercentage = test.jitter
 
 			if test.noChangeLogger {
 				opts.ChangeLogOptions = &controller.ChangeLogOptions{}
@@ -370,6 +378,180 @@ func TestReconcilerOptionsPollInterval(t *testing.T) {
 			got := reconcileRole(t, opts, testRole(test.annotation))
 			if got != test.want {
 				t.Errorf("Reconcile() RequeueAfter = %v, want %v", got, test.want)
+			}
+		})
+	}
+}
+
+// TestValidatePollJitterPercentage checks the accepted range of the percentage.
+func TestValidatePollJitterPercentage(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		percentage int
+		wantErr    bool
+	}{
+		"Zero":         {},
+		"Default":      {percentage: 10},
+		"Maximum":      {percentage: MaxPollJitterPercentage},
+		"Negative":     {percentage: -1, wantErr: true},
+		"AboveMaximum": {percentage: MaxPollJitterPercentage + 1, wantErr: true},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			err := ValidatePollJitterPercentage(test.percentage)
+			if (err != nil) != test.wantErr {
+				t.Errorf("ValidatePollJitterPercentage(%d) error = %v, want error %t", test.percentage, err, test.wantErr)
+			}
+		})
+	}
+}
+
+// TestPollJitterHook checks the bounds of the jittered interval, and that
+// samples do not pile up on a single value, the minimum in particular.
+func TestPollJitterHook(t *testing.T) {
+	t.Parallel()
+
+	const (
+		samples     = 2000
+		minDistinct = samples * 9 / 10
+	)
+
+	tests := map[string]struct {
+		percentage      int
+		minPollInterval time.Duration
+		pollInterval    time.Duration
+		wantMin         time.Duration
+		wantMax         time.Duration
+	}{
+		"SpreadsInBothDirections": {
+			percentage:   10,
+			pollInterval: time.Minute,
+			wantMin:      54 * time.Second,
+			wantMax:      66 * time.Second,
+		},
+		"ScalesWithTheInterval": {
+			percentage:   10,
+			pollInterval: time.Hour,
+			wantMin:      54 * time.Minute,
+			wantMax:      66 * time.Minute,
+		},
+		"NeverGoesBelowTheMinimum": {
+			percentage:      10,
+			minPollInterval: 30 * time.Second,
+			pollInterval:    30 * time.Second,
+			wantMin:         30 * time.Second,
+			wantMax:         33 * time.Second,
+		},
+		"MaximumPercentageStaysPositive": {
+			percentage:   MaxPollJitterPercentage,
+			pollInterval: time.Minute,
+			wantMin:      30 * time.Second,
+			wantMax:      90 * time.Second,
+		},
+		"ClampsAnOutOfRangePercentage": {
+			percentage:   4 * MaxPollJitterPercentage,
+			pollInterval: time.Minute,
+			wantMin:      30 * time.Second,
+			wantMax:      90 * time.Second,
+		},
+		"SaturatesInsteadOfOverflowing": {
+			percentage:      10,
+			minPollInterval: 30 * time.Second,
+			pollInterval:    math.MaxInt64 - time.Hour,
+			wantMin:         math.MaxInt64 / 2,
+			wantMax:         math.MaxInt64,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			hook := pollJitterHook(test.percentage, test.minPollInterval)
+			seen := make(map[time.Duration]struct{}, samples)
+
+			for range samples {
+				got := hook(nil, test.pollInterval)
+				if got < test.wantMin || got > test.wantMax {
+					t.Fatalf("hook() = %v, want between %v and %v", got, test.wantMin, test.wantMax)
+				}
+
+				seen[got] = struct{}{}
+			}
+
+			if len(seen) < minDistinct {
+				t.Errorf("hook() returned %d distinct intervals out of %d samples, want at least %d", len(seen), samples, minDistinct)
+			}
+		})
+	}
+}
+
+// TestPollJitterHookKeepsUnspreadableIntervals checks that intervals with
+// nothing to spread are returned as they are.
+func TestPollJitterHookKeepsUnspreadableIntervals(t *testing.T) {
+	t.Parallel()
+
+	hook := pollJitterHook(10, 30*time.Second)
+
+	for _, pollInterval := range []time.Duration{-time.Minute, 0, time.Nanosecond} {
+		got := hook(nil, pollInterval)
+		if got != pollInterval {
+			t.Errorf("hook(%v) = %v, want it unchanged", pollInterval, got)
+		}
+	}
+}
+
+// TestReconcilerOptionsApplyPollJitter checks the requeue delay of a real
+// reconcile when jitter is enabled: an exact interval means the hook is not
+// wired, and a minimum that is not passed on lets jitter go below it.
+func TestReconcilerOptionsApplyPollJitter(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		annotation string
+		exact      time.Duration
+		wantMin    time.Duration
+		wantMax    time.Duration
+	}{
+		"SpreadsThePollInterval": {
+			exact:   time.Minute,
+			wantMin: 54 * time.Second,
+			wantMax: 66 * time.Second,
+		},
+		"SpreadsTheAnnotation": {
+			annotation: "1h",
+			exact:      time.Hour,
+			wantMin:    54 * time.Minute,
+			wantMax:    66 * time.Minute,
+		},
+		"StaysAboveTheMinimum": {
+			annotation: "1s",
+			exact:      30 * time.Second,
+			wantMin:    30 * time.Second,
+			wantMax:    33 * time.Second,
+		},
+	}
+
+	for name, test := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			opts := testOptions()
+			opts.PollInterval = time.Minute
+			opts.MinPollInterval = 30 * time.Second
+			opts.PollJitterPercentage = 10
+
+			got := reconcileRole(t, opts, testRole(test.annotation))
+			if got < test.wantMin || got > test.wantMax {
+				t.Errorf("Reconcile() RequeueAfter = %v, want between %v and %v", got, test.wantMin, test.wantMax)
+			}
+
+			if got == test.exact {
+				t.Errorf("Reconcile() RequeueAfter = %v, want it spread", got)
 			}
 		})
 	}
