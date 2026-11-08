@@ -30,38 +30,25 @@ func init() {
 
 // buildDockerHosted renders a Docker hosted repository payload.
 func buildDockerHosted(desired desiredRepo) v395.DockerHostedRepositoryApiRequest {
-	return v395.DockerHostedRepositoryApiRequest{
-		Name:    desired.name(),
-		Online:  desired.online(),
-		Storage: desired.dockerHostedStorage(),
-		Docker:  desired.docker(),
-		Cleanup: desired.cleanup(),
-	}
+	repo := buildContainerHosted[v395.DockerHostedRepositoryApiRequest](desired)
+	repo.Docker = desired.docker()
+
+	return repo
 }
 
 // buildDockerProxy renders a Docker proxy repository payload.
 func buildDockerProxy(desired desiredRepo) v395.DockerProxyRepositoryApiRequest {
-	return v395.DockerProxyRepositoryApiRequest{
-		Name:            desired.name(),
-		Online:          desired.online(),
-		Storage:         desired.storage(),
-		Proxy:           desired.proxy(),
-		NegativeCache:   desired.negativeCache(),
-		HttpClient:      desired.httpClient(),
-		RoutingRuleName: desired.routingRule(),
-		Docker:          desired.docker(),
-		DockerProxy:     desired.dockerProxy(),
-		Cleanup:         desired.cleanup(),
-	}
+	repo := buildProxy[v395.DockerProxyRepositoryApiRequest](desired)
+	repo.Docker = desired.docker()
+	repo.DockerProxy = desired.dockerProxy()
+
+	return repo
 }
 
 // buildDockerGroup renders a Docker group repository payload.
 func buildDockerGroup(desired desiredRepo) v395.DockerGroupRepositoryApiRequest {
-	return v395.DockerGroupRepositoryApiRequest{
-		Name:    desired.name(),
-		Online:  desired.online(),
-		Storage: desired.storage(),
-		Group:   desired.groupDeploy(),
-		Docker:  desired.docker(),
-	}
+	repo := buildDeployGroup[v395.DockerGroupRepositoryApiRequest](desired)
+	repo.Docker = desired.docker()
+
+	return repo
 }

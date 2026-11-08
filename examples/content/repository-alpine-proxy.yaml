@@ -1,0 +1,35 @@
+# Alpine (APK) proxy repository example
+apiVersion: content.nexus.crossplane.io/v1alpha1
+kind: Repository
+metadata:
+  name: alpine-proxy
+  namespace: default
+spec:
+  forProvider:
+    name: alpine-proxy
+    format: alpine
+    type: proxy
+    online: true
+    proxy:
+      remoteUrl: https://dl-cdn.alpinelinux.org/alpine/
+      contentMaxAge: 1440
+      metadataMaxAge: 1440
+    negativeCache:
+      enabled: true
+      timeToLive: 1440
+    httpClient:
+      blocked: false
+      autoBlock: true
+    storage:
+      blobStoreName: default
+      strictContentTypeValidation: true
+    # Nexus signs the APK index it serves with this RSA key. It is required
+    # for alpine proxy and group repositories.
+    alpineSigning:
+      keypair: |
+        -----BEGIN PRIVATE KEY-----
+        <PEM encoded RSA private key>
+        -----END PRIVATE KEY-----
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

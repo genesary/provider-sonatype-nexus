@@ -297,8 +297,11 @@ func (e *external) repositoryURL(name string) string {
 
 // credentialsFingerprint fingerprints the credentials the Repository applies
 // that Nexus redacts on read: the HTTP client authentication, including its
-// password Secret, and the APT and Yum signing keys. It reads the Secret
-// through kube.
+// password Secret, and the APT, Yum, alpine and Terraform signing keys. It
+// reads the Secret through kube.
+//
+// Every field is omitted when unset, so that declaring a new kind of
+// credential leaves the fingerprint of a Repository not using it unchanged.
 func (e *external) credentialsFingerprint(ctx context.Context, kube client.Reader, repoCR *repositoryv1alpha1.Repository) (string, error) {
 	params := repoCR.Spec.ForProvider
 
@@ -308,12 +311,15 @@ func (e *external) credentialsFingerprint(ctx context.Context, kube client.Reade
 	}
 
 	var spec any
-	if authentication != nil || params.AptSigning != nil || params.YumSigning != nil {
+	if authentication != nil || params.AptSigning != nil || params.YumSigning != nil ||
+		params.AlpineSigning != nil || params.TerraformSigning != nil {
 		spec = struct {
-			Authentication *repositoryv1alpha1.HTTPClientAuthentication `json:"authentication,omitempty"`
-			AptSigning     *repositoryv1alpha1.AptSigningConfig         `json:"aptSigning,omitempty"`
-			YumSigning     *repositoryv1alpha1.YumSigningConfig         `json:"yumSigning,omitempty"`
-		}{authentication, params.AptSigning, params.YumSigning}
+			Authentication   *repositoryv1alpha1.HTTPClientAuthentication `json:"authentication,omitempty"`
+			AptSigning       *repositoryv1alpha1.AptSigningConfig         `json:"aptSigning,omitempty"`
+			YumSigning       *repositoryv1alpha1.YumSigningConfig         `json:"yumSigning,omitempty"`
+			AlpineSigning    *repositoryv1alpha1.AlpineSigningConfig      `json:"alpineSigning,omitempty"`
+			TerraformSigning *repositoryv1alpha1.TerraformSigningConfig   `json:"terraformSigning,omitempty"`
+		}{authentication, params.AptSigning, params.YumSigning, params.AlpineSigning, params.TerraformSigning}
 	}
 
 	var passwordRef *xpv2.LocalSecretKeySelector

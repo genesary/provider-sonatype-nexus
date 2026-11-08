@@ -22,7 +22,7 @@ type CleanupPolicyParameters struct {
 	// Format is the repository format this policy applies to.
 	// Use * to apply to all formats.
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Enum="*";apt;bower;cargo;cocoapods;composer;conan;conda;docker;gitlfs;go;helm;huggingface;maven2;npm;nuget;p2;pypi;r;raw;rubygems;yum
+	// +kubebuilder:validation:Enum="*";alpine;ansiblegalaxy;apt;bower;cargo;cocoapods;composer;conan;conda;docker;gitlfs;go;helm;huggingface;maven2;npm;nuget;oci;p2;pub;pypi;r;raw;rubygems;swift;terraform;yum
 	Format string `json:"format"`
 
 	// Notes are details about this cleanup policy.

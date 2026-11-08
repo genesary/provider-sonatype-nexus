@@ -59,6 +59,21 @@ spec:
               forProvider:
                 description: RepositoryParameters defines the desired state of a Repository.
                 properties:
+                  alpineSigning:
+                    description: |-
+                      AlpineSigning is the RSA key Nexus signs the APK index of an alpine
+                      repository with. It is required for proxy and group repositories.
+                    properties:
+                      keypair:
+                        description: Keypair is the RSA signing key pair (PEM armored
+                          private key).
+                        type: string
+                      passphrase:
+                        description: Passphrase to access the RSA signing key.
+                        type: string
+                    required:
+                    - keypair
+                    type: object
                   apt:
                     description: Apt specific configuration.
                     properties:
@@ -192,6 +207,32 @@ spec:
                           type: string
                         type: array
                     type: object
+                  cosign:
+                    description: Cosign signature enforcement for OCI repositories.
+                    properties:
+                      enforcement:
+                        description: |-
+                          Enforcement is the cosign enforcement mode. NONE disables enforcement;
+                          KEYLESS requires a valid cosign signature attached as an OCI referrer
+                          for every pull. Nexus 3.96 does not implement KEYLESS yet and rejects
+                          it.
+                        enum:
+                        - NONE
+                        - KEYLESS
+                        type: string
+                      identityRegex:
+                        description: |-
+                          IdentityRegex is matched against the Fulcio certificate Subject
+                          Alternative Name.
+                        type: string
+                      issuerRegex:
+                        description: |-
+                          IssuerRegex is matched against the OIDC issuer extension of the Fulcio
+                          certificate.
+                        type: string
+                    required:
+                    - enforcement
+                    type: object
                   docker:
                     description: Docker specific configuration.
                     properties:
@@ -264,6 +305,13 @@ spec:
                     - p2
                     - cargo
                     - huggingface
+                    - alpine
+                    - ansiblegalaxy
+                    - composer
+                    - oci
+                    - pub
+                    - swift
+                    - terraform
                     type: string
                     x-kubernetes-validations:
                     - message: Format is immutable.
@@ -510,6 +558,62 @@ spec:
                         format: int32
                         type: integer
                     type: object
+                  oci:
+                    description: Oci specific configuration for OCI repositories.
+                    properties:
+                      forceBasicAuth:
+                        default: true
+                        description: |-
+                          ForceBasicAuth forces basic authentication. The OCI Bearer Token
+                          realm is required when it is disabled.
+                        type: boolean
+                      httpPort:
+                        description: HTTPPort creates an HTTP connector at this port.
+                        format: int32
+                        type: integer
+                      httpsPort:
+                        description: HTTPSPort creates an HTTPS connector at this
+                          port.
+                        format: int32
+                        type: integer
+                      pathEnabled:
+                        description: PathEnabled allows the repository name in OCI
+                          image paths.
+                        type: boolean
+                      subdomain:
+                        description: Subdomain serves the repository at this subdomain.
+                        type: string
+                      v1Enabled:
+                        description: V1Enabled allows clients to use the V1 API.
+                        type: boolean
+                    type: object
+                  ociProxy:
+                    description: OciProxy specific configuration for OCI proxy repositories.
+                    properties:
+                      cacheForeignLayers:
+                        description: CacheForeignLayers allows downloading and caching
+                          foreign layers.
+                        type: boolean
+                      foreignLayerUrlWhitelist:
+                        description: |-
+                          ForeignLayerURLWhitelist is a list of regex patterns for allowed
+                          foreign layer URLs.
+                        items:
+                          type: string
+                        type: array
+                      indexType:
+                        description: IndexType is the type of OCI index (HUB, REGISTRY,
+                          CUSTOM).
+                        enum:
+                        - HUB
+                        - REGISTRY
+                        - CUSTOM
+                        type: string
+                      indexUrl:
+                        description: IndexURL is the URL of the OCI index to use (for
+                          CUSTOM type).
+                        type: string
+                    type: object
                   online:
                     default: true
                     description: Online determines if the repository is online.
@@ -721,6 +825,39 @@ spec:
                         is required.
                       rule: has(self.blobStoreName) || has(self.blobStoreNameRef)
                         || has(self.blobStoreNameSelector)
+                  swift:
+                    description: Swift specific configuration for Swift proxy repositories.
+                    properties:
+                      requireAuthentication:
+                        description: RequireAuthentication indicates if this repository
+                          requires authentication.
+                        type: boolean
+                    type: object
+                  terraform:
+                    description: Terraform specific configuration for Terraform group
+                      repositories.
+                    properties:
+                      requireAuthentication:
+                        description: RequireAuthentication indicates if this repository
+                          requires authentication.
+                        type: boolean
+                    type: object
+                  terraformSigning:
+                    description: |-
+                      TerraformSigning is the PGP key Nexus signs the providers of a
+                      Terraform hosted repository with. It is required for hosted
+                      repositories.
+                    properties:
+                      keypair:
+                        description: Keypair is the PGP signing key pair (armored
+                          private key).
+                        type: string
+                      passphrase:
+                        description: Passphrase to access the PGP signing key.
+                        type: string
+                    required:
+                    - keypair
+                    type: object
                   type:
                     description: Type of the repository (hosted, proxy, group).
                     enum:
@@ -763,6 +900,11 @@ spec:
                 - name
                 - type
                 type: object
+                x-kubernetes-validations:
+                - message: alpineSigning is required for alpine proxy and group repositories.
+                  rule: self.format != 'alpine' || self.type == 'hosted' || has(self.alpineSigning)
+                - message: terraformSigning is required for terraform hosted repositories.
+                  rule: self.format != 'terraform' || self.type != 'hosted' || has(self.terraformSigning)
               managementPolicies:
                 default:
                 - '*'

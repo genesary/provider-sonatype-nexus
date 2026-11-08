@@ -106,4 +106,16 @@ func TestCredentialRotation(t *testing.T) {
 	cr.Spec.ForProvider.AptSigning.Keypair = "new-key"
 	assertUpToDate("after signing key change", false)
 	update("after signing key update")
+
+	cr.Spec.ForProvider.AlpineSigning = &repositoryv1alpha1.AlpineSigningConfig{Keypair: "rsa-key"}
+	assertUpToDate("after alpine signing key change", false)
+	update("after alpine signing key update")
+
+	cr.Spec.ForProvider.TerraformSigning = &repositoryv1alpha1.TerraformSigningConfig{Keypair: "pgp-key"}
+	assertUpToDate("after terraform signing key change", false)
+	update("after terraform signing key update")
+
+	cr.Spec.ForProvider.TerraformSigning.Passphrase = new("passphrase")
+	assertUpToDate("after terraform signing passphrase change", false)
+	update("after terraform signing passphrase update")
 }

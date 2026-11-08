@@ -41,6 +41,9 @@ const (
 	// defaultDockerIndexType is the Docker index of a Docker proxy repository
 	// whose spec sets none.
 	defaultDockerIndexType = "HUB"
+	// cosignEnforcementNone is the cosign enforcement mode that verifies no
+	// signature.
+	cosignEnforcementNone = "NONE"
 )
 
 // desiredRepo is the input every payload builder works from: the desired state
@@ -122,9 +125,9 @@ func (d desiredRepo) hostedStorage() v395.HostedStorageAttributes {
 	return storage
 }
 
-// dockerHostedStorage converts the storage configuration of a hosted Docker
-// repository.
-func (d desiredRepo) dockerHostedStorage() v395.DockerHostedStorageAttributes {
+// containerHostedStorage converts the storage configuration of a hosted Docker
+// or OCI repository.
+func (d desiredRepo) containerHostedStorage() v395.DockerHostedStorageAttributes {
 	hosted := d.hostedStorage()
 
 	return v395.DockerHostedStorageAttributes{
@@ -424,12 +427,120 @@ func (d desiredRepo) nugetProxy() v395.NugetAttributes {
 	return nugetProxy
 }
 
+// requireAuthentication converts whether a repository overrides anonymous
+// access. It is always sent, false when the spec leaves it unset, so that
+// removing the setting from the spec turns it off in Nexus too.
+func requireAuthentication(spec *bool) *bool {
+	return new(ptr.Deref(spec, false))
+}
+
 // cargo converts the Cargo specific configuration.
 func (d desiredRepo) cargo() *v395.CargoAttributes {
-	spec := d.params().Cargo
-	if spec == nil {
-		return &v395.CargoAttributes{RequireAuthentication: new(false)}
+	var spec *bool
+	if d.params().Cargo != nil {
+		spec = d.params().Cargo.RequireAuthentication
 	}
 
-	return &v395.CargoAttributes{RequireAuthentication: new(ptr.Deref(spec.RequireAuthentication, false))}
+	return &v395.CargoAttributes{RequireAuthentication: requireAuthentication(spec)}
+}
+
+// swift converts the Swift specific configuration of a proxy repository.
+func (d desiredRepo) swift() *v395.SwiftAttributes {
+	var spec *bool
+	if d.params().Swift != nil {
+		spec = d.params().Swift.RequireAuthentication
+	}
+
+	return &v395.SwiftAttributes{RequireAuthentication: requireAuthentication(spec)}
+}
+
+// terraform converts the Terraform specific configuration of a group
+// repository.
+func (d desiredRepo) terraform() *v395.TerraformAttributes {
+	var spec *bool
+	if d.params().Terraform != nil {
+		spec = d.params().Terraform.RequireAuthentication
+	}
+
+	return &v395.TerraformAttributes{RequireAuthentication: requireAuthentication(spec)}
+}
+
+// terraformSigning converts the PGP key of a Terraform hosted repository.
+// Nexus rejects a hosted repository without one, which the CRD enforces too.
+func (d desiredRepo) terraformSigning() v395.TerraformSigningAttributes {
+	spec := d.params().TerraformSigning
+	if spec == nil {
+		return v395.TerraformSigningAttributes{}
+	}
+
+	return v395.TerraformSigningAttributes{Keypair: spec.Keypair, Passphrase: spec.Passphrase}
+}
+
+// alpineSigning converts the RSA key of an alpine repository, nil when the
+// spec gives none. Nexus requires one for proxy and group repositories, which
+// the CRD enforces too.
+func (d desiredRepo) alpineSigning() *v395.AlpineSigningRepositoriesAttributes {
+	spec := d.params().AlpineSigning
+	if spec == nil {
+		return nil
+	}
+
+	return &v395.AlpineSigningRepositoriesAttributes{Keypair: spec.Keypair, Passphrase: spec.Passphrase}
+}
+
+// oci converts the OCI specific configuration. It applies the same defaults
+// as the Docker block, which it mirrors.
+func (d desiredRepo) oci() v395.OciAttributes {
+	oci := v395.OciAttributes{V1Enabled: false, ForceBasicAuth: true}
+
+	spec := d.params().Oci
+	if spec == nil {
+		return oci
+	}
+
+	oci.V1Enabled = ptr.Deref(spec.V1Enabled, false)
+	oci.ForceBasicAuth = ptr.Deref(spec.ForceBasicAuth, true)
+	oci.Subdomain = spec.Subdomain
+	oci.HttpPort = spec.HTTPPort
+	oci.HttpsPort = spec.HTTPSPort
+	oci.PathEnabled = spec.PathEnabled
+
+	return oci
+}
+
+// ociProxy converts the index configuration of an OCI proxy repository, nil
+// when the spec declares none so that Nexus applies its own default index.
+func (d desiredRepo) ociProxy() *v395.OciProxyAttributes {
+	spec := d.params().OciProxy
+	if spec == nil {
+		return nil
+	}
+
+	return &v395.OciProxyAttributes{
+		IndexType:                spec.IndexType,
+		IndexUrl:                 spec.IndexURL,
+		CacheForeignLayers:       spec.CacheForeignLayers,
+		ForeignLayerUrlWhitelist: spec.ForeignLayerURLWhitelist,
+	}
+}
+
+// cosign converts the cosign signature enforcement of an OCI repository, nil
+// when the spec declares none. The certificate regexes are only sent while
+// enforcement is on: Nexus ignores them and drops them from the repository
+// otherwise, which would show as drift forever.
+func (d desiredRepo) cosign() *v395.OciCosignConfiguration {
+	spec := d.params().Cosign
+	if spec == nil {
+		return nil
+	}
+
+	if spec.Enforcement == cosignEnforcementNone {
+		return &v395.OciCosignConfiguration{Enforcement: spec.Enforcement}
+	}
+
+	return &v395.OciCosignConfiguration{
+		Enforcement:   spec.Enforcement,
+		IdentityRegex: spec.IdentityRegex,
+		IssuerRegex:   spec.IssuerRegex,
+	}
 }

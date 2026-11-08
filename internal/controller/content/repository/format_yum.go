@@ -30,37 +30,24 @@ func init() {
 
 // buildYumHosted renders a Yum hosted repository payload.
 func buildYumHosted(desired desiredRepo) v395.YumHostedRepositoryApiRequest {
-	return v395.YumHostedRepositoryApiRequest{
-		Name:    desired.name(),
-		Online:  desired.online(),
-		Storage: desired.hostedStorage(),
-		Cleanup: desired.cleanup(),
-		Yum:     desired.yum(),
-	}
+	repo := buildHosted[v395.YumHostedRepositoryApiRequest](desired)
+	repo.Yum = desired.yum()
+
+	return repo
 }
 
 // buildYumProxy renders a Yum proxy repository payload.
 func buildYumProxy(desired desiredRepo) v395.YumProxyRepositoryApiRequest {
-	return v395.YumProxyRepositoryApiRequest{
-		Name:            desired.name(),
-		Online:          desired.online(),
-		Storage:         desired.storage(),
-		Proxy:           desired.proxy(),
-		NegativeCache:   desired.negativeCache(),
-		HttpClient:      desired.httpClient(),
-		RoutingRuleName: desired.routingRule(),
-		Cleanup:         desired.cleanup(),
-		YumSigning:      desired.yumSigning(),
-	}
+	repo := buildProxy[v395.YumProxyRepositoryApiRequest](desired)
+	repo.YumSigning = desired.yumSigning()
+
+	return repo
 }
 
 // buildYumGroup renders a Yum group repository payload.
 func buildYumGroup(desired desiredRepo) v395.YumGroupRepositoryApiRequest {
-	return v395.YumGroupRepositoryApiRequest{
-		Name:       desired.name(),
-		Online:     desired.online(),
-		Storage:    desired.storage(),
-		Group:      desired.group(),
-		YumSigning: desired.yumSigning(),
-	}
+	repo := buildGroup[v395.YumGroupRepositoryApiRequest](desired)
+	repo.YumSigning = desired.yumSigning()
+
+	return repo
 }
