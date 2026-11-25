@@ -1,0 +1,36 @@
+# Fetches the identity provider metadata from a URL, on every reconcile.
+# endpointCredentials is only needed when the URL requires authentication.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: saml-idp-credentials
+  namespace: default
+type: Opaque
+stringData:
+  username: nexus
+  password: change-me
+---
+apiVersion: iam.nexus.crossplane.io/v1alpha1
+kind: SAML
+metadata:
+  name: saml-config
+  namespace: default
+spec:
+  forProvider:
+    idpMetadataFrom:
+      endpointUrl: https://idp.example.com/metadata.xml
+      endpointCredentials:
+        usernameSecretRef:
+          name: saml-idp-credentials
+          key: username
+        passwordSecretRef:
+          name: saml-idp-credentials
+          key: password
+    entityId: "https://nexus.example.com/saml"
+    usernameAttribute: "username"
+  # Caches the metadata, to use while the URL is unavailable.
+  writeConnectionSecretToRef:
+    name: saml-idp-metadata-cache
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

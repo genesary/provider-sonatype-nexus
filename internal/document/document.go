@@ -37,9 +37,17 @@ const endpointKey = "endpointUrl"
 
 // Source is where a managed resource reads a document from.
 type Source struct {
+	// Inline is the document itself, when the spec holds it. It takes
+	// precedence over From, and is neither parsed nor cached.
+	Inline *string
+
 	// From names the Secret or the endpoint that holds the document. SecretRef
 	// takes precedence over EndpointURL.
 	From *nexusv1alpha1.DocumentSource
+
+	// Parse checks and normalizes what is read from From. It must accept its
+	// own output. A nil Parse takes what is read as is.
+	Parse func([]byte) ([]byte, error)
 
 	// Key is the connection Secret key the document is cached under.
 	Key string
@@ -65,31 +73,32 @@ type Document struct {
 // controller keeps that cache current by publishing the ConnectionDetails of
 // the documents Nexus accepts, and only of those.
 func (s Source) Read(ctx context.Context, kube client.Reader, owner resource.ModernManaged) (Document, error) {
-	if s.From == nil || (s.From.SecretRef == nil && s.From.EndpointURL == nil) {
+	switch {
+	case s.Inline != nil:
+		return Document{Data: []byte(*s.Inline)}, nil
+	case s.From == nil || (s.From.SecretRef == nil && s.From.EndpointURL == nil):
 		return Document{}, errors.New(ErrNoSource)
+	case s.From.SecretRef != nil:
+		return s.parse(nexus.GetSecretBytes(ctx, kube, owner.GetNamespace(), s.From.SecretRef))
 	}
 
-	if s.From.SecretRef != nil {
-		data, err := nexus.GetSecretBytes(ctx, kube, owner.GetNamespace(), s.From.SecretRef)
-		if err != nil {
-			return Document{}, err
-		}
-
-		return s.document(data), nil
-	}
-
-	data, endpointErr := fetch(ctx, kube, owner.GetNamespace(), *s.From.EndpointURL, s.From.EndpointCredentials)
+	fetched, endpointErr := s.parse(fetch(ctx, kube, owner.GetNamespace(), *s.From.EndpointURL, s.From.EndpointCredentials))
 	if endpointErr == nil {
-		return s.document(data), nil
+		return fetched, nil
 	}
 
 	data, recorded, err := s.readCache(ctx, kube, owner)
+
+	var cached Document
+	if err == nil {
+		cached, err = s.parse(data, nil)
+	}
+
 	if err != nil {
 		// The endpoint error is the one to act on: having no cache is normal.
 		return Document{}, errors.Wrap(endpointErr, errUnavailable)
 	}
 
-	cached := s.document(data)
 	if !recorded {
 		// Do not record an endpoint that never served this document: it
 		// would keep the cache trusted past the next successful fetch.
@@ -99,15 +108,24 @@ func (s Source) Read(ctx context.Context, kube client.Reader, owner resource.Mod
 	return cached, nil
 }
 
-// document returns the Document holding data read from the source.
-func (s Source) document(data []byte) Document {
+// parse returns the Document holding what was read from the source, or the
+// error of reading it.
+func (s Source) parse(data []byte, err error) (Document, error) {
+	if err == nil && s.Parse != nil {
+		data, err = s.Parse(data)
+	}
+
+	if err != nil {
+		return Document{}, err
+	}
+
 	return Document{
 		Data: data,
 		ConnectionDetails: managed.ConnectionDetails{
 			s.Key:       data,
 			endpointKey: []byte(s.endpointID()),
 		},
-	}
+	}, nil
 }
 
 // readCache returns the document cached in the connection Secret of owner, and

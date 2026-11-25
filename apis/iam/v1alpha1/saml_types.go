@@ -6,13 +6,24 @@ import (
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 )
 
 // SAMLParameters defines the desired state of SAML configuration.
+// +kubebuilder:validation:XValidation:rule="has(self.idpMetadata) != has(self.idpMetadataFrom)",message="exactly one of idpMetadata and idpMetadataFrom is required."
 type SAMLParameters struct {
-	// IdpMetadata is the SAML Identity Provider metadata XML.
-	// +kubebuilder:validation:Required
-	IdpMetadata string `json:"idpMetadata"`
+	// IdpMetadata is the SAML Identity Provider metadata XML. Mutually
+	// exclusive with IdpMetadataFrom.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:MinLength=1
+	IdpMetadata *string `json:"idpMetadata,omitempty"`
+
+	// IdpMetadataFrom is where the SAML Identity Provider metadata XML is
+	// read from: a secret or a URL, such as the one the identity provider
+	// publishes its metadata at. Mutually exclusive with IdpMetadata.
+	// +kubebuilder:validation:Optional
+	IdpMetadataFrom *nexusv1alpha1.DocumentSource `json:"idpMetadataFrom,omitempty"`
 
 	// EntityId is the SAML entity ID for this service provider.
 	// +kubebuilder:validation:Required

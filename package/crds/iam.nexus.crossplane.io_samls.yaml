@@ -74,9 +74,78 @@ spec:
                       group membership.
                     type: string
                   idpMetadata:
-                    description: IdpMetadata is the SAML Identity Provider metadata
-                      XML.
+                    description: |-
+                      IdpMetadata is the SAML Identity Provider metadata XML. Mutually
+                      exclusive with IdpMetadataFrom.
+                    minLength: 1
                     type: string
+                  idpMetadataFrom:
+                    description: |-
+                      IdpMetadataFrom is where the SAML Identity Provider metadata XML is
+                      read from: a secret or a URL, such as the one the identity provider
+                      publishes its metadata at. Mutually exclusive with IdpMetadata.
+                    properties:
+                      endpointCredentials:
+                        description: |-
+                          EndpointCredentials are optional HTTP credentials for EndpointURL: a
+                          username and a password for basic authentication, or a password alone
+                          for a bearer token.
+                        properties:
+                          passwordSecretRef:
+                            description: |-
+                              PasswordSecretRef references a secret key with the HTTP password
+                              or bearer token.
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                description: Name of the secret.
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                          usernameSecretRef:
+                            description: UsernameSecretRef references a secret key
+                              with the HTTP username.
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                description: Name of the secret.
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        type: object
+                      endpointUrl:
+                        description: |-
+                          EndpointURL is the URL the document is fetched from, on every
+                          reconcile. When that fails, the document last fetched from it is used
+                          instead, provided writeConnectionSecretToRef is set.
+                        pattern: ^https?://
+                        type: string
+                      secretRef:
+                        description: |-
+                          SecretRef references a secret key holding the document. The secret must
+                          be in the same namespace as the managed resource.
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            description: Name of the secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: exactly one of secretRef and endpointUrl is required.
+                      rule: has(self.secretRef) != has(self.endpointUrl)
+                    - message: endpointCredentials requires endpointUrl.
+                      rule: '!has(self.endpointCredentials) || has(self.endpointUrl)'
                   lastNameAttribute:
                     description: LastNameAttribute is the SAML attribute to use for
                       the last name.
@@ -97,9 +166,11 @@ spec:
                     type: boolean
                 required:
                 - entityId
-                - idpMetadata
                 - usernameAttribute
                 type: object
+                x-kubernetes-validations:
+                - message: exactly one of idpMetadata and idpMetadataFrom is required.
+                  rule: has(self.idpMetadata) != has(self.idpMetadataFrom)
               managementPolicies:
                 default:
                 - '*'

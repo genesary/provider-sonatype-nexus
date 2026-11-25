@@ -26,7 +26,7 @@ func newTestSAML() *iamv1alpha1.SAML {
 		ObjectMeta: metav1.ObjectMeta{Name: "saml"},
 		Spec: iamv1alpha1.SAMLSpec{
 			ForProvider: iamv1alpha1.SAMLParameters{
-				IdpMetadata:       "metadata-xml",
+				IdpMetadata:       new("metadata-xml"),
 				EntityId:          "nexus-entity",
 				UsernameAttribute: "username",
 			},

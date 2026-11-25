@@ -3,6 +3,7 @@ package document
 import (
 	"bytes"
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -68,7 +69,9 @@ func fromURL(url string) Source {
 // cacheOf returns the connection Secret data that caches testContent read from
 // source.
 func cacheOf(source Source) map[string][]byte {
-	return source.document([]byte(testContent)).ConnectionDetails
+	cached, _ := source.parse([]byte(testContent), nil)
+
+	return cached.ConnectionDetails
 }
 
 // newEndpoint returns an endpoint serving body with the given status.
@@ -117,9 +120,91 @@ func TestRead_Secret(t *testing.T) {
 func TestRead_NoSource(t *testing.T) {
 	t.Parallel()
 
-	_, err := Source{Key: testKey}.Read(context.Background(), newKube(), newManaged())
-	if err == nil || !strings.Contains(err.Error(), ErrNoSource) {
-		t.Fatalf("Read() error = %v, want %q", err, ErrNoSource)
+	for _, from := range []*nexusv1alpha1.DocumentSource{nil, {}} {
+		_, err := Source{From: from, Key: testKey}.Read(context.Background(), newKube(), newManaged())
+		if err == nil || !strings.Contains(err.Error(), ErrNoSource) {
+			t.Fatalf("Read() error = %v, want %q", err, ErrNoSource)
+		}
+	}
+}
+
+// TestRead_Inline checks that an inline document is returned as is, and not
+// cached.
+func TestRead_Inline(t *testing.T) {
+	t.Parallel()
+
+	source := fromURL(unreachableURL)
+	source.Inline = new(testContent)
+	source.Parse = func([]byte) ([]byte, error) { return nil, errors.New("not called") }
+
+	got, err := source.Read(context.Background(), newKube(), newManaged())
+	if err != nil {
+		t.Fatalf("Read() error = %v", err)
+	}
+
+	if string(got.Data) != testContent || got.ConnectionDetails != nil {
+		t.Errorf("Read() = %q caching %v, want %q caching nothing", got.Data, got.ConnectionDetails, testContent)
+	}
+}
+
+// TestRead_Parse checks that what a Secret or an endpoint holds is parsed, and
+// that an endpoint serving something else counts as unavailable.
+func TestRead_Parse(t *testing.T) {
+	t.Parallel()
+
+	parse := func(data []byte) ([]byte, error) {
+		if !bytes.Contains(data, []byte("content")) {
+			return nil, errors.New("not a document")
+		}
+
+		return bytes.ToUpper(data), nil
+	}
+
+	want := strings.ToUpper(testContent)
+	loginPage := newEndpoint(t, http.StatusOK, "<html>log in</html>").URL
+
+	secretSource := func(key string) Source {
+		return Source{From: &nexusv1alpha1.DocumentSource{SecretRef: selector("source", key)}, Key: testKey}
+	}
+
+	tests := map[string]struct {
+		source  Source
+		cache   map[string][]byte
+		wantErr bool
+	}{
+		"Secret":           {source: secretSource("good")},
+		"BadSecret":        {source: secretSource("bad"), wantErr: true},
+		"Endpoint":         {source: fromURL(newEndpoint(t, http.StatusOK, testContent).URL)},
+		"LoginPage":        {source: fromURL(loginPage), wantErr: true},
+		"LoginPageCached":  {source: fromURL(loginPage), cache: cacheOf(fromURL(loginPage))},
+		"UnreachableCache": {source: fromURL(unreachableURL), cache: cacheOf(fromURL(unreachableURL))},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			kube := newKube(
+				newSecret("source", map[string][]byte{"good": []byte(testContent), "bad": []byte("private key")}),
+				newSecret(testCache, tc.cache),
+			)
+
+			source := tc.source
+			source.Parse = parse
+
+			got, err := source.Read(context.Background(), kube, newManaged())
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("Read() error = %v, wantErr %v", err, tc.wantErr)
+			}
+
+			if tc.wantErr {
+				return
+			}
+
+			if string(got.Data) != want || string(got.ConnectionDetails[testKey]) != want {
+				t.Errorf("Read() = %q caching %q, want %q", got.Data, got.ConnectionDetails[testKey], want)
+			}
+		})
 	}
 }
 
