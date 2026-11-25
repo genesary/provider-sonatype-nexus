@@ -93,7 +93,7 @@ func GetSecretBytes(
 // for cluster-scoped resources it falls back to "default".
 func GetLocalConnectionSecretBytes(
 	ctx context.Context,
-	kube kubeclient.Client,
+	kube kubeclient.Reader,
 	managed resource.Managed,
 	ref *xpv2.LocalSecretReference,
 	key string,

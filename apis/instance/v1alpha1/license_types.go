@@ -6,21 +6,9 @@ import (
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 )
-
-// LicenseEndpointCredentials holds optional HTTP credentials
-// for the license endpoint. The secrets must be in the same namespace as the
-// License.
-type LicenseEndpointCredentials struct {
-	// UsernameSecretRef references a secret key with the HTTP username.
-	// +kubebuilder:validation:Optional
-	UsernameSecretRef *xpv2.LocalSecretKeySelector `json:"usernameSecretRef,omitempty"`
-
-	// PasswordSecretRef references a secret key with the HTTP password
-	// or bearer token.
-	// +kubebuilder:validation:Optional
-	PasswordSecretRef *xpv2.LocalSecretKeySelector `json:"passwordSecretRef,omitempty"`
-}
 
 // LicenseParameters defines the desired state of License.
 type LicenseParameters struct {
@@ -38,7 +26,7 @@ type LicenseParameters struct {
 	// EndpointCredentials are optional HTTP credentials for the license
 	// endpoint. Used only when EndpointURL is set.
 	// +kubebuilder:validation:Optional
-	EndpointCredentials *LicenseEndpointCredentials `json:"endpointCredentials,omitempty"`
+	EndpointCredentials *nexusv1alpha1.EndpointCredentials `json:"endpointCredentials,omitempty"`
 }
 
 // LicenseObservation defines the observed state of License.

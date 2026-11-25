@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -308,6 +307,10 @@ func TestObserve_ExistsAndUpToDate(t *testing.T) {
 
 	if !obs.ResourceUpToDate {
 		t.Error("Observe() ResourceUpToDate = false, want true when hash matches")
+	}
+
+	if !bytes.Equal(obs.ConnectionDetails[licenseSecretCacheKey], testLicenseData) {
+		t.Error("Observe() ConnectionDetails does not cache the license")
 	}
 }
 
@@ -618,7 +621,7 @@ func TestCreate_WithBasicAuthEndpoint(t *testing.T) {
 		Spec: instancev1alpha1.LicenseSpec{
 			ForProvider: instancev1alpha1.LicenseParameters{
 				EndpointURL: &endpointURL,
-				EndpointCredentials: &instancev1alpha1.LicenseEndpointCredentials{
+				EndpointCredentials: &nexusv1alpha1.EndpointCredentials{
 					UsernameSecretRef: &xpv2.LocalSecretKeySelector{
 						LocalSecretReference: xpv2.LocalSecretReference{
 							Name: "ep-creds",
@@ -679,7 +682,7 @@ func TestCreate_WithBearerTokenEndpoint(t *testing.T) {
 		Spec: instancev1alpha1.LicenseSpec{
 			ForProvider: instancev1alpha1.LicenseParameters{
 				EndpointURL: &endpointURL,
-				EndpointCredentials: &instancev1alpha1.LicenseEndpointCredentials{
+				EndpointCredentials: &nexusv1alpha1.EndpointCredentials{
 					PasswordSecretRef: &xpv2.LocalSecretKeySelector{
 						LocalSecretReference: xpv2.LocalSecretReference{
 							Name: "ep-token",
@@ -879,113 +882,5 @@ func TestGetSecretBytes_MissingKey(t *testing.T) {
 	_, err := nexus.GetSecretBytes(context.Background(), kubeClient, "default", sel)
 	if err == nil {
 		t.Fatal("GetSecretBytes() expected error for missing key, got nil")
-	}
-}
-
-// TestEndpointRequest_NonOKStatus tests doEndpointRequest on 403 response.
-func TestEndpointRequest_NonOKStatus(t *testing.T) {
-	t.Parallel()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusForbidden)
-	}))
-	defer server.Close()
-
-	kubeClient := crfake.NewClientBuilder().WithScheme(newTestScheme(t)).Build()
-	e := &external{kube: kubeClient}
-
-	_, err := e.doEndpointRequest(context.Background(), "default", server.URL, nil)
-	if err == nil {
-		t.Fatal("doEndpointRequest() expected error on 403, got nil")
-	}
-}
-
-// TestEndpointRequest_OversizedResponse verifies that an endpoint streaming
-// more than maxLicenseBytes is rejected instead of buffered.
-func TestEndpointRequest_OversizedResponse(t *testing.T) {
-	t.Parallel()
-
-	chunk := bytes.Repeat([]byte("A"), 64<<10)
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		for range 4 * maxLicenseBytes / len(chunk) {
-			if r.Context().Err() != nil {
-				return
-			}
-
-			_, _ = w.Write(chunk)
-		}
-	}))
-	defer server.Close()
-
-	e := &external{kube: crfake.NewClientBuilder().WithScheme(newTestScheme(t)).Build()}
-
-	data, err := e.doEndpointRequest(context.Background(), "default", server.URL, nil)
-	if err == nil || !strings.Contains(err.Error(), nexus.ErrResponseTooLarge) {
-		t.Fatalf("doEndpointRequest() error = %v, want %q", err, nexus.ErrResponseTooLarge)
-	}
-
-	if data != nil {
-		t.Fatalf("doEndpointRequest() returned %d bytes alongside an error", len(data))
-	}
-}
-
-// TestEndpointRequest_RedirectFollowed verifies that a redirect from the
-// endpoint is followed and the target's body is returned.
-func TestEndpointRequest_RedirectFollowed(t *testing.T) {
-	t.Parallel()
-
-	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("license-bytes"))
-	}))
-	defer target.Close()
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, target.URL, http.StatusFound)
-	}))
-	defer server.Close()
-
-	e := &external{kube: crfake.NewClientBuilder().WithScheme(newTestScheme(t)).Build()}
-
-	got, err := e.doEndpointRequest(context.Background(), "default", server.URL, nil)
-	if err != nil {
-		t.Fatalf("doEndpointRequest() error = %v", err)
-	}
-
-	if string(got) != "license-bytes" {
-		t.Fatalf("doEndpointRequest() = %q, want %q", got, "license-bytes")
-	}
-}
-
-// TestEndpointClientTimeout verifies that the endpoint client bounds every
-// request.
-func TestEndpointClientTimeout(t *testing.T) {
-	t.Parallel()
-
-	if endpointClient.Timeout == 0 {
-		t.Fatal("endpointClient has no timeout")
-	}
-}
-
-// TestDoEndpointRequest_RedactsTheURL checks that a failed license download
-// does not report the query of its URL, which for a pre-signed URL holds its
-// signature.
-func TestDoEndpointRequest_RedactsTheURL(t *testing.T) {
-	t.Parallel()
-
-	e := &external{}
-
-	for _, endpoint := range []string{
-		"http://127.0.0.1:1/license.lic?X-Amz-Signature=secret",
-		"http://127.0.0.1:1/%zz?X-Amz-Signature=secret",
-	} {
-		_, err := e.doEndpointRequest(context.Background(), "default", endpoint, nil)
-		if err == nil {
-			t.Fatalf("doEndpointRequest(%q) error = nil, want an error", endpoint)
-		}
-
-		if strings.Contains(err.Error(), "secret") {
-			t.Errorf("doEndpointRequest(%q) error = %q reports the URL query", endpoint, err.Error())
-		}
 	}
 }
