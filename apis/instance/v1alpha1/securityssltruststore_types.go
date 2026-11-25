@@ -6,14 +6,27 @@ import (
 	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 )
 
 // SecuritySSLTruststoreParameters defines the desired state of a
 // truststore certificate.
+// +kubebuilder:validation:XValidation:rule="has(self.pem) != has(self.pemFrom)",message="exactly one of pem and pemFrom is required."
 type SecuritySSLTruststoreParameters struct {
-	// Pem is the certificate in PEM format to add to the Nexus truststore.
-	// +kubebuilder:validation:Required
-	Pem string `json:"pem"`
+	// Pem is the certificate in PEM format to add to the Nexus truststore. Of
+	// several certificates, Nexus only adds the first. Mutually exclusive with
+	// PemFrom.
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:MinLength=1
+	Pem *string `json:"pem,omitempty"`
+
+	// PemFrom is where the certificate in PEM format is read from: a secret or
+	// a URL. Of several certificates, such as a CA bundle, only the first is
+	// added. Anything else there, such as a private key, is not sent to Nexus.
+	// Mutually exclusive with Pem.
+	// +kubebuilder:validation:Optional
+	PemFrom *nexusv1alpha1.DocumentSource `json:"pemFrom,omitempty"`
 }
 
 // SecuritySSLTruststoreObservation represents the observed state of a

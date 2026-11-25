@@ -69,12 +69,84 @@ spec:
                   truststore certificate.
                 properties:
                   pem:
-                    description: Pem is the certificate in PEM format to add to the
-                      Nexus truststore.
+                    description: |-
+                      Pem is the certificate in PEM format to add to the Nexus truststore. Of
+                      several certificates, Nexus only adds the first. Mutually exclusive with
+                      PemFrom.
+                    minLength: 1
                     type: string
-                required:
-                - pem
+                  pemFrom:
+                    description: |-
+                      PemFrom is where the certificate in PEM format is read from: a secret or
+                      a URL. Of several certificates, such as a CA bundle, only the first is
+                      added. Anything else there, such as a private key, is not sent to Nexus.
+                      Mutually exclusive with Pem.
+                    properties:
+                      endpointCredentials:
+                        description: |-
+                          EndpointCredentials are optional HTTP credentials for EndpointURL: a
+                          username and a password for basic authentication, or a password alone
+                          for a bearer token.
+                        properties:
+                          passwordSecretRef:
+                            description: |-
+                              PasswordSecretRef references a secret key with the HTTP password
+                              or bearer token.
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                description: Name of the secret.
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                          usernameSecretRef:
+                            description: UsernameSecretRef references a secret key
+                              with the HTTP username.
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                description: Name of the secret.
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        type: object
+                      endpointUrl:
+                        description: |-
+                          EndpointURL is the URL the document is fetched from, on every
+                          reconcile. When that fails, the document last fetched from it is used
+                          instead, provided writeConnectionSecretToRef is set.
+                        pattern: ^https?://
+                        type: string
+                      secretRef:
+                        description: |-
+                          SecretRef references a secret key holding the document. The secret must
+                          be in the same namespace as the managed resource.
+                        properties:
+                          key:
+                            type: string
+                          name:
+                            description: Name of the secret.
+                            type: string
+                        required:
+                        - key
+                        - name
+                        type: object
+                    type: object
+                    x-kubernetes-validations:
+                    - message: exactly one of secretRef and endpointUrl is required.
+                      rule: has(self.secretRef) != has(self.endpointUrl)
+                    - message: endpointCredentials requires endpointUrl.
+                      rule: '!has(self.endpointCredentials) || has(self.endpointUrl)'
                 type: object
+                x-kubernetes-validations:
+                - message: exactly one of pem and pemFrom is required.
+                  rule: has(self.pem) != has(self.pemFrom)
               managementPolicies:
                 default:
                 - '*'

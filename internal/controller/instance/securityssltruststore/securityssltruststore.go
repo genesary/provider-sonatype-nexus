@@ -18,8 +18,13 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	instanceclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/document"
 	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
+
+// pemKey is the data key used when caching the certificate in the
+// writeConnectionSecretToRef secret.
+const pemKey = "pem"
 
 const (
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
@@ -37,6 +42,12 @@ const (
 	// errFindCert is returned when the certificate the truststore reports
 	// holding cannot be found.
 	errFindCert = "cannot find existing certificate in truststore"
+	// errReadCert is returned when reading the certificate from its source
+	// fails.
+	errReadCert = "cannot read certificate"
+	// errRecordCert is returned when recording the ID of a replaced
+	// certificate fails.
+	errRecordCert = "cannot record the ID of the replaced certificate"
 )
 
 // errCertNotFound is a sentinel error returned by findCertificateByID and
@@ -93,15 +104,18 @@ func (c *connector) Connect(ctx context.Context, truststoreCR *instancev1alpha1.
 		return nil, errors.Wrap(err, errNewClient)
 	}
 
-	return &external{client: sslClient}, nil
+	return &external{client: sslClient, kube: c.kube}, nil
 }
 
 // external implements managed.TypedExternalClient.
 type external struct {
 	client instanceclient.SSLTruststoreClient
+	kube   client.Client
 }
 
-// Observe checks whether the external resource exists and is up-to-date.
+// Observe checks whether the external resource exists and is up-to-date. A
+// certificate being deleted is always up to date, so that its source being
+// gone cannot block its deletion.
 func (e *external) Observe(ctx context.Context, truststoreCR *instancev1alpha1.SecuritySSLTruststore) (managed.ExternalObservation, error) {
 	certID := meta.GetExternalName(truststoreCR)
 	if certID == "" {
@@ -121,46 +135,82 @@ func (e *external) Observe(ctx context.Context, truststoreCR *instancev1alpha1.S
 
 	truststoreCR.SetConditions(nexusv1alpha1.Available())
 
-	return managed.ExternalObservation{
+	if meta.WasDeleted(truststoreCR) {
+		return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
+	}
+
+	desired, err := e.readCertificate(ctx, truststoreCR)
+	if err != nil {
+		return managed.ExternalObservation{}, err
+	}
+
+	observation := managed.ExternalObservation{
 		ResourceExists:   true,
-		ResourceUpToDate: instanceclient.IsCertUpToDate(truststoreCR),
-	}, nil
+		ResourceUpToDate: instanceclient.IsCertUpToDate(truststoreCR, string(desired.Data)),
+	}
+
+	// Refresh the cache only with the certificate Nexus trusts, so that it
+	// follows the endpoint when the URL changes but the certificate does not.
+	// A new certificate is cached by Create or Update once Nexus adds it.
+	if observation.ResourceUpToDate {
+		observation.ConnectionDetails = desired.ConnectionDetails
+	}
+
+	return observation, nil
 }
 
 // Create adds the desired certificate to the Nexus truststore. When the
 // truststore already holds it, Create adopts it.
 func (e *external) Create(ctx context.Context, truststoreCR *instancev1alpha1.SecuritySSLTruststore) (managed.ExternalCreation, error) {
-	certID, err := e.addCertificate(ctx, truststoreCR.Spec.ForProvider.Pem)
+	desired, err := e.readCertificate(ctx, truststoreCR)
+	if err != nil {
+		return managed.ExternalCreation{}, err
+	}
+
+	certID, err := e.addCertificate(ctx, string(desired.Data))
 	if err != nil {
 		return managed.ExternalCreation{}, err
 	}
 
 	meta.SetExternalName(truststoreCR, certID)
 
-	return managed.ExternalCreation{}, nil
+	return managed.ExternalCreation{ConnectionDetails: desired.ConnectionDetails}, nil
 }
 
 // Update replaces the certificate with the desired one. Nexus cannot update a
 // truststore certificate in place, and its ID is the certificate fingerprint,
-// so a different certificate always has a different ID: the old one is
-// removed and the new one added.
+// so a different certificate always has a different ID: the new one is added
+// and the old one removed. In that order, a source serving a certificate that
+// Nexus rejects leaves the old one trusted.
 func (e *external) Update(ctx context.Context, truststoreCR *instancev1alpha1.SecuritySSLTruststore) (managed.ExternalUpdate, error) {
+	desired, err := e.readCertificate(ctx, truststoreCR)
+	if err != nil {
+		return managed.ExternalUpdate{}, err
+	}
+
+	certID, err := e.addCertificate(ctx, string(desired.Data))
+	if err != nil {
+		return managed.ExternalUpdate{}, err
+	}
+
 	oldID := meta.GetExternalName(truststoreCR)
+	if oldID == certID {
+		return managed.ExternalUpdate{ConnectionDetails: desired.ConnectionDetails}, nil
+	}
+
 	if oldID != "" {
-		err := e.client.RemoveCertificate(ctx, oldID)
+		err = e.client.RemoveCertificate(ctx, oldID)
 		if err != nil && !nexus.IsNotFound(err) {
 			return managed.ExternalUpdate{}, errors.Wrap(err, errRemoveCert)
 		}
 	}
 
-	certID, err := e.addCertificate(ctx, truststoreCR.Spec.ForProvider.Pem)
+	err = e.recordExternalName(ctx, truststoreCR, certID)
 	if err != nil {
 		return managed.ExternalUpdate{}, err
 	}
 
-	meta.SetExternalName(truststoreCR, certID)
-
-	return managed.ExternalUpdate{}, nil
+	return managed.ExternalUpdate{ConnectionDetails: desired.ConnectionDetails}, nil
 }
 
 // Delete removes the certificate from the Nexus truststore.
@@ -184,6 +234,42 @@ func (e *external) Delete(ctx context.Context, truststoreCR *instancev1alpha1.Se
 
 // Disconnect is a no-op; the Nexus HTTP client has no persistent connection.
 func (e *external) Disconnect(_ context.Context) error {
+	return nil
+}
+
+// readCertificate reads the desired certificate from pem or pemFrom.
+func (e *external) readCertificate(ctx context.Context, truststoreCR *instancev1alpha1.SecuritySSLTruststore) (document.Document, error) {
+	source := document.Source{
+		Inline: truststoreCR.Spec.ForProvider.Pem,
+		From:   truststoreCR.Spec.ForProvider.PemFrom,
+		Parse:  instanceclient.ParseCertificate,
+		Key:    pemKey,
+	}
+
+	certificate, err := source.Read(ctx, e.kube, truststoreCR)
+
+	return certificate, errors.Wrap(err, errReadCert)
+}
+
+// recordExternalName persists certID as the external name.
+//
+// The managed reconciler only persists the external name set by Create, and
+// the status update that follows Update overwrites the in-memory one. Left
+// unrecorded, the new certificate would stay in Nexus if the resource were
+// deleted before its next reconcile.
+func (e *external) recordExternalName(ctx context.Context, truststoreCR *instancev1alpha1.SecuritySSLTruststore, certID string) error {
+	// Patch a copy: the response overwrites the status Observe generated.
+	patched := truststoreCR.DeepCopy()
+	meta.SetExternalName(patched, certID)
+
+	err := e.kube.Patch(ctx, patched, client.MergeFrom(truststoreCR))
+	if err != nil {
+		return errors.Wrap(err, errRecordCert)
+	}
+
+	meta.SetExternalName(truststoreCR, certID)
+	truststoreCR.SetResourceVersion(patched.GetResourceVersion())
+
 	return nil
 }
 

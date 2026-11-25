@@ -1,6 +1,7 @@
 package instance
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -55,6 +56,55 @@ func TestSameCertificate(t *testing.T) {
 
 			if got := SameCertificate(tt.a, tt.b); got != tt.want {
 				t.Errorf("SameCertificate() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestParseCertificate checks that the first certificate, and nothing else, is
+// returned.
+func TestParseCertificate(t *testing.T) {
+	t.Parallel()
+
+	const key = "-----BEGIN PRIVATE KEY-----\nc2VjcmV0\n-----END PRIVATE KEY-----\n"
+
+	const otherCert = "-----BEGIN CERTIFICATE-----\nb3RoZXI=\n-----END CERTIFICATE-----\n"
+
+	tests := map[string]struct {
+		data    string
+		wantErr bool
+	}{
+		"Certificate":        {data: sameCertPem},
+		"Bundle":             {data: sameCertPem + "\n" + otherCert},
+		"CRLF":               {data: strings.ReplaceAll(sameCertPem, "\n", "\r\n")},
+		"Preamble":           {data: "# Some CA\nsubject=CN = test\n" + sameCertPem},
+		"PrivateKeyFirst":    {data: key + sameCertPem},
+		"PrivateKeyLast":     {data: sameCertPem + "\n" + key},
+		"Empty":              {wantErr: true},
+		"PrivateKeyOnly":     {data: key, wantErr: true},
+		"LoginPage":          {data: "<html>log in</html>", wantErr: true},
+		"TruncatedOnTheWire": {data: sameCertPem[:len(sameCertPem)/2], wantErr: true},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := ParseCertificate([]byte(tc.data))
+			if tc.wantErr {
+				if !errors.Is(err, ErrNoCertificate) {
+					t.Fatalf("ParseCertificate() error = %v, want %v", err, ErrNoCertificate)
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("ParseCertificate() error = %v", err)
+			}
+
+			if want := sameCertPem + "\n"; string(got) != want {
+				t.Errorf("ParseCertificate() = %q, want %q", got, want)
 			}
 		})
 	}

@@ -18,6 +18,13 @@ import (
 // the truststore already holds the certificate.
 var ErrCertificateExists = errors.New("certificate already exists in truststore")
 
+// ErrNoCertificate is returned by ParseCertificate for data that holds no PEM
+// encoded certificate.
+var ErrNoCertificate = errors.New("no PEM encoded certificate found")
+
+// certificatePEMType is the type of the PEM blocks holding a certificate.
+const certificatePEMType = "CERTIFICATE"
+
 // SSLTruststoreClient manages Nexus SSL truststore certificates.
 type SSLTruststoreClient interface {
 	AddCertificate(ctx context.Context, pem string) (*v395.ApiCertificate, error)
@@ -73,10 +80,28 @@ func NewSSLTruststoreClient(creds nexus.Credentials) (SSLTruststoreClient, error
 	return &sslTruststoreClient{api: nc.SecurityCertificatesAPI}, nil
 }
 
-// IsCertUpToDate reports whether the CR spec PEM encodes the observed
-// certificate.
-func IsCertUpToDate(cr *instancev1alpha1.SecuritySSLTruststore) bool {
-	return SameCertificate(cr.Spec.ForProvider.Pem, cr.Status.AtProvider.Pem)
+// ParseCertificate returns the first certificate of data, PEM encoded, without
+// anything else data holds: of several certificates Nexus only adds the first,
+// and it rejects a certificate that follows a private key.
+func ParseCertificate(data []byte) ([]byte, error) {
+	for {
+		block, rest := pem.Decode(data)
+		if block == nil {
+			return nil, ErrNoCertificate
+		}
+
+		if block.Type == certificatePEMType {
+			return pem.EncodeToMemory(&pem.Block{Type: certificatePEMType, Bytes: block.Bytes}), nil
+		}
+
+		data = rest
+	}
+}
+
+// IsCertUpToDate reports whether pemText, the certificate read from the source
+// the CR names, encodes the observed certificate.
+func IsCertUpToDate(cr *instancev1alpha1.SecuritySSLTruststore, pemText string) bool {
+	return SameCertificate(pemText, cr.Status.AtProvider.Pem)
 }
 
 // SameCertificate reports whether two PEM texts encode the same certificate.
