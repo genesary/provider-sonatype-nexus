@@ -24,6 +24,7 @@ import (
 
 	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 
+	instanceclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	nexusclient "github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
@@ -96,6 +97,23 @@ func (f *Framework) ListSSLCertificates() ([]v395.ApiCertificate, error) {
 	certs, resp, err := f.Nexus.SecurityCertificatesAPI.ListSecuritySslTruststore(context.Background()).Execute()
 
 	return certs, nexusclient.APIError(resp, err)
+}
+
+// FindSSLCertificate returns the certificate of the Nexus truststore that
+// pemText encodes, or (nil, nil) if absent.
+func (f *Framework) FindSSLCertificate(pemText string) (*v395.ApiCertificate, error) {
+	certs, err := f.ListSSLCertificates()
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range certs {
+		if instanceclient.SameCertificate(certs[i].GetPem(), pemText) {
+			return &certs[i], nil
+		}
+	}
+
+	return nil, nil
 }
 
 // FetchSSRFProtection returns the Nexus SSRF protection settings.

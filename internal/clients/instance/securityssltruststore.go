@@ -3,6 +3,7 @@ package instance
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/pem"
 	"net/http"
 	"strings"
@@ -17,6 +18,17 @@ import (
 // ErrCertificateExists is wrapped by the error AddCertificate returns when
 // the truststore already holds the certificate.
 var ErrCertificateExists = errors.New("certificate already exists in truststore")
+
+// ErrNoCertificate is returned by ParseCertificate for data that holds no PEM
+// encoded certificate.
+var ErrNoCertificate = errors.New("no PEM encoded certificate found")
+
+// certificatePEMType and trustedCertificatePEMType are the types of PEM blocks
+// holding X.509 certificates. The latter is produced by openssl x509 -trustout.
+const (
+	certificatePEMType        = "CERTIFICATE"
+	trustedCertificatePEMType = "TRUSTED CERTIFICATE"
+)
 
 // SSLTruststoreClient manages Nexus SSL truststore certificates.
 type SSLTruststoreClient interface {
@@ -73,10 +85,33 @@ func NewSSLTruststoreClient(creds nexus.Credentials) (SSLTruststoreClient, error
 	return &sslTruststoreClient{api: nc.SecurityCertificatesAPI}, nil
 }
 
-// IsCertUpToDate reports whether the CR spec PEM encodes the observed
-// certificate.
-func IsCertUpToDate(cr *instancev1alpha1.SecuritySSLTruststore) bool {
-	return SameCertificate(cr.Spec.ForProvider.Pem, cr.Status.AtProvider.Pem)
+// ParseCertificate returns the first valid X.509 certificate of data, PEM
+// encoded, without anything else data holds: of several certificates Nexus only
+// adds the first, and it rejects a certificate that follows a private key.
+func ParseCertificate(data []byte) ([]byte, error) {
+	for {
+		block, rest := pem.Decode(data)
+		if block == nil {
+			return nil, ErrNoCertificate
+		}
+
+		if block.Type == certificatePEMType || block.Type == trustedCertificatePEMType {
+			_, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				return nil, errors.Wrap(err, "parse PEM certificate")
+			}
+
+			return pem.EncodeToMemory(&pem.Block{Type: certificatePEMType, Bytes: block.Bytes}), nil
+		}
+
+		data = rest
+	}
+}
+
+// IsCertUpToDate reports whether pemText, the certificate read from the source
+// the CR names, encodes the observed certificate.
+func IsCertUpToDate(cr *instancev1alpha1.SecuritySSLTruststore, pemText string) bool {
+	return SameCertificate(pemText, cr.Status.AtProvider.Pem)
 }
 
 // SameCertificate reports whether two PEM texts encode the same certificate.

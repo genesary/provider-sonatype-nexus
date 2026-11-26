@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
@@ -98,7 +99,7 @@ func newTruststoreCR(pem string) *instancev1alpha1.SecuritySSLTruststore {
 		},
 		Spec: instancev1alpha1.SecuritySSLTruststoreSpec{
 			ForProvider: instancev1alpha1.SecuritySSLTruststoreParameters{
-				Pem: pem,
+				Pem: &pem,
 			},
 		},
 	}
@@ -449,9 +450,25 @@ func TestUpdate(t *testing.T) {
 			wantRemoved: []string{"old-cert-id"},
 		},
 		{
+			name: "UpdateSameCertificate",
+			cr:   withExternalName(testPem, "old-cert-id"),
+			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
+				mc.AddCertificateFn = func(_ string) (*v395.ApiCertificate, error) {
+					return nil, instanceclient.ErrCertificateExists
+				}
+				mc.ListCertificatesFn = func() ([]v395.ApiCertificate, error) {
+					return []v395.ApiCertificate{{Id: new("old-cert-id"), Pem: new(testPem)}}, nil
+				}
+			},
+			wantID: "old-cert-id",
+		},
+		{
 			name: "UpdateRemoveError",
 			cr:   withExternalName(testPem, "old-cert-id"),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
+				mc.AddCertificateFn = func(_ string) (*v395.ApiCertificate, error) {
+					return &v395.ApiCertificate{Id: new("new-cert-id"), Pem: new(testPem)}, nil
+				}
 				mc.RemoveCertificateFn = func(_ string) error {
 					return errors.New("remove error")
 				}
@@ -460,18 +477,15 @@ func TestUpdate(t *testing.T) {
 			wantErr:     true,
 		},
 		{
+			// The old certificate must stay trusted when Nexus rejects the new one.
 			name: "UpdateAddError",
 			cr:   withExternalName(testPem, "old-cert-id"),
 			mockSetup: func(mc *iammocks.MockSSLTruststoreClient) {
-				mc.RemoveCertificateFn = func(_ string) error {
-					return nil
-				}
 				mc.AddCertificateFn = func(_ string) (*v395.ApiCertificate, error) {
 					return nil, errors.New("add error")
 				}
 			},
-			wantRemoved: []string{"old-cert-id"},
-			wantErr:     true,
+			wantErr: true,
 		},
 	}
 
@@ -484,7 +498,9 @@ func TestUpdate(t *testing.T) {
 				tt.mockSetup(mc)
 			}
 
-			e := &external{client: mc}
+			kube := fake.NewClientBuilder().WithScheme(newTestScheme(t)).WithObjects(tt.cr).Build()
+
+			e := &external{client: mc, kube: kube}
 			_, err := e.Update(context.Background(), tt.cr)
 
 			if (err != nil) != tt.wantErr {
@@ -499,6 +515,17 @@ func TestUpdate(t *testing.T) {
 				externalName := meta.GetExternalName(tt.cr)
 				if externalName != tt.wantID {
 					t.Errorf("Update() external name = %q, want %q", externalName, tt.wantID)
+				}
+
+				stored := &instancev1alpha1.SecuritySSLTruststore{}
+
+				err = kube.Get(context.Background(), client.ObjectKeyFromObject(tt.cr), stored)
+				if err != nil {
+					t.Fatalf("getting the updated CR: %v", err)
+				}
+
+				if got := meta.GetExternalName(stored); got != tt.wantID {
+					t.Errorf("Update() persisted external name %q, want %q", got, tt.wantID)
 				}
 			}
 		})

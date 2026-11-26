@@ -1,0 +1,31 @@
+# Fetches the certificate from a URL, on every reconcile. Of several
+# certificates, only the first is added. endpointCredentials is only needed
+# when the URL requires authentication: here, a bearer token.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pki-token
+  namespace: default
+type: Opaque
+stringData:
+  token: change-me
+---
+apiVersion: instance.nexus.crossplane.io/v1alpha1
+kind: SecuritySSLTruststore
+metadata:
+  name: pki-ca
+  namespace: default
+spec:
+  forProvider:
+    pemFrom:
+      endpointUrl: https://pki.example.com/ca.pem
+      endpointCredentials:
+        passwordSecretRef:
+          name: pki-token
+          key: token
+  # Caches the certificate, to use while the URL is unavailable.
+  writeConnectionSecretToRef:
+    name: pki-ca-cache
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

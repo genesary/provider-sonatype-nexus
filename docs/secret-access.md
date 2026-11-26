@@ -34,7 +34,8 @@ Things to know before disabling it:
   `ProviderConfig` credentials and the Secret references of managed resources
   (user passwords, repository HTTP client passwords and bearer tokens,
   repository AWS ECR keys, HTTP proxy, SMTP and LDAP bind passwords, S3 keys,
-  Azure storage account keys, IQ Server credentials, license files, SAML metadata, and the HTTP credentials of the endpoints
+  Azure storage account keys, IQ Server credentials, license files, SAML
+  metadata, truststore certificates, and the HTTP credentials of the endpoints
   these are fetched from). It needs `get`, `create` and `patch` on connection
   Secrets (`writeConnectionSecretToRef`) in their namespace. `get` and `patch`
   can be restricted with `resourceNames`, `create` cannot.

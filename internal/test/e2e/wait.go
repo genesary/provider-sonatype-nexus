@@ -102,6 +102,17 @@ func (f *Framework) Nudge(ctx context.Context, obj client.Object) error {
 	return nil
 }
 
+// WaitForReconcile waits until the generation of obj is reconciled, whatever
+// the outcome, refreshing obj. Use it after updating the spec, to check what
+// the update leaves unchanged or that it is reported as an error.
+func (f *Framework) WaitForReconcile(ctx context.Context, obj Conditioned, timeout time.Duration) error {
+	return wait.PollUntilContextTimeout(ctx, pollInterval, timeout, true, func(ctx context.Context) (bool, error) {
+		err := f.Kube.Get(ctx, client.ObjectKeyFromObject(obj), obj)
+
+		return err == nil && obj.GetCondition(xpv2.TypeSynced).ObservedGeneration == obj.GetGeneration(), err
+	})
+}
+
 // isReady reports whether obj has both Synced=True and Ready=True.
 func isReady(obj Conditioned) bool {
 	synced := obj.GetCondition(xpv2.TypeSynced)
