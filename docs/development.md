@@ -68,6 +68,7 @@ expects `NEXUS_URL`, `NEXUS_USER` and `NEXUS_PASS`.
 │   ├── clients/                # Nexus API clients, by API group
 │   │   └── nexus/              # Shared HTTP client, credentials, errors
 │   ├── controller/             # Controllers, by API group
+│   ├── document/               # Documents read from a Secret or a URL
 │   ├── helpers/                # Shared reconciler options and helpers
 │   └── test/e2e/               # E2E test suite
 ├── cluster/                    # Provider image, e2e scripts, kind and Nexus manifests

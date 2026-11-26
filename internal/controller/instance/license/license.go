@@ -3,7 +3,6 @@ package license
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
@@ -16,23 +15,13 @@ import (
 	nexusv1alpha1 "github.com/genesary/provider-sonatype-nexus/apis/v1alpha1"
 	instanceclient "github.com/genesary/provider-sonatype-nexus/internal/clients/instance"
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
+	"github.com/genesary/provider-sonatype-nexus/internal/document"
 	"github.com/genesary/provider-sonatype-nexus/internal/helpers"
 )
 
 // licenseSecretCacheKey is the data key used when caching the license in the
 // writeConnectionSecretToRef secret.
 const licenseSecretCacheKey = "license"
-
-// maxLicenseBytes caps the license file fetched from endpointUrl. Nexus
-// license files are a few kilobytes.
-const maxLicenseBytes = 1 << 20
-
-// endpointClient fetches license files from endpointUrl. It bounds each fetch
-// with a timeout and follows redirects like the default client.
-var endpointClient = &http.Client{
-	Transport: nexus.Transport(false),
-	Timeout:   nexus.RequestTimeout,
-}
 
 const (
 	// errTrackPCUsage is returned when tracking ProviderConfig usage fails.
@@ -49,8 +38,6 @@ const (
 	errDeleteLicense = "cannot delete license from Nexus"
 	// errFetchLicense is returned when fetching the desired license bytes fails.
 	errFetchLicense = "cannot fetch license bytes"
-	// errNoLicenseSource is returned when neither source is configured.
-	errNoLicenseSource = "neither licenseSecretRef nor endpointUrl is configured"
 )
 
 // Setup adds a controller that reconciles License resources.
@@ -125,12 +112,12 @@ func (e *external) Observe(ctx context.Context, licenseCR *instancev1alpha1.Lice
 		return e.observeInstalled(ctx, licenseCR)
 	}
 
-	desiredBytes, err := e.fetchDesiredLicense(ctx, licenseCR)
+	license, err := e.readLicense(ctx, licenseCR)
 	if err != nil {
-		return managed.ExternalObservation{}, errors.Wrap(err, errFetchLicense)
+		return managed.ExternalObservation{}, err
 	}
 
-	currentHash := instanceclient.HashLicense(desiredBytes)
+	currentHash := instanceclient.HashLicense(license.Data)
 
 	observation, err := e.observeInstalled(ctx, licenseCR)
 	if err != nil || !observation.ResourceExists {
@@ -139,31 +126,34 @@ func (e *external) Observe(ctx context.Context, licenseCR *instancev1alpha1.Lice
 
 	observation.ResourceUpToDate = instanceclient.IsLicenseUpToDate(licenseCR, currentHash)
 
+	// Refresh the cache only with the license Nexus accepted, so that it
+	// follows the endpoint when the URL changes but the license does not. An
+	// outdated license is cached by Create or Update once Nexus installs it.
+	if observation.ResourceUpToDate {
+		observation.ConnectionDetails = license.ConnectionDetails
+	}
+
 	return observation, nil
 }
 
 // Create installs the license on Nexus for the first time.
 func (e *external) Create(ctx context.Context, licenseCR *instancev1alpha1.License) (managed.ExternalCreation, error) {
-	data, err := e.applyLicense(ctx, licenseCR)
+	details, err := e.applyLicense(ctx, licenseCR)
 	if err != nil {
 		return managed.ExternalCreation{}, err
 	}
 
-	return managed.ExternalCreation{
-		ConnectionDetails: managed.ConnectionDetails{licenseSecretCacheKey: data},
-	}, nil
+	return managed.ExternalCreation{ConnectionDetails: details}, nil
 }
 
 // Update reinstalls the license when it drifts from the desired state.
 func (e *external) Update(ctx context.Context, licenseCR *instancev1alpha1.License) (managed.ExternalUpdate, error) {
-	data, err := e.applyLicense(ctx, licenseCR)
+	details, err := e.applyLicense(ctx, licenseCR)
 	if err != nil {
 		return managed.ExternalUpdate{}, err
 	}
 
-	return managed.ExternalUpdate{
-		ConnectionDetails: managed.ConnectionDetails{licenseSecretCacheKey: data},
-	}, nil
+	return managed.ExternalUpdate{ConnectionDetails: details}, nil
 }
 
 // Delete removes the license from Nexus.
@@ -203,20 +193,20 @@ func (e *external) observeInstalled(ctx context.Context, licenseCR *instancev1al
 	return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
 }
 
-// applyLicense fetches the desired license, installs it on Nexus, records the
-// hash in Status.AtProvider, and returns the raw bytes for ConnectionDetails.
-func (e *external) applyLicense(ctx context.Context, licenseCR *instancev1alpha1.License) ([]byte, error) {
-	data, err := e.fetchDesiredLicense(ctx, licenseCR)
+// applyLicense reads the desired license, installs it on Nexus, records the
+// hash in Status.AtProvider, and returns the ConnectionDetails that cache it.
+func (e *external) applyLicense(ctx context.Context, licenseCR *instancev1alpha1.License) (managed.ConnectionDetails, error) {
+	license, err := e.readLicense(ctx, licenseCR)
 	if err != nil {
-		return nil, errors.Wrap(err, errFetchLicense)
+		return nil, err
 	}
 
-	err = e.client.InstallLicense(ctx, data)
+	err = e.client.InstallLicense(ctx, license.Data)
 	if err != nil {
 		return nil, errors.Wrap(err, errInstallLicense)
 	}
 
-	hash := instanceclient.HashLicense(data)
+	hash := instanceclient.HashLicense(license.Data)
 
 	before := licenseCR.DeepCopy()
 	licenseCR.Status.AtProvider.InstalledHash = hash
@@ -224,114 +214,23 @@ func (e *external) applyLicense(ctx context.Context, licenseCR *instancev1alpha1
 	// Non-fatal: next Observe will retry reconciliation.
 	_ = e.kube.Status().Patch(ctx, licenseCR, client.MergeFrom(before))
 
-	return data, nil
+	return license.ConnectionDetails, nil
 }
 
-// fetchDesiredLicense returns the license bytes from the configured source.
-// Behavior 1: reads from LicenseSecretRef.
-// Behavior 2: fetches from EndpointURL, caches in writeConnectionSecretToRef.
-func (e *external) fetchDesiredLicense(ctx context.Context, licenseCR *instancev1alpha1.License) ([]byte, error) {
+// readLicense reads the desired license from licenseSecretRef or endpointUrl.
+func (e *external) readLicense(ctx context.Context, licenseCR *instancev1alpha1.License) (document.Document, error) {
 	params := licenseCR.Spec.ForProvider
 
-	if params.LicenseSecretRef != nil {
-		return nexus.GetSecretBytes(ctx, e.kube, licenseCR.GetNamespace(), params.LicenseSecretRef)
+	source := document.Source{
+		From: &nexusv1alpha1.DocumentSource{
+			SecretRef:           params.LicenseSecretRef,
+			EndpointURL:         params.EndpointURL,
+			EndpointCredentials: params.EndpointCredentials,
+		},
+		Key: licenseSecretCacheKey,
 	}
 
-	if params.EndpointURL != nil {
-		return e.fetchFromEndpoint(ctx, licenseCR)
-	}
+	license, err := source.Read(ctx, e.kube, licenseCR)
 
-	return nil, errors.New(errNoLicenseSource)
-}
-
-// fetchFromEndpoint fetches the license from the HTTP endpoint.
-// Falls back to the writeConnectionSecretToRef cache when the endpoint is
-// unavailable; the cache is written by the reconciler via ConnectionDetails.
-func (e *external) fetchFromEndpoint(ctx context.Context, licenseCR *instancev1alpha1.License) ([]byte, error) {
-	params := licenseCR.Spec.ForProvider
-
-	data, endpointErr := e.doEndpointRequest(ctx, licenseCR.GetNamespace(), *params.EndpointURL, params.EndpointCredentials)
-	if endpointErr == nil {
-		return data, nil
-	}
-
-	// Endpoint unavailable: try the connection secret written by a prior reconcile.
-	cacheRef := licenseCR.GetWriteConnectionSecretToReference()
-	if cacheRef != nil {
-		cached, cacheErr := nexus.GetLocalConnectionSecretBytes(ctx, e.kube, licenseCR, cacheRef, licenseSecretCacheKey)
-		if cacheErr == nil {
-			return cached, nil
-		}
-	}
-
-	return nil, errors.Wrap(endpointErr, "endpoint unavailable and no cached license")
-}
-
-// doEndpointRequest performs the HTTP GET for the license file. namespace is
-// the License namespace, which the credential secret selectors are bound to.
-func (e *external) doEndpointRequest(ctx context.Context, namespace, url string, creds *instancev1alpha1.LicenseEndpointCredentials) ([]byte, error) {
-	req, err := nexus.NewRequest(ctx, http.MethodGet, url, http.NoBody)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot build endpoint request")
-	}
-
-	err = e.applyEndpointCredentials(ctx, namespace, req, creds)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := nexus.Do(endpointClient, req)
-	if err != nil {
-		return nil, errors.Wrap(err, "endpoint request failed")
-	}
-
-	defer resp.Body.Close() //nolint:errcheck // response body close error is not actionable here
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, errors.Errorf("endpoint returned status %d", resp.StatusCode)
-	}
-
-	data, err := nexus.ReadLimited(resp.Body, maxLicenseBytes)
-	if err != nil {
-		return nil, errors.Wrap(err, "cannot read endpoint response")
-	}
-
-	return data, nil
-}
-
-// applyEndpointCredentials sets HTTP auth headers on the request.
-func (e *external) applyEndpointCredentials(ctx context.Context, namespace string, req *http.Request, creds *instancev1alpha1.LicenseEndpointCredentials) error {
-	if creds == nil {
-		return nil
-	}
-
-	if creds.UsernameSecretRef != nil && creds.PasswordSecretRef != nil {
-		// Username and password are usually two keys of one Secret.
-		secrets := nexus.MemoizeSecrets(e.kube)
-
-		username, err := nexus.GetSecretValue(ctx, secrets, namespace, creds.UsernameSecretRef)
-		if err != nil {
-			return errors.Wrap(err, "cannot get endpoint username")
-		}
-
-		password, err := nexus.GetSecretValue(ctx, secrets, namespace, creds.PasswordSecretRef)
-		if err != nil {
-			return errors.Wrap(err, "cannot get endpoint password")
-		}
-
-		req.SetBasicAuth(username, password)
-
-		return nil
-	}
-
-	if creds.PasswordSecretRef != nil {
-		token, err := nexus.GetSecretValue(ctx, e.kube, namespace, creds.PasswordSecretRef)
-		if err != nil {
-			return errors.Wrap(err, "cannot get endpoint token")
-		}
-
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-
-	return nil
+	return license, errors.Wrap(err, errFetchLicense)
 }

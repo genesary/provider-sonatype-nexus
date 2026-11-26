@@ -98,7 +98,7 @@ func NewRequest(ctx context.Context, method, rawURL string, body io.Reader) (*ht
 // outside this package sends requests through it, which the forbidigo linter
 // enforces.
 func Do(client *http.Client, req *http.Request) (*http.Response, error) {
-	resp, err := client.Do(req) //nolint:gosec // G704: requesting a user-configured URL is the point: the ProviderConfig Nexus URL or a License endpointUrl
+	resp, err := client.Do(req) //nolint:gosec // G704: requesting a user-configured URL is the point: the ProviderConfig Nexus URL or a document endpointUrl
 	if err != nil {
 		return nil, RedactURLError(err)
 	}
