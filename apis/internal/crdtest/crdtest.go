@@ -20,8 +20,8 @@ import (
 )
 
 // crdsPath is the directory of the generated CustomResourceDefinitions,
-// relative to the API version packages.
-const crdsPath = "../../../package/crds"
+// relative to the repository root.
+const crdsPath = "package/crds"
 
 // Case is a spec.forProvider to check, and the error it must be rejected with.
 type Case struct {
@@ -32,8 +32,7 @@ type Case struct {
 }
 
 // RunForProvider checks each case against the schema, CEL rules included, of
-// the spec.forProvider of the CustomResourceDefinition in the given file. It
-// must be called from an API version package.
+// the spec.forProvider of the CustomResourceDefinition in the given file.
 func RunForProvider(t *testing.T, crdFile string, cases map[string]Case) {
 	t.Helper()
 
@@ -79,7 +78,7 @@ func RunForProvider(t *testing.T, crdFile string, cases map[string]Case) {
 func forProviderSchema(t *testing.T, crdFile string) *apiextensions.JSONSchemaProps {
 	t.Helper()
 
-	raw, err := os.ReadFile(filepath.Join(crdsPath, crdFile)) //nolint:gosec // G304: tests name the file
+	raw, err := os.ReadFile(filepath.Join(crdsDir(t), crdFile)) //nolint:gosec // G304: tests name the file
 	if err != nil {
 		t.Fatalf("reading the CRD: %v", err)
 	}
@@ -100,4 +99,33 @@ func forProviderSchema(t *testing.T, crdFile string) *apiextensions.JSONSchemaPr
 	}
 
 	return props
+}
+
+// crdsDir returns the directory of the generated CustomResourceDefinitions,
+// found by walking up from the working directory, the package of the calling
+// test, so that tests of any package depth can use it. The path of this file
+// cannot be used instead: builds may trim it.
+func crdsDir(t *testing.T) string {
+	t.Helper()
+
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("getting the working directory: %v", err)
+	}
+
+	for {
+		candidate := filepath.Join(dir, crdsPath)
+
+		info, err := os.Stat(candidate)
+		if err == nil && info.IsDir() {
+			return candidate
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatalf("no %s directory above the working directory", crdsPath)
+		}
+
+		dir = parent
+	}
 }

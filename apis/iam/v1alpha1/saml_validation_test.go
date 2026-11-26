@@ -27,9 +27,10 @@ func TestSAMLIdPMetadataValidation(t *testing.T) {
 	credentials := map[string]any{"passwordSecretRef": secretRef}
 
 	crdtest.RunForProvider(t, "iam.nexus.crossplane.io_samls.yaml", map[string]crdtest.Case{
-		"Inline": {ForProvider: forProvider(map[string]any{"idpMetadata": "<xml/>"})},
-		"Secret": {ForProvider: from(map[string]any{"secretRef": secretRef})},
-		"URL":    {ForProvider: from(map[string]any{"endpointUrl": "https://idp.example.com/metadata"})},
+		"Inline":          {ForProvider: forProvider(map[string]any{"idpMetadata": "<xml/>"})},
+		"Secret":          {ForProvider: from(map[string]any{"secretRef": secretRef})},
+		"URL":             {ForProvider: from(map[string]any{"endpointUrl": "https://idp.example.com/metadata"})},
+		"UppercaseScheme": {ForProvider: from(map[string]any{"endpointUrl": "HTTPS://idp.example.com/metadata"})},
 		"URLWithCredentials": {
 			ForProvider: from(map[string]any{"endpointUrl": "http://idp.example.com/metadata", "endpointCredentials": credentials}),
 		},

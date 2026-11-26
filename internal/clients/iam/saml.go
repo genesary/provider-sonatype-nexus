@@ -3,6 +3,8 @@ package iam
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/xml"
 	"io"
 	"reflect"
@@ -119,13 +121,14 @@ func GenerateSAML(samlCR *iamv1alpha1.SAML, idpMetadata string) v395.SamlConfigu
 }
 
 // GenerateSAMLObservation converts an observed SAML to an observation struct.
+// The identity provider metadata is recorded as its digest only.
 func GenerateSAMLObservation(observed *v395.SamlConfigurationXO) iamv1alpha1.SAMLObservation {
 	if observed == nil {
 		return iamv1alpha1.SAMLObservation{}
 	}
 
 	return iamv1alpha1.SAMLObservation{
-		IdpMetadata:                observed.IdpMetadata,
+		IdpMetadataSHA256:          IdPMetadataSHA256(observed.IdpMetadata),
 		EntityId:                   observed.GetEntityId(),
 		UsernameAttribute:          observed.UsernameAttribute,
 		FirstNameAttribute:         observed.FirstNameAttribute,
@@ -137,10 +140,18 @@ func GenerateSAMLObservation(observed *v395.SamlConfigurationXO) iamv1alpha1.SAM
 	}
 }
 
-// samlObservationToSAML converts a SAMLObservation back to the API type.
+// IdPMetadataSHA256 returns the hex encoded SHA-256 digest of identity
+// provider metadata.
+func IdPMetadataSHA256(idpMetadata string) string {
+	sum := sha256.Sum256([]byte(idpMetadata))
+
+	return hex.EncodeToString(sum[:])
+}
+
+// samlObservationToSAML converts a SAMLObservation back to the API type,
+// without the identity provider metadata it holds the digest of only.
 func samlObservationToSAML(obs iamv1alpha1.SAMLObservation) v395.SamlConfigurationXO {
 	return v395.SamlConfigurationXO{
-		IdpMetadata:                obs.IdpMetadata,
 		EntityId:                   new(obs.EntityId),
 		UsernameAttribute:          obs.UsernameAttribute,
 		FirstNameAttribute:         obs.FirstNameAttribute,
@@ -155,8 +166,9 @@ func samlObservationToSAML(obs iamv1alpha1.SAMLObservation) v395.SamlConfigurati
 // IsSAMLUpToDate reports whether the CR spec, with the identity provider
 // metadata read from the source it names, matches the observed SAML config.
 func IsSAMLUpToDate(samlCR *iamv1alpha1.SAML, idpMetadata string) bool {
-	desired := GenerateSAML(samlCR, idpMetadata)
+	desired := GenerateSAML(samlCR, "")
 	observed := samlObservationToSAML(samlCR.Status.AtProvider)
 
-	return reflect.DeepEqual(desired, observed)
+	return samlCR.Status.AtProvider.IdpMetadataSHA256 == IdPMetadataSHA256(idpMetadata) &&
+		reflect.DeepEqual(desired, observed)
 }

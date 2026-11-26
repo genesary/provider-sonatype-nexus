@@ -3,11 +3,13 @@ package saml
 
 import (
 	"context"
+	"slices"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -101,8 +103,9 @@ type external struct {
 }
 
 // Observe checks whether the external resource exists and is up-to-date. A
-// SAML being deleted is always up to date, so that the source of its metadata
-// being gone cannot block its deletion.
+// SAML being deleted, or whose management policies forbid updating it, is
+// always up to date: nothing would act on its drift, so the source of its
+// metadata being unavailable must not fail its reconcile.
 func (e *external) Observe(ctx context.Context, samlCR *iamv1alpha1.SAML) (managed.ExternalObservation, error) {
 	observed, err := e.client.Read(ctx)
 	if err != nil {
@@ -120,7 +123,7 @@ func (e *external) Observe(ctx context.Context, samlCR *iamv1alpha1.SAML) (manag
 	samlCR.Status.AtProvider = iamclient.GenerateSAMLObservation(observed)
 	samlCR.SetConditions(nexusv1alpha1.Available())
 
-	if meta.WasDeleted(samlCR) {
+	if meta.WasDeleted(samlCR) || !mayUpdate(samlCR) {
 		return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
 	}
 
@@ -142,6 +145,18 @@ func (e *external) Observe(ctx context.Context, samlCR *iamv1alpha1.SAML) (manag
 	}
 
 	return observation, nil
+}
+
+// mayUpdate reports whether the management policies of samlCR let the
+// reconciler update the SAML configuration. The reconciler rejects
+// non-default policies before Observe while the management policies feature
+// is disabled, so the policies need no feature check here.
+func mayUpdate(samlCR *iamv1alpha1.SAML) bool {
+	policies := samlCR.GetManagementPolicies()
+
+	return len(policies) == 0 ||
+		slices.Contains(policies, xpv2.ManagementActionUpdate) ||
+		slices.Contains(policies, xpv2.ManagementActionAll)
 }
 
 // Create creates the desired SAML configuration in Nexus.

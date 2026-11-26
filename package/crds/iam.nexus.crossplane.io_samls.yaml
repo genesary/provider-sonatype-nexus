@@ -119,12 +119,15 @@ spec:
                             - name
                             type: object
                         type: object
+                        x-kubernetes-validations:
+                        - message: usernameSecretRef requires passwordSecretRef.
+                          rule: '!has(self.usernameSecretRef) || has(self.passwordSecretRef)'
                       endpointUrl:
                         description: |-
                           EndpointURL is the URL the document is fetched from, on every
                           reconcile. When that fails, the document last fetched from it is used
                           instead, provided writeConnectionSecretToRef is set.
-                        pattern: ^https?://
+                        pattern: ^[hH][tT][tT][pP][sS]?://
                         type: string
                       secretRef:
                         description: |-
@@ -248,9 +251,11 @@ spec:
                   groupsAttribute:
                     description: GroupsAttribute is the observed groups attribute.
                     type: string
-                  idpMetadata:
-                    description: IdpMetadata is the observed Identity Provider metadata
-                      XML.
+                  idpMetadataSha256:
+                    description: |-
+                      IdpMetadataSHA256 is the hex encoded SHA-256 digest of the observed
+                      Identity Provider metadata XML. The metadata itself is not recorded, as
+                      it may be read from a Secret.
                     type: string
                   lastNameAttribute:
                     description: LastNameAttribute is the observed last name attribute.

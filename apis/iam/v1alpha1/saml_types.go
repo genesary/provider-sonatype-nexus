@@ -62,8 +62,10 @@ type SAMLParameters struct {
 
 // SAMLObservation represents the observed state of SAML configuration.
 type SAMLObservation struct {
-	// IdpMetadata is the observed Identity Provider metadata XML.
-	IdpMetadata string `json:"idpMetadata,omitempty"`
+	// IdpMetadataSHA256 is the hex encoded SHA-256 digest of the observed
+	// Identity Provider metadata XML. The metadata itself is not recorded, as
+	// it may be read from a Secret.
+	IdpMetadataSHA256 string `json:"idpMetadataSha256,omitempty"`
 	// EntityId is the observed SAML entity ID.
 	EntityId string `json:"entityId,omitempty"`
 	// UsernameAttribute is the observed username attribute.

@@ -145,6 +145,52 @@ func TestObserve_DeletedWithoutSource(t *testing.T) {
 	}
 }
 
+// TestObserve_PoliciesWithoutUpdate checks that a SAML whose management
+// policies forbid updating it is observed without its source, which only
+// tells drift that nothing would act on, and that the cache is left alone.
+func TestObserve_PoliciesWithoutUpdate(t *testing.T) {
+	t.Parallel()
+
+	tests := map[string]struct {
+		policies xpv2.ManagementPolicies
+		wantErr  bool
+	}{
+		"ObserveOnly":      {policies: xpv2.ManagementPolicies{xpv2.ManagementActionObserve}},
+		"ObserveAndDelete": {policies: xpv2.ManagementPolicies{xpv2.ManagementActionObserve, xpv2.ManagementActionDelete}},
+		"Update":           {policies: xpv2.ManagementPolicies{xpv2.ManagementActionObserve, xpv2.ManagementActionUpdate}, wantErr: true},
+		"All":              {policies: xpv2.ManagementPolicies{xpv2.ManagementActionAll}, wantErr: true},
+		"Default":          {wantErr: true},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ext, _ := newExternal(nil, testMetadata)
+
+			cr := newSAMLFrom(fromSecret("nope"))
+			cr.SetManagementPolicies(tc.policies)
+
+			obs, err := ext.Observe(context.Background(), cr)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("Observe() error = %v, wantErr %v", err, tc.wantErr)
+			}
+
+			if tc.wantErr {
+				return
+			}
+
+			if !obs.ResourceExists || !obs.ResourceUpToDate || obs.ConnectionDetails != nil {
+				t.Errorf("Observe() = %+v, want existing, up to date, and nothing cached", obs)
+			}
+
+			if cr.Status.AtProvider.EntityId != "nexus-entity" {
+				t.Errorf("AtProvider = %+v, want the observed configuration", cr.Status.AtProvider)
+			}
+		})
+	}
+}
+
 // TestApply_MetadataFrom checks that Create and Update apply the metadata of
 // the source and cache it, and apply nothing when it cannot be read.
 func TestApply_MetadataFrom(t *testing.T) {

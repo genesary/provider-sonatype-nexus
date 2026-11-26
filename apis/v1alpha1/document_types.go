@@ -7,6 +7,7 @@ import (
 // EndpointCredentials holds optional HTTP credentials for an endpoint a
 // managed resource fetches a document from. The secrets must be in the same
 // namespace as the managed resource.
+// +kubebuilder:validation:XValidation:rule="!has(self.usernameSecretRef) || has(self.passwordSecretRef)",message="usernameSecretRef requires passwordSecretRef."
 type EndpointCredentials struct {
 	// UsernameSecretRef references a secret key with the HTTP username.
 	// +kubebuilder:validation:Optional
@@ -31,7 +32,7 @@ type DocumentSource struct {
 	// reconcile. When that fails, the document last fetched from it is used
 	// instead, provided writeConnectionSecretToRef is set.
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Pattern=`^https?://`
+	// +kubebuilder:validation:Pattern=`^[hH][tT][tT][pP][sS]?://`
 	EndpointURL *string `json:"endpointUrl,omitempty"`
 
 	// EndpointCredentials are optional HTTP credentials for EndpointURL: a
