@@ -30,13 +30,14 @@ type fakeAPI struct {
 // store records repo the way Nexus reports it back.
 func (f *fakeAPI) store(repo v395.RawHostedRepositoryApiRequest) {
 	f.repo = &v395.RawHostedApiRepository{
-		Name:    repo.Name,
-		Online:  repo.Online,
-		Storage: repo.Storage,
-		Cleanup: repo.Cleanup,
-		Format:  "raw",
-		Type:    repoTypeHosted,
-		Url:     "https://nexus.example.com/repository/" + repo.Name,
+		Name:      repo.Name,
+		Online:    repo.Online,
+		Storage:   repo.Storage,
+		Cleanup:   repo.Cleanup,
+		Component: repo.Component,
+		Format:    "raw",
+		Type:      repoTypeHosted,
+		Url:       "https://nexus.example.com/repository/" + repo.Name,
 	}
 }
 

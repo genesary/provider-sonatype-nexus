@@ -192,6 +192,11 @@ func (f *Framework) FetchPypiProxyRepo(name string) (*v395.PyPiProxyApiRepositor
 	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetPypiProxyRepository(context.Background(), name).Execute())
 }
 
+// FetchRawProxyRepo returns the raw proxy repository with the given name.
+func (f *Framework) FetchRawProxyRepo(name string) (*v395.RawProxyApiRepository, error) {
+	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetRawProxyRepository(context.Background(), name).Execute())
+}
+
 // FetchAptHostedRepo returns the APT hosted repository with the given name.
 func (f *Framework) FetchAptHostedRepo(name string) (*v395.AptHostedApiRepository, error) {
 	return absentAsNil(f.Nexus.RepositoryManagementAPI.GetAptHostedRepository(context.Background(), name).Execute())

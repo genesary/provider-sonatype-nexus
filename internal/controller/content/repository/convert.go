@@ -47,6 +47,9 @@ const (
 	// cosignEnforcementNone is the cosign enforcement mode that verifies no
 	// signature.
 	cosignEnforcementNone = "NONE"
+	// defaultPypiIndexPath is the remote index path of a PyPI proxy
+	// repository whose spec sets none, the one Nexus defaults to.
+	defaultPypiIndexPath = "/simple"
 )
 
 // desiredRepo is the input every payload builder works from: the desired state
@@ -61,8 +64,17 @@ type desiredRepo struct {
 	// httpPassword is the proxy HTTP client password resolved from the secret
 	// referenced by the spec. It is empty when the spec references none, and
 	// when the caller does not need it - drift detection never compares
-	// credentials, so Observe leaves it unset.
+	// credentials, so Observe leaves the resolved secrets unset.
 	httpPassword string
+	// httpBearerToken is the proxy HTTP client bearer token resolved from
+	// the secret referenced by the spec, empty like httpPassword.
+	httpBearerToken string
+	// ecrSecretAccessKey is the AWS secret access key of a Docker proxy's
+	// ECR authentication, resolved from the secret referenced by the spec.
+	ecrSecretAccessKey string
+	// ecrSessionToken is the AWS session token of a Docker proxy's ECR
+	// authentication, resolved from the secret referenced by the spec.
+	ecrSessionToken string
 }
 
 // params returns the desired repository parameters.
@@ -129,14 +141,58 @@ func (d desiredRepo) hostedStorage() v395.HostedStorageAttributes {
 }
 
 // containerHostedStorage converts the storage configuration of a hosted Docker
-// or OCI repository.
+// or OCI repository. The latest policy is always sent, false when the spec
+// leaves it unset, since Nexus turns it off when an update leaves it out.
 func (d desiredRepo) containerHostedStorage() v395.DockerHostedStorageAttributes {
 	hosted := d.hostedStorage()
+
+	var latestPolicy *bool
+	if spec := d.params().Storage; spec != nil {
+		latestPolicy = spec.LatestPolicy
+	}
 
 	return v395.DockerHostedStorageAttributes{
 		BlobStoreName:               hosted.BlobStoreName,
 		StrictContentTypeValidation: hosted.StrictContentTypeValidation,
 		WritePolicy:                 hosted.WritePolicy,
+		LatestPolicy:                new(ptr.Deref(latestPolicy, false)),
+	}
+}
+
+// component converts the component settings of a hosted repository. It is
+// always sent, since Nexus turns proprietaryComponents off when an update
+// leaves it out.
+func (d desiredRepo) component() v395.ComponentAttributes {
+	spec := d.params().Component
+	if spec == nil {
+		return v395.ComponentAttributes{ProprietaryComponents: new(false)}
+	}
+
+	return v395.ComponentAttributes{ProprietaryComponents: new(ptr.Deref(spec.ProprietaryComponents, false))}
+}
+
+// firewall converts the firewall mode of a proxy repository, nil when the spec
+// declares none. Nexus keeps the mode an update leaves out.
+func (d desiredRepo) firewall() *v395.FirewallAttributes {
+	spec := d.params().Firewall
+	if spec == nil {
+		return nil
+	}
+
+	return &v395.FirewallAttributes{Mode: new(spec.Mode)}
+}
+
+// replication converts the pre-emptive pull of a proxy repository, nil when
+// the spec declares none.
+func (d desiredRepo) replication() *v395.ReplicationAttributes {
+	spec := d.params().Replication
+	if spec == nil {
+		return nil
+	}
+
+	return &v395.ReplicationAttributes{
+		PreemptivePullEnabled: spec.PreemptivePullEnabled,
+		AssetPathRegex:        spec.AssetPathRegex,
 	}
 }
 
@@ -159,11 +215,14 @@ func (d desiredRepo) storage() v395.StorageAttributes {
 	return storage
 }
 
-// proxy converts the remote target configuration of a proxy repository.
+// proxy converts the remote target configuration of a proxy repository. The
+// encoded characters setting is always sent, false when the spec leaves it
+// unset, since Nexus turns it off when an update leaves it out.
 func (d desiredRepo) proxy() v395.ProxyAttributes {
 	proxy := v395.ProxyAttributes{
-		ContentMaxAge:  defaultMaxAge,
-		MetadataMaxAge: defaultMaxAge,
+		ContentMaxAge:             defaultMaxAge,
+		MetadataMaxAge:            defaultMaxAge,
+		PreserveEncodedCharacters: new(false),
 	}
 
 	spec := d.params().Proxy
@@ -174,6 +233,7 @@ func (d desiredRepo) proxy() v395.ProxyAttributes {
 	proxy.RemoteUrl = spec.RemoteURL
 	proxy.ContentMaxAge = ptr.Deref(spec.ContentMaxAge, defaultMaxAge)
 	proxy.MetadataMaxAge = ptr.Deref(spec.MetadataMaxAge, defaultMaxAge)
+	proxy.PreserveEncodedCharacters = new(ptr.Deref(spec.PreserveEncodedCharacters, false))
 
 	return proxy
 }
@@ -211,14 +271,17 @@ func (d desiredRepo) httpClient() v395.HttpClientAttributes {
 	client.AutoBlock = new(ptr.Deref(spec.AutoBlock, true))
 	client.Connection = d.httpConnection()
 
+	// Pre-emptive authentication is left out: Nexus only honors it on the
+	// formats whose payload is built by httpClientWithPreemptiveAuth.
 	auth := d.httpAuth()
 	if auth != nil {
 		client.Authentication = &v395.HttpClientConnectionAuthenticationAttributes{
-			Type:       auth.Type,
-			Username:   auth.Username,
-			NtlmHost:   auth.NtlmHost,
-			NtlmDomain: auth.NtlmDomain,
-			Password:   auth.Password,
+			Type:        auth.Type,
+			Username:    auth.Username,
+			NtlmHost:    auth.NtlmHost,
+			NtlmDomain:  auth.NtlmDomain,
+			Password:    auth.Password,
+			BearerToken: auth.BearerToken,
 		}
 	}
 
@@ -261,7 +324,9 @@ func (d desiredRepo) httpConnection() *v395.HttpClientConnectionAttributes {
 }
 
 // httpAuth converts the credentials of a proxy repository's HTTP client. The
-// password is the one the controller resolved from the referenced secret.
+// password and bearer token are the ones the controller resolved from the
+// referenced secrets; the bearer token is left out when the spec references
+// none.
 func (d desiredRepo) httpAuth() *v395.HttpClientConnectionAuthenticationAttributesWithPreemptive {
 	if d.params().HTTPClient == nil || d.params().HTTPClient.Authentication == nil {
 		return nil
@@ -270,11 +335,13 @@ func (d desiredRepo) httpAuth() *v395.HttpClientConnectionAuthenticationAttribut
 	spec := d.params().HTTPClient.Authentication
 
 	return &v395.HttpClientConnectionAuthenticationAttributesWithPreemptive{
-		Type:       ptr.Deref(spec.Type, ""),
-		Username:   new(ptr.Deref(spec.Username, "")),
-		NtlmHost:   new(ptr.Deref(spec.NTLMHost, "")),
-		NtlmDomain: new(ptr.Deref(spec.NTLMDomain, "")),
-		Password:   new(d.httpPassword),
+		Type:        ptr.Deref(spec.Type, ""),
+		Username:    new(ptr.Deref(spec.Username, "")),
+		NtlmHost:    new(ptr.Deref(spec.NTLMHost, "")),
+		NtlmDomain:  new(ptr.Deref(spec.NTLMDomain, "")),
+		Password:    new(d.httpPassword),
+		BearerToken: nonEmpty(d.httpBearerToken),
+		Preemptive:  new(ptr.Deref(spec.Preemptive, false)),
 	}
 }
 
@@ -323,9 +390,44 @@ func (d desiredRepo) docker() v395.DockerAttributes {
 	return containerAttributes(d.params().Docker)
 }
 
-// dockerProxy converts the index configuration of a Docker proxy repository.
+// dockerProxy converts the index configuration of a Docker proxy repository,
+// and its AWS ECR authentication, which Nexus removes when an update leaves
+// it out.
 func (d desiredRepo) dockerProxy() v395.DockerProxyAttributes {
-	return containerProxyAttributes(d.params().DockerProxy, defaultDockerIndexType)
+	attributes := containerProxyAttributes(d.params().DockerProxy, defaultDockerIndexType)
+	attributes.EcrAuth = d.ecrAuth()
+
+	return attributes
+}
+
+// ecrAuth converts the AWS ECR authentication of a Docker proxy repository,
+// nil when the spec declares none. The secret access key and session token
+// are the ones the controller resolved from the referenced secrets, left out
+// when the spec references none.
+func (d desiredRepo) ecrAuth() *v395.EcrAuthAttributes {
+	if d.params().DockerProxy == nil || d.params().DockerProxy.EcrAuth == nil {
+		return nil
+	}
+
+	spec := d.params().DockerProxy.EcrAuth
+
+	return &v395.EcrAuthAttributes{
+		Enabled:         new(spec.Enabled),
+		AwsRegion:       spec.AwsRegion,
+		RegistryId:      spec.RegistryID,
+		AccessKeyId:     spec.AccessKeyID,
+		SecretAccessKey: nonEmpty(d.ecrSecretAccessKey),
+		SessionToken:    nonEmpty(d.ecrSessionToken),
+	}
+}
+
+// nonEmpty returns a pointer to value, nil when it is empty.
+func nonEmpty(value string) *string {
+	if value == "" {
+		return nil
+	}
+
+	return &value
 }
 
 // containerAttributes converts the registry settings shared by Docker and OCI
@@ -374,27 +476,36 @@ func (d desiredRepo) apt() v395.AptHostedRepositoriesAttributes {
 	return v395.AptHostedRepositoriesAttributes{Distribution: ptr.Deref(spec.Distribution, "")}
 }
 
-// aptProxy converts the APT specific configuration of a proxy repository.
+// aptProxy converts the APT specific configuration of a proxy repository. The
+// distribution enforcement is always sent, false when the spec leaves it
+// unset, since Nexus turns it off when an update leaves it out.
 func (d desiredRepo) aptProxy() v395.AptProxyRepositoriesAttributes {
 	spec := d.params().Apt
 	if spec == nil {
-		return v395.AptProxyRepositoriesAttributes{}
+		return v395.AptProxyRepositoriesAttributes{EnforceDistribution: new(false)}
 	}
 
 	return v395.AptProxyRepositoriesAttributes{
-		Distribution: new(ptr.Deref(spec.Distribution, "")),
-		Flat:         ptr.Deref(spec.Flat, false),
+		Distribution:        new(ptr.Deref(spec.Distribution, "")),
+		Flat:                ptr.Deref(spec.Flat, false),
+		EnforceDistribution: new(ptr.Deref(spec.EnforceDistribution, false)),
 	}
 }
 
 // aptSigning converts the APT signing key of a hosted repository.
 func (d desiredRepo) aptSigning() v395.AptSigningRepositoriesAttributes {
+	return ptr.Deref(d.aptProxySigning(), v395.AptSigningRepositoriesAttributes{})
+}
+
+// aptProxySigning converts the APT signing key of a proxy repository, nil when
+// the spec declares none.
+func (d desiredRepo) aptProxySigning() *v395.AptSigningRepositoriesAttributes {
 	spec := d.params().AptSigning
 	if spec == nil {
-		return v395.AptSigningRepositoriesAttributes{}
+		return nil
 	}
 
-	return v395.AptSigningRepositoriesAttributes{Keypair: new(spec.Keypair), Passphrase: spec.Passphrase}
+	return &v395.AptSigningRepositoriesAttributes{Keypair: new(spec.Keypair), Passphrase: spec.Passphrase}
 }
 
 // yum converts the Yum specific configuration of a hosted repository.
@@ -423,10 +534,13 @@ func (d desiredRepo) yumSigning() *v395.YumSigningRepositoriesAttributes {
 }
 
 // nugetProxy converts the NuGet specific configuration of a proxy repository.
+// Anonymous symbol access is always sent, true when the spec leaves it unset,
+// since Nexus turns it back on when an update leaves it out.
 func (d desiredRepo) nugetProxy() v395.NugetAttributes {
 	nugetProxy := v395.NugetAttributes{
-		QueryCacheItemMaxAge: new(int32(defaultNugetQueryCacheItemMaxAge)),
-		NugetVersion:         new(defaultNugetVersion),
+		QueryCacheItemMaxAge:       new(int32(defaultNugetQueryCacheItemMaxAge)),
+		NugetVersion:               new(defaultNugetVersion),
+		AllowAnonymousSymbolAccess: new(true),
 	}
 
 	spec := d.params().NugetProxy
@@ -436,8 +550,59 @@ func (d desiredRepo) nugetProxy() v395.NugetAttributes {
 
 	nugetProxy.QueryCacheItemMaxAge = new(ptr.Deref(spec.QueryCacheItemMaxAge, defaultNugetQueryCacheItemMaxAge))
 	nugetProxy.NugetVersion = new(ptr.Deref(spec.NugetVersion, defaultNugetVersion))
+	nugetProxy.AllowAnonymousSymbolAccess = new(ptr.Deref(spec.AllowAnonymousSymbolAccess, true))
+	nugetProxy.SymbolServerUrl = spec.SymbolServerURL
 
 	return nugetProxy
+}
+
+// raw converts the raw specific configuration, nil when the spec declares
+// none. Nexus keeps the content disposition an update leaves out.
+func (d desiredRepo) raw() *v395.RawAttributes {
+	spec := d.params().Raw
+	if spec == nil {
+		return nil
+	}
+
+	return &v395.RawAttributes{ContentDisposition: spec.ContentDisposition}
+}
+
+// conanProxy converts the Conan specific configuration of a proxy repository,
+// nil when the spec sets no protocol version. Nexus picks V2 then, and rejects
+// any change of version afterwards, so no default is ever sent.
+func (d desiredRepo) conanProxy() *v395.ConanProxyAttributes {
+	spec := d.params().ConanProxy
+	if spec == nil || spec.ConanVersion == nil {
+		return nil
+	}
+
+	return &v395.ConanProxyAttributes{ConanVersion: spec.ConanVersion}
+}
+
+// pypiProxy converts the PyPI specific configuration of a proxy repository.
+// The index path is always sent, /simple when the spec leaves it unset, since
+// Nexus resets it to /simple when an update leaves it out.
+func (d desiredRepo) pypiProxy() *v395.PyPiProxyAttributes {
+	var indexPath *string
+	if spec := d.params().Pypi; spec != nil {
+		indexPath = spec.IndexPath
+	}
+
+	return &v395.PyPiProxyAttributes{IndexPath: new(ptr.Deref(indexPath, defaultPypiIndexPath))}
+}
+
+// xet converts the Xet configuration of a Hugging Face proxy repository, nil
+// when the spec declares none.
+func (d desiredRepo) xet() *v395.HuggingFaceXetAttributes {
+	spec := d.params().Xet
+	if spec == nil {
+		return nil
+	}
+
+	return &v395.HuggingFaceXetAttributes{
+		XetCasUrl:                spec.XetCasURL,
+		XetTransferHostAllowList: spec.XetTransferHostAllowList,
+	}
 }
 
 // requireAuthentication converts whether a repository overrides anonymous

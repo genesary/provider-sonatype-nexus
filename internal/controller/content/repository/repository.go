@@ -52,6 +52,15 @@ const (
 	// errResolvePassword is returned when resolving the password from a
 	// secret fails.
 	errResolvePassword = "cannot resolve password from secret"
+	// errResolveBearerToken is returned when resolving the HTTP client
+	// bearer token from a secret fails.
+	errResolveBearerToken = "cannot resolve bearer token from secret"
+	// errResolveEcrSecretAccessKey is returned when resolving the AWS ECR
+	// secret access key from a secret fails.
+	errResolveEcrSecretAccessKey = "cannot resolve AWS ECR secret access key from secret"
+	// errResolveEcrSessionToken is returned when resolving the AWS ECR
+	// session token from a secret fails.
+	errResolveEcrSessionToken = "cannot resolve AWS ECR session token from secret"
 	// errFingerprint is returned when the repository credentials cannot be
 	// fingerprinted.
 	errFingerprint = "cannot fingerprint repository credentials"
@@ -282,12 +291,34 @@ func (e *external) desiredState(ctx context.Context, kube client.Reader, repoCR 
 		return desiredRepo{}, errors.New(errEmptyBlobStoreName)
 	}
 
-	password, err := resolveHTTPClientPassword(ctx, kube, repoCR)
-	if err != nil {
-		return desiredRepo{}, errors.Wrap(err, errResolvePassword)
+	desired := desiredRepo{repo: repoCR}
+	refs := secretRefsOf(repoCR)
+
+	resolve := []struct {
+		selector *xpv2.LocalSecretKeySelector
+		value    *string
+		errMsg   string
+	}{
+		{refs.password, &desired.httpPassword, errResolvePassword},
+		{refs.bearerToken, &desired.httpBearerToken, errResolveBearerToken},
+		{refs.ecrSecretAccessKey, &desired.ecrSecretAccessKey, errResolveEcrSecretAccessKey},
+		{refs.ecrSessionToken, &desired.ecrSessionToken, errResolveEcrSessionToken},
 	}
 
-	return desiredRepo{repo: repoCR, httpPassword: password}, nil
+	for _, secret := range resolve {
+		if secret.selector == nil {
+			continue
+		}
+
+		value, err := nexus.GetSecretValue(ctx, kube, repoCR.GetNamespace(), secret.selector)
+		if err != nil {
+			return desiredRepo{}, errors.Wrap(err, secret.errMsg)
+		}
+
+		*secret.value = value
+	}
+
+	return desired, nil
 }
 
 // repositoryURL returns the URL Nexus serves the repository under.
@@ -297,21 +328,20 @@ func (e *external) repositoryURL(name string) string {
 
 // credentialsFingerprint fingerprints the credentials the Repository applies
 // that Nexus redacts on read: the HTTP client authentication, including its
-// password Secret, and the APT, Yum, alpine and Terraform signing keys. It
-// reads the Secret through kube.
+// password and bearer token Secrets, the AWS ECR authentication of a Docker
+// proxy, including its Secrets, and the APT, Yum, alpine and Terraform
+// signing keys. It reads the Secrets through kube.
 //
-// Every field is omitted when unset, so that declaring a new kind of
-// credential leaves the fingerprint of a Repository not using it unchanged.
+// Every field is omitted when unset, and the Secrets other than the password
+// are only listed when referenced, so that declaring a new kind of credential
+// leaves the fingerprint of a Repository not using it unchanged.
 func (e *external) credentialsFingerprint(ctx context.Context, kube client.Reader, repoCR *repositoryv1alpha1.Repository) (string, error) {
 	params := repoCR.Spec.ForProvider
-
-	var authentication *repositoryv1alpha1.HTTPClientAuthentication
-	if params.HTTPClient != nil {
-		authentication = params.HTTPClient.Authentication
-	}
+	authentication := httpClientAuthentication(repoCR)
+	ecr := ecrAuthentication(repoCR)
 
 	var spec any
-	if authentication != nil || params.AptSigning != nil || params.YumSigning != nil ||
+	if authentication != nil || ecr != nil || params.AptSigning != nil || params.YumSigning != nil ||
 		params.AlpineSigning != nil || params.TerraformSigning != nil {
 		spec = struct {
 			Authentication   *repositoryv1alpha1.HTTPClientAuthentication `json:"authentication,omitempty"`
@@ -319,15 +349,24 @@ func (e *external) credentialsFingerprint(ctx context.Context, kube client.Reade
 			YumSigning       *repositoryv1alpha1.YumSigningConfig         `json:"yumSigning,omitempty"`
 			AlpineSigning    *repositoryv1alpha1.AlpineSigningConfig      `json:"alpineSigning,omitempty"`
 			TerraformSigning *repositoryv1alpha1.TerraformSigningConfig   `json:"terraformSigning,omitempty"`
-		}{authentication, params.AptSigning, params.YumSigning, params.AlpineSigning, params.TerraformSigning}
+			EcrAuth          *repositoryv1alpha1.EcrAuthConfig            `json:"ecrAuth,omitempty"`
+		}{authentication, params.AptSigning, params.YumSigning, params.AlpineSigning, params.TerraformSigning, ecr}
 	}
 
-	var passwordRef *xpv2.LocalSecretKeySelector
-	if authentication != nil {
-		passwordRef = authentication.PasswordSecretRef
+	// The password keeps its leading slot, referenced or not, so that the
+	// fingerprint of a Repository applying none of the other Secrets stays
+	// the one recorded before they were supported. The spec above tells
+	// which reference each of the others is.
+	refs := secretRefsOf(repoCR)
+	selectors := []*xpv2.LocalSecretKeySelector{refs.password}
+
+	for _, selector := range []*xpv2.LocalSecretKeySelector{refs.bearerToken, refs.ecrSecretAccessKey, refs.ecrSessionToken} {
+		if selector != nil {
+			selectors = append(selectors, selector)
+		}
 	}
 
-	fingerprint, err := nexus.CredentialsFingerprint(ctx, kube, repoCR.GetNamespace(), spec, passwordRef)
+	fingerprint, err := nexus.CredentialsFingerprint(ctx, kube, repoCR.GetNamespace(), spec, selectors...)
 
 	return fingerprint, errors.Wrap(err, errFingerprint)
 }
@@ -350,16 +389,63 @@ func (e *external) credentialsUpToDate(ctx context.Context, repoCR *repositoryv1
 	return fingerprint == repoCR.Status.AtProvider.CredentialsFingerprint, nil
 }
 
-// resolveHTTPClientPassword resolves the password from a Kubernetes secret if
-// httpClient.authentication.passwordSecretRef is configured. It returns an
-// empty password when the spec references no secret.
-func resolveHTTPClientPassword(ctx context.Context, kube client.Reader, repoCR *repositoryv1alpha1.Repository) (string, error) {
+// httpClientAuthentication returns the HTTP client authentication of the
+// spec, nil when it declares none.
+func httpClientAuthentication(repoCR *repositoryv1alpha1.Repository) *repositoryv1alpha1.HTTPClientAuthentication {
 	httpClient := repoCR.Spec.ForProvider.HTTPClient
-	if httpClient == nil || httpClient.Authentication == nil || httpClient.Authentication.PasswordSecretRef == nil {
-		return "", nil
+	if httpClient == nil {
+		return nil
 	}
 
-	return nexus.GetSecretValue(ctx, kube, repoCR.GetNamespace(), httpClient.Authentication.PasswordSecretRef)
+	return httpClient.Authentication
+}
+
+// ecrAuthentication returns the AWS ECR authentication of the spec, nil when
+// it declares none or is not a Docker proxy repository, the only kind whose
+// payload carries it: its Secrets are neither resolved nor fingerprinted
+// otherwise.
+func ecrAuthentication(repoCR *repositoryv1alpha1.Repository) *repositoryv1alpha1.EcrAuthConfig {
+	params := repoCR.Spec.ForProvider
+	if params.Format != "docker" || params.Type != repoTypeProxy {
+		return nil
+	}
+
+	dockerProxy := params.DockerProxy
+	if dockerProxy == nil {
+		return nil
+	}
+
+	return dockerProxy.EcrAuth
+}
+
+// secretRefs are the Secrets a Repository reads the credentials it applies
+// from. A selector is nil when the spec references no such Secret.
+type secretRefs struct {
+	// password is the HTTP client password.
+	password *xpv2.LocalSecretKeySelector
+	// bearerToken is the HTTP client bearer token.
+	bearerToken *xpv2.LocalSecretKeySelector
+	// ecrSecretAccessKey is the AWS ECR secret access key.
+	ecrSecretAccessKey *xpv2.LocalSecretKeySelector
+	// ecrSessionToken is the AWS ECR session token.
+	ecrSessionToken *xpv2.LocalSecretKeySelector
+}
+
+// secretRefsOf returns the Secrets the spec of repoCR references.
+func secretRefsOf(repoCR *repositoryv1alpha1.Repository) secretRefs {
+	var refs secretRefs
+
+	if auth := httpClientAuthentication(repoCR); auth != nil {
+		refs.password = auth.PasswordSecretRef
+		refs.bearerToken = auth.BearerTokenSecretRef
+	}
+
+	if ecr := ecrAuthentication(repoCR); ecr != nil {
+		refs.ecrSecretAccessKey = ecr.SecretAccessKeySecretRef
+		refs.ecrSessionToken = ecr.SessionTokenSecretRef
+	}
+
+	return refs
 }
 
 // repositoryName returns the name that identifies the repository in Nexus.

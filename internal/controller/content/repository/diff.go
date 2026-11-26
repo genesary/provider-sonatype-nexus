@@ -12,15 +12,37 @@ import (
 // excluded from drift detection because Nexus never echoes back what the
 // provider sent, which would otherwise report drift on every single reconcile:
 //
-// the signing keys and the HTTP client credentials are redacted or dropped by
-// the API, as any credential should be. Terraform does echo its signing key
-// back, but it is excluded too, so that no format compares credentials.
+// the signing keys and the HTTP client and AWS ECR credentials are redacted,
+// masked or dropped by the API, as any credential should be. Terraform does
+// echo its signing key back, but it is excluded too, so that no format
+// compares credentials.
 var unmanagedPaths = map[string]struct{}{
-	"aptSigning":                {},
-	"yumSigning":                {},
-	"alpineSigning":             {},
-	"terraformSigning":          {},
-	"httpClient.authentication": {},
+	"aptSigning":                          {},
+	"yumSigning":                          {},
+	"alpineSigning":                       {},
+	"terraformSigning":                    {},
+	"httpClient.authentication":           {},
+	"dockerProxy.ecrAuth.accessKeyId":     {},
+	"dockerProxy.ecrAuth.secretAccessKey": {},
+	"dockerProxy.ecrAuth.sessionToken":    {},
+}
+
+// unreportedPaths lists dotted JSON paths of blocks that Nexus stores but may
+// leave out of its responses. They are only compared when Nexus reports them:
+// Nexus 3.96 Community never reports the replication block, which it only
+// accepts disabled, the Xet block of a Hugging Face proxy, nor the component
+// block of an Ansible Galaxy hosted repository.
+var unreportedPaths = map[string]struct{}{
+	"component":   {},
+	"replication": {},
+	"xet":         {},
+}
+
+// meaningfulEmptyPaths lists dotted JSON paths whose empty string carries
+// intent, and is compared like any other value: an empty PyPI index path
+// serves the remote index from its root, while Nexus defaults to /simple.
+var meaningfulEmptyPaths = map[string]struct{}{
+	"pypi.indexPath": {},
 }
 
 // isUpToDate reports whether the repository Nexus returned already holds every
@@ -29,7 +51,8 @@ var unmanagedPaths = map[string]struct{}{
 // without knowing the concrete format type.
 //
 // The comparison is deliberately one-way. Nexus decorates its responses with
-// fields the provider never submits - format, type, url, component, firewall,
+// fields the provider does not submit - format, type, url, the component
+// block of proxy and group repositories, the firewall mode a spec leaves out,
 // server side defaults - and a symmetric comparison would report those as
 // permanent drift. Only the fields the desired payload actually carries are
 // asserted, which makes drift detection complete for every managed field and
@@ -78,6 +101,11 @@ func fieldsMatch(desired, observed map[string]any, path string) bool {
 			continue
 		}
 
+		_, unreported := unreportedPaths[fieldPath]
+		if unreported && observed[field] == nil {
+			continue
+		}
+
 		if !valueMatches(want, observed[field], fieldPath) {
 			return false
 		}
@@ -98,13 +126,16 @@ func joinPath(path, field string) string {
 // valueMatches reports whether an observed value satisfies the desired one.
 // Desired values that carry no intent - null and the empty string - always
 // match, because the provider only omits a value when the spec left it unset.
+// The empty strings of meaningfulEmptyPaths are the exception.
 // Empty arrays and false and zero do carry intent and are compared.
 func valueMatches(want, got any, path string) bool {
 	switch wanted := want.(type) {
 	case nil:
 		return true
 	case string:
-		return wanted == "" || got == want
+		_, meaningful := meaningfulEmptyPaths[path]
+
+		return (wanted == "" && !meaningful) || got == want
 	case map[string]any:
 		// A block Nexus does not report is compared against nothing rather
 		// than rejected outright: a spec may declare a block whose fields are

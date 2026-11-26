@@ -19,8 +19,8 @@ func TestIsUpToDateIgnoresServerSideFields(t *testing.T) {
 	}
 
 	observed := desired
-	// Nexus decorates the response with a component block the provider never
-	// sends.
+	// Nexus decorates the response with a component block this desired
+	// payload does not carry.
 	observed.Component = &v395.ComponentAttributes{ProprietaryComponents: new(false)}
 
 	upToDate, _, err := isUpToDate(desired, observed)

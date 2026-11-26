@@ -86,12 +86,21 @@ spec:
                       distribution:
                         description: Distribution for APT repository.
                         type: string
+                      enforceDistribution:
+                        description: |-
+                          EnforceDistribution restricts the requests of a proxy repository to
+                          the distribution, which is then required. It is turned off when left
+                          unset.
+                        type: boolean
                       flat:
                         description: Flat determines if the repository uses flat format.
                         type: boolean
                     type: object
                   aptSigning:
-                    description: AptSigning configuration for APT hosted repositories.
+                    description: |-
+                      AptSigning configuration for APT repositories. It is required for
+                      hosted repositories and verifies the upstream index of proxy
+                      repositories.
                     properties:
                       keypair:
                         description: Keypair is the PGP signing key pair (armored
@@ -214,6 +223,34 @@ spec:
                           type: string
                         type: array
                     type: object
+                  component:
+                    description: Component configuration for hosted repositories.
+                    properties:
+                      proprietaryComponents:
+                        description: |-
+                          ProprietaryComponents marks the components of the repository as
+                          proprietary, which protects them from namespace confusion attacks. It
+                          requires Sonatype Repository Firewall to take effect. It is turned
+                          off when left unset.
+                        type: boolean
+                    type: object
+                  conanProxy:
+                    description: ConanProxy specific configuration for Conan proxy
+                      repositories.
+                    properties:
+                      conanVersion:
+                        description: |-
+                          ConanVersion is the Conan protocol version of the remote. Nexus
+                          defaults it to V2 and cannot change it once the repository exists.
+                        enum:
+                        - V1
+                        - V2
+                        type: string
+                        x-kubernetes-validations:
+                        - message: 'conanVersion is immutable: Nexus cannot change
+                            it.'
+                          rule: self == oldSelf
+                    type: object
                   cosign:
                     description: |-
                       Cosign signature enforcement for OCI repositories. Enforcement is NONE
@@ -284,6 +321,61 @@ spec:
                         description: CacheForeignLayers allows downloading and caching
                           foreign layers.
                         type: boolean
+                      ecrAuth:
+                        description: |-
+                          EcrAuth authenticates a Docker proxy repository to AWS Elastic
+                          Container Registry. Nexus does not offer it on OCI proxy repositories.
+                        properties:
+                          accessKeyId:
+                            description: |-
+                              AccessKeyID is the AWS access key ID used to authenticate to ECR.
+                              Nexus masks it on read.
+                            type: string
+                          awsRegion:
+                            description: AwsRegion is the AWS region of the ECR registry,
+                              such as us-east-1.
+                            type: string
+                          enabled:
+                            description: Enabled turns AWS ECR authentication on.
+                            type: boolean
+                          registryId:
+                            description: RegistryID is the 12-digit AWS account ID
+                              hosting the ECR registry.
+                            pattern: ^[0-9]{12}$
+                            type: string
+                          secretAccessKeySecretRef:
+                            description: |-
+                              SecretAccessKeySecretRef is a reference to a secret containing the AWS
+                              secret access key. The secret must be in the same namespace as the
+                              Repository.
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                description: Name of the secret.
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                          sessionTokenSecretRef:
+                            description: |-
+                              SessionTokenSecretRef is a reference to a secret containing the AWS
+                              session token of short-lived STS credentials. The secret must be in
+                              the same namespace as the Repository.
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                description: Name of the secret.
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        required:
+                        - enabled
+                        type: object
                       foreignLayerUrlWhitelist:
                         description: ForeignLayerUrlWhitelist is a list of regex patterns
                           for allowed foreign layer URLs.
@@ -303,6 +395,26 @@ spec:
                         description: IndexURL is the URL of the index to use (for
                           CUSTOM type).
                         type: string
+                    type: object
+                  firewall:
+                    description: |-
+                      Firewall configuration for proxy repositories. It requires Sonatype
+                      Repository Firewall: without an IQ Server connection, Nexus only
+                      accepts the DISABLED mode. Nexus keeps the mode an update leaves out,
+                      so removing this block does not reset it: set DISABLED instead.
+                    properties:
+                      mode:
+                        description: |-
+                          Mode is the firewall mode. Every mode but DISABLED requires an IQ
+                          Server connection.
+                        enum:
+                        - DISABLED
+                        - AUDIT
+                        - QUARANTINE
+                        - PCCS
+                        type: string
+                    required:
+                    - mode
                     type: object
                   format:
                     description: Format of the repository (maven2, npm, docker, raw,
@@ -440,6 +552,21 @@ spec:
                       authentication:
                         description: Authentication configuration.
                         properties:
+                          bearerTokenSecretRef:
+                            description: |-
+                              BearerTokenSecretRef is a reference to a secret containing the bearer
+                              token of the bearerToken authentication type. The secret must be in
+                              the same namespace as the Repository.
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                description: Name of the secret.
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
                           ntlmDomain:
                             description: NTLMDomain is the NTLM domain.
                             type: string
@@ -460,11 +587,21 @@ spec:
                             - key
                             - name
                             type: object
+                          preemptive:
+                            description: |-
+                              Preemptive sends the credentials with every request instead of
+                              waiting for the remote to ask for them. Use with caution. Nexus only
+                              supports it on maven2, pypi and terraform proxy repositories. It is
+                              turned off when left unset.
+                            type: boolean
                           type:
-                            description: Type of authentication.
+                            description: |-
+                              Type of authentication. username and ntlm authenticate with username
+                              and passwordSecretRef, bearerToken with bearerTokenSecretRef.
                             enum:
                             - username
                             - ntlm
+                            - bearerToken
                             type: string
                           username:
                             description: Username for authentication.
@@ -565,6 +702,11 @@ spec:
                     description: NugetProxy specific configuration for NuGet proxy
                       repositories.
                     properties:
+                      allowAnonymousSymbolAccess:
+                        description: |-
+                          AllowAnonymousSymbolAccess allows unauthenticated access to the symbol
+                          server, which debuggers require. It defaults to true, as in Nexus.
+                        type: boolean
                       nugetVersion:
                         default: V3
                         description: NugetVersion is the NuGet protocol version (V2
@@ -579,6 +721,11 @@ spec:
                           results in seconds.
                         format: int32
                         type: integer
+                      symbolServerUrl:
+                        description: SymbolServerURL is the upstream symbol server
+                          to proxy.
+                        maxLength: 2048
+                        type: string
                     type: object
                   oci:
                     description: |-
@@ -620,6 +767,61 @@ spec:
                         description: CacheForeignLayers allows downloading and caching
                           foreign layers.
                         type: boolean
+                      ecrAuth:
+                        description: |-
+                          EcrAuth authenticates a Docker proxy repository to AWS Elastic
+                          Container Registry. Nexus does not offer it on OCI proxy repositories.
+                        properties:
+                          accessKeyId:
+                            description: |-
+                              AccessKeyID is the AWS access key ID used to authenticate to ECR.
+                              Nexus masks it on read.
+                            type: string
+                          awsRegion:
+                            description: AwsRegion is the AWS region of the ECR registry,
+                              such as us-east-1.
+                            type: string
+                          enabled:
+                            description: Enabled turns AWS ECR authentication on.
+                            type: boolean
+                          registryId:
+                            description: RegistryID is the 12-digit AWS account ID
+                              hosting the ECR registry.
+                            pattern: ^[0-9]{12}$
+                            type: string
+                          secretAccessKeySecretRef:
+                            description: |-
+                              SecretAccessKeySecretRef is a reference to a secret containing the AWS
+                              secret access key. The secret must be in the same namespace as the
+                              Repository.
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                description: Name of the secret.
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                          sessionTokenSecretRef:
+                            description: |-
+                              SessionTokenSecretRef is a reference to a secret containing the AWS
+                              session token of short-lived STS credentials. The secret must be in
+                              the same namespace as the Repository.
+                            properties:
+                              key:
+                                type: string
+                              name:
+                                description: Name of the secret.
+                                type: string
+                            required:
+                            - key
+                            - name
+                            type: object
+                        required:
+                        - enabled
+                        type: object
                       foreignLayerUrlWhitelist:
                         description: ForeignLayerUrlWhitelist is a list of regex patterns
                           for allowed foreign layer URLs.
@@ -659,11 +861,62 @@ spec:
                           in minutes.
                         format: int32
                         type: integer
+                      preserveEncodedCharacters:
+                        description: |-
+                          PreserveEncodedCharacters keeps encoded characters such as %2B, %23
+                          and %20 encoded when proxying to the remote, which AWS S3, Cloudflare
+                          and Azure Blob Storage remotes require. Only enable it for trusted
+                          remotes. It is turned off when left unset.
+                        type: boolean
                       remoteUrl:
                         description: RemoteURL is the URL of the remote repository.
                         type: string
                     required:
                     - remoteUrl
+                    type: object
+                  pypi:
+                    description: Pypi specific configuration for PyPI proxy repositories.
+                    properties:
+                      indexPath:
+                        description: |-
+                          IndexPath is the path of the remote index: /simple for standard
+                          remotes such as PyPI.org, or the empty string for remotes serving it
+                          at their root. It defaults to /simple, as in Nexus.
+                        enum:
+                        - /simple
+                        - ""
+                        type: string
+                    type: object
+                  raw:
+                    description: Raw specific configuration for raw repositories.
+                    properties:
+                      contentDisposition:
+                        description: |-
+                          ContentDisposition is the Content-Disposition header Nexus serves
+                          content with. Nexus defaults it to ATTACHMENT, and keeps it when an
+                          update leaves it out.
+                        enum:
+                        - INLINE
+                        - ATTACHMENT
+                        type: string
+                    type: object
+                  replication:
+                    description: |-
+                      Replication configures the pre-emptive pull of a proxy repository. It
+                      requires Nexus Repository Pro: Community rejects enabling it.
+                    properties:
+                      assetPathRegex:
+                        description: |-
+                          AssetPathRegex restricts the pre-emptive pull to the asset paths it
+                          matches.
+                        type: string
+                      preemptivePullEnabled:
+                        description: |-
+                          PreemptivePullEnabled pulls new content from the remote before
+                          clients ask for it.
+                        type: boolean
+                    required:
+                    - preemptivePullEnabled
                     type: object
                   routingRule:
                     description: RoutingRule is the name of the routing rule for proxy
@@ -833,6 +1086,13 @@ spec:
                                 type: string
                             type: object
                         type: object
+                      latestPolicy:
+                        description: |-
+                          LatestPolicy allows redeploying the 'latest' tag of a Docker or OCI
+                          hosted repository, deferring to the write policy for every other tag.
+                          It requires the ALLOW_ONCE writePolicy, and is turned off when left
+                          unset.
+                        type: boolean
                       strictContentTypeValidation:
                         default: true
                         description: StrictContentTypeValidation enables strict content
@@ -851,6 +1111,10 @@ spec:
                         is required.
                       rule: has(self.blobStoreName) || has(self.blobStoreNameRef)
                         || has(self.blobStoreNameSelector)
+                    - message: 'latestPolicy requires the ALLOW_ONCE writePolicy:
+                        Nexus drops it otherwise.'
+                      rule: '!has(self.latestPolicy) || !self.latestPolicy || (has(self.writePolicy)
+                        && self.writePolicy == ''ALLOW_ONCE'')'
                   swift:
                     description: Swift specific configuration for Swift proxy repositories.
                     properties:
@@ -897,6 +1161,24 @@ spec:
                     x-kubernetes-validations:
                     - message: Type is immutable.
                       rule: self == oldSelf
+                  xet:
+                    description: |-
+                      Xet configures the Xet storage protocol of a Hugging Face proxy
+                      repository.
+                    properties:
+                      xetCasUrl:
+                        description: |-
+                          XetCasURL is the Xet content addressed storage service of the remote.
+                          Nexus uses the remote's default when it is left unset.
+                        type: string
+                      xetTransferHostAllowList:
+                        description: |-
+                          XetTransferHostAllowList lists the hosts Nexus may download Xet
+                          content from. Nexus uses the remote's defaults when it is left unset.
+                        items:
+                          type: string
+                        type: array
+                    type: object
                   yum:
                     description: Yum specific configuration.
                     properties:
@@ -933,6 +1215,16 @@ spec:
                 - message: 'terraform is only supported on terraform group repositories:
                     Nexus ignores requireAuthentication on the other types.'
                   rule: self.format != 'terraform' || self.type == 'group' || !has(self.terraform)
+                - message: 'httpClient.authentication.preemptive is only supported
+                    on maven2, pypi and terraform proxy repositories: Nexus ignores
+                    it on the other formats.'
+                  rule: '!has(self.httpClient) || !has(self.httpClient.authentication)
+                    || !has(self.httpClient.authentication.preemptive) || !self.httpClient.authentication.preemptive
+                    || (self.type == ''proxy'' && self.format in [''maven2'', ''pypi'',
+                    ''terraform''])'
+                - message: 'ociProxy.ecrAuth is not supported: Nexus only offers AWS
+                    ECR authentication on docker proxy repositories.'
+                  rule: '!has(self.ociProxy) || !has(self.ociProxy.ecrAuth)'
               managementPolicies:
                 default:
                 - '*'

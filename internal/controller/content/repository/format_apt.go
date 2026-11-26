@@ -31,10 +31,12 @@ func buildAptHosted(desired desiredRepo) v395.AptHostedRepositoryApiRequest {
 	return repo
 }
 
-// buildAptProxy renders an APT proxy repository payload.
+// buildAptProxy renders an APT proxy repository payload. Nexus removes the
+// signing key an update leaves out, so it is only sent when declared.
 func buildAptProxy(desired desiredRepo) v395.AptProxyRepositoryApiRequest {
 	repo := buildProxy[v395.AptProxyRepositoryApiRequest](desired)
 	repo.Apt = desired.aptProxy()
+	repo.AptSigning = desired.aptProxySigning()
 
 	return repo
 }
