@@ -83,6 +83,6 @@ The [`examples`](../examples) directory has an example of every kind but `Licens
 | Directory | Examples |
 | ----------- | ---------- |
 | [`examples/content`](../examples/content) | Repositories (Maven hosted, proxy and group, Docker, Docker proxy with AWS ECR authentication, npm, Hugging Face, P2), `CleanupPolicy`, `ContentSelector`, `RoutingRule` |
-| [`examples/iam`](../examples/iam) | `User`, `Role`, `Privilege` (application, repository-view, wildcard), `AnonymousAccess`, `LDAP`, `SAML`, `UserTokenConfiguration`, a role built with references |
+| [`examples/iam`](../examples/iam) | `User`, `Role`, `Privilege` (application, repository-view, wildcard), `AnonymousAccess`, `LDAP`, `SAML` (inline, or metadata read from a Secret or a URL), `UserTokenConfiguration`, a role built with references |
 | [`examples/instance`](../examples/instance) | `BlobStore` (File, S3 and Azure), `Capability`, `EmailConfiguration`, `HTTPClient`, `IQServerConfiguration`, `Script`, `SecurityRealm`, `SecuritySSLTruststore`, `SSRFProtection`, `Task` |
 | [`examples/providerconfig.yaml`](../examples/providerconfig.yaml) | `ProviderConfig`, `ClusterProviderConfig` and their Secrets |
