@@ -10,7 +10,7 @@ import (
 
 // RepositoryParameters defines the desired state of a Repository.
 // +kubebuilder:validation:XValidation:rule="self.format != 'terraform' || self.type == 'group' || !has(self.terraform)",message="terraform is only supported on terraform group repositories: Nexus ignores requireAuthentication on the other types."
-// +kubebuilder:validation:XValidation:rule="!has(self.httpClient) || !has(self.httpClient.authentication) || !has(self.httpClient.authentication.preemptive) || (self.type == 'proxy' && self.format in ['maven2', 'pypi', 'terraform'])",message="httpClient.authentication.preemptive is only supported on maven2, pypi and terraform proxy repositories: Nexus ignores it on the other formats."
+// +kubebuilder:validation:XValidation:rule="!has(self.httpClient) || !has(self.httpClient.authentication) || !has(self.httpClient.authentication.preemptive) || !self.httpClient.authentication.preemptive || (self.type == 'proxy' && self.format in ['maven2', 'pypi', 'terraform'])",message="httpClient.authentication.preemptive is only supported on maven2, pypi and terraform proxy repositories: Nexus ignores it on the other formats."
 // +kubebuilder:validation:XValidation:rule="!has(self.ociProxy) || !has(self.ociProxy.ecrAuth)",message="ociProxy.ecrAuth is not supported: Nexus only offers AWS ECR authentication on docker proxy repositories."
 type RepositoryParameters struct {
 	// Name of the repository.

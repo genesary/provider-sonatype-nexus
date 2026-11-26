@@ -51,7 +51,8 @@ var meaningfulEmptyPaths = map[string]struct{}{
 // without knowing the concrete format type.
 //
 // The comparison is deliberately one-way. Nexus decorates its responses with
-// fields the provider never submits - format, type, url, component, firewall,
+// fields the provider does not submit - format, type, url, the component
+// block of proxy and group repositories, the firewall mode a spec leaves out,
 // server side defaults - and a symmetric comparison would report those as
 // permanent drift. Only the fields the desired payload actually carries are
 // asserted, which makes drift detection complete for every managed field and

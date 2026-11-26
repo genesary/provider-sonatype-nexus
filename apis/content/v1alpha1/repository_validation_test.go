@@ -84,6 +84,11 @@ func TestRepositorySettingsValidation(t *testing.T) {
 			forProvider: map[string]any{"name": "p", "format": "pypi", "type": "group", "httpClient": preemptive},
 			wantErr:     "preemptive is only supported on maven2, pypi and terraform proxy repositories",
 		},
+		"PreemptiveOffOnNpmProxy": {
+			forProvider: map[string]any{"name": "n", "format": "npm", "type": "proxy", "httpClient": map[string]any{
+				"authentication": map[string]any{"type": "username", "preemptive": false},
+			}},
+		},
 		"AuthenticationWithoutPreemptive": {
 			forProvider: map[string]any{"name": "n", "format": "npm", "type": "proxy", "httpClient": map[string]any{
 				"authentication": map[string]any{"type": "bearerToken", "bearerTokenSecretRef": map[string]any{"name": "s", "key": "k"}},

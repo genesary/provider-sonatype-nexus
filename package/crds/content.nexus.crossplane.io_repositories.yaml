@@ -1219,8 +1219,9 @@ spec:
                     on maven2, pypi and terraform proxy repositories: Nexus ignores
                     it on the other formats.'
                   rule: '!has(self.httpClient) || !has(self.httpClient.authentication)
-                    || !has(self.httpClient.authentication.preemptive) || (self.type
-                    == ''proxy'' && self.format in [''maven2'', ''pypi'', ''terraform''])'
+                    || !has(self.httpClient.authentication.preemptive) || !self.httpClient.authentication.preemptive
+                    || (self.type == ''proxy'' && self.format in [''maven2'', ''pypi'',
+                    ''terraform''])'
                 - message: 'ociProxy.ecrAuth is not supported: Nexus only offers AWS
                     ECR authentication on docker proxy repositories.'
                   rule: '!has(self.ociProxy) || !has(self.ociProxy.ecrAuth)'

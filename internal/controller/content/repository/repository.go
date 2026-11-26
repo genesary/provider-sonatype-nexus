@@ -401,9 +401,16 @@ func httpClientAuthentication(repoCR *repositoryv1alpha1.Repository) *repository
 }
 
 // ecrAuthentication returns the AWS ECR authentication of the spec, nil when
-// it declares none. Only Docker proxy repositories support it.
+// it declares none or is not a Docker proxy repository, the only kind whose
+// payload carries it: its Secrets are neither resolved nor fingerprinted
+// otherwise.
 func ecrAuthentication(repoCR *repositoryv1alpha1.Repository) *repositoryv1alpha1.EcrAuthConfig {
-	dockerProxy := repoCR.Spec.ForProvider.DockerProxy
+	params := repoCR.Spec.ForProvider
+	if params.Format != "docker" || params.Type != repoTypeProxy {
+		return nil
+	}
+
+	dockerProxy := params.DockerProxy
 	if dockerProxy == nil {
 		return nil
 	}
