@@ -116,12 +116,15 @@ spec:
                             - name
                             type: object
                         type: object
+                        x-kubernetes-validations:
+                        - message: usernameSecretRef requires passwordSecretRef.
+                          rule: '!has(self.usernameSecretRef) || has(self.passwordSecretRef)'
                       endpointUrl:
                         description: |-
                           EndpointURL is the URL the document is fetched from, on every
                           reconcile. When that fails, the document last fetched from it is used
                           instead, provided writeConnectionSecretToRef is set.
-                        pattern: ^https?://
+                        pattern: ^[hH][tT][tT][pP][sS]?://
                         type: string
                       secretRef:
                         description: |-

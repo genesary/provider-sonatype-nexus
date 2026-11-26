@@ -71,19 +71,22 @@ func TestParseCertificate(t *testing.T) {
 	const otherCert = "-----BEGIN CERTIFICATE-----\nb3RoZXI=\n-----END CERTIFICATE-----\n"
 
 	tests := map[string]struct {
-		data    string
-		wantErr bool
+		data                   string
+		wantErr                bool
+		wantInvalidCertificate bool
 	}{
-		"Certificate":        {data: sameCertPem},
-		"Bundle":             {data: sameCertPem + "\n" + otherCert},
-		"CRLF":               {data: strings.ReplaceAll(sameCertPem, "\n", "\r\n")},
-		"Preamble":           {data: "# Some CA\nsubject=CN = test\n" + sameCertPem},
-		"PrivateKeyFirst":    {data: key + sameCertPem},
-		"PrivateKeyLast":     {data: sameCertPem + "\n" + key},
-		"Empty":              {wantErr: true},
-		"PrivateKeyOnly":     {data: key, wantErr: true},
-		"LoginPage":          {data: "<html>log in</html>", wantErr: true},
-		"TruncatedOnTheWire": {data: sameCertPem[:len(sameCertPem)/2], wantErr: true},
+		"Certificate":          {data: sameCertPem},
+		"Bundle":               {data: sameCertPem + "\n" + otherCert},
+		"CRLF":                 {data: strings.ReplaceAll(sameCertPem, "\n", "\r\n")},
+		"Preamble":             {data: "# Some CA\nsubject=CN = test\n" + sameCertPem},
+		"TrustedCertificate":   {data: strings.ReplaceAll(sameCertPem, "CERTIFICATE", "TRUSTED CERTIFICATE")},
+		"PrivateKeyFirst":      {data: key + sameCertPem},
+		"PrivateKeyLast":       {data: sameCertPem + "\n" + key},
+		"Empty":                {wantErr: true},
+		"PrivateKeyOnly":       {data: key, wantErr: true},
+		"LoginPage":            {data: "<html>log in</html>", wantErr: true},
+		"TruncatedOnTheWire":   {data: sameCertPem[:len(sameCertPem)/2], wantErr: true},
+		"MalformedCertificate": {data: otherCert, wantInvalidCertificate: true},
 	}
 
 	for name, tc := range tests {
@@ -91,6 +94,14 @@ func TestParseCertificate(t *testing.T) {
 			t.Parallel()
 
 			got, err := ParseCertificate([]byte(tc.data))
+			if tc.wantInvalidCertificate {
+				if err == nil || errors.Is(err, ErrNoCertificate) {
+					t.Fatalf("ParseCertificate() error = %v, want certificate parsing error", err)
+				}
+
+				return
+			}
+
 			if tc.wantErr {
 				if !errors.Is(err, ErrNoCertificate) {
 					t.Fatalf("ParseCertificate() error = %v, want %v", err, ErrNoCertificate)

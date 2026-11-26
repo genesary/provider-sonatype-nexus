@@ -4,11 +4,13 @@ package securityssltruststore
 import (
 	"context"
 	stderrors "errors"
+	"slices"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/meta"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/ratelimiter"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/reconciler/managed"
 	"github.com/crossplane/crossplane-runtime/v2/pkg/resource"
+	xpv2 "github.com/crossplane/crossplane/apis/v2/core/v2"
 	"github.com/pkg/errors"
 	v395 "github.com/sonatype-nexus-community/nexus-repo-api-client-go/v395"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -114,8 +116,9 @@ type external struct {
 }
 
 // Observe checks whether the external resource exists and is up-to-date. A
-// certificate being deleted is always up to date, so that its source being
-// gone cannot block its deletion.
+// certificate being deleted, or one the management policies do not let the
+// reconciler update, is always up to date, so that its source being gone
+// cannot block its deletion or its observation.
 func (e *external) Observe(ctx context.Context, truststoreCR *instancev1alpha1.SecuritySSLTruststore) (managed.ExternalObservation, error) {
 	certID := meta.GetExternalName(truststoreCR)
 	if certID == "" {
@@ -135,7 +138,7 @@ func (e *external) Observe(ctx context.Context, truststoreCR *instancev1alpha1.S
 
 	truststoreCR.SetConditions(nexusv1alpha1.Available())
 
-	if meta.WasDeleted(truststoreCR) {
+	if meta.WasDeleted(truststoreCR) || !mayUpdate(truststoreCR) {
 		return managed.ExternalObservation{ResourceExists: true, ResourceUpToDate: true}, nil
 	}
 
@@ -157,6 +160,18 @@ func (e *external) Observe(ctx context.Context, truststoreCR *instancev1alpha1.S
 	}
 
 	return observation, nil
+}
+
+// mayUpdate reports whether the management policies of truststoreCR let the
+// reconciler update the certificate. The reconciler rejects non-default
+// policies before Observe while the management policies feature is disabled,
+// so the policies need no feature check here.
+func mayUpdate(truststoreCR *instancev1alpha1.SecuritySSLTruststore) bool {
+	policies := truststoreCR.GetManagementPolicies()
+
+	return len(policies) == 0 ||
+		slices.Contains(policies, xpv2.ManagementActionUpdate) ||
+		slices.Contains(policies, xpv2.ManagementActionAll)
 }
 
 // Create adds the desired certificate to the Nexus truststore. When the

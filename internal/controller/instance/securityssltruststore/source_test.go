@@ -158,6 +158,25 @@ func TestObserve_DeletedWithoutSource(t *testing.T) {
 	}
 }
 
+// TestObserve_NoUpdateWithoutSource checks that a missing source does not
+// fail the observation of a certificate the reconciler may not update.
+func TestObserve_NoUpdateWithoutSource(t *testing.T) {
+	t.Parallel()
+
+	cr := newTruststoreFrom(fromSecret("nope"))
+	cr.Spec.ManagementPolicies = xpv2.ManagementPolicies{xpv2.ManagementActionObserve}
+	ext, _ := newExternal(t, cr)
+
+	obs, err := ext.Observe(context.Background(), cr)
+	if err != nil {
+		t.Fatalf("Observe() error = %v", err)
+	}
+
+	if !obs.ResourceExists || !obs.ResourceUpToDate {
+		t.Errorf("Observe() = %+v, want existing and up to date", obs)
+	}
+}
+
 // TestCreate_PemFrom checks that Create only sends the first certificate of
 // the source, and caches it.
 func TestCreate_PemFrom(t *testing.T) {

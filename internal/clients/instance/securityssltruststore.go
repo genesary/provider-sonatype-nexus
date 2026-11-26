@@ -3,6 +3,7 @@ package instance
 import (
 	"bytes"
 	"context"
+	"crypto/x509"
 	"encoding/pem"
 	"net/http"
 	"strings"
@@ -22,8 +23,12 @@ var ErrCertificateExists = errors.New("certificate already exists in truststore"
 // encoded certificate.
 var ErrNoCertificate = errors.New("no PEM encoded certificate found")
 
-// certificatePEMType is the type of the PEM blocks holding a certificate.
-const certificatePEMType = "CERTIFICATE"
+// certificatePEMType and trustedCertificatePEMType are the types of PEM blocks
+// holding X.509 certificates. The latter is produced by openssl x509 -trustout.
+const (
+	certificatePEMType        = "CERTIFICATE"
+	trustedCertificatePEMType = "TRUSTED CERTIFICATE"
+)
 
 // SSLTruststoreClient manages Nexus SSL truststore certificates.
 type SSLTruststoreClient interface {
@@ -80,9 +85,9 @@ func NewSSLTruststoreClient(creds nexus.Credentials) (SSLTruststoreClient, error
 	return &sslTruststoreClient{api: nc.SecurityCertificatesAPI}, nil
 }
 
-// ParseCertificate returns the first certificate of data, PEM encoded, without
-// anything else data holds: of several certificates Nexus only adds the first,
-// and it rejects a certificate that follows a private key.
+// ParseCertificate returns the first valid X.509 certificate of data, PEM
+// encoded, without anything else data holds: of several certificates Nexus only
+// adds the first, and it rejects a certificate that follows a private key.
 func ParseCertificate(data []byte) ([]byte, error) {
 	for {
 		block, rest := pem.Decode(data)
@@ -90,7 +95,12 @@ func ParseCertificate(data []byte) ([]byte, error) {
 			return nil, ErrNoCertificate
 		}
 
-		if block.Type == certificatePEMType {
+		if block.Type == certificatePEMType || block.Type == trustedCertificatePEMType {
+			_, err := x509.ParseCertificate(block.Bytes)
+			if err != nil {
+				return nil, errors.Wrap(err, "parse PEM certificate")
+			}
+
 			return pem.EncodeToMemory(&pem.Block{Type: certificatePEMType, Bytes: block.Bytes}), nil
 		}
 
