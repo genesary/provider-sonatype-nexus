@@ -1,0 +1,40 @@
+---
+# Docker proxy repository example (proxying a private AWS ECR registry)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ecr-credentials
+  namespace: default
+type: Opaque
+stringData:
+  secretAccessKey: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+---
+apiVersion: content.nexus.crossplane.io/v1alpha1
+kind: Repository
+metadata:
+  name: ecr-proxy
+  namespace: default
+spec:
+  forProvider:
+    name: ecr-proxy
+    format: docker
+    type: proxy
+    proxy:
+      remoteUrl: https://123456789012.dkr.ecr.us-east-1.amazonaws.com
+    docker:
+      forceBasicAuth: true
+    dockerProxy:
+      indexType: REGISTRY
+      ecrAuth:
+        enabled: true
+        awsRegion: us-east-1
+        registryId: "123456789012"
+        accessKeyId: AKIAIOSFODNN7EXAMPLE
+        secretAccessKeySecretRef:
+          name: ecr-credentials
+          key: secretAccessKey
+    storage:
+      blobStoreName: default
+  providerConfigRef:
+    kind: ProviderConfig
+    name: default

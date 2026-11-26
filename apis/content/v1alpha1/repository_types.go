@@ -10,6 +10,8 @@ import (
 
 // RepositoryParameters defines the desired state of a Repository.
 // +kubebuilder:validation:XValidation:rule="self.format != 'terraform' || self.type == 'group' || !has(self.terraform)",message="terraform is only supported on terraform group repositories: Nexus ignores requireAuthentication on the other types."
+// +kubebuilder:validation:XValidation:rule="!has(self.httpClient) || !has(self.httpClient.authentication) || !has(self.httpClient.authentication.preemptive) || (self.type == 'proxy' && self.format in ['maven2', 'pypi', 'terraform'])",message="httpClient.authentication.preemptive is only supported on maven2, pypi and terraform proxy repositories: Nexus ignores it on the other formats."
+// +kubebuilder:validation:XValidation:rule="!has(self.ociProxy) || !has(self.ociProxy.ecrAuth)",message="ociProxy.ecrAuth is not supported: Nexus only offers AWS ECR authentication on docker proxy repositories."
 type RepositoryParameters struct {
 	// Name of the repository.
 	// +kubebuilder:validation:Required
@@ -40,6 +42,22 @@ type RepositoryParameters struct {
 	// Cleanup configuration.
 	// +kubebuilder:validation:Optional
 	Cleanup *RepositoryCleanup `json:"cleanup,omitempty"`
+
+	// Component configuration for hosted repositories.
+	// +kubebuilder:validation:Optional
+	Component *ComponentConfig `json:"component,omitempty"`
+
+	// Firewall configuration for proxy repositories. It requires Sonatype
+	// Repository Firewall: without an IQ Server connection, Nexus only
+	// accepts the DISABLED mode. Nexus keeps the mode an update leaves out,
+	// so removing this block does not reset it: set DISABLED instead.
+	// +kubebuilder:validation:Optional
+	Firewall *FirewallConfig `json:"firewall,omitempty"`
+
+	// Replication configures the pre-emptive pull of a proxy repository. It
+	// requires Nexus Repository Pro: Community rejects enabling it.
+	// +kubebuilder:validation:Optional
+	Replication *ReplicationConfig `json:"replication,omitempty"`
 
 	// Maven specific configuration.
 	// +kubebuilder:validation:Optional
@@ -82,7 +100,9 @@ type RepositoryParameters struct {
 	// +kubebuilder:validation:Optional
 	Apt *AptConfig `json:"apt,omitempty"`
 
-	// AptSigning configuration for APT hosted repositories.
+	// AptSigning configuration for APT repositories. It is required for
+	// hosted repositories and verifies the upstream index of proxy
+	// repositories.
 	// +kubebuilder:validation:Optional
 	AptSigning *AptSigningConfig `json:"aptSigning,omitempty"`
 
@@ -97,6 +117,23 @@ type RepositoryParameters struct {
 	// NugetProxy specific configuration for NuGet proxy repositories.
 	// +kubebuilder:validation:Optional
 	NugetProxy *NugetProxyConfig `json:"nugetProxy,omitempty"`
+
+	// Raw specific configuration for raw repositories.
+	// +kubebuilder:validation:Optional
+	Raw *RawConfig `json:"raw,omitempty"`
+
+	// ConanProxy specific configuration for Conan proxy repositories.
+	// +kubebuilder:validation:Optional
+	ConanProxy *ConanProxyConfig `json:"conanProxy,omitempty"`
+
+	// Pypi specific configuration for PyPI proxy repositories.
+	// +kubebuilder:validation:Optional
+	Pypi *PypiProxyConfig `json:"pypi,omitempty"`
+
+	// Xet configures the Xet storage protocol of a Hugging Face proxy
+	// repository.
+	// +kubebuilder:validation:Optional
+	Xet *XetConfig `json:"xet,omitempty"`
 
 	// Bower specific configuration.
 	//
@@ -163,6 +200,7 @@ type RepositoryParameters struct {
 
 // RepositoryStorage defines storage configuration for a repository.
 // +kubebuilder:validation:XValidation:rule="has(self.blobStoreName) || has(self.blobStoreNameRef) || has(self.blobStoreNameSelector)",message="one of blobStoreName, blobStoreNameRef or blobStoreNameSelector is required."
+// +kubebuilder:validation:XValidation:rule="!has(self.latestPolicy) || !self.latestPolicy || (has(self.writePolicy) && self.writePolicy == 'ALLOW_ONCE')",message="latestPolicy requires the ALLOW_ONCE writePolicy: Nexus drops it otherwise."
 type RepositoryStorage struct {
 	// BlobStoreName is the name of the blob store to use. It is required,
 	// unless it is resolved through blobStoreNameRef or blobStoreNameSelector.
@@ -188,6 +226,13 @@ type RepositoryStorage struct {
 	// +kubebuilder:validation:Enum=ALLOW;ALLOW_ONCE;DENY
 	// +kubebuilder:validation:Optional
 	WritePolicy *string `json:"writePolicy,omitempty"`
+
+	// LatestPolicy allows redeploying the 'latest' tag of a Docker or OCI
+	// hosted repository, deferring to the write policy for every other tag.
+	// It requires the ALLOW_ONCE writePolicy, and is turned off when left
+	// unset.
+	// +kubebuilder:validation:Optional
+	LatestPolicy *bool `json:"latestPolicy,omitempty"`
 }
 
 // RepositoryCleanup defines cleanup configuration for a repository.
@@ -274,6 +319,13 @@ type ProxyConfig struct {
 	// +kubebuilder:default=1440
 	// +kubebuilder:validation:Optional
 	MetadataMaxAge *int32 `json:"metadataMaxAge,omitempty"`
+
+	// PreserveEncodedCharacters keeps encoded characters such as %2B, %23
+	// and %20 encoded when proxying to the remote, which AWS S3, Cloudflare
+	// and Azure Blob Storage remotes require. Only enable it for trusted
+	// remotes. It is turned off when left unset.
+	// +kubebuilder:validation:Optional
+	PreserveEncodedCharacters *bool `json:"preserveEncodedCharacters,omitempty"`
 }
 
 // NegativeCacheConfig defines negative cache configuration.
@@ -338,8 +390,9 @@ type HTTPClientConnection struct {
 
 // HTTPClientAuthentication defines HTTP client authentication configuration.
 type HTTPClientAuthentication struct {
-	// Type of authentication.
-	// +kubebuilder:validation:Enum=username;ntlm
+	// Type of authentication. username and ntlm authenticate with username
+	// and passwordSecretRef, bearerToken with bearerTokenSecretRef.
+	// +kubebuilder:validation:Enum=username;ntlm;bearerToken
 	// +kubebuilder:validation:Optional
 	Type *string `json:"type,omitempty"`
 
@@ -359,6 +412,19 @@ type HTTPClientAuthentication struct {
 	// NTLMDomain is the NTLM domain.
 	// +kubebuilder:validation:Optional
 	NTLMDomain *string `json:"ntlmDomain,omitempty"`
+
+	// BearerTokenSecretRef is a reference to a secret containing the bearer
+	// token of the bearerToken authentication type. The secret must be in
+	// the same namespace as the Repository.
+	// +kubebuilder:validation:Optional
+	BearerTokenSecretRef *xpv2.LocalSecretKeySelector `json:"bearerTokenSecretRef,omitempty"`
+
+	// Preemptive sends the credentials with every request instead of
+	// waiting for the remote to ask for them. Use with caution. Nexus only
+	// supports it on maven2, pypi and terraform proxy repositories. It is
+	// turned off when left unset.
+	// +kubebuilder:validation:Optional
+	Preemptive *bool `json:"preemptive,omitempty"`
 }
 
 // GroupConfig defines group configuration for group repositories.
@@ -404,6 +470,12 @@ type AptConfig struct {
 	// Flat determines if the repository uses flat format.
 	// +kubebuilder:validation:Optional
 	Flat *bool `json:"flat,omitempty"`
+
+	// EnforceDistribution restricts the requests of a proxy repository to
+	// the distribution, which is then required. It is turned off when left
+	// unset.
+	// +kubebuilder:validation:Optional
+	EnforceDistribution *bool `json:"enforceDistribution,omitempty"`
 }
 
 // YumConfig defines Yum specific configuration.
@@ -462,6 +534,45 @@ type ContainerProxyConfig struct {
 	// ForeignLayerUrlWhitelist is a list of regex patterns for allowed foreign layer URLs.
 	// +kubebuilder:validation:Optional
 	ForeignLayerUrlWhitelist []string `json:"foreignLayerUrlWhitelist,omitempty"`
+
+	// EcrAuth authenticates a Docker proxy repository to AWS Elastic
+	// Container Registry. Nexus does not offer it on OCI proxy repositories.
+	// +kubebuilder:validation:Optional
+	EcrAuth *EcrAuthConfig `json:"ecrAuth,omitempty"`
+}
+
+// EcrAuthConfig defines the AWS ECR authentication of a Docker proxy
+// repository.
+type EcrAuthConfig struct {
+	// Enabled turns AWS ECR authentication on.
+	// +kubebuilder:validation:Required
+	Enabled bool `json:"enabled"`
+
+	// AwsRegion is the AWS region of the ECR registry, such as us-east-1.
+	// +kubebuilder:validation:Optional
+	AwsRegion *string `json:"awsRegion,omitempty"`
+
+	// RegistryID is the 12-digit AWS account ID hosting the ECR registry.
+	// +kubebuilder:validation:Pattern=`^[0-9]{12}$`
+	// +kubebuilder:validation:Optional
+	RegistryID *string `json:"registryId,omitempty"`
+
+	// AccessKeyID is the AWS access key ID used to authenticate to ECR.
+	// Nexus masks it on read.
+	// +kubebuilder:validation:Optional
+	AccessKeyID *string `json:"accessKeyId,omitempty"`
+
+	// SecretAccessKeySecretRef is a reference to a secret containing the AWS
+	// secret access key. The secret must be in the same namespace as the
+	// Repository.
+	// +kubebuilder:validation:Optional
+	SecretAccessKeySecretRef *xpv2.LocalSecretKeySelector `json:"secretAccessKeySecretRef,omitempty"`
+
+	// SessionTokenSecretRef is a reference to a secret containing the AWS
+	// session token of short-lived STS credentials. The secret must be in
+	// the same namespace as the Repository.
+	// +kubebuilder:validation:Optional
+	SessionTokenSecretRef *xpv2.LocalSecretKeySelector `json:"sessionTokenSecretRef,omitempty"`
 }
 
 // DockerProxyConfig is the former name of ContainerProxyConfig.
@@ -481,6 +592,93 @@ type NugetProxyConfig struct {
 	// +kubebuilder:default=V3
 	// +kubebuilder:validation:Optional
 	NugetVersion *string `json:"nugetVersion,omitempty"`
+
+	// AllowAnonymousSymbolAccess allows unauthenticated access to the symbol
+	// server, which debuggers require. It defaults to true, as in Nexus.
+	// +kubebuilder:validation:Optional
+	AllowAnonymousSymbolAccess *bool `json:"allowAnonymousSymbolAccess,omitempty"`
+
+	// SymbolServerURL is the upstream symbol server to proxy.
+	// +kubebuilder:validation:MaxLength=2048
+	// +kubebuilder:validation:Optional
+	SymbolServerURL *string `json:"symbolServerUrl,omitempty"`
+}
+
+// RawConfig defines raw specific configuration.
+type RawConfig struct {
+	// ContentDisposition is the Content-Disposition header Nexus serves
+	// content with. Nexus defaults it to ATTACHMENT, and keeps it when an
+	// update leaves it out.
+	// +kubebuilder:validation:Enum=INLINE;ATTACHMENT
+	// +kubebuilder:validation:Optional
+	ContentDisposition *string `json:"contentDisposition,omitempty"`
+}
+
+// ConanProxyConfig defines Conan proxy specific configuration.
+type ConanProxyConfig struct {
+	// ConanVersion is the Conan protocol version of the remote. Nexus
+	// defaults it to V2 and cannot change it once the repository exists.
+	// +kubebuilder:validation:Enum=V1;V2
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="conanVersion is immutable: Nexus cannot change it."
+	// +kubebuilder:validation:Optional
+	ConanVersion *string `json:"conanVersion,omitempty"`
+}
+
+// PypiProxyConfig defines PyPI proxy specific configuration.
+type PypiProxyConfig struct {
+	// IndexPath is the path of the remote index: /simple for standard
+	// remotes such as PyPI.org, or the empty string for remotes serving it
+	// at their root. It defaults to /simple, as in Nexus.
+	// +kubebuilder:validation:Enum=/simple;""
+	// +kubebuilder:validation:Optional
+	IndexPath *string `json:"indexPath,omitempty"`
+}
+
+// XetConfig defines the Xet storage protocol of a Hugging Face proxy
+// repository.
+type XetConfig struct {
+	// XetCasURL is the Xet content addressed storage service of the remote.
+	// Nexus uses the remote's default when it is left unset.
+	// +kubebuilder:validation:Optional
+	XetCasURL *string `json:"xetCasUrl,omitempty"`
+
+	// XetTransferHostAllowList lists the hosts Nexus may download Xet
+	// content from. Nexus uses the remote's defaults when it is left unset.
+	// +kubebuilder:validation:Optional
+	XetTransferHostAllowList []string `json:"xetTransferHostAllowList,omitempty"`
+}
+
+// ComponentConfig defines the component settings of a hosted repository.
+type ComponentConfig struct {
+	// ProprietaryComponents marks the components of the repository as
+	// proprietary, which protects them from namespace confusion attacks. It
+	// requires Sonatype Repository Firewall to take effect. It is turned
+	// off when left unset.
+	// +kubebuilder:validation:Optional
+	ProprietaryComponents *bool `json:"proprietaryComponents,omitempty"`
+}
+
+// FirewallConfig defines the Sonatype Repository Firewall mode of a proxy
+// repository.
+type FirewallConfig struct {
+	// Mode is the firewall mode. Every mode but DISABLED requires an IQ
+	// Server connection.
+	// +kubebuilder:validation:Enum=DISABLED;AUDIT;QUARANTINE;PCCS
+	// +kubebuilder:validation:Required
+	Mode string `json:"mode"`
+}
+
+// ReplicationConfig defines the pre-emptive pull of a proxy repository.
+type ReplicationConfig struct {
+	// PreemptivePullEnabled pulls new content from the remote before
+	// clients ask for it.
+	// +kubebuilder:validation:Required
+	PreemptivePullEnabled bool `json:"preemptivePullEnabled"`
+
+	// AssetPathRegex restricts the pre-emptive pull to the asset paths it
+	// matches.
+	// +kubebuilder:validation:Optional
+	AssetPathRegex *string `json:"assetPathRegex,omitempty"`
 }
 
 // BowerConfig defines Bower specific configuration.

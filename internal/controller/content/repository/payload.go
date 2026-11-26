@@ -27,11 +27,18 @@ type cleanupPayload interface {
 	SetCleanup(v v395.CleanupPolicyAttributes)
 }
 
+// componentPayload holds the setter of the component settings, which hosted
+// repositories have.
+type componentPayload interface {
+	SetComponent(v v395.ComponentAttributes)
+}
+
 // hostedPayload is satisfied by the payload of a hosted repository.
 type hostedPayload[T any] interface {
 	*T
 	basePayload
 	cleanupPayload
+	componentPayload
 	SetStorage(v v395.HostedStorageAttributes)
 }
 
@@ -41,6 +48,7 @@ type containerHostedPayload[T any] interface {
 	*T
 	basePayload
 	cleanupPayload
+	componentPayload
 	SetStorage(v v395.DockerHostedStorageAttributes)
 }
 
@@ -53,6 +61,8 @@ type proxyBasePayload interface {
 	SetProxy(v v395.ProxyAttributes)
 	SetNegativeCache(v v395.NegativeCacheAttributes)
 	SetRoutingRuleName(v string)
+	SetFirewall(v v395.FirewallAttributes)
+	SetReplication(v v395.ReplicationAttributes)
 }
 
 // proxyPayload is satisfied by the payload of a proxy repository.
@@ -99,6 +109,7 @@ func buildHosted[T any, P hostedPayload[T]](desired desiredRepo) T {
 	payload := P(&repo)
 	setBase(payload, desired)
 	setCleanup(payload, desired)
+	payload.SetComponent(desired.component())
 	payload.SetStorage(desired.hostedStorage())
 
 	return repo
@@ -112,6 +123,7 @@ func buildContainerHosted[T any, P containerHostedPayload[T]](desired desiredRep
 	payload := P(&repo)
 	setBase(payload, desired)
 	setCleanup(payload, desired)
+	payload.SetComponent(desired.component())
 	payload.SetStorage(desired.containerHostedStorage())
 
 	return repo
@@ -181,7 +193,8 @@ func setCleanup(payload cleanupPayload, desired desiredRepo) {
 }
 
 // setProxyBase sets every shared block of a proxy repository payload but the
-// HTTP client, leaving the routing rule out when the spec assigns none.
+// HTTP client, leaving the routing rule, firewall and replication out when the
+// spec declares none.
 func setProxyBase(payload proxyBasePayload, desired desiredRepo) {
 	setBase(payload, desired)
 	setCleanup(payload, desired)
@@ -192,5 +205,15 @@ func setProxyBase(payload proxyBasePayload, desired desiredRepo) {
 	routingRule := desired.routingRule()
 	if routingRule != nil {
 		payload.SetRoutingRuleName(*routingRule)
+	}
+
+	firewall := desired.firewall()
+	if firewall != nil {
+		payload.SetFirewall(*firewall)
+	}
+
+	replication := desired.replication()
+	if replication != nil {
+		payload.SetReplication(*replication)
 	}
 }

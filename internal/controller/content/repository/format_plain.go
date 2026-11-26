@@ -71,30 +71,6 @@ func init() {
 	)
 }
 
-// init registers the Conan repository format.
-func init() {
-	registerFormat("conan",
-		hosted(
-			get[v395.ConanHostedApiRepository]((*nexusAPI).GetConanHostedRepository),
-			create((*nexusAPI).CreateConanHostedRepository, v395.ApiCreateConanHostedRepositoryRequest.ConanHostedRepositoryApiRequest),
-			update((*nexusAPI).UpdateConanHostedRepository, v395.ApiUpdateConanHostedRepositoryRequest.ConanHostedRepositoryApiRequest),
-			buildHosted,
-		),
-		proxy(
-			get[v395.ConanProxyApiRepository]((*nexusAPI).GetConanProxyRepository),
-			create((*nexusAPI).CreateConanProxyRepository, v395.ApiCreateConanProxyRepositoryRequest.ConanProxyRepositoryApiRequest),
-			update((*nexusAPI).UpdateConanProxyRepository, v395.ApiUpdateConanProxyRepositoryRequest.ConanProxyRepositoryApiRequest),
-			buildProxy,
-		),
-		group(
-			get[v395.SimpleApiGroupDeployRepository]((*nexusAPI).GetConanGroupRepository),
-			create((*nexusAPI).CreateConanGroupRepository, v395.ApiCreateConanGroupRepositoryRequest.ConanGroupRepositoryApiRequest),
-			update((*nexusAPI).UpdateConanGroupRepository, v395.ApiUpdateConanGroupRepositoryRequest.ConanGroupRepositoryApiRequest),
-			buildDeployGroup,
-		),
-	)
-}
-
 // init registers the Conda repository format.
 func init() {
 	registerFormat("conda",
@@ -179,18 +155,6 @@ func init() {
 	)
 }
 
-// init registers the Hugging Face repository format.
-func init() {
-	registerFormat("huggingface",
-		proxy(
-			get[v395.HuggingFaceProxyApiRepository]((*nexusAPI).GetHuggingfaceProxyRepository),
-			create((*nexusAPI).CreateHuggingfaceProxyRepository, v395.ApiCreateHuggingfaceProxyRepositoryRequest.HuggingFaceProxyRepositoryApiRequest),
-			update((*nexusAPI).UpdateHuggingfaceProxyRepository, v395.ApiUpdateHuggingfaceProxyRepositoryRequest.HuggingFaceProxyRepositoryApiRequest),
-			buildProxy,
-		),
-	)
-}
-
 // init registers the npm repository format.
 func init() {
 	registerFormat("npm",
@@ -251,30 +215,6 @@ func init() {
 	)
 }
 
-// init registers the PyPI repository format.
-func init() {
-	registerFormat("pypi",
-		hosted(
-			get[v395.PypiHostedApiRepository]((*nexusAPI).GetPypiHostedRepository),
-			create((*nexusAPI).CreatePypiHostedRepository, v395.ApiCreatePypiHostedRepositoryRequest.PypiHostedRepositoryApiRequest),
-			update((*nexusAPI).UpdatePypiHostedRepository, v395.ApiUpdatePypiHostedRepositoryRequest.PypiHostedRepositoryApiRequest),
-			buildHosted,
-		),
-		proxy(
-			get[v395.PyPiProxyApiRepository]((*nexusAPI).GetPypiProxyRepository),
-			create((*nexusAPI).CreatePypiProxyRepository, v395.ApiCreatePypiProxyRepositoryRequest.PypiProxyRepositoryApiRequest),
-			update((*nexusAPI).UpdatePypiProxyRepository, v395.ApiUpdatePypiProxyRepositoryRequest.PypiProxyRepositoryApiRequest),
-			buildPreemptiveProxy,
-		),
-		group(
-			get[v395.SimpleApiGroupDeployRepository]((*nexusAPI).GetPypiGroupRepository),
-			create((*nexusAPI).CreatePypiGroupRepository, v395.ApiCreatePypiGroupRepositoryRequest.PypiGroupRepositoryApiRequest),
-			update((*nexusAPI).UpdatePypiGroupRepository, v395.ApiUpdatePypiGroupRepositoryRequest.PypiGroupRepositoryApiRequest),
-			buildDeployGroup,
-		),
-	)
-}
-
 // init registers the R repository format.
 func init() {
 	registerFormat("r",
@@ -294,30 +234,6 @@ func init() {
 			get[v395.RGroupApiRepository]((*nexusAPI).GetRGroupRepository),
 			create((*nexusAPI).CreateRGroupRepository, v395.ApiCreateRGroupRepositoryRequest.RGroupRepositoryApiRequest),
 			update((*nexusAPI).UpdateRGroupRepository, v395.ApiUpdateRGroupRepositoryRequest.RGroupRepositoryApiRequest),
-			buildGroup,
-		),
-	)
-}
-
-// init registers the raw repository format.
-func init() {
-	registerFormat("raw",
-		hosted(
-			get[v395.RawHostedApiRepository]((*nexusAPI).GetRawHostedRepository),
-			create((*nexusAPI).CreateRawHostedRepository, v395.ApiCreateRawHostedRepositoryRequest.RawHostedRepositoryApiRequest),
-			update((*nexusAPI).UpdateRawHostedRepository, v395.ApiUpdateRawHostedRepositoryRequest.RawHostedRepositoryApiRequest),
-			buildHosted,
-		),
-		proxy(
-			get[v395.RawProxyApiRepository]((*nexusAPI).GetRawProxyRepository),
-			create((*nexusAPI).CreateRawProxyRepository, v395.ApiCreateRawProxyRepositoryRequest.RawProxyRepositoryApiRequest),
-			update((*nexusAPI).UpdateRawProxyRepository, v395.ApiUpdateRawProxyRepositoryRequest.RawProxyRepositoryApiRequest),
-			buildProxy,
-		),
-		group(
-			get[v395.RawGroupApiRepository]((*nexusAPI).GetRawGroupRepository),
-			create((*nexusAPI).CreateRawGroupRepository, v395.ApiCreateRawGroupRepositoryRequest.RawGroupRepositoryApiRequest),
-			update((*nexusAPI).UpdateRawGroupRepository, v395.ApiUpdateRawGroupRepositoryRequest.RawGroupRepositoryApiRequest),
 			buildGroup,
 		),
 	)
