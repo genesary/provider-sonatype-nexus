@@ -22,16 +22,18 @@ const (
 	ErrNoSource = "neither a secret reference nor an endpoint URL is configured"
 
 	// errUnavailable is returned when the endpoint does not serve the document
-	// and the connection Secret caches none fetched from it.
-	errUnavailable = "endpoint does not serve the document and none is cached"
+	// and the connection Secret caches none fetched from it, either because it
+	// caches no document or because it caches one from another endpoint.
+	errUnavailable = "endpoint does not serve the document and the connection Secret caches none fetched from it"
 	// errOtherEndpoint is returned when the connection Secret caches a
 	// document that was not fetched from the endpoint.
 	errOtherEndpoint = "cached document was not fetched from this endpoint"
 )
 
-// endpointKeySuffix is appended to Source.Key to name the connection Secret
-// key that records which endpoint the cached document was fetched from.
-const endpointKeySuffix = "Endpoint"
+// endpointKey is the connection Secret key that records which endpoint the
+// cached document was fetched from. A managed resource caches one document
+// only, so the key does not depend on Source.Key.
+const endpointKey = "endpointUrl"
 
 // Source is where a managed resource reads a document from.
 type Source struct {
@@ -49,7 +51,9 @@ type Document struct {
 	Data []byte
 
 	// ConnectionDetails cache the document in the connection Secret of the
-	// managed resource, for Read to fall back on.
+	// managed resource, for Read to fall back on. Publish them only once Nexus
+	// has accepted Data: a document Nexus refuses would otherwise replace the
+	// last one it accepted as the fallback.
 	ConnectionDetails managed.ConnectionDetails
 }
 
@@ -59,7 +63,7 @@ type Document struct {
 // While the endpoint is unavailable, Read returns the document cached in the
 // connection Secret of owner, if it was fetched from that same endpoint. A
 // controller keeps that cache current by publishing the ConnectionDetails of
-// the documents it reads.
+// the documents Nexus accepts, and only of those.
 func (s Source) Read(ctx context.Context, kube client.Reader, owner resource.ModernManaged) (Document, error) {
 	if s.From == nil || (s.From.SecretRef == nil && s.From.EndpointURL == nil) {
 		return Document{}, errors.New(ErrNoSource)
@@ -79,13 +83,20 @@ func (s Source) Read(ctx context.Context, kube client.Reader, owner resource.Mod
 		return s.document(data), nil
 	}
 
-	data, err := s.readCache(ctx, kube, owner)
+	data, recorded, err := s.readCache(ctx, kube, owner)
 	if err != nil {
 		// The endpoint error is the one to act on: having no cache is normal.
 		return Document{}, errors.Wrap(endpointErr, errUnavailable)
 	}
 
-	return s.document(data), nil
+	cached := s.document(data)
+	if !recorded {
+		// Do not record an endpoint that never served this document: it
+		// would keep the cache trusted past the next successful fetch.
+		delete(cached.ConnectionDetails, endpointKey)
+	}
+
+	return cached, nil
 }
 
 // document returns the Document holding data read from the source.
@@ -93,27 +104,32 @@ func (s Source) document(data []byte) Document {
 	return Document{
 		Data: data,
 		ConnectionDetails: managed.ConnectionDetails{
-			s.Key:                     data,
-			s.Key + endpointKeySuffix: []byte(s.endpointID()),
+			s.Key:       data,
+			endpointKey: []byte(s.endpointID()),
 		},
 	}
 }
 
-// readCache returns the document cached in the connection Secret of owner. It
-// fails when that document was fetched from another endpoint: falling back on
-// it would hide that the endpoint owner now names never served anything.
-func (s Source) readCache(ctx context.Context, kube client.Reader, owner resource.ModernManaged) ([]byte, error) {
+// readCache returns the document cached in the connection Secret of owner, and
+// whether that Secret records the endpoint it was fetched from. It fails when
+// that document was fetched from another endpoint: falling back on it would
+// hide that the endpoint owner now names never served anything.
+func (s Source) readCache(ctx context.Context, kube client.Reader, owner resource.ModernManaged) (data []byte, recorded bool, err error) {
 	ref := owner.GetWriteConnectionSecretToReference()
 	secrets := nexus.MemoizeSecrets(kube)
 
 	// Connection Secrets written by earlier versions do not record the
 	// endpoint. Their document is trusted until the next successful fetch.
-	endpoint, err := nexus.GetLocalConnectionSecretBytes(ctx, secrets, owner, ref, s.Key+endpointKeySuffix)
-	if err == nil && string(endpoint) != s.endpointID() {
-		return nil, errors.New(errOtherEndpoint)
+	endpoint, err := nexus.GetLocalConnectionSecretBytes(ctx, secrets, owner, ref, endpointKey)
+	recorded = err == nil
+
+	if recorded && string(endpoint) != s.endpointID() {
+		return nil, false, errors.New(errOtherEndpoint)
 	}
 
-	return nexus.GetLocalConnectionSecretBytes(ctx, secrets, owner, ref, s.Key)
+	data, err = nexus.GetLocalConnectionSecretBytes(ctx, secrets, owner, ref, s.Key)
+
+	return data, recorded, err
 }
 
 // endpointID identifies the endpoint the document is fetched from, or is empty

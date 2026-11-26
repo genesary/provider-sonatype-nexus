@@ -11,9 +11,11 @@ import (
 	"github.com/genesary/provider-sonatype-nexus/internal/clients/nexus"
 )
 
-// maxBytes caps the document fetched from an endpoint. It is about what a
-// Secret can hold, and far above the size of the documents Nexus takes.
-const maxBytes = 1 << 20
+// maxBytes caps the document fetched from an endpoint. It leaves 64 KiB of
+// the 1 MiB a Secret holds for the other keys of the connection Secret the
+// document is cached in, and is far above the size of the documents Nexus
+// takes.
+const maxBytes = 1<<20 - 64<<10
 
 // endpointClient fetches documents from their endpoint. It bounds each fetch
 // with a timeout and follows redirects like the default client.

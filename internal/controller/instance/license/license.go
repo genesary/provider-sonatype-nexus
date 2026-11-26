@@ -125,7 +125,13 @@ func (e *external) Observe(ctx context.Context, licenseCR *instancev1alpha1.Lice
 	}
 
 	observation.ResourceUpToDate = instanceclient.IsLicenseUpToDate(licenseCR, currentHash)
-	observation.ConnectionDetails = license.ConnectionDetails
+
+	// Refresh the cache only with the license Nexus accepted, so that it
+	// follows the endpoint when the URL changes but the license does not. An
+	// outdated license is cached by Create or Update once Nexus installs it.
+	if observation.ResourceUpToDate {
+		observation.ConnectionDetails = license.ConnectionDetails
+	}
 
 	return observation, nil
 }

@@ -184,6 +184,12 @@ func TestRead_Cache(t *testing.T) {
 			if string(got.Data) != testContent {
 				t.Errorf("Read() = %q, want %q", got.Data, testContent)
 			}
+
+			// The fallback records an endpoint only where the cache already did.
+			_, recorded := got.ConnectionDetails[endpointKey]
+			if _, wasRecorded := tc.cache[endpointKey]; recorded != wasRecorded {
+				t.Errorf("Read() records the endpoint = %v, want %v", recorded, wasRecorded)
+			}
 		})
 	}
 }

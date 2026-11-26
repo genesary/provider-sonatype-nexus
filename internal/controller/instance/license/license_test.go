@@ -347,6 +347,12 @@ func TestObserve_ExistsAndOutdated(t *testing.T) {
 	if obs.ResourceUpToDate {
 		t.Error("Observe() ResourceUpToDate = true, want false when hash differs")
 	}
+
+	// Nexus has not accepted this license yet: caching it now could replace
+	// the installed one as the fallback with a license Nexus refuses.
+	if obs.ConnectionDetails != nil {
+		t.Errorf("Observe() ConnectionDetails = %v, want none for a license not installed", obs.ConnectionDetails)
+	}
 }
 
 // TestCreate_NoLicenseSource tests Create with no source configured.
